@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'main.dart';
+import 'services/api_service.dart';
+import 'utils/auth_helper.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({Key? key}) : super(key: key);
@@ -20,26 +22,66 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   bool _showConfirmPassword = false;
   bool _isLoading = false;
 
+  bool _ruleLength = false;
+  bool _ruleUpper = false;
+  bool _ruleLower = false;
+  bool _ruleDigit = false;
+  bool _confirmMatch = true;
+
+  int? _userId;
+  late ApiService apiService;
+
   @override
   void initState() {
     super.initState();
+    apiService = ApiService();
     _currentPasswordController = TextEditingController();
     _newPasswordController = TextEditingController();
     _confirmPasswordController = TextEditingController();
+    _newPasswordController.addListener(_validateNewPassword);
+    _confirmPasswordController.addListener(_validateConfirmPassword);
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    final user = await AuthHelper.getUserData();
+    setState(() {
+      _userId = int.tryParse(user['user_id'] ?? '');
+    });
   }
 
   @override
   void dispose() {
+    _newPasswordController.removeListener(_validateNewPassword);
+    _confirmPasswordController.removeListener(_validateConfirmPassword);
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  void _changePassword() {
+  void _validateNewPassword() {
+    final pwd = _newPasswordController.text;
+    setState(() {
+      _ruleLength = pwd.length >= 8;
+      _ruleUpper = RegExp(r'[A-Z]').hasMatch(pwd);
+      _ruleLower = RegExp(r'[a-z]').hasMatch(pwd);
+      _ruleDigit = RegExp(r'[0-9]').hasMatch(pwd);
+    });
+    _validateConfirmPassword();
+  }
+
+  void _validateConfirmPassword() {
+    setState(() {
+      _confirmMatch =
+          _confirmPasswordController.text == _newPasswordController.text;
+    });
+  }
+
+  void _changePassword() async {
     if (_formKey.currentState!.validate()) {
       // Validasi additional
-      if (_newPasswordController.text != _confirmPasswordController.text) {
+      if (!_confirmMatch) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Password baru dan konfirmasi tidak cocok!'),
@@ -50,10 +92,24 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         return;
       }
 
-      if (_newPasswordController.text.length < 8) {
+      final newPwd = _newPasswordController.text;
+
+      if (!_ruleLength) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Password harus minimal 8 karakter!'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+
+      if (!(_ruleUpper && _ruleLower && _ruleDigit)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Password harus mengandung huruf besar, huruf kecil, dan angka'),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 2),
           ),
@@ -65,23 +121,63 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         _isLoading = true;
       });
 
-      // Simulasi perubahan password
-      Future.delayed(const Duration(seconds: 2), () {
+      if (_userId == null) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('User ID tidak ditemukan. Silakan login ulang.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      try {
+        final res = await apiService.changePassword(
+          _userId!,
+          _currentPasswordController.text,
+          _newPasswordController.text,
+        );
+
         setState(() {
           _isLoading = false;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Password berhasil diubah!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
-
-        // Kembali ke halaman profil
-        Navigator.pop(context);
-      });
+        if (res['success'] == true) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(res['message'] ?? 'Password berhasil diubah!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            Navigator.pop(context, true);
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(res['message'] ?? 'Gagal mengubah password'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -254,6 +350,17 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     return null;
                   },
                 ),
+                if (!_confirmMatch)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Password baru dan konfirmasi harus sama',
+                        style: TextStyle(color: Colors.red, fontSize: 12),
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 24),
                 // Password Requirements
                 Container(
@@ -278,11 +385,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      _buildRequirement('Minimal 8 karakter'),
-                      _buildRequirement('Mengandung huruf besar (A-Z)'),
-                      _buildRequirement('Mengandung huruf kecil (a-z)'),
-                      _buildRequirement('Mengandung angka (0-9)'),
-                      _buildRequirement('Mengandung simbol (!@#\$%^&*)'),
+                      _buildRequirement('Minimal 8 karakter', _ruleLength),
+                      _buildRequirement(
+                          'Mengandung huruf besar (A-Z)', _ruleUpper),
+                      _buildRequirement(
+                          'Mengandung huruf kecil (a-z)', _ruleLower),
+                      _buildRequirement('Mengandung angka (0-9)', _ruleDigit),
                     ],
                   ),
                 ),
@@ -423,22 +531,24 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     );
   }
 
-  Widget _buildRequirement(String requirement) {
+  Widget _buildRequirement(String requirement, bool passed) {
+    final color = passed ? Colors.green : Colors.white70;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          const Icon(
-            Icons.check_circle_outline,
-            color: Colors.orange,
+          Icon(
+            passed ? Icons.check_circle : Icons.radio_button_unchecked,
+            color: color,
             size: 16,
           ),
           const SizedBox(width: 8),
           Text(
             requirement,
-            style: const TextStyle(
-              color: Colors.white70,
+            style: TextStyle(
+              color: color,
               fontSize: 12,
+              fontWeight: passed ? FontWeight.w700 : FontWeight.w500,
             ),
           ),
         ],

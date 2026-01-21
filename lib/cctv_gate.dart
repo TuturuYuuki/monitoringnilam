@@ -13,11 +13,9 @@ class _GateCCTVPageState extends State<GateCCTVPage> {
   String selectedArea = 'Gate';
   int currentPage = 0;
   final int camerasPerPage = 8;
+  bool isLoading = false;
 
-  final List<Map<String, dynamic>> allCameras = [
-    {'id': 'Cam-GIN', 'location': 'Gate In', 'status': 'UP', 'type': 'PTZ'},
-    {'id': 'Cam-GOUT', 'location': 'Gate Out', 'status': 'UP', 'type': 'PTZ'},
-  ];
+  final List<Map<String, dynamic>> allCameras = [];
 
   List<Map<String, dynamic>> get paginatedCameras {
     int start = currentPage * camerasPerPage;
@@ -426,6 +424,75 @@ class _GateCCTVPageState extends State<GateCCTVPage> {
   }
 
   Widget _buildCameraGrid(BoxConstraints constraints) {
+    // Show loading indicator
+    if (isLoading) {
+      return Container(
+        padding: const EdgeInsets.all(40),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text(
+                'Memuat data kamera...',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show empty state if no cameras
+    if (allCameras.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(40),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.videocam_off,
+                size: 64,
+                color: Colors.grey,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Tidak ada kamera',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Belum ada kamera yang terdaftar untuk Gate Area',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show camera grid when data exists
     final isMobile = isMobileScreen(context);
     int crossAxisCount = isMobile
         ? 1

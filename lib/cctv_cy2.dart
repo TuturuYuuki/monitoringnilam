@@ -13,57 +13,9 @@ class _CCTVCy2PageState extends State<CCTVCy2Page> {
   String selectedYard = 'CY 2';
   int currentPage = 0;
   final int camerasPerPage = 8;
+  bool isLoading = false;
 
-  final List<Map<String, dynamic>> allCameras = [
-    {
-      'id': 'Cam-25',
-      'location': 'Container Yard 2',
-      'status': 'UP',
-      'type': 'PTZ'
-    },
-    {
-      'id': 'Cam-26',
-      'location': 'Container Yard 2',
-      'status': 'UP',
-      'type': 'Fixed'
-    },
-    {
-      'id': 'Cam-27',
-      'location': 'Container Yard 2',
-      'status': 'UP',
-      'type': 'PTZ'
-    },
-    {
-      'id': 'Cam-28',
-      'location': 'Container Yard 2',
-      'status': 'UP',
-      'type': 'Fixed'
-    },
-    {
-      'id': 'Cam-29',
-      'location': 'Container Yard 2',
-      'status': 'UP',
-      'type': 'PTZ'
-    },
-    {
-      'id': 'Cam-30',
-      'location': 'Container Yard 2',
-      'status': 'UP',
-      'type': 'Fixed'
-    },
-    {
-      'id': 'Cam-31',
-      'location': 'Container Yard 2',
-      'status': 'DOWN',
-      'type': 'PTZ'
-    },
-    {
-      'id': 'Cam-32',
-      'location': 'Container Yard 2',
-      'status': 'UP',
-      'type': 'Fixed'
-    },
-  ];
+  final List<Map<String, dynamic>> allCameras = [];
 
   List<Map<String, dynamic>> get paginatedCameras {
     int start = currentPage * camerasPerPage;
@@ -465,6 +417,75 @@ class _CCTVCy2PageState extends State<CCTVCy2Page> {
   }
 
   Widget _buildCameraGrid(BoxConstraints constraints) {
+    // Show loading indicator
+    if (isLoading) {
+      return Container(
+        padding: const EdgeInsets.all(40),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text(
+                'Memuat data kamera...',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show empty state if no cameras
+    if (allCameras.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(40),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.videocam_off,
+                size: 64,
+                color: Colors.grey,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Tidak ada kamera',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Belum ada kamera yang terdaftar untuk Container Yard 2',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show camera grid when data exists
     final isMobile = isMobileScreen(context);
     int crossAxisCount = isMobile
         ? 1

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'main.dart';
+import 'utils/auth_helper.dart';
+import 'services/api_service.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({Key? key}) : super(key: key);
@@ -19,17 +21,35 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late TextEditingController _divisionController;
 
   bool _isLoading = false;
+  int? _userId;
+  late ApiService apiService;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: 'Admin Terminal Nilam');
-    _usernameController = TextEditingController(text: 'admin_terminal');
-    _emailController = TextEditingController(text: 'admin@terminalnilam.id');
-    _phoneController = TextEditingController(text: '+62 812-3456-7890');
-    _locationController = TextEditingController(text: 'Surabaya, Jawa Timur');
-    _divisionController =
-        TextEditingController(text: 'IT & Network Management');
+    apiService = ApiService();
+    _nameController = TextEditingController();
+    _usernameController = TextEditingController();
+    _emailController = TextEditingController();
+    _phoneController = TextEditingController();
+    _locationController = TextEditingController();
+    _divisionController = TextEditingController();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final userData = await AuthHelper.getUserData();
+    setState(() {
+      _userId = int.tryParse(userData['user_id'] ?? '');
+      _nameController.text = userData['fullname'] ?? '';
+      _usernameController.text = userData['username'] ?? '';
+      _emailController.text = userData['email'] ?? '';
+      _phoneController.text = userData['phone'] ?? '';
+      _locationController.text = userData['location'] ?? '';
+      _divisionController.text = userData['division']?.isNotEmpty == true
+          ? userData['division']!
+          : (userData['role'] ?? '');
+    });
   }
 
   @override
@@ -43,29 +63,90 @@ class _EditProfilePageState extends State<EditProfilePage> {
     super.dispose();
   }
 
-  void _saveChanges() {
+  void _saveChanges() async {
     if (_formKey.currentState!.validate()) {
+      if (_userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('User ID tidak ditemukan. Silakan login ulang.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
       setState(() {
         _isLoading = true;
       });
 
-      // Simulasi penyimpanan data
-      Future.delayed(const Duration(seconds: 2), () {
+      try {
+        // Call API to update profile
+        final response = await apiService.updateProfile(
+          _userId!,
+          {
+            'fullname': _nameController.text.trim(),
+            'email': _emailController.text.trim(),
+            'username': _usernameController.text.trim(),
+            'phone': _phoneController.text.trim(),
+            'location': _locationController.text.trim(),
+            'division': _divisionController.text.trim(),
+          },
+        );
+
         setState(() {
           _isLoading = false;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profil berhasil diperbarui!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
+        if (response['success'] == true) {
+          // Update SharedPreferences with new data
+          final currentData = await AuthHelper.getUserData();
+          await AuthHelper.saveUserData({
+            'id': _userId!,
+            'username': _usernameController.text.trim(),
+            'email': _emailController.text.trim(),
+            'fullname': _nameController.text.trim(),
+            'role': currentData['role'] ?? 'user',
+            'phone': _phoneController.text.trim(),
+            'location': _locationController.text.trim(),
+            'division': _divisionController.text.trim(),
+          });
 
-        // Kembali ke halaman profil
-        Navigator.pop(context);
-      });
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Profil berhasil diperbarui!'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+
+            // Kembali ke halaman profil dan trigger refresh
+            Navigator.pop(context, true);
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content:
+                    Text(response['message'] ?? 'Gagal memperbarui profil'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 

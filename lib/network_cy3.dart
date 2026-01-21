@@ -429,11 +429,8 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                                 width: cardWidth),
                             SizedBox(width: isMobile ? 8 : 16),
                             _buildStatCard(
-                                'DOWN',
-                                '${towerData.where((t) => t['status'] == 'Warning').length}',
-                                Colors.blue,
-                                onTap: _showWarningList,
-                                width: cardWidth),
+                                'DOWN', '$warningTowers', Colors.blue,
+                                onTap: _showWarningList, width: cardWidth),
                           ],
                         ),
                       ),
@@ -452,12 +449,8 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                           width: cardWidth),
                       _buildStatCard('UP', '$onlineTowers', Colors.green,
                           width: cardWidth),
-                      _buildStatCard(
-                          'DOWN',
-                          '${towerData.where((t) => t['status'] == 'Warning').length}',
-                          Colors.red,
-                          onTap: _showWarningList,
-                          width: cardWidth),
+                      _buildStatCard('DOWN', '$warningTowers', Colors.red,
+                          onTap: _showWarningList, width: cardWidth),
                       _buildNetworkDropdown(cardWidth),
                       _buildContainerYardButton(cardWidth),
                     ],
@@ -612,6 +605,89 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
   }
 
   Widget _buildTowerList() {
+    // Show loading indicator
+    if (isLoading) {
+      return Container(
+        padding: const EdgeInsets.all(40),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text(
+                'Memuat data tower...',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show empty state if no data
+    if (towers.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(40),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.signal_wifi_off,
+                size: 64,
+                color: Colors.grey,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Tidak ada data tower',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Belum ada tower yang terdaftar untuk Container Yard 3',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show data table when towers exist
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,

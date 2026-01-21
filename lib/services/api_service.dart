@@ -104,6 +104,29 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> changePassword(
+      int userId, String oldPassword, String newPassword) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl?endpoint=auth&action=change-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': userId,
+          'old_password': oldPassword,
+          'new_password': newPassword,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {'success': false, 'message': 'Gagal mengubah password'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
   // ==================== NETWORK/TOWER ENDPOINTS ====================
 
   Future<List<Tower>> getAllTowers() async {

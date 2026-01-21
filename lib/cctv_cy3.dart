@@ -13,117 +13,9 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
   String selectedYard = 'CY 3';
   int currentPage = 0;
   final int camerasPerPage = 8;
+  bool isLoading = false;
 
-  final List<Map<String, dynamic>> allCameras = [
-    {
-      'id': 'Cam-01',
-      'location': 'Container Yard 3',
-      'status': 'UP',
-      'type': 'PTZ'
-    },
-    {
-      'id': 'Cam-02',
-      'location': 'Container Yard 3',
-      'status': 'UP',
-      'type': 'Fixed'
-    },
-    {
-      'id': 'Cam-03',
-      'location': 'Container Yard 3',
-      'status': 'UP',
-      'type': 'PTZ'
-    },
-    {
-      'id': 'Cam-04',
-      'location': 'Container Yard 3',
-      'status': 'UP',
-      'type': 'Fixed'
-    },
-    {
-      'id': 'Cam-05',
-      'location': 'Container Yard 3',
-      'status': 'UP',
-      'type': 'PTZ'
-    },
-    {
-      'id': 'Cam-06',
-      'location': 'Container Yard 3',
-      'status': 'UP',
-      'type': 'Fixed'
-    },
-    {
-      'id': 'Cam-07',
-      'location': 'Container Yard 3',
-      'status': 'UP',
-      'type': 'PTZ'
-    },
-    {
-      'id': 'Cam-08',
-      'location': 'Container Yard 3',
-      'status': 'UP',
-      'type': 'Fixed'
-    },
-    {
-      'id': 'Cam-09',
-      'location': 'Container Yard 3',
-      'status': 'UP',
-      'type': 'PTZ'
-    },
-    {
-      'id': 'Cam-10',
-      'location': 'Container Yard 3',
-      'status': 'UP',
-      'type': 'Fixed'
-    },
-    {
-      'id': 'Cam-11',
-      'location': 'Container Yard 3',
-      'status': 'UP',
-      'type': 'PTZ'
-    },
-    {
-      'id': 'Cam-12',
-      'location': 'Container Yard 3',
-      'status': 'UP',
-      'type': 'Fixed'
-    },
-    {
-      'id': 'Cam-13',
-      'location': 'Container Yard 3',
-      'status': 'UP',
-      'type': 'PTZ'
-    },
-    {
-      'id': 'Cam-14',
-      'location': 'Container Yard 3',
-      'status': 'UP',
-      'type': 'Fixed'
-    },
-    {
-      'id': 'Cam-15',
-      'location': 'Container Yard 3',
-      'status': 'UP',
-      'type': 'PTZ'
-    },
-    {
-      'id': 'Cam-16',
-      'location': 'Container Yard 3',
-      'status': 'DOWN',
-      'type': 'Fixed'
-    },
-    {
-      'id': 'Cam-17',
-      'location': 'Container Yard 3',
-      'status': 'UP',
-      'type': 'PTZ'
-    },
-    {
-      'id': 'Cam-18',
-      'location': 'Container Yard 3',
-      'status': 'UP',
-      'type': 'Fixed'
-    },
-  ];
+  final List<Map<String, dynamic>> allCameras = [];
 
   List<Map<String, dynamic>> get paginatedCameras {
     int start = currentPage * camerasPerPage;
@@ -525,6 +417,75 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
   }
 
   Widget _buildCameraGrid(BoxConstraints constraints) {
+    // Show loading indicator
+    if (isLoading) {
+      return Container(
+        padding: const EdgeInsets.all(40),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text(
+                'Memuat data kamera...',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show empty state if no cameras
+    if (allCameras.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(40),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.videocam_off,
+                size: 64,
+                color: Colors.grey,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Tidak ada kamera',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Belum ada kamera yang terdaftar untuk Container Yard 3',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show camera grid when data exists
     final isMobile = isMobileScreen(context);
     int crossAxisCount = isMobile
         ? 1

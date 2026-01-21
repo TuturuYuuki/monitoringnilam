@@ -161,6 +161,18 @@ class _DashboardPageState extends State<DashboardPage> {
   int totalOnlineTowers = 0;
   int totalTowers = 0;
 
+  int get totalDownTowers => totalTowers - totalOnlineTowers;
+  double get towerUptimePercent =>
+      totalTowers == 0 ? 0 : (totalOnlineTowers / totalTowers) * 100;
+  List<Alert> get activeAlerts => alerts
+      .where((a) => a.severity == 'critical' || a.severity == 'warning')
+      .toList();
+  int get totalActiveAlerts => activeAlerts.length;
+  int get criticalAlertsCount =>
+      activeAlerts.where((a) => a.severity == 'critical').length;
+  int get warningAlertsCount =>
+      activeAlerts.where((a) => a.severity == 'warning').length;
+
   @override
   void initState() {
     super.initState();
@@ -429,7 +441,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '${((totalOnlineTowers / totalTowers) * 100).toStringAsFixed(0)}%',
+                      '${towerUptimePercent.toStringAsFixed(0)}%',
                       style: const TextStyle(
                         color: Colors.green,
                         fontSize: 36,
@@ -541,10 +553,6 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildActiveAlertsCard(BuildContext context) {
-    int criticalAlerts = alerts.where((a) => a.severity == 'critical').length;
-    int warningAlerts = alerts.where((a) => a.severity == 'warning').length;
-    int totalAlerts = alerts.length;
-
     return InkWell(
       onTap: () {
         navigateWithLoading(context, '/alerts');
@@ -594,7 +602,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Critical: $criticalAlerts',
+                      'Critical: $criticalAlertsCount',
                       style: const TextStyle(
                         color: Colors.red,
                         fontSize: 16,
@@ -602,7 +610,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       ),
                     ),
                     Text(
-                      'Total: $totalAlerts',
+                      'Total: $totalActiveAlerts',
                       style: const TextStyle(
                         color: Colors.black87,
                         fontSize: 16,
@@ -613,7 +621,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Warning: $warningAlerts',
+                  'Warning: $warningAlertsCount',
                   style: const TextStyle(
                     color: Colors.orange,
                     fontSize: 14,

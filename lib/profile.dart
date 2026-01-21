@@ -1,8 +1,43 @@
 import 'package:flutter/material.dart';
 import 'main.dart';
+import 'utils/auth_helper.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  String fullname = 'Loading...';
+  String username = 'Loading...';
+  String email = 'Loading...';
+  String division = 'Loading...';
+  String phone = 'Loading...';
+  String location = 'Loading...';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final userData = await AuthHelper.getUserData();
+    setState(() {
+      fullname =
+          userData['fullname']!.isEmpty ? 'No Name' : userData['fullname']!;
+      username =
+          userData['username']!.isEmpty ? 'No Username' : userData['username']!;
+      email = userData['email']!.isEmpty ? 'No Email' : userData['email']!;
+      division = userData['division']!.isEmpty
+          ? (userData['role']!.isEmpty ? 'Divisi' : userData['role']!)
+          : userData['division']!;
+      phone = userData['phone']!.isEmpty ? '-' : userData['phone']!;
+      location = userData['location']!.isEmpty ? '-' : userData['location']!;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +102,7 @@ class ProfilePage extends StatelessWidget {
           }),
           const SizedBox(width: 12),
           _buildHeaderButton('Logout', () {
-            _showLogoutDialog(context);
+            showLogoutDialog(context);
           }),
           const SizedBox(width: 12),
           // Profile Icon
@@ -172,9 +207,9 @@ class ProfilePage extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           // Name
-          const Text(
-            'Admin Terminal',
-            style: TextStyle(
+          Text(
+            fullname,
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -188,9 +223,9 @@ class ProfilePage extends StatelessWidget {
               color: const Color(0xFF1976D2),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Text(
-              'Administrator',
-              style: TextStyle(
+            child: Text(
+              division.isEmpty ? 'Divisi' : division,
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -226,15 +261,13 @@ class ProfilePage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          _buildInfoRow('Nama Lengkap', 'Admin Terminal Nilam'),
+          _buildInfoRow('Nama Lengkap', fullname),
           const SizedBox(height: 16),
-          _buildInfoRow('Username', 'admin_terminal'),
+          _buildInfoRow('Username', username),
           const SizedBox(height: 16),
-          _buildInfoRow('Divisi', 'IT & Network Management'),
+          _buildInfoRow('Divisi', division),
           const SizedBox(height: 16),
           _buildInfoRow('Status Aktif', 'Aktif'),
-          const SizedBox(height: 16),
-          _buildInfoRow('Tanggal Bergabung', '15 Januari 2024'),
         ],
       ),
     );
@@ -266,19 +299,19 @@ class ProfilePage extends StatelessWidget {
           _buildContactRow(
             icon: Icons.email,
             label: 'Email',
-            value: 'admin@terminalnilam.id',
+            value: email,
           ),
           const SizedBox(height: 16),
           _buildContactRow(
             icon: Icons.phone,
             label: 'Nomor Telepon',
-            value: '+62 812-3456-7890',
+            value: phone,
           ),
           const SizedBox(height: 16),
           _buildContactRow(
             icon: Icons.location_on,
             label: 'Lokasi',
-            value: 'Surabaya, Jawa Timur',
+            value: location,
           ),
         ],
       ),
@@ -358,8 +391,11 @@ class ProfilePage extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         ElevatedButton.icon(
-          onPressed: () {
-            Navigator.pushNamed(context, '/edit-profile');
+          onPressed: () async {
+            final result = await Navigator.pushNamed(context, '/edit-profile');
+            if (result == true && mounted) {
+              _loadUserData();
+            }
           },
           icon: const Icon(Icons.edit),
           label: const Text('Edit Profil'),
@@ -462,18 +498,18 @@ class ProfilePage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Admin Terminal',
-                style: TextStyle(
+              Text(
+                fullname,
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'admin@terminalnilam.id',
-                style: TextStyle(
+              Text(
+                email,
+                style: const TextStyle(
                   color: Colors.white70,
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -502,38 +538,6 @@ class ProfilePage extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout', style: TextStyle(color: Colors.black87)),
-        content: const Text('Apakah Anda yakin ingin logout?',
-            style: TextStyle(color: Colors.black87)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal', style: TextStyle(color: Colors.black87)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pushReplacementNamed(context, '/login');
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-            ),
-            child: const Text('Logout'),
-          ),
-        ],
       ),
     );
   }

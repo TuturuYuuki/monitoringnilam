@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'utils/auth_helper.dart';
 import 'dashboard.dart';
 import 'network.dart';
 import 'network_cy2.dart';
@@ -59,6 +60,44 @@ Future<void> navigateWithLoading(BuildContext context, String routeName) async {
   // Navigator back dan ganti route
   Navigator.pop(context);
   Navigator.pushReplacementNamed(context, routeName);
+}
+
+// Global logout dialog function with AuthHelper
+void showLogoutDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Logout', style: TextStyle(color: Colors.black87)),
+      content: const Text('Apakah Anda yakin ingin logout?',
+          style: TextStyle(color: Colors.black87)),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Batal', style: TextStyle(color: Colors.black87)),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            // Clear user data using AuthHelper
+            await AuthHelper.clearUserData();
+
+            if (context.mounted) {
+              Navigator.pop(context);
+              Navigator.pushReplacementNamed(context, '/login');
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          child: const Text('Logout'),
+        ),
+      ],
+    ),
+  );
 }
 
 // Responsive helper functions

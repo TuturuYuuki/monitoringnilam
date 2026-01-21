@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'main.dart';
 import 'services/api_service.dart';
+import 'utils/auth_helper.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -47,6 +48,9 @@ class _LoginPageState extends State<LoginPage> {
         });
 
         if (response['success'] == true) {
+          // Save user data using AuthHelper
+          await AuthHelper.saveUserData(response['data']);
+
           // Navigate to dashboard
           if (mounted) {
             Navigator.pushReplacementNamed(context, '/dashboard');

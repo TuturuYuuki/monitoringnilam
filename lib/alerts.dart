@@ -81,8 +81,13 @@ class _AlertsPageState extends State<AlertsPage> {
     },
   ];
 
-  int get criticalCount => alerts.where((a) => a.severity == 'critical').length;
-  int get warningCount => alerts.where((a) => a.severity == 'warning').length;
+  List<Alert> get activeAlerts => alerts
+      .where((a) => a.severity == 'critical' || a.severity == 'warning')
+      .toList();
+  int get criticalCount =>
+      activeAlerts.where((a) => a.severity == 'critical').length;
+  int get warningCount =>
+      activeAlerts.where((a) => a.severity == 'warning').length;
   int get infoCount => alerts.where((a) => a.severity == 'info').length;
 
   @override
@@ -308,20 +313,38 @@ class _AlertsPageState extends State<AlertsPage> {
             ),
           ),
           const SizedBox(height: 16),
-          SizedBox(
-            height: listHeight,
-            child: Scrollbar(
-              thumbVisibility: true,
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                physics: const BouncingScrollPhysics(),
-                itemCount: alerts.length,
-                itemBuilder: (context, index) {
-                  return _buildAlertItem(alerts[index]);
-                },
+          if (isLoading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 32),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (activeAlerts.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Center(
+                child: Text(
+                  'No active alerts right now',
+                  style: TextStyle(color: Colors.black54, fontSize: 14),
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              height: listHeight,
+              child: Scrollbar(
+                thumbVisibility: true,
+                child: ListView.builder(
+                  padding: EdgeInsets.zero,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: activeAlerts.length,
+                  itemBuilder: (context, index) {
+                    return _buildAlertItem(activeAlerts[index]);
+                  },
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -499,6 +522,8 @@ class _AlertsPageState extends State<AlertsPage> {
   }
 
   Widget _buildAlertsByCategory() {
+    final categories = _alertsByCategory();
+    final total = activeAlerts.length;
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -524,15 +549,60 @@ class _AlertsPageState extends State<AlertsPage> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildCategoryBar('Network', 2, Colors.yellow),
-          const SizedBox(height: 12),
-          _buildCategoryBar('CCTV', 3, Colors.orange),
+          if (total == 0)
+            const Text(
+              'No active alerts by category',
+              style: TextStyle(color: Colors.black54, fontSize: 14),
+            )
+          else ...[
+            _buildCategoryBar('Network', categories['Network']!.length, total,
+                _categoryColor(categories['Network']!)),
+            const SizedBox(height: 12),
+            _buildCategoryBar('CCTV', categories['CCTV']!.length, total,
+                _categoryColor(categories['CCTV']!)),
+            if (categories['Other']!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _buildCategoryBar('Other', categories['Other']!.length, total,
+                  _categoryColor(categories['Other']!)),
+            ],
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildCategoryBar(String category, int count, Color color) {
+  Map<String, List<Alert>> _alertsByCategory() {
+    final categories = {
+      'Network': <Alert>[],
+      'CCTV': <Alert>[],
+      'Other': <Alert>[],
+    };
+
+    for (final alert in activeAlerts) {
+      final route = alert.route.toLowerCase();
+      if (route.contains('network')) {
+        categories['Network']!.add(alert);
+      } else if (route.contains('cctv')) {
+        categories['CCTV']!.add(alert);
+      } else {
+        categories['Other']!.add(alert);
+      }
+    }
+
+    return categories;
+  }
+
+  Color _categoryColor(List<Alert> list) {
+    if (list.any((a) => a.severity == 'critical')) return Colors.red;
+    if (list.any((a) => a.severity == 'warning')) return Colors.orange;
+    if (list.any((a) => a.severity == 'info')) return Colors.blue;
+    return Colors.grey;
+  }
+
+  Widget _buildCategoryBar(String category, int count, int total, Color color) {
+    final safeTotal = total == 0 ? 1 : total;
+    final filledFlex = count == 0 ? 1 : count;
+    final emptyFlex = (safeTotal - count) <= 0 ? 1 : safeTotal - count;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -568,7 +638,7 @@ class _AlertsPageState extends State<AlertsPage> {
             child: Row(
               children: [
                 Expanded(
-                  flex: count,
+                  flex: filledFlex,
                   child: Container(
                     decoration: BoxDecoration(
                       color: color,
@@ -577,7 +647,7 @@ class _AlertsPageState extends State<AlertsPage> {
                   ),
                 ),
                 Expanded(
-                  flex: 5 - count,
+                  flex: emptyFlex,
                   child: Container(),
                 ),
               ],
