@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:animations/animations.dart';
 import 'main.dart';
 import 'utils/auth_helper.dart';
+import 'route_proxy_page.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({Key? key}) : super(key: key);
+  const ProfilePage({super.key});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -85,25 +87,15 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
           const Spacer(),
-          _buildHeaderButton('Dashboard', () {
-            navigateWithLoading(context, '/dashboard');
-          }),
+          _buildHeaderOpenButton('Dashboard', '/dashboard', isActive: false),
           const SizedBox(width: 12),
-          _buildHeaderButton('Network', () {
-            navigateWithLoading(context, '/network');
-          }),
+          _buildHeaderOpenButton('Network', '/network', isActive: false),
           const SizedBox(width: 12),
-          _buildHeaderButton('CCTV', () {
-            navigateWithLoading(context, '/cctv');
-          }),
+          _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
           const SizedBox(width: 12),
-          _buildHeaderButton('Alerts', () {
-            navigateWithLoading(context, '/alerts');
-          }),
+          _buildHeaderOpenButton('Alerts', '/alerts', isActive: false),
           const SizedBox(width: 12),
-          _buildHeaderButton('Logout', () {
-            showLogoutDialog(context);
-          }),
+          _buildHeaderLogoutButton(),
           const SizedBox(width: 12),
           // Profile Icon
           MouseRegion(
@@ -139,6 +131,62 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildHeaderButton(String text, VoidCallback onPressed) {
+    return buildLiquidGlassButton(text, onPressed, isActive: false);
+  }
+
+  Widget _buildHeaderOpenButton(String text, String route,
+      {bool isActive = false}) {
+    return OpenContainer(
+      transitionDuration: const Duration(milliseconds: 550),
+      transitionType: ContainerTransitionType.fadeThrough,
+      closedElevation: 0,
+      closedColor: Colors.transparent,
+      closedShape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      openElevation: 0,
+      openBuilder: (context, _) => RouteProxyPage(route),
+      closedBuilder: (context, openContainer) {
+        return buildLiquidGlassButton(text, openContainer, isActive: isActive);
+      },
+    );
+  }
+
+  Widget _buildHeaderLogoutButton() {
+    return buildLiquidGlassButton('Logout', () => _showLogoutDialog(context),
+        isActive: false);
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout', style: TextStyle(color: Colors.black87)),
+        content: const Text('Apakah Anda yakin ingin keluar?',
+            style: TextStyle(color: Colors.black87)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal', style: TextStyle(color: Colors.black87)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              AuthHelper.clearUserData();
+              Navigator.pushReplacementNamed(context, '/login');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderButtonOld(String text, VoidCallback onPressed) {
     return buildLiquidGlassButton(text, onPressed, isActive: false);
   }
 

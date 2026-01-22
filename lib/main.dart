@@ -100,34 +100,6 @@ void showLogoutDialog(BuildContext context) {
   );
 }
 
-// Responsive helper functions
-bool isMobileScreen(BuildContext context) {
-  return MediaQuery.of(context).size.width < 600;
-}
-
-double getResponsivePadding(BuildContext context) {
-  final isMobile = isMobileScreen(context);
-  return isMobile ? 8.0 : 16.0;
-}
-
-double getResponsiveFontSize(
-    BuildContext context, double mobileSize, double desktopSize) {
-  final isMobile = isMobileScreen(context);
-  return isMobile ? mobileSize : desktopSize;
-}
-
-int getResponsiveGridColumns(BuildContext context,
-    {int mobileColumns = 1, int desktopColumns = 3}) {
-  final isMobile = isMobileScreen(context);
-  return isMobile ? mobileColumns : desktopColumns;
-}
-
-double getResponsiveChildAspectRatio(BuildContext context,
-    {double mobileRatio = 0.9, double desktopRatio = 1.2}) {
-  final isMobile = isMobileScreen(context);
-  return isMobile ? mobileRatio : desktopRatio;
-}
-
 // Helper function untuk membuat liquid glass button dengan hover effect
 Widget buildLiquidGlassButton(String text, VoidCallback onPressed,
     {bool isActive = false}) {
@@ -137,9 +109,7 @@ Widget buildLiquidGlassButton(String text, VoidCallback onPressed,
       borderRadius: BorderRadius.circular(25),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
+        child: Container(
           decoration: BoxDecoration(
             color: isActive
                 ? Colors.white.withOpacity(0.9)
@@ -178,103 +148,65 @@ Widget buildLiquidGlassButton(String text, VoidCallback onPressed,
   );
 }
 
-// Liquid Header dengan animated indicator seperti iOS
-class LiquidHeaderButtons extends StatefulWidget {
-  final int activeIndex;
-  final List<String> buttonLabels;
-  final List<VoidCallback> onPressedCallbacks;
-
-  const LiquidHeaderButtons({
-    Key? key,
-    required this.activeIndex,
-    required this.buttonLabels,
-    required this.onPressedCallbacks,
-  }) : super(key: key);
-
-  @override
-  State<LiquidHeaderButtons> createState() => _LiquidHeaderButtonsState();
+// Show alert dialog with fade animation
+void showFadeAlertDialog({
+  required BuildContext context,
+  required String title,
+  required Widget content,
+  required List<Widget> actions,
+  bool barrierDismissible = true,
+  ShapeBorder? shape,
+}) {
+  showGeneralDialog(
+    context: context,
+    barrierDismissible: barrierDismissible,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    barrierColor: Colors.black54,
+    transitionDuration: const Duration(milliseconds: 400),
+    pageBuilder: (context, animation, secondaryAnimation) {
+      return AlertDialog(
+        title: Text(title),
+        content: content,
+        actions: actions,
+        shape: shape ??
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      );
+    },
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: animation,
+        child: child,
+      );
+    },
+  );
 }
 
-class _LiquidHeaderButtonsState extends State<LiquidHeaderButtons> {
-  int? _hoverIndex;
+// Responsive helper functions
+bool isMobileScreen(BuildContext context) {
+  return MediaQuery.of(context).size.width < 600;
+}
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: List.generate(widget.buttonLabels.length, (index) {
-        final isActive = widget.activeIndex == index;
-        final isHovered = _hoverIndex == index;
+double getResponsivePadding(BuildContext context) {
+  final isMobile = isMobileScreen(context);
+  return isMobile ? 8.0 : 16.0;
+}
 
-        return Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: MouseRegion(
-            onEnter: (_) => setState(() => _hoverIndex = index),
-            onExit: (_) => setState(() => _hoverIndex = null),
-            cursor: SystemMouseCursors.click,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(25),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    decoration: BoxDecoration(
-                      color: isActive
-                          ? Colors.white.withOpacity(0.9)
-                          : isHovered
-                              ? Colors.white.withOpacity(0.6)
-                              : Colors.white.withOpacity(0.4),
-                      borderRadius: BorderRadius.circular(25),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.2),
-                        width: 1.5,
-                      ),
-                      boxShadow: isHovered
-                          ? [
-                              BoxShadow(
-                                color: Colors.white.withOpacity(0.3),
-                                blurRadius: 12,
-                                spreadRadius: 2,
-                              ),
-                            ]
-                          : [],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: widget.onPressedCallbacks[index],
-                        borderRadius: BorderRadius.circular(25),
-                        splashColor: Colors.white.withOpacity(0.3),
-                        highlightColor: Colors.white.withOpacity(0.2),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 32,
-                            vertical: 16,
-                          ),
-                          child: Text(
-                            widget.buttonLabels[index],
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight:
-                                  isActive ? FontWeight.bold : FontWeight.w600,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      }),
-    );
-  }
+double getResponsiveFontSize(
+    BuildContext context, double mobileSize, double desktopSize) {
+  final isMobile = isMobileScreen(context);
+  return isMobile ? mobileSize : desktopSize;
+}
+
+int getResponsiveGridColumns(BuildContext context,
+    {int mobileColumns = 1, int desktopColumns = 3}) {
+  final isMobile = isMobileScreen(context);
+  return isMobile ? mobileColumns : desktopColumns;
+}
+
+double getResponsiveChildAspectRatio(BuildContext context,
+    {double mobileRatio = 0.9, double desktopRatio = 1.2}) {
+  final isMobile = isMobileScreen(context);
+  return isMobile ? mobileRatio : desktopRatio;
 }
 
 // Custom Animated Dropdown Widget
@@ -285,12 +217,12 @@ class AnimatedDropdownButton extends StatefulWidget {
   final Color backgroundColor;
 
   const AnimatedDropdownButton({
-    Key? key,
+    super.key,
     required this.value,
     required this.items,
     required this.onChanged,
     this.backgroundColor = const Color(0xFF4A5F7F),
-  }) : super(key: key);
+  });
 
   @override
   State<AnimatedDropdownButton> createState() => _AnimatedDropdownButtonState();
@@ -299,8 +231,6 @@ class AnimatedDropdownButton extends StatefulWidget {
 class _AnimatedDropdownButtonState extends State<AnimatedDropdownButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
-  late Animation<double> _rotationAnimation;
-  late Animation<double> _opacityAnimation;
   bool _isOpen = false;
   OverlayEntry? _overlayEntry;
   final LayerLink _layerLink = LayerLink();
@@ -312,14 +242,6 @@ class _AnimatedDropdownButtonState extends State<AnimatedDropdownButton>
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
-    );
-
-    _rotationAnimation = Tween<double>(begin: 0, end: 0.5).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-    );
-
-    _opacityAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
   }
 
@@ -359,79 +281,71 @@ class _AnimatedDropdownButtonState extends State<AnimatedDropdownButton>
           link: _layerLink,
           showWhenUnlinked: false,
           offset: Offset(0, size.height),
-          child: AnimatedBuilder(
-            animation: _opacityAnimation,
-            builder: (context, child) {
-              return Material(
-                elevation: 1000,
-                borderRadius: BorderRadius.circular(12),
-                color: Colors.transparent,
-                child: Container(
-                  margin: const EdgeInsets.only(top: 4),
-                  decoration: BoxDecoration(
-                    color: widget.backgroundColor,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.5),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Opacity(
-                    opacity: _opacityAnimation.value,
-                    child: Transform.translate(
-                      offset: Offset(0, -10 * (1 - _opacityAnimation.value)),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: widget.items.map((item) {
-                          return MouseRegion(
-                            onEnter: (_) {
-                              setState(() {
-                                _hoveredItem = item;
-                              });
-                            },
-                            onExit: (_) {
-                              setState(() {
-                                _hoveredItem = null;
-                              });
-                            },
-                            cursor: SystemMouseCursors.click,
-                            child: InkWell(
-                              onTap: () => _selectItem(item),
-                              child: Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _hoveredItem == item
-                                      ? Colors.blue.withOpacity(0.6)
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  item,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: item == widget.value
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
+          child: FadeTransition(
+            opacity: _animationController,
+            child: Material(
+              elevation: 1000,
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.transparent,
+              child: Container(
+                margin: const EdgeInsets.only(top: 4),
+                decoration: BoxDecoration(
+                  color: widget.backgroundColor,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.5),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
                     ),
-                  ),
+                  ],
                 ),
-              );
-            },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: widget.items.map((item) {
+                    return MouseRegion(
+                      onEnter: (_) {
+                        setState(() {
+                          _hoveredItem = item;
+                        });
+                      },
+                      onExit: (_) {
+                        setState(() {
+                          _hoveredItem = null;
+                        });
+                      },
+                      cursor: SystemMouseCursors.click,
+                      child: InkWell(
+                        onTap: () => _selectItem(item),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _hoveredItem == item
+                                ? Colors.blue.withOpacity(0.6)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            item,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: item == widget.value
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -473,17 +387,9 @@ class _AnimatedDropdownButtonState extends State<AnimatedDropdownButton>
                   fontSize: 16,
                 ),
               ),
-              AnimatedBuilder(
-                animation: _rotationAnimation,
-                builder: (context, child) {
-                  return Transform.rotate(
-                    angle: _rotationAnimation.value * 3.14159,
-                    child: Icon(
-                      Icons.arrow_drop_down,
-                      color: Colors.white,
-                    ),
-                  );
-                },
+              const Icon(
+                Icons.arrow_drop_down,
+                color: Colors.white,
               ),
             ],
           ),

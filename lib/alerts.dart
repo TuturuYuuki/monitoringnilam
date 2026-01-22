@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:animations/animations.dart';
 import 'main.dart';
 import 'services/api_service.dart';
 import 'models/alert_model.dart';
+import 'route_proxy_page.dart';
 
 // Alerts & Notification Page
 class AlertsPage extends StatefulWidget {
-  const AlertsPage({Key? key}) : super(key: key);
+  const AlertsPage({super.key});
 
   @override
   State<AlertsPage> createState() => _AlertsPageState();
@@ -153,52 +155,53 @@ class _AlertsPageState extends State<AlertsPage> {
             ),
           ),
           const Spacer(),
-          _buildHeaderButton('Dashboard', () {
-            navigateWithLoading(context, '/dashboard');
-          }, isActive: false),
+          _buildHeaderOpenButton('Dashboard', '/dashboard', isActive: false),
           const SizedBox(width: 12),
-          _buildHeaderButton('Network', () {
-            navigateWithLoading(context, '/network');
-          }, isActive: false),
+          _buildHeaderOpenButton('Network', '/network', isActive: false),
           const SizedBox(width: 12),
-          _buildHeaderButton('CCTV', () {
-            navigateWithLoading(context, '/cctv');
-          }, isActive: false),
+          _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
           const SizedBox(width: 12),
-          _buildHeaderButton('Alerts', () {
-            // Already on Alerts
-          }, isActive: true),
+          _buildHeaderOpenButton('Alerts', '/alerts', isActive: true),
           const SizedBox(width: 12),
-          _buildHeaderButton('Logout', () {
-            _showLogoutDialog(context);
-          }, isActive: false),
+          _buildHeaderLogoutButton(),
           const SizedBox(width: 12),
           // Profile Icon
           MouseRegion(
             cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: () {
-                navigateWithLoading(context, '/profile');
-              },
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(50),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.person,
-                  color: Color(0xFF1976D2),
-                  size: 24,
-                ),
+            child: OpenContainer(
+              transitionDuration: const Duration(milliseconds: 550),
+              transitionType: ContainerTransitionType.fadeThrough,
+              closedElevation: 0,
+              closedColor: Colors.transparent,
+              closedShape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(50),
               ),
+              openElevation: 0,
+              openBuilder: (context, _) => const RouteProxyPage('/profile'),
+              closedBuilder: (context, openContainer) {
+                return GestureDetector(
+                  onTap: openContainer,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(50),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.person,
+                      color: Color(0xFF1976D2),
+                      size: 24,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -209,6 +212,29 @@ class _AlertsPageState extends State<AlertsPage> {
   Widget _buildHeaderButton(String text, VoidCallback onPressed,
       {bool isActive = false}) {
     return buildLiquidGlassButton(text, onPressed, isActive: isActive);
+  }
+
+  Widget _buildHeaderOpenButton(String text, String route,
+      {bool isActive = false}) {
+    return OpenContainer(
+      transitionDuration: const Duration(milliseconds: 550),
+      transitionType: ContainerTransitionType.fadeThrough,
+      closedElevation: 0,
+      closedColor: Colors.transparent,
+      closedShape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      openElevation: 0,
+      openBuilder: (context, _) => RouteProxyPage(route),
+      closedBuilder: (context, openContainer) {
+        return buildLiquidGlassButton(text, openContainer, isActive: isActive);
+      },
+    );
+  }
+
+  Widget _buildHeaderLogoutButton() {
+    return buildLiquidGlassButton('Logout', () => _showLogoutDialog(context),
+        isActive: false);
   }
 
   Widget _buildContent(BuildContext context, BoxConstraints constraints) {

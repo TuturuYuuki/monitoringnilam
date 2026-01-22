@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:animations/animations.dart';
 import 'main.dart';
 import 'services/api_service.dart';
 import 'models/tower_model.dart';
+import 'route_proxy_page.dart';
 
 // Network Page CY 2
 class NetworkCY2Page extends StatefulWidget {
-  const NetworkCY2Page({Key? key}) : super(key: key);
+  const NetworkCY2Page({super.key});
 
   @override
   State<NetworkCY2Page> createState() => _NetworkCY2PageState();
@@ -120,96 +122,77 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
 
   void _showWarningList() {
     final warnings = towers.where((t) => t.status == 'Warning').toList();
-    showDialog(
+    showFadeAlertDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.warning_rounded, color: Colors.red, size: 22),
-              const SizedBox(width: 8),
-              Text(
-                'Towers DOWN (${warnings.length})',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+      title: 'Towers DOWN (${warnings.length})',
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: 350,
+          maxHeight: 300,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (warnings.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(12.0),
+                child: Text(
+                  'Semua tower dalam kondisi UP.',
+                  style: TextStyle(fontSize: 13, color: Colors.black54),
+                  textAlign: TextAlign.center,
                 ),
-              ),
-            ],
-          ),
-          content: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: 350,
-              maxHeight: 300,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (warnings.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(12.0),
-                    child: Text(
-                      'Semua tower dalam kondisi UP.',
-                      style: TextStyle(fontSize: 13, color: Colors.black54),
-                      textAlign: TextAlign.center,
-                    ),
-                  )
-                else
-                  ...warnings.map((t) {
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 6),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: Colors.red.withOpacity(0.3)),
+              )
+            else
+              ...warnings.map((t) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.red.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        t.towerId,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black87,
+                        ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            t.towerId,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.black87,
-                            ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'DOWN',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text(
-                              'DOWN',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    );
-                  }).toList(),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
+                    ],
+                  ),
+                );
+              }),
           ],
-        );
-      },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
     );
   }
 
@@ -243,73 +226,167 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     final isMobile = isMobileScreen(context);
     return Container(
       padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 8 : 24, vertical: isMobile ? 10 : 16),
+          horizontal: isMobile ? 12 : 24, vertical: isMobile ? 12 : 16),
       color: const Color(0xFF1976D2),
-      child: Row(
-        children: [
-          const Text(
-            'Terminal Nilam',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const Spacer(),
-          _buildHeaderButton('Dashboard', () {
-            navigateWithLoading(context, '/dashboard');
-          }, isActive: false),
-          const SizedBox(width: 12),
-          _buildHeaderButton('Network', () {}, isActive: true),
-          const SizedBox(width: 12),
-          _buildHeaderButton('CCTV', () {
-            navigateWithLoading(context, '/cctv');
-          }, isActive: false),
-          const SizedBox(width: 12),
-          _buildHeaderButton('Alerts', () {
-            navigateWithLoading(context, '/alerts');
-          }, isActive: false),
-          const SizedBox(width: 12),
-          _buildHeaderButton('Logout', () {
-            _showLogoutDialog(context);
-          }, isActive: false),
-          const SizedBox(width: 12),
-          // Profile icon shortcut to profile page
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: () {
-                navigateWithLoading(context, '/profile');
-              },
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(50),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
-                      spreadRadius: 1,
+      child: isMobile
+          ? Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Terminal Nilam',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: isMobile ? 18 : 28,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: OpenContainer(
+                        transitionDuration: const Duration(milliseconds: 550),
+                        transitionType: ContainerTransitionType.fadeThrough,
+                        closedElevation: 0,
+                        closedColor: Colors.transparent,
+                        closedShape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(50),
+                        ),
+                        openElevation: 0,
+                        openBuilder: (context, _) =>
+                            const RouteProxyPage('/profile'),
+                        closedBuilder: (context, openContainer) {
+                          return GestureDetector(
+                            onTap: openContainer,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.9),
+                                borderRadius: BorderRadius.circular(50),
+                              ),
+                              child: const Icon(
+                                Icons.person,
+                                color: Color(0xFF1976D2),
+                                size: 20,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.person,
-                  color: Color(0xFF1976D2),
-                  size: 24,
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: [
+                    _buildHeaderOpenButton('Dashboard', '/dashboard',
+                        isActive: false),
+                    _buildHeaderOpenButton('Network', '/network',
+                        isActive: true),
+                    _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
+                    _buildHeaderOpenButton('Alerts', '/alerts',
+                        isActive: false),
+                    _buildHeaderLogoutButton(),
+                  ],
+                )
+              ],
+            )
+          : Row(
+              children: [
+                const Text(
+                  'Terminal Nilam',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
+                const Spacer(),
+                _buildHeaderOpenButton('Dashboard', '/dashboard',
+                    isActive: false),
+                const SizedBox(width: 12),
+                _buildHeaderOpenButton('Network', '/network', isActive: true),
+                const SizedBox(width: 12),
+                _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
+                const SizedBox(width: 12),
+                _buildHeaderOpenButton('Alerts', '/alerts', isActive: false),
+                const SizedBox(width: 12),
+                _buildHeaderLogoutButton(),
+                const SizedBox(width: 12),
+                // Profile icon shortcut to profile page
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: OpenContainer(
+                    transitionDuration: const Duration(milliseconds: 550),
+                    transitionType: ContainerTransitionType.fadeThrough,
+                    closedElevation: 0,
+                    closedColor: Colors.transparent,
+                    closedShape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                    openElevation: 0,
+                    openBuilder: (context, _) =>
+                        const RouteProxyPage('/profile'),
+                    closedBuilder: (context, openContainer) {
+                      return GestureDetector(
+                        onTap: openContainer,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.9),
+                            borderRadius: BorderRadius.circular(50),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            color: Color(0xFF1976D2),
+                            size: 24,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
 
   Widget _buildHeaderButton(String text, VoidCallback onPressed,
       {bool isActive = false}) {
     return buildLiquidGlassButton(text, onPressed, isActive: isActive);
+  }
+
+  Widget _buildHeaderOpenButton(String text, String route,
+      {bool isActive = false}) {
+    return OpenContainer(
+      transitionDuration: const Duration(milliseconds: 550),
+      transitionType: ContainerTransitionType.fadeThrough,
+      closedElevation: 0,
+      closedColor: Colors.transparent,
+      closedShape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      openElevation: 0,
+      openBuilder: (context, _) => RouteProxyPage(route),
+      closedBuilder: (context, openContainer) {
+        return buildLiquidGlassButton(text, openContainer, isActive: isActive);
+      },
+    );
+  }
+
+  Widget _buildHeaderLogoutButton() {
+    return buildLiquidGlassButton('Logout', () => _showLogoutDialog(context),
+        isActive: false);
   }
 
   Widget _buildContent(BuildContext context, BoxConstraints constraints) {
@@ -755,7 +832,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
           ),
 
           // Table Rows
-          ...paginatedData.map((tower) => _buildTableRow(tower)).toList(),
+          ...paginatedData.map((tower) => _buildTableRow(tower)),
         ],
       ),
     );

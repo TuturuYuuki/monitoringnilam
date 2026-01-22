@@ -4,7 +4,7 @@ import 'services/api_service.dart';
 import 'utils/auth_helper.dart';
 
 class ChangePasswordPage extends StatefulWidget {
-  const ChangePasswordPage({Key? key}) : super(key: key);
+  const ChangePasswordPage({super.key});
 
   @override
   State<ChangePasswordPage> createState() => _ChangePasswordPageState();
@@ -91,8 +91,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         );
         return;
       }
-
-      final newPwd = _newPasswordController.text;
 
       if (!_ruleLength) {
         ScaffoldMessenger.of(context).showSnackBar(
