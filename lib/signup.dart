@@ -16,15 +16,111 @@ class _SignUpPageState extends State<SignUpPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _passwordFocusNode = FocusNode();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
+  bool _showPasswordRequirements = false;
+
+  // Password requirements tracking
+  bool _hasMinLength = false;
+  bool _hasUppercase = false;
+  bool _hasLowercase = false;
+  bool _hasNumber = false;
+
   late ApiService apiService;
 
   @override
   void initState() {
     super.initState();
     apiService = ApiService();
+
+    _passwordFocusNode.addListener(() {
+      setState(() {
+        _showPasswordRequirements = _passwordFocusNode.hasFocus;
+      });
+    });
+
+    _passwordController.addListener(() {
+      setState(() {
+        final password = _passwordController.text;
+        _hasMinLength = password.length >= 8;
+        _hasUppercase = RegExp(r'[A-Z]').hasMatch(password);
+        _hasLowercase = RegExp(r'[a-z]').hasMatch(password);
+        _hasNumber = RegExp(r'[0-9]').hasMatch(password);
+      });
+    });
+  }
+
+  void _showPasswordRequirementsDialog() {
+    setState(() {
+      _showPasswordRequirements = true;
+    });
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withOpacity(0.3),
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.orange.withOpacity(0.5),
+                width: 2,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Persyaratan Password:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        setState(() {
+                          _showPasswordRequirements = false;
+                        });
+                      },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildPasswordRequirement('Minimal 8 karakter', _hasMinLength),
+                _buildPasswordRequirement(
+                    'Mengandung huruf besar (A-Z)', _hasUppercase),
+                _buildPasswordRequirement(
+                    'Mengandung huruf kecil (a-z)', _hasLowercase),
+                _buildPasswordRequirement('Mengandung angka (0-9)', _hasNumber),
+              ],
+            ),
+          ),
+        );
+      },
+    ).then((_) {
+      setState(() {
+        _showPasswordRequirements = false;
+      });
+    });
   }
 
   @override
@@ -34,6 +130,7 @@ class _SignUpPageState extends State<SignUpPage> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
   }
 
@@ -101,6 +198,34 @@ class _SignUpPageState extends State<SignUpPage> {
 
   void _handleBackToLogin() {
     Navigator.pop(context);
+  }
+
+  Widget _buildPasswordRequirement(String text, bool isMet) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        children: [
+          Icon(
+            isMet ? Icons.check_circle : Icons.circle,
+            size: isMet ? 18 : 8,
+            color: isMet ? Colors.green : Colors.black87,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 13,
+              color: isMet ? Colors.green : Colors.black87,
+              fontWeight: isMet ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool get _isPasswordValid {
+    return _hasMinLength && _hasUppercase && _hasLowercase && _hasNumber;
   }
 
   @override
@@ -177,7 +302,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         padding: const EdgeInsets.all(40),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.4),
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(50),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.2),
@@ -192,8 +317,9 @@ class _SignUpPageState extends State<SignUpPage> {
                             children: [
                               // Title
                               Container(
+                                width: double.infinity,
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 40,
+                                  horizontal: 24,
                                   vertical: 16,
                                 ),
                                 decoration: BoxDecoration(
@@ -202,6 +328,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                 ),
                                 child: const Text(
                                   'Sign Up Page',
+                                  textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 28,
                                     fontWeight: FontWeight.bold,
@@ -294,45 +421,119 @@ class _SignUpPageState extends State<SignUpPage> {
 
                               const SizedBox(height: 20),
 
-                              // Password Field
-                              TextFormField(
-                                controller: _passwordController,
-                                obscureText: _obscurePassword,
-                                decoration: InputDecoration(
-                                  hintText: 'Password',
-                                  filled: true,
-                                  fillColor: Colors.grey[100],
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(50),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 20,
-                                  ),
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      _obscurePassword
-                                          ? Icons.visibility_off
-                                          : Icons.visibility,
-                                      color: Colors.grey,
+                              // Password Field with overlay
+                              Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  TextFormField(
+                                    controller: _passwordController,
+                                    focusNode: _passwordFocusNode,
+                                    obscureText: _obscurePassword,
+                                    decoration: InputDecoration(
+                                      hintText: 'Password',
+                                      filled: true,
+                                      fillColor: Colors.grey[100],
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(50),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                        horizontal: 24,
+                                        vertical: 20,
+                                      ),
+                                      suffixIcon: IconButton(
+                                        icon: Icon(
+                                          _obscurePassword
+                                              ? Icons.visibility_off
+                                              : Icons.visibility,
+                                          color: Colors.grey,
+                                        ),
+                                        onPressed: () {
+                                          setState(() {
+                                            _obscurePassword =
+                                                !_obscurePassword;
+                                          });
+                                        },
+                                      ),
                                     ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _obscurePassword = !_obscurePassword;
-                                      });
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'Please enter your password';
+                                      }
+                                      if (value.length < 8) {
+                                        return 'Password must be at least 8 characters';
+                                      }
+                                      if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                                        return 'Password must contain uppercase letter';
+                                      }
+                                      if (!RegExp(r'[a-z]').hasMatch(value)) {
+                                        return 'Password must contain lowercase letter';
+                                      }
+                                      if (!RegExp(r'[0-9]').hasMatch(value)) {
+                                        return 'Password must contain number';
+                                      }
+                                      return null;
                                     },
                                   ),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your password';
-                                  }
-                                  if (value.length < 6) {
-                                    return 'Password must be at least 6 characters';
-                                  }
-                                  return null;
-                                },
+
+                                  // Password Requirements Overlay
+                                  if (_showPasswordRequirements)
+                                    Positioned(
+                                      top: -150,
+                                      left: 0,
+                                      right: 0,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color:
+                                                Colors.orange.withOpacity(0.5),
+                                            width: 2,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black
+                                                  .withOpacity(0.15),
+                                              blurRadius: 10,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Text(
+                                              'Persyaratan Password:',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.orange,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            _buildPasswordRequirement(
+                                                'Minimal 8 karakter',
+                                                _hasMinLength),
+                                            _buildPasswordRequirement(
+                                                'Mengandung huruf besar (A-Z)',
+                                                _hasUppercase),
+                                            _buildPasswordRequirement(
+                                                'Mengandung huruf kecil (a-z)',
+                                                _hasLowercase),
+                                            _buildPasswordRequirement(
+                                                'Mengandung angka (0-9)',
+                                                _hasNumber),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
 
                               const SizedBox(height: 20),
@@ -343,6 +544,11 @@ class _SignUpPageState extends State<SignUpPage> {
                                 obscureText: _obscureConfirmPassword,
                                 decoration: InputDecoration(
                                   hintText: 'Confirm Password',
+                                  helperText: 'Ulangi password yang sama',
+                                  helperStyle: const TextStyle(
+                                    color: Color.fromARGB(221, 255, 255, 255),
+                                    fontSize: 16,
+                                  ),
                                   filled: true,
                                   fillColor: Colors.grey[100],
                                   border: OutlineInputBorder(
@@ -386,9 +592,13 @@ class _SignUpPageState extends State<SignUpPage> {
                                 width: double.infinity,
                                 height: 55,
                                 child: ElevatedButton(
-                                  onPressed: _isLoading ? null : _handleSignUp,
+                                  onPressed: (_isLoading || !_isPasswordValid)
+                                      ? null
+                                      : _handleSignUp,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF1976D2),
+                                    disabledBackgroundColor:
+                                        const Color(0xFF1976D2),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(50),
                                     ),

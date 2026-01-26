@@ -161,7 +161,7 @@ class _LoginPageState extends State<LoginPage> {
                         padding: const EdgeInsets.all(40),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.4),
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(50),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.2),
@@ -176,8 +176,9 @@ class _LoginPageState extends State<LoginPage> {
                             children: [
                               // Title
                               Container(
+                                width: double.infinity,
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 40,
+                                  horizontal: 24,
                                   vertical: 16,
                                 ),
                                 decoration: BoxDecoration(
@@ -186,6 +187,7 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                                 child: const Text(
                                   'Login Page',
+                                  textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 28,
                                     fontWeight: FontWeight.bold,

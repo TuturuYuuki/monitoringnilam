@@ -734,7 +734,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     'Warning: $warningAlertsCount',
                     style: const TextStyle(
                       color: Colors.orange,
-                      fontSize: 14,
+                      fontSize: 16,
                     ),
                   ),
                 ],
