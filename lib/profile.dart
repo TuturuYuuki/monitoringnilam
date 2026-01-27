@@ -3,6 +3,7 @@ import 'package:animations/animations.dart';
 import 'main.dart';
 import 'utils/auth_helper.dart';
 import 'route_proxy_page.dart';
+import 'services/api_service.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -12,6 +13,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  late ApiService apiService;
   String fullname = 'Loading...';
   String username = 'Loading...';
   String email = 'Loading...';
@@ -22,11 +24,13 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
+    apiService = ApiService();
     _loadUserData();
   }
 
   Future<void> _loadUserData() async {
     final userData = await AuthHelper.getUserData();
+    // First show cached data quickly
     setState(() {
       fullname =
           userData['fullname']!.isEmpty ? 'No Name' : userData['fullname']!;
@@ -39,6 +43,29 @@ class _ProfilePageState extends State<ProfilePage> {
       phone = userData['phone']!.isEmpty ? '-' : userData['phone']!;
       location = userData['location']!.isEmpty ? '-' : userData['location']!;
     });
+
+    // Then fetch fresh profile from API (sync with DB)
+    final idStr = userData['user_id'] ?? '';
+    if (idStr.isNotEmpty) {
+      final userId = int.tryParse(idStr);
+      if (userId != null) {
+        final profile = await apiService.getProfile(userId);
+        if (profile != null && mounted) {
+          setState(() {
+            fullname = profile.fullname.isEmpty ? fullname : profile.fullname;
+            username = profile.username.isEmpty ? username : profile.username;
+            email = profile.email.isEmpty ? email : profile.email;
+            division = profile.division.isEmpty
+                ? (profile.role.isEmpty ? division : profile.role)
+                : profile.division;
+            phone = profile.phone.isEmpty ? phone : profile.phone;
+            location = profile.location.isEmpty ? location : profile.location;
+          });
+          // Update local cache so other pages stay in sync
+          await AuthHelper.saveUserData(profile.toJson());
+        }
+      }
+    }
   }
 
   @override

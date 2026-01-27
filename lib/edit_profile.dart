@@ -111,6 +111,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
             'division': _divisionController.text.trim(),
           });
 
+          // Fetch fresh profile from backend to confirm persistence and update cache
+          final profile = await apiService.getProfile(_userId!);
+          if (profile != null) {
+            await AuthHelper.saveUserData(profile.toJson());
+          }
+
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(

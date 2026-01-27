@@ -1,5 +1,5 @@
 class Alert {
-  final int id;
+  final dynamic id;
   final String title;
   final String description;
   final String severity;
@@ -7,6 +7,7 @@ class Alert {
   final String route;
   final bool isRead;
   final String createdAt;
+  final String category;
 
   Alert({
     required this.id,
@@ -15,8 +16,9 @@ class Alert {
     required this.severity,
     required this.timestamp,
     required this.route,
-    required this.isRead,
-    required this.createdAt,
+    this.isRead = false,
+    this.createdAt = '',
+    this.category = 'Other',
   });
 
   factory Alert.fromJson(Map<String, dynamic> json) {
@@ -29,6 +31,7 @@ class Alert {
       route: json['route'] ?? '',
       isRead: json['is_read'] == 1 || json['is_read'] == true,
       createdAt: json['created_at'] ?? '',
+      category: json['category'] ?? 'Other',
     );
   }
 
@@ -42,6 +45,7 @@ class Alert {
       'route': route,
       'is_read': isRead ? 1 : 0,
       'created_at': createdAt,
+      'category': category,
     };
   }
 }

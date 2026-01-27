@@ -10,6 +10,7 @@ import 'network.dart';
 import 'cctv.dart';
 import 'alerts.dart';
 import 'profile.dart';
+import 'utils/tower_status_override.dart';
 
 // Konstanta lokasi TPK Nilam - sesuai layout gambar
 class TPKNilamLocation {
@@ -41,17 +42,23 @@ class ContainerYard {
 
 // Tower/Access Point - sesuai layout gambar ilustrasi
 class TowerPoint {
-  final String id;
+  final int number;
   final String name;
+  final String label;
   final double latitude;
   final double longitude;
+  final String containerYard;
+  final String? towerIdHint;
 
   TowerPoint({
-    required this.id,
+    required this.number,
     required this.name,
+    String? label,
     required this.latitude,
     required this.longitude,
-  });
+    required this.containerYard,
+    this.towerIdHint,
+  }) : label = label ?? name;
 
   LatLng get coordinate => LatLng(latitude, longitude);
 }
@@ -75,8 +82,8 @@ final List<ContainerYard> containerYards = [
   ContainerYard(
     id: 'CY3',
     name: 'Container Yard 3',
-    latitude: -7.207572,
-    longitude: 112.722712,
+    latitude: -7.208712,
+    longitude: 112.723270,
     color: const Color(0xFFEF9A9A), // Pink
   ),
 ];
@@ -121,29 +128,203 @@ final List<SpecialLocation> specialLocations = [
   ),
 ];
 
-// Tower Points - tersebar di layout sesuai gambar
+// Tower Points - 26 towers sesuai list koordinat
 final List<TowerPoint> towerPoints = [
-  // Towers di CY 1
+  // CY2 Towers (1-6)
   TowerPoint(
-      id: 'T1', name: 'Access Point 1', latitude: -7.2056, longitude: 112.7228),
+      number: 1,
+      name: 'Tower 1',
+      label: '1',
+      latitude: -7.209459,
+      longitude: 112.724717,
+      containerYard: 'CY2'),
   TowerPoint(
-      id: 'T2', name: 'Access Point 2', latitude: -7.2060, longitude: 112.7235),
+      number: 2,
+      name: 'Tower 2',
+      label: '2',
+      latitude: -7.209191,
+      longitude: 112.725250,
+      containerYard: 'CY2'),
   TowerPoint(
-      id: 'T3', name: 'Access Point 3', latitude: -7.2063, longitude: 112.7232),
+      number: 3,
+      name: 'Tower 3',
+      label: '3',
+      latitude: -7.208561,
+      longitude: 112.724946,
+      containerYard: 'CY2'),
+  TowerPoint(
+      number: 4,
+      name: 'Tower 4',
+      label: '4',
+      latitude: -7.208150,
+      longitude: 112.724395,
+      containerYard: 'CY2'),
+  TowerPoint(
+      number: 5,
+      name: 'Tower 5',
+      label: '5',
+      latitude: -7.208262,
+      longitude: 112.724161,
+      containerYard: 'CY2'),
+  TowerPoint(
+      number: 6,
+      name: 'Tower 6',
+      label: '6',
+      latitude: -7.208956,
+      longitude: 112.724173,
+      containerYard: 'CY2'),
 
-  // Towers di CY 2
+  // CY1 Towers (7-17)
   TowerPoint(
-      id: 'T4', name: 'Access Point 4', latitude: -7.2085, longitude: 112.7240),
+      number: 7,
+      name: 'Tower 7',
+      label: '7',
+      latitude: -7.207617,
+      longitude: 112.723826,
+      containerYard: 'CY1'),
   TowerPoint(
-      id: 'T5', name: 'Access Point 5', latitude: -7.2090, longitude: 112.7250),
+      number: 8,
+      name: 'Tower 8',
+      label: '8',
+      latitude: -7.207563,
+      longitude: 112.723950,
+      containerYard: 'CY1'),
+  TowerPoint(
+      number: 9,
+      name: 'Tower 9',
+      label: '9',
+      latitude: -7.207156,
+      longitude: 112.724302,
+      containerYard: 'CY1'),
+  TowerPoint(
+      number: 10,
+      name: 'Tower 10',
+      label: '10',
+      latitude: -7.204341,
+      longitude: 112.722956,
+      containerYard: 'CY1'),
+  TowerPoint(
+      number: 11,
+      name: 'Tower 11',
+      label: '11',
+      latitude: -7.204080,
+      longitude: 112.722354,
+      containerYard: 'CY1'),
+  TowerPoint(
+      number: 27,
+      name: 'Tower 12A',
+      label: '12A',
+      towerIdHint: '12A',
+      latitude: -7.204228,
+      longitude: 112.722045,
+      containerYard: 'CY1'),
+  TowerPoint(
+      number: 12,
+      name: 'Tower 12',
+      label: '12',
+      latitude: -7.204460,
+      longitude: 112.721970,
+      containerYard: 'CY1'),
+  TowerPoint(
+      number: 13,
+      name: 'Tower 13',
+      label: '13',
+      latitude: -7.205410,
+      longitude: 112.722386,
+      containerYard: 'CY1'),
+  TowerPoint(
+      number: 14,
+      name: 'Tower 14',
+      label: '14',
+      latitude: -7.206786,
+      longitude: 112.723023,
+      containerYard: 'CY1'),
+  TowerPoint(
+      number: 15,
+      name: 'Tower 15',
+      label: '15',
+      latitude: -7.207566,
+      longitude: 112.723469,
+      containerYard: 'CY1'),
+  TowerPoint(
+      number: 16,
+      name: 'Tower 16',
+      label: '16',
+      latitude: -7.207342,
+      longitude: 112.723059,
+      containerYard: 'CY1'),
+  TowerPoint(
+      number: 17,
+      name: 'Tower 17',
+      label: '17',
+      latitude: -7.209240,
+      longitude: 112.723915,
+      containerYard: 'CY1'),
 
-  // Towers di CY 3
+  // CY3 Towers (18-26)
   TowerPoint(
-      id: 'T6', name: 'Access Point 6', latitude: -7.2073, longitude: 112.7225),
+      number: 18,
+      name: 'Tower 18',
+      label: '18',
+      latitude: -7.210090,
+      longitude: 112.724321,
+      containerYard: 'CY3'),
   TowerPoint(
-      id: 'T7', name: 'Access Point 7', latitude: -7.2080, longitude: 112.7230),
+      number: 19,
+      name: 'Tower 19',
+      label: '19',
+      latitude: -7.210336,
+      longitude: 112.723639,
+      containerYard: 'CY3'),
   TowerPoint(
-      id: 'T8', name: 'Access Point 8', latitude: -7.2078, longitude: 112.7220),
+      number: 20,
+      name: 'Tower 20',
+      label: '20',
+      latitude: -7.210082,
+      longitude: 112.723303,
+      containerYard: 'CY3'),
+  TowerPoint(
+      number: 21,
+      name: 'Tower 21',
+      label: '21',
+      latitude: -7.209070,
+      longitude: 112.722914,
+      containerYard: 'CY3'),
+  TowerPoint(
+      number: 22,
+      name: 'Tower 22',
+      label: '22',
+      latitude: -7.208501,
+      longitude: 112.722942,
+      containerYard: 'CY3'),
+  TowerPoint(
+      number: 23,
+      name: 'Tower 23',
+      label: '23',
+      latitude: -7.208017,
+      longitude: 112.722195,
+      containerYard: 'CY3'),
+  TowerPoint(
+      number: 24,
+      name: 'Tower 24',
+      label: '24',
+      latitude: -7.207314,
+      longitude: 112.722005,
+      containerYard: 'CY3'),
+  TowerPoint(
+      number: 25,
+      name: 'Tower 25',
+      label: '25',
+      latitude: -7.207213,
+      longitude: 112.722232,
+      containerYard: 'CY3'),
+  TowerPoint(
+      number: 26,
+      name: 'Tower 26',
+      label: '26',
+      latitude: -7.207029,
+      longitude: 112.722613,
+      containerYard: 'CY3'),
 ];
 
 class DashboardPage extends StatefulWidget {
@@ -187,30 +368,101 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> _loadDashboardData() async {
     try {
-      // Load cameras data
+      // Load core data
       final fetchedCameras = await apiService.getAllCameras();
+      final fetchedTowers = await apiService.getAllTowers();
+      final fetchedAlerts = await apiService.getAllAlerts();
+
+      // Apply forced status overrides before generating alerts
+      final updatedTowers = applyForcedTowerStatus(fetchedTowers);
+
+      // Auto-generate DOWN alerts so the dashboard card matches Alerts page
+      final generatedAlerts = <Alert>[];
+
+      for (final tower in updatedTowers) {
+        if (isDownStatus(tower.status)) {
+          String route = '/network';
+          if (tower.containerYard == 'CY2') {
+            route = '/network-cy2';
+          } else if (tower.containerYard == 'CY3') {
+            route = '/network-cy3';
+          }
+
+          generatedAlerts.add(Alert(
+            id: 'tower-${tower.id}',
+            title: 'Tower DOWN - ${tower.towerId}',
+            description: '${tower.location} tower offline (${tower.towerId})',
+            severity: 'critical',
+            timestamp: tower.createdAt,
+            route: route,
+            category: 'Tower',
+          ));
+        }
+      }
+
+      for (final camera in fetchedCameras) {
+        if (camera.status == 'DOWN') {
+          String route = '/cctv';
+          if (camera.containerYard == 'CY2') {
+            route = '/cctv-cy2';
+          } else if (camera.containerYard == 'CY3') {
+            route = '/cctv-cy3';
+          }
+
+          generatedAlerts.add(Alert(
+            id: 'camera-${camera.id}',
+            title: 'CCTV DOWN - ${camera.cameraId}',
+            description:
+                '${camera.location} camera offline (${camera.cameraId})',
+            severity: 'critical',
+            timestamp: camera.createdAt,
+            route: route,
+            category: 'CCTV',
+          ));
+        }
+      }
+
       setState(() {
         cameras = fetchedCameras;
         totalUpCameras = cameras.where((c) => c.status == 'UP').length;
         totalDownCameras = cameras.where((c) => c.status == 'DOWN').length;
-      });
 
-      // Load towers data
-      final fetchedTowers = await apiService.getAllTowers();
-      setState(() {
-        towers = fetchedTowers;
-        totalOnlineTowers = towers.where((t) => t.status == 'UP').length;
+        towers = updatedTowers;
+        totalOnlineTowers = towers.where((t) => !isDownStatus(t.status)).length;
         totalTowers = towers.length;
-      });
 
-      // Load alerts data
-      final fetchedAlerts = await apiService.getAllAlerts();
-      setState(() {
-        alerts = fetchedAlerts;
+        alerts = [...fetchedAlerts, ...generatedAlerts];
       });
     } catch (e) {
       print('Error loading dashboard data: $e');
     }
+  }
+
+  Tower? _findTowerForPoint(TowerPoint point) {
+    try {
+      return towers.firstWhere((t) => t.towerNumber == point.number);
+    } catch (_) {
+      final hint = point.towerIdHint ?? point.label;
+      if (hint.isEmpty) return null;
+      final hintLower = hint.toLowerCase();
+      try {
+        return towers.firstWhere((t) => t.towerId.toLowerCase() == hintLower);
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+
+  String _getTowerStatusForPoint(TowerPoint point) {
+    if (isForcedDown(point.number)) return 'DOWN';
+    final tower = _findTowerForPoint(point);
+    return tower?.status.toUpperCase() ?? 'UP';
+  }
+
+  // Get tower color based on status
+  Color _getTowerColor(TowerPoint point) {
+    final status = _getTowerStatusForPoint(point);
+    return isDownStatus(status) ? Colors.red : const Color(0xFF2196F3);
   }
 
   int get totalCameras => totalUpCameras + totalDownCameras;
@@ -795,7 +1047,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 children: [
                   FlutterMap(
                     mapController: mapController,
-                    options: MapOptions(
+                    options: const MapOptions(
                       initialCenter: TPKNilamLocation.coordinate,
                       initialZoom: TPKNilamLocation.defaultZoom,
                     ),
@@ -881,29 +1133,65 @@ class _DashboardPageState extends State<DashboardPage> {
                                 ),
                               )),
 
-                          // Tower/Access Points - Marker Kecil
+                          // Tower/Access Points - Marker dengan angka (warna berubah sesuai status)
                           ...towerPoints.map((tower) => Marker(
                                 point: tower.coordinate,
-                                width: 35,
-                                height: 35,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF2196F3),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                        color: Colors.white, width: 2),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.3),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2),
-                                      )
-                                    ],
-                                  ),
-                                  child: const Icon(
-                                    Icons.router,
-                                    color: Colors.white,
-                                    size: 16,
+                                width: 48,
+                                height: 48,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    // Navigate to appropriate CY page
+                                    String route = '/network';
+                                    if (tower.containerYard == 'CY2') {
+                                      route = '/network-cy2';
+                                    } else if (tower.containerYard == 'CY3') {
+                                      route = '/network-cy3';
+                                    }
+
+                                    final status =
+                                        _getTowerStatusForPoint(tower);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                            '${tower.name} - ${tower.containerYard} - $status'),
+                                        duration: const Duration(seconds: 2),
+                                        backgroundColor: isDownStatus(status)
+                                            ? Colors.red
+                                            : Colors.blue,
+                                      ),
+                                    );
+
+                                    navigateWithLoading(context, route);
+                                  },
+                                  child: MouseRegion(
+                                    cursor: SystemMouseCursors.click,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: _getTowerColor(tower),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                            color: Colors.white, width: 3),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color:
+                                                Colors.black.withOpacity(0.3),
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 2),
+                                          )
+                                        ],
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          tower.label,
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               )),

@@ -4,6 +4,7 @@ import 'main.dart';
 import 'services/api_service.dart';
 import 'models/tower_model.dart';
 import 'route_proxy_page.dart';
+import 'utils/tower_status_override.dart';
 
 // Network Page
 class NetworkPage extends StatefulWidget {
@@ -32,7 +33,7 @@ class _NetworkPageState extends State<NetworkPage> {
     try {
       final fetchedTowers = await apiService.getTowersByContainerYard('CY1');
       setState(() {
-        towers = fetchedTowers;
+        towers = _normalizeAndSortTowers(applyForcedTowerStatus(fetchedTowers));
         isLoading = false;
       });
     } catch (e) {
@@ -148,10 +149,41 @@ class _NetworkPageState extends State<NetworkPage> {
 
   int get totalTowers => towers.length;
   int get onlineTowers => towers.where((t) => t.status == 'UP').length;
-  int get warningTowers => towers.where((t) => t.status == 'Warning').length;
+  int get warningTowers => towers.where((t) => isDownStatus(t.status)).length;
+
+  List<Tower> _normalizeAndSortTowers(List<Tower> input) {
+    final dedup = <String, Tower>{};
+    for (final tower in input) {
+      dedup[tower.towerId.toLowerCase()] = tower;
+    }
+    final list = dedup.values.toList();
+    list.sort((a, b) => _orderValue(a).compareTo(_orderValue(b)));
+    return list;
+  }
+
+  double _orderValue(Tower tower) {
+    if (tower.towerNumber > 0) {
+      return tower.towerNumber.toDouble();
+    }
+
+    final regex = RegExp(r'^(\d+)([A-Za-z]?)$');
+    final match = regex.firstMatch(tower.towerId.trim());
+    if (match != null) {
+      final base = double.tryParse(match.group(1) ?? '') ?? 9999;
+      final suffix = match.group(2);
+      if (suffix != null && suffix.isNotEmpty) {
+        // Place lettered variants (e.g., 12A) right after their base number.
+        final offset = (suffix.codeUnitAt(0) - 'A'.codeUnitAt(0) + 1) / 10;
+        return base + offset;
+      }
+      return base;
+    }
+
+    return 9999;
+  }
 
   void _showWarningList() {
-    final warnings = towers.where((t) => t.status == 'Warning').toList();
+    final warnings = towers.where((t) => isDownStatus(t.status)).toList();
     showFadeAlertDialog(
       context: context,
       title: 'Towers DOWN (${warnings.length})',
@@ -915,7 +947,7 @@ class _NetworkPageState extends State<NetworkPage> {
   }
 
   Widget _buildTableRow(Tower tower) {
-    bool isWarning = tower.status == 'Warning';
+    bool isWarning = isDownStatus(tower.status);
     String statusLabel = isWarning ? 'DOWN' : tower.status;
     Color statusTextColor = isWarning ? Colors.red : Colors.black87;
 

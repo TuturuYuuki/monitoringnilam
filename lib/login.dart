@@ -48,8 +48,19 @@ class _LoginPageState extends State<LoginPage> {
         });
 
         if (response['success'] == true) {
-          // Save user data using AuthHelper
+          // Save minimal user data first
           await AuthHelper.saveUserData(response['data']);
+
+          // Fetch full profile from API (to get phone/location/division) and update cache
+          try {
+            final userId = (response['data']?['id'] ?? 0) as int;
+            if (userId > 0) {
+              final profile = await apiService.getProfile(userId);
+              if (profile != null) {
+                await AuthHelper.saveUserData(profile.toJson());
+              }
+            }
+          } catch (_) {}
 
           // Navigate to dashboard
           if (mounted) {

@@ -23,15 +23,15 @@ class Camera {
 
   factory Camera.fromJson(Map<String, dynamic> json) {
     return Camera(
-      id: json['id'] ?? 0,
-      cameraId: json['camera_id'] ?? '',
-      location: json['location'] ?? '',
-      status: json['status'] ?? 'Unknown',
-      type: json['type'] ?? 'Fixed',
-      containerYard: json['container_yard'] ?? '',
-      areaType: json['area_type'] ?? '',
-      createdAt: json['created_at'] ?? '',
-      updatedAt: json['updated_at'] ?? '',
+      id: int.tryParse(json['id'].toString()) ?? 0,
+      cameraId: json['camera_id']?.toString() ?? '',
+      location: json['location']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'Unknown',
+      type: json['type']?.toString() ?? 'Fixed',
+      containerYard: json['container_yard']?.toString() ?? '',
+      areaType: json['area_type']?.toString() ?? '',
+      createdAt: json['created_at']?.toString() ?? '',
+      updatedAt: json['updated_at']?.toString() ?? '',
     );
   }
 

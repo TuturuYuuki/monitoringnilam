@@ -3,6 +3,9 @@ import 'package:animations/animations.dart';
 import 'main.dart';
 import 'services/api_service.dart';
 import 'models/alert_model.dart';
+import 'models/tower_model.dart';
+import 'models/camera_model.dart';
+import 'utils/tower_status_override.dart';
 import 'route_proxy_page.dart';
 
 // Alerts & Notification Page
@@ -16,6 +19,8 @@ class AlertsPage extends StatefulWidget {
 class _AlertsPageState extends State<AlertsPage> {
   late ApiService apiService;
   List<Alert> alerts = [];
+  List<Tower> towers = [];
+  List<Camera> cameras = [];
   bool isLoading = true;
   final List<Map<String, dynamic>> alertsOld = [
     {
@@ -101,9 +106,66 @@ class _AlertsPageState extends State<AlertsPage> {
 
   Future<void> _loadAlerts() async {
     try {
+      // Load all data
       final fetchedAlerts = await apiService.getAllAlerts();
+      final fetchedTowers = await apiService.getAllTowers();
+      final fetchedCameras = await apiService.getAllCameras();
+
+      // Apply forced tower status
+      final updatedTowers = applyForcedTowerStatus(fetchedTowers);
+
+      // Generate alerts from DOWN towers and cameras
+      final generatedAlerts = <Alert>[];
+
+      // Tower alerts
+      for (final tower in updatedTowers) {
+        if (isDownStatus(tower.status)) {
+          String route = '/network';
+          if (tower.containerYard == 'CY2') {
+            route = '/network-cy2';
+          } else if (tower.containerYard == 'CY3') {
+            route = '/network-cy3';
+          }
+
+          generatedAlerts.add(Alert(
+            id: 'tower-${tower.id}',
+            title: 'Tower DOWN - ${tower.towerId}',
+            description: '${tower.location} tower offline (${tower.towerId})',
+            severity: 'critical',
+            timestamp: tower.createdAt,
+            route: route,
+            category: 'Tower',
+          ));
+        }
+      }
+
+      // Camera alerts
+      for (final camera in fetchedCameras) {
+        if (camera.status == 'DOWN') {
+          String route = '/cctv';
+          if (camera.containerYard == 'CY2') {
+            route = '/cctv-cy2';
+          } else if (camera.containerYard == 'CY3') {
+            route = '/cctv-cy3';
+          }
+
+          generatedAlerts.add(Alert(
+            id: 'camera-${camera.id}',
+            title: 'CCTV DOWN - ${camera.cameraId}',
+            description:
+                '${camera.location} camera offline (${camera.cameraId})',
+            severity: 'critical',
+            timestamp: camera.createdAt,
+            route: route,
+            category: 'CCTV',
+          ));
+        }
+      }
+
       setState(() {
-        alerts = fetchedAlerts;
+        alerts = [...fetchedAlerts, ...generatedAlerts];
+        towers = updatedTowers;
+        cameras = fetchedCameras;
         isLoading = false;
       });
     } catch (e) {
@@ -314,6 +376,13 @@ class _AlertsPageState extends State<AlertsPage> {
   }
 
   Widget _buildAlertsList(double listHeight) {
+    final towerAlerts =
+        activeAlerts.where((a) => a.category == 'Tower').toList();
+    final cctvAlerts = activeAlerts.where((a) => a.category == 'CCTV').toList();
+    final otherAlerts = activeAlerts
+        .where((a) => a.category != 'Tower' && a.category != 'CCTV')
+        .toList();
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -361,16 +430,74 @@ class _AlertsPageState extends State<AlertsPage> {
               height: listHeight,
               child: Scrollbar(
                 thumbVisibility: true,
-                child: ListView.builder(
+                child: ListView(
                   padding: EdgeInsets.zero,
                   physics: const BouncingScrollPhysics(),
-                  itemCount: activeAlerts.length,
-                  itemBuilder: (context, index) {
-                    return _buildAlertItem(activeAlerts[index]);
-                  },
+                  children: [
+                    if (towerAlerts.isNotEmpty) ...[
+                      _buildCategoryHeader(
+                          'Tower Alerts', towerAlerts.length, Colors.blue),
+                      ...towerAlerts.map((alert) => _buildAlertItem(alert)),
+                      const SizedBox(height: 16),
+                    ],
+                    if (cctvAlerts.isNotEmpty) ...[
+                      _buildCategoryHeader(
+                          'CCTV Alerts', cctvAlerts.length, Colors.green),
+                      ...cctvAlerts.map((alert) => _buildAlertItem(alert)),
+                      const SizedBox(height: 16),
+                    ],
+                    if (otherAlerts.isNotEmpty) ...[
+                      _buildCategoryHeader(
+                          'Other Alerts', otherAlerts.length, Colors.grey),
+                      ...otherAlerts.map((alert) => _buildAlertItem(alert)),
+                    ],
+                  ],
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryHeader(String title, int count, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12, top: 4),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 20,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '$count',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
         ],
       ),
     );

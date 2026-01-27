@@ -4,6 +4,9 @@ class User {
   final String email;
   final String fullname;
   final String role;
+  final String division;
+  final String phone;
+  final String location;
   final String createdAt;
 
   User({
@@ -12,6 +15,9 @@ class User {
     required this.email,
     required this.fullname,
     required this.role,
+    required this.division,
+    required this.phone,
+    required this.location,
     required this.createdAt,
   });
 
@@ -21,7 +27,14 @@ class User {
       username: json['username'] ?? '',
       email: json['email'] ?? '',
       fullname: json['fullname'] ?? '',
-      role: json['role'] ?? 'user',
+      role: json['role'] ?? (json['division'] ?? json['divisi'] ?? 'user'),
+      division: json['division'] ?? json['divisi'] ?? '',
+      phone: json['phone'] ??
+          json['phone_number'] ??
+          json['no_telp'] ??
+          json['telp'] ??
+          '',
+      location: json['location'] ?? json['lokasi'] ?? json['address'] ?? '',
       createdAt: json['created_at'] ?? '',
     );
   }
@@ -33,6 +46,9 @@ class User {
       'email': email,
       'fullname': fullname,
       'role': role,
+      'division': division,
+      'phone': phone,
+      'location': location,
       'created_at': createdAt,
     };
   }

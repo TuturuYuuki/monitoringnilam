@@ -4,6 +4,7 @@ import 'main.dart';
 import 'services/api_service.dart';
 import 'models/tower_model.dart';
 import 'route_proxy_page.dart';
+import 'utils/tower_status_override.dart';
 
 // Network Page CY 3
 class NetworkCY3Page extends StatefulWidget {
@@ -32,7 +33,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
     try {
       final fetchedTowers = await apiService.getTowersByContainerYard('CY3');
       setState(() {
-        towers = fetchedTowers;
+        towers = applyForcedTowerStatus(fetchedTowers);
         isLoading = false;
       });
     } catch (e) {
@@ -168,10 +169,10 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
 
   int get totalTowers => towers.length;
   int get onlineTowers => towers.where((t) => t.status == 'UP').length;
-  int get warningTowers => towers.where((t) => t.status == 'Warning').length;
+  int get warningTowers => towers.where((t) => isDownStatus(t.status)).length;
 
   void _showWarningList() {
-    final warnings = towers.where((t) => t.status == 'Warning').toList();
+    final warnings = towers.where((t) => isDownStatus(t.status)).toList();
     showFadeAlertDialog(
       context: context,
       title: 'Towers DOWN (${warnings.length})',
@@ -889,7 +890,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
   }
 
   Widget _buildTableRow(Tower tower) {
-    bool isWarning = tower.status == 'Warning';
+    bool isWarning = isDownStatus(tower.status);
     String statusLabel = isWarning ? 'DOWN' : tower.status;
     Color statusTextColor = isWarning ? Colors.red : Colors.black87;
 

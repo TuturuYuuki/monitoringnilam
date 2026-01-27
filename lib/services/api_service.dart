@@ -91,7 +91,25 @@ class ApiService {
       final response = await http.post(
         Uri.parse('$baseUrl?endpoint=auth&action=update-profile'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'user_id': userId, ...data}),
+        // Send multiple aliases for fields to match various backend key names
+        body: jsonEncode({
+          'user_id': userId,
+          'fullname': data['fullname'],
+          'email': data['email'],
+          'username': data['username'],
+          // division
+          'division': data['division'],
+          'divisi': data['division'],
+          // phone
+          'phone': data['phone'],
+          'phone_number': data['phone'],
+          'no_telp': data['phone'],
+          'telp': data['phone'],
+          // location
+          'location': data['location'],
+          'lokasi': data['location'],
+          'address': data['location'],
+        }),
       );
 
       if (response.statusCode == 200) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:animations/animations.dart';
 import 'main.dart';
 import 'route_proxy_page.dart';
+import 'services/api_service.dart';
 
 // CCTV Page CY 1
 class CCTVPage extends StatefulWidget {
@@ -92,6 +93,42 @@ class _CCTVPageState extends State<CCTVPage> {
         ),
       ],
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCameras();
+  }
+
+  Future<void> _loadCameras() async {
+    try {
+      setState(() {
+        isLoading = true;
+      });
+
+      final apiService = ApiService();
+      final cameras = await apiService.getCamerasByContainerYard('CY1');
+
+      setState(() {
+        allCameras.clear();
+        allCameras.addAll(cameras
+            .map((c) => {
+                  'id': c.cameraId,
+                  'location': c.location,
+                  'status': c.status,
+                  'type': c.type,
+                })
+            .toList());
+        isLoading = false;
+        currentPage = 0;
+      });
+    } catch (e) {
+      print('Error loading cameras: $e');
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
   @override
