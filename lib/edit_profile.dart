@@ -88,16 +88,23 @@ class _EditProfilePageState extends State<EditProfilePage> {
           'location': _locationController.text.trim(),
           'division': _divisionController.text.trim(),
         };
-        
+
         print('=== Update Profile Request ===');
         print('User ID: $_userId');
         print('Update Data: $updateData');
-        
-        // Call API to update profile
-        final response = await apiService.updateProfile(_userId!, updateData);
 
-        print('=== Update Profile Response ===');
+        // Call API to update profile
+        Map<String, dynamic> response = await apiService.updateProfile(_userId!, updateData);
+
+        print('=== Primary Update Response ===');
         print('Response: $response');
+        
+        // If primary method fails, try field-by-field approach
+        if (response['success'] != true && response['success'] != 1) {
+          print('Primary method failed, trying field-by-field approach...');
+          response = await apiService.updateProfileFieldByField(_userId!, updateData);
+          print('Field-by-field response: $response');
+        }
 
         setState(() {
           _isLoading = false;
@@ -105,7 +112,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
         if (response['success'] == true || response['success'] == 1) {
           print('Update berhasil, menyimpan ke SharedPreferences');
-          
+
           // Update SharedPreferences with new data
           final currentData = await AuthHelper.getUserData();
 
