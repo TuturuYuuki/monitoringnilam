@@ -161,7 +161,6 @@ class ApiService {
     }
   }
 
-  // Alternative method: Direct field updates
   Future<Map<String, dynamic>> updateProfileField(
       int userId, String fieldName, String fieldValue) async {
     try {
@@ -169,29 +168,39 @@ class ApiService {
       print('User ID: $userId');
       print('Field: $fieldName = $fieldValue');
 
-      // Try primary endpoint first
+      // Build request body with field name directly
+      final requestBody = {
+        'user_id': userId,
+        fieldName: fieldValue, // Use field name directly
+      };
+
+      print('Request Body: $requestBody');
+      print('URL: $baseUrl?endpoint=auth&action=update-profile');
+
       final response = await http.post(
-        Uri.parse('$baseUrl?endpoint=auth&action=update-field'),
+        Uri.parse('$baseUrl?endpoint=auth&action=update-profile'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'user_id': userId,
-          'field': fieldName,
-          'value': fieldValue,
-        }),
+        body: jsonEncode(requestBody),
       );
 
       print('Response Status: ${response.statusCode}');
       print('Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        try {
+          final result = jsonDecode(response.body);
+          print('Decoded Result: $result');
+          return result;
+        } catch (e) {
+          print('Error decoding response: $e');
+          return {'success': false, 'message': 'Error decoding response'};
+        }
       } else {
-        // Fallback: try alternate endpoint
-        print('Primary endpoint failed, trying fallback...');
-        return {'success': false, 'message': 'Update failed'};
+        print('HTTP Error ${response.statusCode}');
+        return {'success': false, 'message': 'Update failed with status ${response.statusCode}'};
       }
     } catch (e) {
-      print('Error: $e');
+      print('Exception: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }
@@ -208,33 +217,81 @@ class ApiService {
         'results': {}
       };
 
-      // Map field names to database columns
-      final fieldMap = {
-        'fullname': 'fullname',
-        'email': 'email',
-        'username': 'username',
-        'phone': 'phone',
-        'location': 'location',
-        'division': 'division',
+      // Map field names to database columns - try multiple variations
+      final fieldVariations = {
+        'fullname': ['fullname'],
+        'email': ['email'],
+        'username': ['username'],
+        'phone': ['phone', 'phone_number', 'no_telp', 'telp'],
+        'location': ['location', 'lokasi', 'address'],
+        'division': ['division', 'divisi'],
       };
 
-      for (var key in fieldMap.keys) {
-        if (data[key] != null && data[key].isNotEmpty) {
-          print('Updating $key: ${data[key]}');
+      for (var key in fieldVariations.keys) {
+        if (data[key] != null && data[key].toString().isNotEmpty) {
+          print('\nUpdating field: $key = ${data[key]}');
           
-          final result = await updateProfileField(userId, fieldMap[key]!, data[key]);
-          finalResult['results'][key] = result;
+          final variations = fieldVariations[key]!;
+          bool updated = false;
           
-          if (result['success'] != true) {
+          // Try each field name variation
+          for (var fieldVariant in variations) {
+            final result = await _updateSingleField(userId, fieldVariant, data[key]);
+            
+            if (result['success'] == true) {
+              print('✓ Successfully updated with field name: $fieldVariant');
+              finalResult['results'][key] = result;
+              updated = true;
+              break;
+            } else {
+              print('✗ Failed with field name: $fieldVariant - ${result['message']}');
+              finalResult['results']['${key}_${fieldVariant}'] = result;
+            }
+          }
+          
+          if (!updated) {
             finalResult['success'] = false;
+            print('✗ Failed to update $key with any field name variation');
           }
         }
       }
 
+      print('\n=== Field by Field Update Complete ===');
+      print('Final Result: $finalResult');
       return finalResult;
     } catch (e) {
       print('Error in field-by-field update: $e');
       return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  // Internal method for single field update
+  Future<Map<String, dynamic>> _updateSingleField(
+      int userId, String fieldName, dynamic fieldValue) async {
+    try {
+      final requestBody = {
+        'user_id': userId,
+        fieldName: fieldValue,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl?endpoint=auth&action=update-profile'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(requestBody),
+      );
+
+      if (response.statusCode == 200) {
+        try {
+          final result = jsonDecode(response.body);
+          return result;
+        } catch (e) {
+          return {'success': false, 'message': 'Error decoding response'};
+        }
+      } else {
+        return {'success': false, 'message': 'HTTP ${response.statusCode}'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': '$e'};
     }
   }
 
