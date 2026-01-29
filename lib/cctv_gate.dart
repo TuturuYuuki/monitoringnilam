@@ -244,7 +244,7 @@ class _GateCCTVPageState extends State<GateCCTVPage> {
                         isActive: false),
                     _buildHeaderLogoutButton(),
                   ],
-                )
+                ),
               ],
             )
           : Row(

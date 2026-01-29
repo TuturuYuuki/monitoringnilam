@@ -244,7 +244,7 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                         isActive: false),
                     _buildHeaderLogoutButton(),
                   ],
-                )
+                ),
               ],
             )
           : Row(
