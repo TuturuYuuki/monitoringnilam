@@ -114,6 +114,10 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
             ),
           ),
           const SizedBox(width: 12),
+          _buildHeaderOpenButton('Dashboard', '/dashboard', isActive: false),
+          const SizedBox(width: 12),
+          _buildHeaderOpenButton('Network', '/network', isActive: false),
+          const SizedBox(width: 12),
           _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
           const SizedBox(width: 12),
           _buildHeaderOpenButton('Alerts', '/alerts', isActive: false),
@@ -218,24 +222,30 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
 
-        // Stats Section
+        // Stats Section (Compact)
         Row(
           children: [
-            _buildStatCard('TOTAL CCTV', totalCameras.toString(), Colors.blue,
-                constraints.maxWidth * 0.3),
-            const SizedBox(width: 20),
-            _buildStatCard('UP', upCameras.toString(), Colors.green,
-                constraints.maxWidth * 0.3),
-            const SizedBox(width: 20),
-            _buildStatCard('DOWN', downCameras.toString(), Colors.red,
-                constraints.maxWidth * 0.3),
+            Expanded(
+              child: _buildStatCard('TOTAL CCTV', totalCameras.toString(),
+                  Colors.blue, double.infinity),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildStatCard(
+                  'UP', upCameras.toString(), Colors.green, double.infinity),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildStatCard(
+                  'DOWN', downCameras.toString(), Colors.red, double.infinity),
+            ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
 
-        // Camera Grid
+        // Camera Grid - Full Screen
         _buildCameraGrid(constraints),
       ],
     );
@@ -244,11 +254,10 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
   Widget _buildStatCard(
       String title, String value, Color indicatorColor, double width) {
     return Container(
-      width: width,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -267,26 +276,26 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
                 title,
                 style: const TextStyle(
                   color: Colors.black54,
-                  fontSize: 14,
+                  fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
               ),
               Container(
-                width: 12,
-                height: 12,
+                width: 10,
+                height: 10,
                 decoration: BoxDecoration(
                   color: indicatorColor,
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
             value,
             style: const TextStyle(
               color: Colors.black,
-              fontSize: 32,
+              fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -350,13 +359,13 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
 
     // Show camera grid when data exists
     int crossAxisCount =
-        (constraints.maxWidth / 60).floor().clamp(5, 20).toInt();
-    double spacing = 8;
+        (constraints.maxWidth / 50).floor().clamp(8, 30).toInt();
+    double spacing = 6;
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -365,7 +374,7 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
           ),
         ],
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
@@ -392,23 +401,26 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
       child: Container(
         decoration: BoxDecoration(
           color: statusColor,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(3),
           boxShadow: [
             BoxShadow(
-              color: statusColor.withOpacity(0.3),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
+              color: statusColor.withOpacity(0.4),
+              blurRadius: 2,
+              offset: const Offset(0, 1),
             ),
           ],
         ),
         child: Center(
-          child: Text(
-            camera['id'],
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
+          child: Padding(
+            padding: const EdgeInsets.all(2),
+            child: Text(
+              camera['id'],
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 8,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),

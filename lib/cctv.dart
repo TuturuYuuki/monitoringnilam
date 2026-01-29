@@ -397,8 +397,7 @@ class _CCTVPageState extends State<CCTVPage> {
               MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: GestureDetector(
-                  onTap: () =>
-                      navigateWithLoading(context, '/cctv-fullscreen'),
+                  onTap: () => navigateWithLoading(context, '/cctv-fullscreen'),
                   child: Container(
                     padding: EdgeInsets.all(12),
                     decoration: BoxDecoration(

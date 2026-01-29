@@ -375,8 +375,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
             MouseRegion(
               cursor: SystemMouseCursors.click,
               child: GestureDetector(
-                onTap: () =>
-                    navigateWithLoading(context, '/cctv-fullscreen'),
+                onTap: () => navigateWithLoading(context, '/cctv-fullscreen'),
                 child: Container(
                   padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
