@@ -358,10 +358,10 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
     }
 
     // Show camera grid when data exists
-    // Perbesarkan kotak: dari 50px → 80px untuk menampilkan tulisan lebih jelas
+    // Perbesarkan kotak: 120px untuk tampilan lebih besar dan jelas
     int crossAxisCount =
-        (constraints.maxWidth / 80).floor().clamp(6, 18).toInt();
-    double spacing = 8;
+        (constraints.maxWidth / 120).floor().clamp(4, 12).toInt();
+    double spacing = 10;
 
     return Container(
       decoration: BoxDecoration(
@@ -402,24 +402,24 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
       child: Container(
         decoration: BoxDecoration(
           color: statusColor,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(6),
           boxShadow: [
             BoxShadow(
               color: statusColor.withOpacity(0.4),
-              blurRadius: 3,
+              blurRadius: 4,
               offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.all(6),
             child: Text(
               camera['id'],
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 11,
+                fontSize: 13,
                 fontWeight: FontWeight.bold,
               ),
             ),
