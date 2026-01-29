@@ -249,26 +249,28 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
             )
           : Row(
               children: [
-                const Text(
-                  'Terminal Nilam',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    'Terminal Nilam',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-                const Spacer(),
-                _buildHeaderOpenButton('Dashboard', '/dashboard'),
                 const SizedBox(width: 12),
-                _buildHeaderOpenButton('Network', '/network'),
+                _buildHeaderOpenButton('Dashboard', '/dashboard',
+                    isActive: false),
+                const SizedBox(width: 12),
+                _buildHeaderOpenButton('Network', '/network', isActive: false),
                 const SizedBox(width: 12),
                 _buildHeaderOpenButton('CCTV', '/cctv', isActive: true),
                 const SizedBox(width: 12),
-                _buildHeaderOpenButton('Alerts', '/alerts'),
+                _buildHeaderOpenButton('Alerts', '/alerts', isActive: false),
                 const SizedBox(width: 12),
                 _buildHeaderLogoutButton(),
                 const SizedBox(width: 12),
-                // Profile icon shortcut to profile page
                 MouseRegion(
                   cursor: SystemMouseCursors.click,
                   child: OpenContainer(
@@ -301,7 +303,7 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                           child: const Icon(
                             Icons.person,
                             color: Color(0xFF1976D2),
-                            size: 24,
+                            size: 20,
                           ),
                         ),
                       );

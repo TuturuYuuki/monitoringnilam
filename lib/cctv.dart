@@ -249,7 +249,7 @@ class _CCTVPageState extends State<CCTVPage> {
                   'Terminal Nilam',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 28,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -297,7 +297,7 @@ class _CCTVPageState extends State<CCTVPage> {
                           child: const Icon(
                             Icons.person,
                             color: Color(0xFF1976D2),
-                            size: 24,
+                            size: 20,
                           ),
                         ),
                       );
