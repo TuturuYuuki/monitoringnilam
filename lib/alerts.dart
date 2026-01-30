@@ -365,7 +365,7 @@ class _AlertsPageState extends State<AlertsPage> {
                       _buildHeaderOpenButton('Dashboard', '/dashboard',
                           isActive: false),
                       const SizedBox(width: 8),
-                      _buildHeaderOpenButton('Network', '/network',
+                      _buildHeaderOpenButton('Tower', '/network',
                           isActive: false),
                       const SizedBox(width: 8),
                       _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
@@ -428,7 +428,7 @@ class _AlertsPageState extends State<AlertsPage> {
                 _buildHeaderOpenButton('Dashboard', '/dashboard',
                     isActive: false),
                 const SizedBox(width: 12),
-                _buildHeaderOpenButton('Network', '/network', isActive: false),
+                _buildHeaderOpenButton('Tower', '/network', isActive: false),
                 const SizedBox(width: 12),
                 _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
                 const SizedBox(width: 12),
@@ -915,8 +915,8 @@ class _AlertsPageState extends State<AlertsPage> {
               style: TextStyle(color: Colors.black54, fontSize: 14),
             )
           else ...[
-            _buildCategoryBar('Network', categories['Network']!.length, total,
-                _categoryColor(categories['Network']!)),
+            _buildCategoryBar('Tower', categories['Tower']!.length, total,
+                _categoryColor(categories['Tower']!)),
             const SizedBox(height: 12),
             _buildCategoryBar('CCTV', categories['CCTV']!.length, total,
                 _categoryColor(categories['CCTV']!)),
@@ -933,15 +933,15 @@ class _AlertsPageState extends State<AlertsPage> {
 
   Map<String, List<Alert>> _alertsByCategory() {
     final categories = {
-      'Network': <Alert>[],
+      'Tower': <Alert>[],
       'CCTV': <Alert>[],
       'Other': <Alert>[],
     };
 
     for (final alert in activeAlerts) {
       final route = alert.route.toLowerCase();
-      if (route.contains('network')) {
-        categories['Network']!.add(alert);
+      if (route.contains('tower')) {
+        categories['Tower']!.add(alert);
       } else if (route.contains('cctv')) {
         categories['CCTV']!.add(alert);
       } else {

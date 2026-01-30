@@ -376,7 +376,7 @@ class _NetworkPageState extends State<NetworkPage> {
                   children: [
                     _buildHeaderOpenButton('Dashboard', '/dashboard',
                         isActive: false),
-                    _buildHeaderOpenButton('Network', '/network',
+                    _buildHeaderOpenButton('Tower', '/network',
                         isActive: true),
                     _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
                     _buildHeaderOpenButton('Alerts', '/alerts',
@@ -400,7 +400,7 @@ class _NetworkPageState extends State<NetworkPage> {
                 _buildHeaderOpenButton('Dashboard', '/dashboard',
                     isActive: false),
                 const SizedBox(width: 12),
-                _buildHeaderOpenButton('Network', '/network', isActive: true),
+                _buildHeaderOpenButton('Tower', '/network', isActive: true),
                 const SizedBox(width: 12),
                 _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
                 const SizedBox(width: 12),
@@ -501,7 +501,7 @@ class _NetworkPageState extends State<NetworkPage> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Network',
+                'Tower',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 20,
@@ -534,7 +534,7 @@ class _NetworkPageState extends State<NetworkPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Network Monitoring',
+                    'Tower Monitoring',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 28,
@@ -721,7 +721,7 @@ class _NetworkPageState extends State<NetworkPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'CCTV',
+                'AREA',
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: 12,
@@ -1103,11 +1103,7 @@ class _NetworkPageState extends State<NetworkPage> {
           Text(
             '©2026 TPK Nilam Monitoring System',
             style: TextStyle(color: Colors.white, fontSize: 12),
-          ),
-          Text(
-            'Last Update: 2 Minutes Ago',
-            style: TextStyle(color: Colors.white70, fontSize: 12),
-          ),
+          ),      
         ],
       ),
     );

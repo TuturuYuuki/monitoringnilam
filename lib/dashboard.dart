@@ -381,7 +381,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
       for (final tower in updatedTowers) {
         if (isDownStatus(tower.status)) {
-          String route = '/network';
+          String route = '/ ';
           if (tower.containerYard == 'CY2') {
             route = '/network-cy2';
           } else if (tower.containerYard == 'CY3') {
@@ -616,7 +616,7 @@ class _DashboardPageState extends State<DashboardPage> {
           _buildHeaderOpenButton('Dashboard', const DashboardPage(),
               isActive: true),
           const SizedBox(width: 12),
-          _buildHeaderOpenButton('Network', const NetworkPage()),
+          _buildHeaderOpenButton('Tower', const NetworkPage()),
           const SizedBox(width: 12),
           _buildHeaderOpenButton('CCTV', const CCTVPage()),
           const SizedBox(width: 12),
@@ -769,7 +769,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                   const SizedBox(width: 12),
                   const Text(
-                    'Network Status',
+                    'Tower Monitoring',
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 22,
@@ -780,47 +780,19 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               const SizedBox(height: 24),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '$totalOnlineTowers/$totalTowers',
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Text(
-                        'Towers Online',
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
+                  _buildTowerStatusTile(
+                    count: totalOnlineTowers,
+                    label: 'UP',
+                    color: Colors.green,
+                    icon: Icons.wifi,
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '${towerUptimePercent.toStringAsFixed(0)}%',
-                        style: const TextStyle(
-                          color: Colors.green,
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Text(
-                        'Signal Quality',
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
+                  _buildTowerStatusTile(
+                    count: totalDownTowers,
+                    label: 'DOWN',
+                    color: Colors.red,
+                    icon: Icons.wifi_off,
                   ),
                 ],
               ),
@@ -828,6 +800,44 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTowerStatusTile({
+    required int count,
+    required String label,
+    required Color color,
+    required IconData icon,
+  }) {
+    return Column(
+      children: [
+        Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Icon(icon, color: Colors.white, size: 32),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          '$count',
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.black54,
+            fontSize: 14,
+            letterSpacing: 1,
+          ),
+        ),
+      ],
     );
   }
 

@@ -304,7 +304,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                   children: [
                     _buildHeaderOpenButton('Dashboard', '/dashboard',
                         isActive: false),
-                    _buildHeaderOpenButton('Network', '/network',
+                    _buildHeaderOpenButton('Tower', '/network',
                         isActive: true),
                     _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
                     _buildHeaderOpenButton('Alerts', '/alerts',
@@ -328,7 +328,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                 _buildHeaderOpenButton('Dashboard', '/dashboard',
                     isActive: false),
                 const SizedBox(width: 12),
-                _buildHeaderOpenButton('Network', '/network', isActive: true),
+                _buildHeaderOpenButton('Tower', '/network', isActive: true),
                 const SizedBox(width: 12),
                 _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
                 const SizedBox(width: 12),
@@ -431,7 +431,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Network Monitoring',
+                  'Tower Monitoring',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 28,
@@ -612,7 +612,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'CCTV',
+                'AREA',
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: 12,

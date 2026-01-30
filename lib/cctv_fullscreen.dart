@@ -105,7 +105,7 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Terminal Nilam',
                   style: TextStyle(
                     color: Colors.white,
@@ -121,7 +121,7 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
                       _buildHeaderOpenButton('Dashboard', '/dashboard',
                           isActive: false),
                       const SizedBox(width: 8),
-                      _buildHeaderOpenButton('Network', '/network',
+                      _buildHeaderOpenButton('Tower', '/network',
                           isActive: false),
                       const SizedBox(width: 8),
                       _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
@@ -170,7 +170,7 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
             )
           : Row(
               children: [
-                Expanded(
+                const Expanded(
                   child: Text(
                     'Terminal Nilam',
                     style: TextStyle(
@@ -184,7 +184,7 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
                 _buildHeaderOpenButton('Dashboard', '/dashboard',
                     isActive: false),
                 const SizedBox(width: 12),
-                _buildHeaderOpenButton('Network', '/network', isActive: false),
+                _buildHeaderOpenButton('Tower', '/network', isActive: false),
                 const SizedBox(width: 12),
                 _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
                 const SizedBox(width: 12),

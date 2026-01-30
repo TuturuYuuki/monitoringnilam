@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:animations/animations.dart';
 import 'main.dart';
@@ -17,8 +19,9 @@ class _CCTVPageState extends State<CCTVPage> {
   int currentPage = 0;
   final int camerasPerPage = 8;
   bool isLoading = false;
-
   final List<Map<String, dynamic>> allCameras = [];
+  DateTime? lastUpdated;
+  Timer? _refreshTimer;
 
   List<Map<String, dynamic>> get paginatedCameras {
     int start = currentPage * camerasPerPage;
@@ -113,6 +116,9 @@ class _CCTVPageState extends State<CCTVPage> {
   void initState() {
     super.initState();
     _loadCameras();
+    _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+      _loadCameras();
+    });
   }
 
   Future<void> _loadCameras() async {
@@ -136,6 +142,7 @@ class _CCTVPageState extends State<CCTVPage> {
             .toList());
         isLoading = false;
         currentPage = 0;
+        lastUpdated = DateTime.now();
       });
     } catch (e) {
       print('Error loading cameras: $e');
@@ -143,6 +150,12 @@ class _CCTVPageState extends State<CCTVPage> {
         isLoading = false;
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -233,7 +246,7 @@ class _CCTVPageState extends State<CCTVPage> {
                   children: [
                     _buildHeaderOpenButton('Dashboard', '/dashboard',
                         isActive: false),
-                    _buildHeaderOpenButton('Network', '/network',
+                    _buildHeaderOpenButton('Tower', '/network',
                         isActive: false),
                     _buildHeaderOpenButton('CCTV', '/cctv', isActive: true),
                     _buildHeaderOpenButton('Alerts', '/alerts',
@@ -245,19 +258,34 @@ class _CCTVPageState extends State<CCTVPage> {
             )
           : Row(
               children: [
-                const Text(
-                  'Terminal Nilam',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Terminal Nilam',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (lastUpdated != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4.0, bottom: 2.0),
+                        child: Text(
+                          'Last update: '
+                          '${lastUpdated!.hour.toString().padLeft(2, '0')}:${lastUpdated!.minute.toString().padLeft(2, '0')}:${lastUpdated!.second.toString().padLeft(2, '0')}',
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 11),
+                        ),
+                      ),
+                  ],
                 ),
                 const Spacer(),
                 _buildHeaderOpenButton('Dashboard', '/dashboard',
                     isActive: false),
                 const SizedBox(width: 12),
-                _buildHeaderOpenButton('Network', '/network', isActive: false),
+                _buildHeaderOpenButton('Tower', '/network', isActive: false),
                 const SizedBox(width: 12),
                 _buildHeaderOpenButton('CCTV', '/cctv', isActive: true),
                 const SizedBox(width: 12),
@@ -567,7 +595,7 @@ class _CCTVPageState extends State<CCTVPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'CCTV',
+                'AREA',
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: 12,
