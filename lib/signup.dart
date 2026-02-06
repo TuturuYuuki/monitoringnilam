@@ -56,17 +56,16 @@ class _SignUpPageState extends State<SignUpPage> {
     _emailController.addListener(() {
       final email = _emailController.text.trim();
       final hasTypedSomething = email.isNotEmpty;
-      final isInvalidFormat = !email.endsWith('@gmail.com');
+      final isInvalidFormat =
+          !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
 
       if (hasTypedSomething && isInvalidFormat) {
-        // Ada typo atau format salah
         if (!_showEmailError) {
           setState(() {
             _showEmailError = true;
           });
         }
       } else {
-        // Format benar atau kosong
         if (_showEmailError) {
           setState(() {
             _showEmailError = false;
@@ -709,7 +708,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                       SizedBox(width: 14),
                                       Expanded(
                                         child: Text(
-                                          'Format email harus "nama@gmail.com."',
+                                          'Format email tidak valid.',
                                           style: TextStyle(
                                             color: Color(0xFF8B0000),
                                             fontSize: 15,
@@ -743,8 +742,9 @@ class _SignUpPageState extends State<SignUpPage> {
                                   if (value == null || value.isEmpty) {
                                     return 'Please enter your email';
                                   }
-                                  if (!value.endsWith('@gmail.com')) {
-                                    return 'Email harus berformat @gmail.com';
+                                  if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                                      .hasMatch(value)) {
+                                    return 'Format email tidak valid';
                                   }
                                   return null;
                                 },

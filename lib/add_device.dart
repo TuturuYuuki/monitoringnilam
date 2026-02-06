@@ -29,11 +29,13 @@ class _AddDevicePageState extends State<AddDevicePage> {
   Timer? _nameDebounce;
   bool _isCheckingName = false;
   String? _nameError;
+  bool _isLoadingUsedNames = false;
+  List<String> _usedNamesForType = [];
 
-  String _selectedDeviceType = 'Tower';
+  String _selectedDeviceType = 'Access Point';
   String _selectedLocation = 'Tower 1 - CY2';
 
-  final List<String> deviceTypes = ['Tower', 'CCTV', 'MMT'];
+  final List<String> deviceTypes = ['Access Point', 'CCTV', 'MMT'];
 
   @override
   void initState() {
@@ -41,6 +43,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
     apiService = ApiService();
     _nameController = TextEditingController();
     _ipAddressController = TextEditingController();
+    _loadUsedNamesForType();
   }
 
   @override
@@ -83,19 +86,57 @@ class _AddDevicePageState extends State<AddDevicePage> {
     'Tower 24 - CY3': {'lat': -7.207314, 'lng': 112.722005, 'cy': 'CY3'},
     'Tower 25 - CY3': {'lat': -7.207213, 'lng': 112.722232, 'cy': 'CY3'},
     'Tower 26 - CY3': {'lat': -7.207029, 'lng': 112.722613, 'cy': 'CY3'},
+    // CC (CY1)
+    'CC01 - CY1': {'lat': -7.204768, 'lng': 112.723299, 'cy': 'CY1'},
+    'CC02 - CY1': {'lat': -7.205358, 'lng': 112.723571, 'cy': 'CY1'},
+    'CC03 - CY1': {'lat': -7.205947, 'lng': 112.723840, 'cy': 'CY1'},
+    'CC04 - CY1': {'lat': -7.206656, 'lng': 112.724164, 'cy': 'CY1'},
+    // RTG
+    'RTG01 - CY1': {'lat': -7.204805, 'lng': 112.722550, 'cy': 'CY1'},
+    'RTG02 - CY1': {'lat': -7.205129, 'lng': 112.723000, 'cy': 'CY1'},
+    'RTG03 - CY1': {'lat': -7.205998, 'lng': 112.722836, 'cy': 'CY1'},
+    'RTG04 - CY1': {'lat': -7.206359, 'lng': 112.723258, 'cy': 'CY1'},
+    'RTG05 - CY1': {'lat': -7.206749, 'lng': 112.723464, 'cy': 'CY1'},
+    'RTG06 - CY1': {'lat': -7.207079, 'lng': 112.723899, 'cy': 'CY1'},
+    'RTG07 - CY2': {'lat': -7.208641, 'lng': 112.724410, 'cy': 'CY2'},
+    'RTG08 - CY2': {'lat': -7.208957, 'lng': 112.724877, 'cy': 'CY2'},
+    // RS
+    'RS - CY3': {'lat': -7.207700, 'lng': 112.723028, 'cy': 'CY3'},
     // Special Locations
     'Gate In/Out': {'lat': -7.2099123, 'lng': 112.7244489, 'cy': 'Special'},
     'Parking': {'lat': -7.209907, 'lng': 112.724877, 'cy': 'Special'},
   };
 
+  IconData _getLocationIcon(String locationName) {
+    if (locationName.startsWith('CC')) {
+      return Icons.camera_alt;
+    }
+    if (locationName.startsWith('RTG')) {
+      return Icons.local_shipping;
+    }
+    if (locationName.startsWith('RS')) {
+      return Icons.construction;
+    }
+    if (locationName.startsWith('Tower')) {
+      return Icons.router;
+    }
+    if (locationName == 'Gate In/Out') {
+      return Icons.directions_walk;
+    }
+    if (locationName == 'Parking') {
+      return Icons.local_parking;
+    }
+    return Icons.location_on;
+  }
+
   String _getDeviceNameExample(String deviceType) {
     switch (deviceType) {
-      case 'Tower':
-        return 'T-CY1-07';
+      case 'Access Point':
+        return 'AP 01';
       case 'CCTV':
-        return 'Cam-CY1-01';
+        return 'CAM 01';
       case 'MMT':
-        return 'MMT-CY1-01';
+        return 'MMT 01';
       default:
         return '';
     }
@@ -103,7 +144,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
 
   IconData _getDeviceIcon(String deviceType) {
     switch (deviceType) {
-      case 'Tower':
+      case 'Access Point':
         return Icons.router;
       case 'CCTV':
         return Icons.videocam;
@@ -119,6 +160,143 @@ class _AddDevicePageState extends State<AddDevicePage> {
     _nameDebounce = Timer(const Duration(milliseconds: 450), () {
       _checkNameAvailability(value);
     });
+  }
+
+  Future<void> _loadUsedNamesForType() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingUsedNames = true;
+    });
+
+    try {
+      final results = await Future.wait([
+        apiService.getAllTowers(),
+        apiService.getAllCameras(),
+        apiService.getAllMMTs(),
+        DeviceStorageService.getDevices(),
+      ]);
+
+      final towers = results[0] as List<Tower>;
+      final cameras = results[1] as List<Camera>;
+      final mmts = results[2] as List<MMT>;
+      final addedDevices = results[3] as List<AddedDevice>;
+
+      final names = <String>{};
+      if (_selectedDeviceType == 'Access Point') {
+        names.addAll(towers.map((t) => t.towerId));
+        names.addAll(addedDevices
+            .where((d) => d.type == 'Access Point')
+            .map((d) => d.name));
+      } else if (_selectedDeviceType == 'CCTV') {
+        names.addAll(cameras.map((c) => c.cameraId));
+        names.addAll(
+            addedDevices.where((d) => d.type == 'CCTV').map((d) => d.name));
+      } else if (_selectedDeviceType == 'MMT') {
+        names.addAll(mmts.map((m) => m.mmtId));
+        names.addAll(
+            addedDevices.where((d) => d.type == 'MMT').map((d) => d.name));
+      }
+
+      final nameList = names.where((n) => n.trim().isNotEmpty).toList();
+      nameList.sort();
+
+      if (!mounted) return;
+      setState(() {
+        _usedNamesForType = nameList;
+        _isLoadingUsedNames = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingUsedNames = false;
+      });
+      print('Error loading used device names: $e');
+    }
+  }
+
+  void _showAllUsedNames() {
+    if (_usedNamesForType.isEmpty) return;
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Daftar Nama Device',
+      barrierColor: Colors.black26,
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (context, anim1, anim2) {
+        return SafeArea(
+          child: Center(
+            child: Material(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Daftar Nama ${_selectedDeviceType}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(Icons.close),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        'Total: ${_usedNamesForType.length} nama',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 360),
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: _usedNamesForType.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final name = _usedNamesForType[index];
+                            return ListTile(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              leading:
+                                  const Icon(Icons.label_outline, size: 18),
+                              title: Text(
+                                name,
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: animation,
+          child: child,
+        );
+      },
+    );
   }
 
   Future<void> _checkNameAvailability(String rawName) async {
@@ -211,17 +389,152 @@ class _AddDevicePageState extends State<AddDevicePage> {
       // Simpan ke storage
       await DeviceStorageService.addDevice(newDevice);
 
-      // Show success dialog
+      // Simpan ke database API
+      Map<String, dynamic> apiResult = {'success': false};
+      String deviceIpAddress = _ipAddressController.text;
+
+      print('=== DEBUG: Saving Device ===');
+      print('Device Type: $_selectedDeviceType');
+      print('Device ID: $deviceId');
+      print('IP Address from input: $deviceIpAddress');
+      print('Location: $_selectedLocation');
+      print('Container Yard: $containerYard');
+
+      if (_selectedDeviceType == 'Access Point') {
+        print('DEBUG: Calling createTower with IP: $deviceIpAddress');
+        apiResult = await apiService.createTower(
+          towerId: deviceId,
+          location: _selectedLocation,
+          ipAddress: deviceIpAddress,
+          containerYard: containerYard,
+          deviceCount: deviceCount,
+          status: status,
+          traffic: traffic,
+          uptime: uptime,
+        );
+        print('DEBUG: createTower response: $apiResult');
+      } else if (_selectedDeviceType == 'CCTV') {
+        print('DEBUG: Calling createCamera with IP: $deviceIpAddress');
+        apiResult = await apiService.createCamera(
+          cameraId: deviceId,
+          location: _selectedLocation,
+          ipAddress: deviceIpAddress,
+          containerYard: containerYard,
+          status: status,
+          type: type,
+          areaType: areaType,
+        );
+        print('DEBUG: createCamera response: $apiResult');
+      } else if (_selectedDeviceType == 'MMT') {
+        print('DEBUG: Calling createMMT with IP: $deviceIpAddress');
+        apiResult = await apiService.createMMT(
+          mmtId: deviceId,
+          location: _selectedLocation,
+          ipAddress: deviceIpAddress,
+          containerYard: containerYard,
+          status: status,
+          type: type,
+          deviceCount: deviceCount,
+          traffic: traffic,
+          uptime: uptime,
+        );
+        print('DEBUG: createMMT response: $apiResult');
+      }
+
+      // Test connectivity ke IP device dan update status secara realtime (background)
+      if (apiResult['success'] == true && deviceIpAddress.isNotEmpty) {
+        // Run connectivity test in background (fire-and-forget) to avoid UI blocking
+        // This prevents delay in showing success notification
+        apiService
+            .testDeviceConnectivity(
+          targetIp: deviceIpAddress,
+        )
+            .then((connectivityTest) {
+          if (connectivityTest['success'] == true) {
+            final testStatus = connectivityTest['data']['status'] ?? 'UP';
+            print('Connectivity test status: $testStatus');
+
+            // Update device status berdasarkan connectivity test result
+            apiService
+                .reportDeviceStatus(
+              deviceType: _selectedDeviceType.toLowerCase(),
+              deviceId: deviceId,
+              status: testStatus,
+              targetIp: deviceIpAddress,
+            )
+                .then((statusUpdateResult) {
+              print('Status update result: $statusUpdateResult');
+            }).catchError((e) {
+              print('Error updating device status: $e');
+            });
+          }
+        }).catchError((e) {
+          print('Error testing device connectivity: $e');
+        });
+      }
+
+      // Show success dialog immediately (no await on connectivity test)
       if (mounted) {
+        final bool dbSuccess = apiResult['success'] == true;
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Device Berhasil Ditambahkan!'),
+            title: Text(dbSuccess
+                ? 'Device Berhasil Ditambahkan!'
+                : 'Device Ditambahkan ke Local Storage'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (!dbSuccess) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        border: Border.all(color: Colors.orange),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning, color: Colors.orange),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Device tersimpan di local storage. ${apiResult['message'] ?? 'Database tidak dapat diakses'}',
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.orange.shade900),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (dbSuccess) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        border: Border.all(color: Colors.green),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.check_circle, color: Colors.green),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Device berhasil ditambahkan ke database!',
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.green.shade900),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   _buildInfoRow('Device ID:', deviceId),
                   const SizedBox(height: 8),
                   _buildInfoRow('Tipe Device:', _selectedDeviceType),
@@ -235,7 +548,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                   _buildInfoRow('Type:', type),
                   const SizedBox(height: 8),
                   _buildInfoRow('Container Yard:', containerYard),
-                  if (_selectedDeviceType == 'Tower') ...[
+                  if (_selectedDeviceType == 'Access Point') ...[
                     const SizedBox(height: 8),
                     _buildInfoRow('Device Count:', deviceCount.toString()),
                     const SizedBox(height: 8),
@@ -260,8 +573,8 @@ class _AddDevicePageState extends State<AddDevicePage> {
               ),
               ElevatedButton(
                 onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pushReplacementNamed(context, '/dashboard');
+                  Navigator.of(context, rootNavigator: true)
+                      .pushNamedAndRemoveUntil('/dashboard', (route) => false);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1976D2),
@@ -279,7 +592,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
   void _resetForm() {
     _formKey.currentState!.reset();
     setState(() {
-      _selectedDeviceType = 'Tower';
+      _selectedDeviceType = 'Access Point';
       _selectedLocation = 'Tower 1 - CY2';
       _nameController.clear();
       _ipAddressController.clear();
@@ -334,7 +647,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
           const SizedBox(width: 12),
           _buildHeaderOpenButton('Dashboard', const DashboardPage()),
           const SizedBox(width: 12),
-          _buildHeaderOpenButton('Tower', const NetworkPage()),
+          _buildHeaderOpenButton('Access Point', const NetworkPage()),
           const SizedBox(width: 12),
           _buildHeaderOpenButton('CCTV', const CCTVPage()),
           const SizedBox(width: 12),
@@ -557,6 +870,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                   _nameError = null;
                                   _isCheckingName = false;
                                 });
+                                _loadUsedNamesForType();
                               }
                             },
                             items: deviceTypes
@@ -647,6 +961,76 @@ class _AddDevicePageState extends State<AddDevicePage> {
                             return null;
                           },
                         ),
+                        const SizedBox(height: 8),
+                        if (_isLoadingUsedNames)
+                          const Row(
+                            children: [
+                              SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Memuat nama yang sudah digunakan...',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                            ],
+                          )
+                        else if (_usedNamesForType.isNotEmpty)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Nama ${_selectedDeviceType} yang sudah digunakan:',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: [
+                                  ..._usedNamesForType
+                                      .take(10)
+                                      .map((name) => Chip(
+                                            label: Text(
+                                              name,
+                                              style:
+                                                  const TextStyle(fontSize: 11),
+                                            ),
+                                            backgroundColor:
+                                                const Color(0xFFF1F3F4),
+                                          )),
+                                  if (_usedNamesForType.length > 10)
+                                    ActionChip(
+                                      label: Text(
+                                        '+${_usedNamesForType.length - 10} lainnya',
+                                        style: const TextStyle(fontSize: 11),
+                                      ),
+                                      backgroundColor: const Color(0xFFE0E0E0),
+                                      onPressed: _showAllUsedNames,
+                                    ),
+                                ],
+                              ),
+                            ],
+                          )
+                        else
+                          const Text(
+                            'Belum ada nama device terpakai untuk tipe ini.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.black54,
+                            ),
+                          ),
                         const SizedBox(height: 24),
 
                         // ===== IP ADDRESS =====
@@ -738,9 +1122,9 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                 value: value,
                                 child: Row(
                                   children: [
-                                    const Icon(
-                                      Icons.location_on,
-                                      color: Color(0xFF1976D2),
+                                    Icon(
+                                      _getLocationIcon(value),
+                                      color: const Color(0xFF1976D2),
                                       size: 20,
                                     ),
                                     const SizedBox(width: 8),

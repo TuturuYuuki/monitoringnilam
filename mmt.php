@@ -69,6 +69,10 @@ switch ($action) {
         getMMTStats($conn);
         break;
     
+    case 'create':
+        createMMT($conn);
+        break;
+    
     case 'update-status':
         updateMMTStatus($conn);
         break;
@@ -276,6 +280,90 @@ function getMMTStats($conn) {
         ]);
     } catch (Exception $e) {
         http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Error: ' . $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * Create new MMT (POST)
+ */
+function createMMT($conn) {
+    try {
+        $input = file_get_contents('php://input');
+        $data = json_decode($input, true);
+        
+        // Validate required fields
+        if (!isset($data['mmt_id']) || !isset($data['location']) || 
+            !isset($data['ip_address']) || !isset($data['container_yard'])) {
+            throw new Exception('Required fields: mmt_id, location, ip_address, container_yard');
+        }
+        
+        $mmtId = $data['mmt_id'];
+        $location = $data['location'];
+        $ipAddress = $data['ip_address'];
+        $containerYard = $data['container_yard'];
+        $status = isset($data['status']) ? $data['status'] : 'UP';
+        $type = isset($data['type']) ? $data['type'] : 'Mine Monitor';
+        $deviceCount = isset($data['device_count']) ? (int)$data['device_count'] : 0;
+        $traffic = isset($data['traffic']) ? $data['traffic'] : '0 Mbps';
+        $uptime = isset($data['uptime']) ? $data['uptime'] : '0%';
+        
+        // Extract mmt_number from mmt_id (e.g., "MMT-CY1-01" -> 1)
+        $mmtNumber = null;
+        if (preg_match('/-(\d+)$/', $mmtId, $matches)) {
+            $mmtNumber = (int)$matches[1];
+        }
+        
+        // Check if mmt_id already exists
+        $checkStmt = $conn->prepare("SELECT id FROM mmts WHERE mmt_id = ?");
+        $checkStmt->bind_param("s", $mmtId);
+        $checkStmt->execute();
+        $checkResult = $checkStmt->get_result();
+        
+        if ($checkResult->num_rows > 0) {
+            throw new Exception('MMT ID already exists');
+        }
+        $checkStmt->close();
+        
+        // Insert new MMT
+        $stmt = $conn->prepare("INSERT INTO mmts 
+            (mmt_id, mmt_number, location, ip_address, status, type, container_yard, 
+             device_count, traffic, uptime, created_at, updated_at) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())");
+        
+        if (!$stmt) {
+            throw new Exception($conn->error);
+        }
+        
+        $stmt->bind_param("sissssiss", 
+            $mmtId, $mmtNumber, $location, $ipAddress, $status, 
+            $type, $containerYard, $deviceCount, $traffic, $uptime);
+        
+        if ($stmt->execute()) {
+            $newId = $conn->insert_id;
+            
+            echo json_encode([
+                'success' => true,
+                'message' => 'MMT created successfully',
+                'data' => [
+                    'id' => $newId,
+                    'mmt_id' => $mmtId,
+                    'location' => $location,
+                    'ip_address' => $ipAddress,
+                    'container_yard' => $containerYard,
+                    'status' => $status
+                ]
+            ]);
+        } else {
+            throw new Exception($stmt->error);
+        }
+        
+        $stmt->close();
+    } catch (Exception $e) {
+        http_response_code(400);
         echo json_encode([
             'success' => false,
             'message' => 'Error: ' . $e->getMessage()

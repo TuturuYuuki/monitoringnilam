@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:animations/animations.dart';
+import 'package:http/http.dart' as http;
 import 'main.dart';
 import 'services/api_service.dart';
 import 'models/tower_model.dart';
@@ -51,6 +52,9 @@ class _NetworkPageState extends State<NetworkPage> {
 
   Future<void> _loadTowers() async {
     try {
+      // Trigger realtime ping check first to update status
+      await _triggerRealtimePing();
+
       final fetchedTowers = await apiService.getTowersByContainerYard('CY1');
       setState(() {
         towers = _normalizeAndSortTowers(applyForcedTowerStatus(fetchedTowers));
@@ -62,6 +66,74 @@ class _NetworkPageState extends State<NetworkPage> {
       setState(() {
         isLoading = false;
       });
+    }
+  }
+
+  Future<void> _triggerRealtimePing() async {
+    try {
+      print('=== Starting Realtime Ping for All Towers ===');
+
+      // Test connectivity untuk setiap tower dengan IP masing-masing
+      for (final tower in towers) {
+        if (tower.ipAddress.isEmpty) {
+          print('Skipping ${tower.towerId}: No IP address');
+          continue;
+        }
+
+        print('Testing connectivity for ${tower.towerId}: ${tower.ipAddress}');
+
+        try {
+          // Test connectivity ke IP tower yang spesifik
+          final testResult = await apiService.testDeviceConnectivity(
+            targetIp: tower.ipAddress,
+          );
+
+          if (testResult['success'] == true) {
+            final towerStatus = testResult['data']?['status'] ?? 'DOWN';
+            print('${tower.towerId} connectivity test result: $towerStatus');
+
+            // Update tower status berdasarkan test result
+            final updateResult = await apiService.reportDeviceStatus(
+              deviceType: 'tower',
+              deviceId: tower.towerId,
+              status: towerStatus,
+              targetIp: tower.ipAddress,
+            );
+
+            print('${tower.towerId} status update: ${updateResult['success']}');
+          }
+        } catch (e) {
+          print('Error testing ${tower.towerId}: $e');
+        }
+
+        // Small delay between tests to avoid overwhelming the server
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
+      print('=== Realtime Ping Completed ===');
+      // Wait for database to update
+      await Future.delayed(const Duration(milliseconds: 500));
+    } catch (e) {
+      print('Error triggering realtime ping: $e');
+    }
+  }
+
+  Future<void> _triggerPingCheck() async {
+    try {
+      const baseUrl = 'http://localhost/monitoring_api/index.php';
+
+      // Call realtime ping endpoint yang update semua towers sekaligus
+      final response = await http.get(
+        Uri.parse('$baseUrl?endpoint=realtime&type=all'),
+      );
+
+      // Wait a moment for database to update
+      await Future.delayed(const Duration(seconds: 1));
+
+      print('Realtime ping check completed: ${response.statusCode}');
+    } catch (e) {
+      print('Error triggering ping check: $e');
+      rethrow;
     }
   }
 
@@ -207,7 +279,7 @@ class _NetworkPageState extends State<NetworkPage> {
     final warnings = towers.where((t) => isDownStatus(t.status)).toList();
     showFadeAlertDialog(
       context: context,
-      title: 'Towers DOWN (${warnings.length})',
+      title: 'Access Points DOWN (${warnings.length})',
       content: ConstrainedBox(
         constraints: const BoxConstraints(
           maxWidth: 350,
@@ -381,7 +453,8 @@ class _NetworkPageState extends State<NetworkPage> {
                         isActive: false),
                     _buildHeaderOpenButton('Dashboard', '/dashboard',
                         isActive: false),
-                    _buildHeaderOpenButton('Tower', '/network', isActive: true),
+                    _buildHeaderOpenButton('Access Point', '/network',
+                        isActive: true),
                     _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
                     _buildHeaderOpenButton('Alerts', '/alerts',
                         isActive: false),
@@ -407,7 +480,8 @@ class _NetworkPageState extends State<NetworkPage> {
                 _buildHeaderOpenButton('Dashboard', '/dashboard',
                     isActive: false),
                 const SizedBox(width: 12),
-                _buildHeaderOpenButton('Tower', '/network', isActive: true),
+                _buildHeaderOpenButton('Access Point', '/network',
+                    isActive: true),
                 const SizedBox(width: 12),
                 _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
                 const SizedBox(width: 12),
@@ -508,7 +582,7 @@ class _NetworkPageState extends State<NetworkPage> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Tower',
+                'Access Point',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 20,
@@ -541,7 +615,7 @@ class _NetworkPageState extends State<NetworkPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Tower Monitoring',
+                    'Access Point Monitoring',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 28,
@@ -552,7 +626,7 @@ class _NetworkPageState extends State<NetworkPage> {
                   Row(
                     children: [
                       const Text(
-                        'Real time tower monitoring and diagnostics - CY 1',
+                        'Real time access point monitoring and diagnostics - CY 1',
                         style: TextStyle(
                           color: Colors.white70,
                           fontSize: 14,
@@ -596,8 +670,8 @@ class _NetworkPageState extends State<NetworkPage> {
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: [
-                            _buildStatCard(
-                                'Total Tower', '$totalTowers', Colors.orange,
+                            _buildStatCard('Total Access Point', '$totalTowers',
+                                Colors.orange,
                                 width: cardWidth),
                             SizedBox(width: isMobile ? 8 : 16),
                             _buildStatCard('UP', '$onlineTowers', Colors.green,
@@ -613,6 +687,8 @@ class _NetworkPageState extends State<NetworkPage> {
                       _buildNetworkDropdown(constraints.maxWidth),
                       const SizedBox(height: 12),
                       _buildContainerYardButton(constraints.maxWidth),
+                      const SizedBox(height: 12),
+                      _buildCheckStatusButton(constraints.maxWidth),
                     ],
                   )
                 : Wrap(
@@ -620,7 +696,7 @@ class _NetworkPageState extends State<NetworkPage> {
                     runSpacing: 16,
                     children: [
                       _buildStatCard(
-                          'Total Tower', '$totalTowers', Colors.orange,
+                          'Total Access Point', '$totalTowers', Colors.orange,
                           width: cardWidth),
                       _buildStatCard('UP', '$onlineTowers', Colors.green,
                           width: cardWidth),
@@ -628,6 +704,7 @@ class _NetworkPageState extends State<NetworkPage> {
                           onTap: _showWarningList, width: cardWidth),
                       _buildNetworkDropdown(cardWidth),
                       _buildContainerYardButton(cardWidth),
+                      _buildCheckStatusButton(cardWidth),
                     ],
                   );
           },
@@ -784,6 +861,56 @@ class _NetworkPageState extends State<NetworkPage> {
     );
   }
 
+  Widget _buildCheckStatusButton(double width) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () async {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Checking status...'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          await _triggerPingCheck();
+          await _loadTowers();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✓ Status updated!'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        },
+        child: Container(
+          width: width,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF4CAF50),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Icon(Icons.refresh, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Check Status',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTowerList() {
     // Show loading indicator
     if (isLoading) {
@@ -845,7 +972,7 @@ class _NetworkPageState extends State<NetworkPage> {
               ),
               SizedBox(height: 16),
               Text(
-                'Tidak ada data tower',
+                'Tidak ada data access point',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -854,7 +981,7 @@ class _NetworkPageState extends State<NetworkPage> {
               ),
               SizedBox(height: 8),
               Text(
-                'Belum ada tower yang terdaftar untuk Container Yard 1',
+                'Belum ada access point yang terdaftar untuk Container Yard 1',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey,
@@ -896,7 +1023,7 @@ class _NetworkPageState extends State<NetworkPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Tower List',
+                  'Access Point List',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
@@ -975,7 +1102,7 @@ class _NetworkPageState extends State<NetworkPage> {
             ),
             child: Row(
               children: [
-                _buildHeaderCell('Tower ID', flex: 1),
+                _buildHeaderCell('Access Point ID', flex: 1),
                 _buildHeaderCell('Lokasi', flex: 2),
                 _buildHeaderCell('IP Address', flex: 2),
                 _buildHeaderCell('Device', flex: 2),
@@ -1152,7 +1279,7 @@ class _NetworkPageState extends State<NetworkPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Tower ${tower['id']} Details'),
+        title: Text('Access Point ${tower['id']} Details'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:animations/animations.dart';
+import 'package:http/http.dart' as http;
 import 'main.dart';
 import 'services/api_service.dart';
 import 'models/tower_model.dart';
@@ -51,9 +52,12 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
 
   Future<void> _loadTowers() async {
     try {
+      // Trigger realtime ping check first to update status
+      await _triggerRealtimePing();
+
       final fetchedTowers = await apiService.getTowersByContainerYard('CY2');
       setState(() {
-        towers = applyForcedTowerStatus(fetchedTowers);
+        towers = _normalizeAndSortTowers(applyForcedTowerStatus(fetchedTowers));
         isLoading = false;
         _lastRefreshTime = DateTime.now();
       });
@@ -63,6 +67,104 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
         isLoading = false;
       });
     }
+  }
+
+  Future<void> _triggerRealtimePing() async {
+    try {
+      print('=== Starting Realtime Ping for All Towers (CY2) ===');
+
+      // Test connectivity untuk setiap tower dengan IP masing-masing
+      for (final tower in towers) {
+        if (tower.ipAddress.isEmpty) {
+          print('Skipping ${tower.towerId}: No IP address');
+          continue;
+        }
+
+        print('Testing connectivity for ${tower.towerId}: ${tower.ipAddress}');
+
+        try {
+          // Test connectivity ke IP tower yang spesifik
+          final testResult = await apiService.testDeviceConnectivity(
+            targetIp: tower.ipAddress,
+          );
+
+          if (testResult['success'] == true) {
+            final towerStatus = testResult['data']?['status'] ?? 'DOWN';
+            print('${tower.towerId} connectivity test result: $towerStatus');
+
+            // Update tower status berdasarkan test result
+            final updateResult = await apiService.reportDeviceStatus(
+              deviceType: 'tower',
+              deviceId: tower.towerId,
+              status: towerStatus,
+              targetIp: tower.ipAddress,
+            );
+
+            print('${tower.towerId} status update: ${updateResult['success']}');
+          }
+        } catch (e) {
+          print('Error testing ${tower.towerId}: $e');
+        }
+
+        // Small delay between tests to avoid overwhelming the server
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
+      print('=== Realtime Ping Completed (CY2) ===');
+      // Wait for database to update
+      await Future.delayed(const Duration(milliseconds: 500));
+    } catch (e) {
+      print('Error triggering realtime ping: $e');
+    }
+  }
+
+  Future<void> _triggerPingCheck() async {
+    try {
+      const baseUrl = 'http://localhost/monitoring_api/index.php';
+
+      // Call realtime ping endpoint yang update semua towers sekaligus
+      final response = await http.get(
+        Uri.parse('\$baseUrl?endpoint=realtime&type=all'),
+      );
+
+      // Wait a moment for database to update
+      await Future.delayed(const Duration(seconds: 1));
+
+      print('Realtime ping check completed: \${response.statusCode}');
+    } catch (e) {
+      print('Error triggering ping check: $e');
+      rethrow;
+    }
+  }
+
+  List<Tower> _normalizeAndSortTowers(List<Tower> input) {
+    final dedup = <String, Tower>{};
+    for (final tower in input) {
+      dedup[tower.towerId.toLowerCase()] = tower;
+    }
+    final list = dedup.values.toList();
+    list.sort((a, b) => _orderValue(a).compareTo(_orderValue(b)));
+    return list;
+  }
+
+  double _orderValue(Tower tower) {
+    if (tower.towerNumber > 0) {
+      return tower.towerNumber.toDouble();
+    }
+
+    final regex = RegExp(r'^(\d+)([A-Za-z]?)$');
+    final match = regex.firstMatch(tower.towerId.trim());
+    if (match != null) {
+      final base = double.tryParse(match.group(1) ?? '') ?? 9999;
+      final suffix = match.group(2);
+      if (suffix != null && suffix.isNotEmpty) {
+        final offset = (suffix.codeUnitAt(0) - 'A'.codeUnitAt(0) + 1) / 10;
+        return base + offset;
+      }
+      return base;
+    }
+
+    return 9999;
   }
 
   final List<Map<String, dynamic>> towerData = [
@@ -146,7 +248,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     final warnings = towers.where((t) => isDownStatus(t.status)).toList();
     showFadeAlertDialog(
       context: context,
-      title: 'Towers DOWN (${warnings.length})',
+      title: 'Access Points DOWN (${warnings.length})',
       content: ConstrainedBox(
         constraints: const BoxConstraints(
           maxWidth: 350,
@@ -310,7 +412,8 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                         isActive: false),
                     _buildHeaderOpenButton('Dashboard', '/dashboard',
                         isActive: false),
-                    _buildHeaderOpenButton('Tower', '/network', isActive: true),
+                    _buildHeaderOpenButton('Access Point', '/network',
+                        isActive: true),
                     _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
                     _buildHeaderOpenButton('Alerts', '/alerts',
                         isActive: false),
@@ -336,7 +439,8 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                 _buildHeaderOpenButton('Dashboard', '/dashboard',
                     isActive: false),
                 const SizedBox(width: 12),
-                _buildHeaderOpenButton('Tower', '/network', isActive: true),
+                _buildHeaderOpenButton('Access Point', '/network',
+                    isActive: true),
                 const SizedBox(width: 12),
                 _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
                 const SizedBox(width: 12),
@@ -439,7 +543,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Tower Monitoring',
+                  'Access Point Monitoring',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 28,
@@ -450,7 +554,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                 Row(
                   children: [
                     const Text(
-                      'Real time tower monitoring and diagnostics - CY 2',
+                      'Real time access point monitoring and diagnostics - CY 2',
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: 14,
@@ -493,8 +597,8 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: [
-                            _buildStatCard(
-                                'Total Tower', '$totalTowers', Colors.orange,
+                            _buildStatCard('Total Access Point', '$totalTowers',
+                                Colors.orange,
                                 width: cardWidth),
                             SizedBox(width: isMobile ? 8 : 16),
                             _buildStatCard('UP', '$onlineTowers', Colors.green,
@@ -510,6 +614,8 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                       _buildNetworkDropdown(constraints.maxWidth),
                       const SizedBox(height: 12),
                       _buildContainerYardButton(constraints.maxWidth),
+                      const SizedBox(height: 12),
+                      _buildCheckStatusButton(constraints.maxWidth),
                     ],
                   )
                 : Wrap(
@@ -517,7 +623,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                     runSpacing: 16,
                     children: [
                       _buildStatCard(
-                          'Total Tower', '$totalTowers', Colors.orange,
+                          'Total Access Point', '$totalTowers', Colors.orange,
                           width: cardWidth),
                       _buildStatCard('UP', '$onlineTowers', Colors.green,
                           width: cardWidth),
@@ -525,6 +631,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                           onTap: _showWarningList, width: cardWidth),
                       _buildNetworkDropdown(cardWidth),
                       _buildContainerYardButton(cardWidth),
+                      _buildCheckStatusButton(cardWidth),
                     ],
                   );
           },
@@ -676,6 +783,56 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     );
   }
 
+  Widget _buildCheckStatusButton(double width) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () async {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Checking status...'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          await _triggerPingCheck();
+          await _loadTowers();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✓ Status updated!'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        },
+        child: Container(
+          width: width,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF4CAF50),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Icon(Icons.refresh, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Check Status',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTowerList() {
     // Show loading indicator
     if (isLoading) {
@@ -737,7 +894,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
               ),
               SizedBox(height: 16),
               Text(
-                'Tidak ada data tower',
+                'Tidak ada data access point',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -746,7 +903,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
               ),
               SizedBox(height: 8),
               Text(
-                'Belum ada tower yang terdaftar untuk Container Yard 2',
+                'Belum ada access point yang terdaftar untuk Container Yard 2',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey,
@@ -788,7 +945,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Tower List',
+                  'Access Point List',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
@@ -867,7 +1024,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
             ),
             child: Row(
               children: [
-                _buildHeaderCell('Tower ID', flex: 1),
+                _buildHeaderCell('Access Point ID', flex: 1),
                 _buildHeaderCell('Lokasi', flex: 2),
                 _buildHeaderCell('IP Address', flex: 2),
                 _buildHeaderCell('Device', flex: 2),
@@ -1043,7 +1200,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Tower ${tower['id']} Details'),
+        title: Text('Access Point ${tower['id']} Details'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

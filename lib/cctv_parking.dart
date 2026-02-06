@@ -128,6 +128,60 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
     });
   }
 
+  Future<void> _triggerRealtimePing() async {
+    try {
+      print('=== Starting Realtime Ping for All Cameras (PARKING) ===');
+
+      final apiService = ApiService();
+      final cameras = await apiService.getCamerasByAreaType('Lot');
+
+      // Test connectivity untuk setiap camera dengan IP masing-masing
+      for (final camera in cameras) {
+        if (camera.ipAddress.isEmpty) {
+          print('Skipping ${camera.cameraId}: No IP address');
+          continue;
+        }
+
+        print(
+            'Testing connectivity for ${camera.cameraId}: ${camera.ipAddress}');
+
+        try {
+          // Test connectivity ke IP camera yang spesifik
+          final testResult = await apiService.testDeviceConnectivity(
+            targetIp: camera.ipAddress,
+          );
+
+          if (testResult['success'] == true) {
+            final cameraStatus = testResult['data']?['status'] ?? 'DOWN';
+            print('${camera.cameraId} connectivity test result: $cameraStatus');
+
+            // Update camera status berdasarkan test result
+            final updateResult = await apiService.reportDeviceStatus(
+              deviceType: 'camera',
+              deviceId: camera.cameraId,
+              status: cameraStatus,
+              targetIp: camera.ipAddress,
+            );
+
+            print(
+                '${camera.cameraId} status update: ${updateResult['success']}');
+          }
+        } catch (e) {
+          print('Error testing ${camera.cameraId}: $e');
+        }
+
+        // Small delay between tests to avoid overwhelming the server
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
+      print('=== Realtime Ping Completed (PARKING) ===');
+      // Wait for database to update
+      await Future.delayed(const Duration(milliseconds: 500));
+    } catch (e) {
+      print('Error triggering realtime ping: $e');
+    }
+  }
+
   Future<void> _loadCameras() async {
     try {
       setState(() {
@@ -155,6 +209,9 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
         currentPage = 0;
         lastUpdated = DateTime.now();
       });
+
+      // Trigger realtime ping in background after UI loads
+      _triggerRealtimePing();
     } catch (e) {
       print('Error loading cameras: $e');
       setState(() {
@@ -274,7 +331,7 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                         isActive: false),
                     _buildHeaderOpenButton('Dashboard', '/dashboard',
                         isActive: false),
-                    _buildHeaderOpenButton('Tower', '/network',
+                    _buildHeaderOpenButton('Access Point', '/network',
                         isActive: false),
                     _buildHeaderOpenButton('CCTV', '/cctv', isActive: true),
                     _buildHeaderOpenButton('Alerts', '/alerts',
@@ -318,7 +375,8 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                 _buildHeaderOpenButton('Dashboard', '/dashboard',
                     isActive: false),
                 const SizedBox(width: 12),
-                _buildHeaderOpenButton('Tower', '/network', isActive: false),
+                _buildHeaderOpenButton('Access Point', '/network',
+                    isActive: false),
                 const SizedBox(width: 12),
                 _buildHeaderOpenButton('CCTV', '/cctv', isActive: true),
                 const SizedBox(width: 12),
@@ -477,6 +535,7 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                 ),
                 _buildCCTVDropdown(cardWidth),
                 _buildAreaButton(cardWidth),
+                _buildCheckStatusButton(cardWidth),
               ],
             );
           },
@@ -618,6 +677,56 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
             color: Colors.white,
             fontSize: 16,
             fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCheckStatusButton(double width) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () async {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Checking status...'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          await _triggerPingCheck();
+          await _loadCameras();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✓ Status updated!'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        },
+        child: Container(
+          width: width,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF4CAF50),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Icon(Icons.refresh, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Check Status',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         ),
       ),

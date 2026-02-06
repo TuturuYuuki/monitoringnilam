@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:animations/animations.dart';
 import 'package:http/http.dart' as http;
@@ -18,6 +20,7 @@ class CCTVFullscreenPage extends StatefulWidget {
 class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
   bool isLoading = false;
   final List<Map<String, dynamic>> allCameras = [];
+  Timer? _refreshTimer;
 
   int get upCameras => allCameras.where((c) => c['status'] == 'UP').length;
   int get downCameras => allCameras.where((c) => c['status'] == 'DOWN').length;
@@ -27,6 +30,18 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
   void initState() {
     super.initState();
     _loadAllCameras();
+    // Refresh setiap 10 detik untuk monitoring realtime
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (mounted) {
+        _loadAllCameras();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadAllCameras() async {
@@ -65,11 +80,68 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
         allCameras.addAll(camerasMap);
         isLoading = false;
       });
+
+      // Trigger realtime ping in background after UI loads
+      _triggerRealtimePing();
     } catch (e) {
       print('Error loading cameras: $e');
       setState(() {
         isLoading = false;
       });
+    }
+  }
+
+  Future<void> _triggerRealtimePing() async {
+    try {
+      print('=== Starting Realtime Ping for All Cameras (Fullscreen) ===');
+
+      final apiService = ApiService();
+      final cameras = await apiService.getAllCameras();
+
+      // Test connectivity untuk setiap camera dengan IP masing-masing
+      for (final camera in cameras) {
+        if (camera.ipAddress.isEmpty) {
+          print('Skipping ${camera.cameraId}: No IP address');
+          continue;
+        }
+
+        print(
+            'Testing connectivity for ${camera.cameraId}: ${camera.ipAddress}');
+
+        try {
+          // Test connectivity ke IP camera yang spesifik
+          final testResult = await apiService.testDeviceConnectivity(
+            targetIp: camera.ipAddress,
+          );
+
+          if (testResult['success'] == true) {
+            final cameraStatus = testResult['data']?['status'] ?? 'DOWN';
+            print('${camera.cameraId} connectivity test result: $cameraStatus');
+
+            // Update camera status berdasarkan test result
+            final updateResult = await apiService.reportDeviceStatus(
+              deviceType: 'camera',
+              deviceId: camera.cameraId,
+              status: cameraStatus,
+              targetIp: camera.ipAddress,
+            );
+
+            print(
+                '${camera.cameraId} status update: ${updateResult['success']}');
+          }
+        } catch (e) {
+          print('Error testing ${camera.cameraId}: $e');
+        }
+
+        // Small delay between tests to avoid overwhelming the server
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
+      print('=== Realtime Ping Completed (Fullscreen) ===');
+      // Wait for database to update
+      await Future.delayed(const Duration(milliseconds: 500));
+    } catch (e) {
+      print('Error triggering realtime ping: $e');
     }
   }
 
@@ -143,7 +215,7 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
                       _buildHeaderOpenButton('Dashboard', '/dashboard',
                           isActive: false),
                       const SizedBox(width: 8),
-                      _buildHeaderOpenButton('Tower', '/network',
+                      _buildHeaderOpenButton('Access Point', '/network',
                           isActive: false),
                       const SizedBox(width: 8),
                       _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
@@ -209,7 +281,8 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
                 _buildHeaderOpenButton('Dashboard', '/dashboard',
                     isActive: false),
                 const SizedBox(width: 12),
-                _buildHeaderOpenButton('Tower', '/network', isActive: false),
+                _buildHeaderOpenButton('Access Point', '/network',
+                    isActive: false),
                 const SizedBox(width: 12),
                 _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
                 const SizedBox(width: 12),

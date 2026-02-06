@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -80,8 +81,8 @@ final List<ContainerYard> containerYards = [
   ContainerYard(
     id: 'CY2',
     name: 'Container Yard 2',
-    latitude: -7.208782,
-    longitude: 112.724493,
+    latitude: -7.209152,
+    longitude: 112.724487,
     color: const Color(0xFF66BB6A), // Hijau
   ),
   ContainerYard(
@@ -101,6 +102,7 @@ class SpecialLocation {
   final double longitude;
   final Color color;
   final IconData icon;
+  final String? iconAsset;
 
   SpecialLocation({
     required this.id,
@@ -109,6 +111,31 @@ class SpecialLocation {
     required this.longitude,
     required this.color,
     required this.icon,
+    this.iconAsset,
+  });
+
+  LatLng get coordinate => LatLng(latitude, longitude);
+}
+
+class DeviceLocationPoint {
+  final String id;
+  final String name;
+  final double latitude;
+  final double longitude;
+  final String containerYard;
+  final Color color;
+  final String iconAsset;
+  String status; // UP or DOWN - mutable for updates
+
+  DeviceLocationPoint({
+    required this.id,
+    required this.name,
+    required this.latitude,
+    required this.longitude,
+    required this.containerYard,
+    required this.color,
+    required this.iconAsset,
+    this.status = 'UP', // default UP
   });
 
   LatLng get coordinate => LatLng(latitude, longitude);
@@ -120,16 +147,141 @@ final List<SpecialLocation> specialLocations = [
     name: 'Gate In/Out',
     latitude: -7.2099123,
     longitude: 112.7244489,
-    color: const Color(0xFF1976D2),
+    color: const Color.fromARGB(255, 0, 0, 0),
     icon: Icons.directions_walk,
+    iconAsset: 'assets/images/Gate.png',
   ),
   SpecialLocation(
     id: 'PARKING',
     name: 'Parking',
     latitude: -7.209907,
     longitude: 112.724877,
-    color: const Color(0xFFD32F2F),
+    color: const Color.fromARGB(255, 0, 0, 0),
     icon: Icons.local_parking,
+    iconAsset: 'assets/images/Parking.png',
+  ),
+];
+
+final List<DeviceLocationPoint> deviceLocationPoints = [
+  // CC (CY1)
+  DeviceLocationPoint(
+    id: 'CC01',
+    name: 'CC01 - CY1',
+    latitude: -7.204768,
+    longitude: 112.723299,
+    containerYard: 'CY1',
+    color: const Color(0xFF455A64),
+    iconAsset: 'assets/images/CC.png',
+  ),
+  DeviceLocationPoint(
+    id: 'CC02',
+    name: 'CC02 - CY1',
+    latitude: -7.205358,
+    longitude: 112.723571,
+    containerYard: 'CY1',
+    color: const Color(0xFF455A64),
+    iconAsset: 'assets/images/CC.png',
+  ),
+  DeviceLocationPoint(
+    id: 'CC03',
+    name: 'CC03 - CY1',
+    latitude: -7.205947,
+    longitude: 112.723840,
+    containerYard: 'CY1',
+    color: const Color(0xFF455A64),
+    iconAsset: 'assets/images/CC.png',
+  ),
+  DeviceLocationPoint(
+    id: 'CC04',
+    name: 'CC04 - CY1',
+    latitude: -7.206656,
+    longitude: 112.724164,
+    containerYard: 'CY1',
+    color: const Color(0xFF455A64),
+    iconAsset: 'assets/images/CC.png',
+  ),
+  // RTG
+  DeviceLocationPoint(
+    id: 'RTG01',
+    name: 'RTG01 - CY1',
+    latitude: -7.204805,
+    longitude: 112.722550,
+    containerYard: 'CY1',
+    color: const Color(0xFFFF9800),
+    iconAsset: 'assets/images/RTG.png',
+  ),
+  DeviceLocationPoint(
+    id: 'RTG02',
+    name: 'RTG02 - CY1',
+    latitude: -7.205129,
+    longitude: 112.723000,
+    containerYard: 'CY1',
+    color: const Color(0xFFFF9800),
+    iconAsset: 'assets/images/RTG.png',
+  ),
+  DeviceLocationPoint(
+    id: 'RTG03',
+    name: 'RTG03 - CY1',
+    latitude: -7.205998,
+    longitude: 112.722836,
+    containerYard: 'CY1',
+    color: const Color(0xFFFF9800),
+    iconAsset: 'assets/images/RTG.png',
+  ),
+  DeviceLocationPoint(
+    id: 'RTG04',
+    name: 'RTG04 - CY1',
+    latitude: -7.206359,
+    longitude: 112.723258,
+    containerYard: 'CY1',
+    color: const Color(0xFFFF9800),
+    iconAsset: 'assets/images/RTG.png',
+  ),
+  DeviceLocationPoint(
+    id: 'RTG05',
+    name: 'RTG05 - CY1',
+    latitude: -7.206749,
+    longitude: 112.723464,
+    containerYard: 'CY1',
+    color: const Color(0xFFFF9800),
+    iconAsset: 'assets/images/RTG.png',
+  ),
+  DeviceLocationPoint(
+    id: 'RTG06',
+    name: 'RTG06 - CY1',
+    latitude: -7.207079,
+    longitude: 112.723899,
+    containerYard: 'CY1',
+    color: const Color(0xFFFF9800),
+    iconAsset: 'assets/images/RTG.png',
+  ),
+  DeviceLocationPoint(
+    id: 'RTG07',
+    name: 'RTG07 - CY2',
+    latitude: -7.208641,
+    longitude: 112.724410,
+    containerYard: 'CY2',
+    color: const Color(0xFFFF9800),
+    iconAsset: 'assets/images/RTG.png',
+  ),
+  DeviceLocationPoint(
+    id: 'RTG08',
+    name: 'RTG08 - CY2',
+    latitude: -7.208957,
+    longitude: 112.724877,
+    containerYard: 'CY2',
+    color: const Color(0xFFFF9800),
+    iconAsset: 'assets/images/RTG.png',
+  ),
+  // RS
+  DeviceLocationPoint(
+    id: 'RS',
+    name: 'RS - CY3',
+    latitude: -7.207700,
+    longitude: 112.723028,
+    containerYard: 'CY3',
+    color: const Color(0xFF7B1FA2),
+    iconAsset: 'assets/images/RS.png',
   ),
 ];
 
@@ -347,11 +499,17 @@ class _DashboardPageState extends State<DashboardPage> {
   List<Tower> towers = [];
   List<Alert> alerts = [];
   List<AddedDevice> addedDevices = [];
+  Map<String, String> deviceStatuses = {};
   Timer? _refreshTimer;
+  Timer? _blinkTimer;
   int totalUpCameras = 0;
   int totalDownCameras = 0;
   int totalOnlineTowers = 0;
   int totalTowers = 0;
+
+  // Tracking blinking locations with multiple devices where at least one is DOWN
+  Set<String> _locationKeysWithDownDevices = {};
+  bool _isBlinkVisible = true;
 
   int get totalDownTowers => totalTowers - totalOnlineTowers;
   double get towerUptimePercent =>
@@ -376,20 +534,69 @@ class _DashboardPageState extends State<DashboardPage> {
         _loadDashboardData();
       }
     });
+
+    // Start blinking animation timer (toggle every 500ms = 1 second cycle)
+    _blinkTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
+      if (mounted && _locationKeysWithDownDevices.isNotEmpty) {
+        setState(() {
+          _isBlinkVisible = !_isBlinkVisible;
+        });
+      }
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reload data when returning from add device or other pages
+    // This ensures added device icons appear immediately on map
+    if (mounted) {
+      _loadDashboardData();
+    }
   }
 
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _blinkTimer?.cancel();
     super.dispose();
   }
 
   Future<void> _loadDashboardData() async {
     try {
-      // Load core data
-      final fetchedCameras = await apiService.getAllCameras();
-      final fetchedTowers = await apiService.getAllTowers();
-      final fetchedAlerts = await apiService.getAllAlerts();
+      // Trigger realtime ping check first to update all statuses
+      // Add timeout to prevent hanging on long standby
+      await _triggerPingCheck().timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          print('Warning: Ping check timed out after 15 seconds');
+        },
+      );
+
+      // Load core data with timeout
+      final fetchedCameras = await apiService.getAllCameras().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('Warning: Get cameras timed out');
+          return cameras; // Return existing data if timeout
+        },
+      );
+
+      final fetchedTowers = await apiService.getAllTowers().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('Warning: Get towers timed out');
+          return towers; // Return existing data if timeout
+        },
+      );
+
+      final fetchedAlerts = await apiService.getAllAlerts().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('Warning: Get alerts timed out');
+          return alerts; // Return existing alerts if timeout
+        },
+      );
 
       // Apply forced status overrides before generating alerts
       final updatedTowers = applyForcedTowerStatus(fetchedTowers);
@@ -397,6 +604,14 @@ class _DashboardPageState extends State<DashboardPage> {
 
       // Auto-generate DOWN alerts so the dashboard card matches Alerts page
       final generatedAlerts = <Alert>[];
+
+      // Update device location point statuses from MMT data (with timeout)
+      await _updateDeviceLocationStatuses().timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          print('Warning: Update device location statuses timed out');
+        },
+      );
 
       for (final tower in updatedTowers) {
         if (isDownStatus(tower.status)) {
@@ -415,12 +630,13 @@ class _DashboardPageState extends State<DashboardPage> {
 
           generatedAlerts.add(Alert(
             id: 'tower-${tower.id}',
-            title: 'Tower DOWN - ${tower.towerId}',
-            description: '${tower.location} tower offline (${tower.towerId})',
+            title: 'Access Point DOWN - ${tower.towerId}',
+            description:
+                '${tower.location} access point offline (${tower.towerId})',
             severity: 'critical',
             timestamp: timestamp,
             route: route,
-            category: 'Tower',
+            category: 'Access Point',
           ));
         }
       }
@@ -452,23 +668,178 @@ class _DashboardPageState extends State<DashboardPage> {
           ));
         }
       }
-      // Load added devices from storage
-      final devices = await DeviceStorageService.getDevices();
+      // Load added devices from storage (with error handling)
+      List<AddedDevice> devices = [];
+      try {
+        devices = await DeviceStorageService.getDevices().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {
+            print('Warning: Get devices from storage timed out');
+            return addedDevices; // Return existing data if timeout
+          },
+        );
+      } catch (e) {
+        print('Error loading devices from storage: $e');
+        devices = addedDevices; // Keep existing data on error
+      }
 
-      setState(() {
-        cameras = updatedCameras;
-        totalUpCameras = cameras.where((c) => !isDownStatus(c.status)).length;
-        totalDownCameras = cameras.where((c) => isDownStatus(c.status)).length;
+      // Update added devices status from MMT/Tower/Camera data
+      for (var device in devices) {
+        if (device.type == 'MMT') {
+          device.status = deviceStatuses[device.name] ??
+              deviceStatuses[device.id] ??
+              'DOWN';
+        } else if (device.type == 'Access Point' || device.type == 'Tower') {
+          final tower = updatedTowers.firstWhere(
+            (t) => t.towerId == device.name || t.ipAddress == device.ipAddress,
+            orElse: () => updatedTowers.first,
+          );
+          if (tower.towerId == device.name ||
+              tower.ipAddress == device.ipAddress) {
+            device.status = tower.status;
+          }
+        } else if (device.type == 'CCTV') {
+          final camera = updatedCameras.firstWhere(
+            (c) => c.cameraId == device.name || c.ipAddress == device.ipAddress,
+            orElse: () => updatedCameras.first,
+          );
+          if (camera.cameraId == device.name ||
+              camera.ipAddress == device.ipAddress) {
+            device.status = camera.status;
+          }
+        }
+      }
 
-        towers = updatedTowers;
-        totalOnlineTowers = towers.where((t) => !isDownStatus(t.status)).length;
-        totalTowers = towers.length;
+      // Sort added devices so the newest appears on top (reverse order for drawing)
+      devices.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-        alerts = [...fetchedAlerts, ...generatedAlerts];
-        addedDevices = devices;
-      });
+      // Only update state if we got valid data (not empty)
+      // This prevents status becoming 0 after long standby errors
+      if (mounted &&
+          (updatedCameras.isNotEmpty ||
+              updatedTowers.isNotEmpty ||
+              cameras.isNotEmpty ||
+              towers.isNotEmpty)) {
+        setState(() {
+          cameras = updatedCameras.isNotEmpty ? updatedCameras : cameras;
+          totalUpCameras = cameras.where((c) => !isDownStatus(c.status)).length;
+          totalDownCameras =
+              cameras.where((c) => isDownStatus(c.status)).length;
+
+          towers = updatedTowers.isNotEmpty ? updatedTowers : towers;
+          totalOnlineTowers =
+              towers.where((t) => !isDownStatus(t.status)).length;
+          totalTowers = towers.length;
+
+          alerts = [...fetchedAlerts, ...generatedAlerts];
+          addedDevices = devices;
+
+          // Detect locations with multiple devices where at least one is DOWN
+          _updateBlinkingLocations();
+        });
+      } else if (mounted && cameras.isEmpty && towers.isEmpty) {
+        // First load case - set even if empty
+        setState(() {
+          cameras = updatedCameras;
+          totalUpCameras = cameras.where((c) => !isDownStatus(c.status)).length;
+          totalDownCameras =
+              cameras.where((c) => isDownStatus(c.status)).length;
+
+          towers = updatedTowers;
+          totalOnlineTowers =
+              towers.where((t) => !isDownStatus(t.status)).length;
+          totalTowers = towers.length;
+
+          alerts = [...fetchedAlerts, ...generatedAlerts];
+          addedDevices = devices;
+
+          // Detect locations with multiple devices where at least one is DOWN
+          _updateBlinkingLocations();
+        });
+      }
     } catch (e) {
       print('Error loading dashboard data: $e');
+      // Don't clear data on error - keep existing state to prevent status becoming 0
+      // Just log the error and let auto-refresh retry
+      if (mounted) {
+        // Optionally show error snackbar
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error refreshing data: ${e.toString()}'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _updateDeviceLocationStatuses() async {
+    try {
+      // Get all MMT devices from database
+      final response = await http.get(
+        Uri.parse('http://localhost/monitoring_api/mmt.php?action=getAll'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          final List<dynamic> mmtList = data['data'];
+
+          // Clear and prepare device statuses map
+          deviceStatuses.clear();
+
+          // Ping each MMT device to update status
+          for (var mmt in mmtList) {
+            final deviceId = mmt['device_id']?.toString() ?? '';
+            final ipAddress = mmt['ip_address']?.toString() ?? '';
+
+            if (ipAddress.isNotEmpty) {
+              try {
+                // Test connectivity to IP
+                final testResult = await apiService.testDeviceConnectivity(
+                  targetIp: ipAddress,
+                );
+
+                if (testResult['success'] == true) {
+                  final status = testResult['data']?['status'] ?? 'DOWN';
+
+                  // Update MMT status in database
+                  await apiService.reportDeviceStatus(
+                    deviceType: 'mmt',
+                    deviceId: deviceId,
+                    status: status,
+                    targetIp: ipAddress,
+                  );
+
+                  deviceStatuses[deviceId] = status;
+                } else {
+                  deviceStatuses[deviceId] = 'DOWN';
+                }
+              } catch (e) {
+                print('Error testing MMT $deviceId: $e');
+                deviceStatuses[deviceId] = 'DOWN';
+              }
+            } else {
+              // No IP address, read from database
+              final status = mmt['status']?.toString() ?? 'DOWN';
+              deviceStatuses[deviceId] = status;
+            }
+
+            // Small delay between tests
+            await Future.delayed(const Duration(milliseconds: 50));
+          }
+
+          // Update status in deviceLocationPoints
+          for (var device in deviceLocationPoints) {
+            device.status = deviceStatuses[device.id] ?? 'DOWN';
+          }
+
+          print('Updated ${deviceStatuses.length} device statuses');
+        }
+      }
+    } catch (e) {
+      print('Error updating device location statuses: $e');
     }
   }
 
@@ -517,10 +888,35 @@ class _DashboardPageState extends State<DashboardPage> {
     return isDownStatus(status) ? Colors.red : const Color(0xFF2196F3);
   }
 
+  // Detect locations with multiple devices where at least one is DOWN for blinking effect
+  void _updateBlinkingLocations() {
+    _locationKeysWithDownDevices.clear();
+
+    // Group devices by location
+    final Map<String, List<AddedDevice>> devicesByLocation = {};
+    for (final device in addedDevices) {
+      final key = '${device.latitude}_${device.longitude}';
+      if (!devicesByLocation.containsKey(key)) {
+        devicesByLocation[key] = [];
+      }
+      devicesByLocation[key]!.add(device);
+    }
+
+    // Check locations with 2+ devices and at least one DOWN
+    for (final entry in devicesByLocation.entries) {
+      if (entry.value.length >= 2) {
+        final hasDownDevice = entry.value.any((d) => d.status == 'DOWN');
+        if (hasDownDevice) {
+          _locationKeysWithDownDevices.add(entry.key);
+        }
+      }
+    }
+  }
+
   // Get icon untuk added device
   IconData _getDeviceIcon(String deviceType) {
     switch (deviceType) {
-      case 'Tower':
+      case 'Access Point':
         return Icons.router;
       case 'CCTV':
         return Icons.videocam;
@@ -534,7 +930,7 @@ class _DashboardPageState extends State<DashboardPage> {
   // Get color untuk device berdasarkan tipe
   Color _getDeviceColor(String deviceType) {
     switch (deviceType) {
-      case 'Tower':
+      case 'Access Point':
         return const Color(0xFF9C27B0); // Purple untuk tower
       case 'CCTV':
         return const Color(0xFF00BCD4); // Cyan untuk CCTV
@@ -551,6 +947,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final points = [
       TPKNilamLocation.coordinate,
       ...containerYards.map((c) => c.coordinate),
+      ...deviceLocationPoints.map((d) => d.coordinate),
       ...towerPoints.map((t) => t.coordinate),
       ...specialLocations.map((s) => s.coordinate),
     ];
@@ -676,11 +1073,209 @@ class _DashboardPageState extends State<DashboardPage> {
 
   // Navigate to Gate or Parking CCTV
   void _navigateToSpecialLocation(BuildContext context, String locationId) {
-    String route = '/gate-cctv';
+    String route = '/cctv-gate';
     if (locationId == 'PARKING') {
-      route = '/parking-cctv';
+      route = '/cctv-parking';
     }
     navigateWithLoading(context, route);
+  }
+
+  void _showDevicesAtLocation(
+      BuildContext context, double latitude, double longitude) {
+    // Find all devices at this location
+    final devicesAtLocation = addedDevices
+        .where((d) => d.latitude == latitude && d.longitude == longitude)
+        .toList();
+
+    if (devicesAtLocation.isEmpty) {
+      return;
+    }
+
+    if (devicesAtLocation.length == 1) {
+      // If only one device, navigate directly
+      _navigateAddedDevice(context, devicesAtLocation.first);
+      return;
+    }
+
+    // Show dialog with list of devices at this location
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss',
+      barrierColor: Colors.black.withOpacity(0.5),
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return ScaleTransition(
+          scale: animation,
+          child: Center(
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: 400,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 10,
+                      spreadRadius: 5,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Devices at this Location',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Latitude: ${latitude.toStringAsFixed(6)}\n'
+                      'Longitude: ${longitude.toStringAsFixed(6)}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 300),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: devicesAtLocation.length,
+                        itemBuilder: (context, index) {
+                          final device = devicesAtLocation[index];
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.pop(context);
+                              _navigateAddedDevice(context, device);
+                            },
+                            child: MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: device.status == 'UP'
+                                        ? Colors.green
+                                        : Colors.red,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _getDeviceIcon(device.type),
+                                      color: device.status == 'UP'
+                                          ? Colors.green
+                                          : Colors.red,
+                                      size: 24,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            device.name,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '${device.type} • ${device.status}',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.black54,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Icon(
+                                      Icons.arrow_forward_ios,
+                                      size: 16,
+                                      color: Colors.black54,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey[300],
+                            foregroundColor: Colors.black,
+                          ),
+                          child: const Text('Close'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _navigateAddedDevice(BuildContext context, AddedDevice device) {
+    final type = device.type;
+    if (type == 'Access Point' || type == 'Tower') {
+      String route = '/network';
+      if (device.containerYard == 'CY2') {
+        route = '/network-cy2';
+      } else if (device.containerYard == 'CY3') {
+        route = '/network-cy3';
+      }
+      navigateWithLoading(context, route);
+      return;
+    }
+
+    if (type == 'CCTV') {
+      final location = device.locationName.toLowerCase();
+      String route = '/cctv';
+      if (location.contains('gate')) {
+        route = '/cctv-gate';
+      } else if (location.contains('parking')) {
+        route = '/cctv-parking';
+      } else if (device.containerYard == 'CY2') {
+        route = '/cctv-cy2';
+      } else if (device.containerYard == 'CY3') {
+        route = '/cctv-cy3';
+      }
+      navigateWithLoading(context, route);
+      return;
+    }
+
+    // MMT: no dedicated page yet, show detail info
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${device.name} (MMT) - ${device.status}'),
+        duration: const Duration(seconds: 2),
+        backgroundColor: device.status == 'UP' ? Colors.green : Colors.red,
+      ),
+    );
   }
 
   Widget _buildHeader(BuildContext context) {
@@ -703,7 +1298,7 @@ class _DashboardPageState extends State<DashboardPage> {
           _buildHeaderOpenButton('Dashboard', const DashboardPage(),
               isActive: true),
           const SizedBox(width: 12),
-          _buildHeaderOpenButton('Tower', const NetworkPage()),
+          _buildHeaderOpenButton('Access Point', const NetworkPage()),
           const SizedBox(width: 12),
           _buildHeaderOpenButton('CCTV', const CCTVPage()),
           const SizedBox(width: 12),
@@ -842,6 +1437,8 @@ class _DashboardPageState extends State<DashboardPage> {
             ],
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
@@ -855,12 +1452,16 @@ class _DashboardPageState extends State<DashboardPage> {
                         color: Colors.white, size: 28),
                   ),
                   const SizedBox(width: 12),
-                  const Text(
-                    'Tower Monitoring',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
+                  const Expanded(
+                    child: Text(
+                      'Access Point Monitoring',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -869,17 +1470,22 @@ class _DashboardPageState extends State<DashboardPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildTowerStatusTile(
-                    count: totalOnlineTowers,
-                    label: 'UP',
-                    color: Colors.green,
-                    icon: Icons.wifi,
+                  Expanded(
+                    child: _buildTowerStatusTile(
+                      count: totalOnlineTowers,
+                      label: 'UP',
+                      color: Colors.green,
+                      icon: Icons.wifi,
+                    ),
                   ),
-                  _buildTowerStatusTile(
-                    count: totalDownTowers,
-                    label: 'DOWN',
-                    color: Colors.red,
-                    icon: Icons.wifi_off,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildTowerStatusTile(
+                      count: totalDownTowers,
+                      label: 'DOWN',
+                      color: Colors.red,
+                      icon: Icons.wifi_off,
+                    ),
                   ),
                 ],
               ),
@@ -1275,61 +1881,23 @@ class _DashboardPageState extends State<DashboardPage> {
                                 ),
                               )),
 
-                          // Added Devices - Device yang ditambahkan user
-                          ...addedDevices.map((device) => Marker(
-                                point: device.coordinate,
+                          // Device Locations (CC/RTG/RS)
+                          ...deviceLocationPoints.map((location) => Marker(
+                                point: location.coordinate,
                                 width: 50,
-                                height: 50,
+                                height: 70,
                                 child: GestureDetector(
                                   onTap: () {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                            '${device.name} (${device.type}) - ${device.locationName}'),
+                                            '${location.name} - ${location.status}'),
                                         duration: const Duration(seconds: 2),
-                                        backgroundColor:
-                                            _getDeviceColor(device.type),
+                                        backgroundColor: location.status == 'UP'
+                                            ? Colors.green
+                                            : Colors.red,
                                       ),
                                     );
-                                  },
-                                  child: MouseRegion(
-                                    cursor: SystemMouseCursors.click,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: _getDeviceColor(device.type),
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                            color: Colors.white, width: 2),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color:
-                                                Colors.black.withOpacity(0.3),
-                                            blurRadius: 6,
-                                            offset: const Offset(0, 2),
-                                          )
-                                        ],
-                                      ),
-                                      child: Center(
-                                        child: Icon(
-                                          _getDeviceIcon(device.type),
-                                          color: Colors.white,
-                                          size: 24,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              )),
-
-                          // Special Locations - Gate & Parking (Clickable)
-                          ...specialLocations.map((location) => Marker(
-                                point: location.coordinate,
-                                width: 60,
-                                height: 60,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    _navigateToSpecialLocation(
-                                        context, location.id);
                                   },
                                   child: MouseRegion(
                                     cursor: SystemMouseCursors.click,
@@ -1337,28 +1905,77 @@ class _DashboardPageState extends State<DashboardPage> {
                                       mainAxisAlignment:
                                           MainAxisAlignment.start,
                                       children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: location.color,
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                                color: Colors.white, width: 2),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black
-                                                    .withOpacity(0.3),
-                                                blurRadius: 4,
-                                                offset: const Offset(0, 2),
-                                              )
-                                            ],
+                                        ColorFiltered(
+                                          colorFilter: ColorFilter.mode(
+                                            location.status == 'UP'
+                                                ? Colors.green
+                                                : Colors.red,
+                                            BlendMode.modulate,
                                           ),
-                                          child: Icon(
-                                            location.icon,
-                                            color: Colors.white,
-                                            size: 24,
+                                          child: Image.asset(
+                                            location.iconAsset,
+                                            width: 40,
+                                            height: 40,
+                                            fit: BoxFit.contain,
                                           ),
                                         ),
+                                        const SizedBox(height: 2),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black87,
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            location.id,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 8,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              )),
+
+                          // Special Locations - Gate & Parking (Clickable - DRAWN LATER - APPEARS ON TOP)
+                          ...specialLocations.map((location) => Marker(
+                                point: location.coordinate,
+                                width: 60,
+                                height: 70,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(location.name),
+                                        duration: const Duration(seconds: 2),
+                                        backgroundColor: location.color,
+                                      ),
+                                    );
+                                  },
+                                  child: MouseRegion(
+                                    cursor: SystemMouseCursors.click,
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.start,
+                                      children: [
+                                        location.iconAsset != null
+                                            ? Image.asset(
+                                                location.iconAsset!,
+                                                width: 40,
+                                                height: 40,
+                                                fit: BoxFit.contain,
+                                              )
+                                            : Icon(
+                                                location.icon,
+                                                color: location.color,
+                                                size: 40,
+                                              ),
                                         const SizedBox(height: 2),
                                         Container(
                                           padding: const EdgeInsets.symmetric(
@@ -1383,18 +2000,126 @@ class _DashboardPageState extends State<DashboardPage> {
                                 ),
                               )),
 
-                          // Tower/Access Points - Icon Tower Hitam (ADDED LAST - APPEARS ON TOP)
+                          // Added Devices - User-added devices (DRAWN LAST - APPEARS ON TOP)
+                          ...addedDevices.map((device) {
+                            final locationKey =
+                                '${device.latitude}_${device.longitude}';
+                            final isBlinkingLocation =
+                                _locationKeysWithDownDevices
+                                    .contains(locationKey);
+
+                            // Determine icon color with blinking effect
+                            Color iconColor;
+                            Color backgroundColor;
+
+                            if (isBlinkingLocation && !_isBlinkVisible) {
+                              // Blinking state - show warning color (red)
+                              iconColor = Colors.red;
+                              backgroundColor = Colors.red;
+                            } else {
+                              // Normal state
+                              iconColor = device.status == 'UP'
+                                  ? Colors.green
+                                  : Colors.red;
+                              backgroundColor = device.status == 'UP'
+                                  ? Colors.green
+                                  : Colors.red;
+                            }
+
+                            return Marker(
+                              point: LatLng(device.latitude, device.longitude),
+                              width: 60,
+                              height: 70,
+                              child: GestureDetector(
+                                onTap: () {
+                                  print(
+                                      'DEBUG: Tapped added device at ${device.latitude}, ${device.longitude}');
+                                  _showDevicesAtLocation(context,
+                                      device.latitude, device.longitude);
+                                },
+                                behavior: HitTestBehavior.opaque,
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.start,
+                                    children: [
+                                      Icon(
+                                        _getDeviceIcon(device.type),
+                                        color: iconColor,
+                                        size: 40,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 4),
+                                        decoration: BoxDecoration(
+                                          color: backgroundColor,
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          device.name,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 8,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+
+                          // Tower/Access Points - Tower PNG Image
                           ...towerPoints.map((point) {
                             return Marker(
                               point: point.coordinate,
-                              width: 40,
-                              height: 40,
-                              child: Tooltip(
-                                message: point.name,
-                                child: const Icon(
-                                  Icons.router,
-                                  color: Colors.black,
-                                  size: 36,
+                              width: 50,
+                              height: 70,
+                              child: GestureDetector(
+                                onTap: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(point.name),
+                                      duration: const Duration(seconds: 2),
+                                      backgroundColor: Colors.black87,
+                                    ),
+                                  );
+                                },
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.start,
+                                    children: [
+                                      Image.asset(
+                                        'assets/images/Tower.png',
+                                        width: 40,
+                                        height: 40,
+                                        fit: BoxFit.contain,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black87,
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          point.label,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 8,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             );

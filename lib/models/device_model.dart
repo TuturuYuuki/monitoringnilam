@@ -10,6 +10,7 @@ class AddedDevice {
   final double longitude;
   final String containerYard;
   final DateTime createdAt;
+  String status; // UP or DOWN - mutable for updates
 
   AddedDevice({
     required this.id,
@@ -21,6 +22,7 @@ class AddedDevice {
     required this.longitude,
     required this.containerYard,
     required this.createdAt,
+    this.status = 'DOWN', // default DOWN
   });
 
   LatLng get coordinate => LatLng(latitude, longitude);
@@ -37,6 +39,7 @@ class AddedDevice {
       'longitude': longitude,
       'containerYard': containerYard,
       'createdAt': createdAt.toIso8601String(),
+      'status': status,
     };
   }
 
@@ -52,6 +55,7 @@ class AddedDevice {
       longitude: json['longitude'] as double,
       containerYard: json['containerYard'] as String,
       createdAt: DateTime.parse(json['createdAt'] as String),
+      status: json['status'] as String? ?? 'DOWN',
     );
   }
 }

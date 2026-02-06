@@ -25,8 +25,10 @@ void main() {
 
 // Helper function untuk navigasi dengan loading animation
 Future<void> navigateWithLoading(BuildContext context, String routeName) async {
+  final rootNav = Navigator.of(context, rootNavigator: true);
   showDialog(
     context: context,
+    useRootNavigator: true,
     barrierDismissible: false,
     builder: (context) => WillPopScope(
       onWillPop: () async => false,
@@ -56,12 +58,25 @@ Future<void> navigateWithLoading(BuildContext context, String routeName) async {
     ),
   );
 
-  // Delay 1 detik
   await Future.delayed(const Duration(milliseconds: 500));
 
-  // Navigator back dan ganti route
-  Navigator.pop(context);
-  Navigator.pushReplacementNamed(context, routeName);
+  try {
+    if (rootNav.canPop()) {
+      rootNav.pop();
+    }
+    rootNav.pushReplacementNamed(routeName);
+  } catch (e) {
+    if (rootNav.canPop()) {
+      rootNav.pop();
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Navigasi gagal: $routeName'),
+        duration: const Duration(seconds: 2),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
 }
 
 // Global logout dialog function with AuthHelper
@@ -413,17 +428,11 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         fontFamily: 'Arial',
       ),
-      initialRoute: '/dashboard',
-      onGenerateInitialRoutes: (_) => [
-        MaterialPageRoute(
-          builder: (context) => const DashboardPage(),
-          settings: const RouteSettings(name: '/dashboard'),
-        ),
-      ],
+      initialRoute: '/',
+      home: const AuthWrapper(),
       routes: {
         '/login': (context) => const LoginPage(),
         '/signup': (context) => const SignUpPage(),
-        '/': (context) => const DashboardPage(),
         '/dashboard': (context) => const DashboardPage(),
         '/add-device': (context) => const AddDevicePage(),
         '/network': (context) => const NetworkPage(),
@@ -439,6 +448,58 @@ class MyApp extends StatelessWidget {
         '/profile': (context) => const ProfilePage(),
         '/edit-profile': (context) => const EditProfilePage(),
         '/change-password': (context) => const ChangePasswordPage(),
+      },
+    );
+  }
+}
+
+// Wrapper widget untuk cek authentication status
+class AuthWrapper extends StatefulWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  late Future<bool> _isLoggedInFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _isLoggedInFuture = AuthHelper.isLoggedIn();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: _isLoggedInFuture,
+      builder: (context, snapshot) {
+        // Load state: show loading screen
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  const Color(0xFF1976D2).withOpacity(0.7),
+                ),
+              ),
+            ),
+          );
+        }
+
+        // Error state: default to login
+        if (snapshot.hasError) {
+          return const LoginPage();
+        }
+
+        // Jika sudah login, tampilkan dashboard
+        if (snapshot.data == true) {
+          return const DashboardPage();
+        }
+
+        // Jika belum login, tampilkan login page
+        return const LoginPage();
       },
     );
   }

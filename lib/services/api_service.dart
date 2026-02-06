@@ -71,7 +71,7 @@ class ApiService {
   Future<User?> getProfile(int userId) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl?endpoint=auth&action=profile&user_id=$userId'),
+        Uri.parse('$baseUrl?endpoint=auth&action=get-profile&user_id=$userId'),
       );
 
       if (response.statusCode == 200) {
@@ -82,7 +82,33 @@ class ApiService {
       }
       return null;
     } catch (e) {
+      print('Error in getProfile: $e');
       return null;
+    }
+  }
+
+  Future<Map<String, dynamic>> getUserProfile(int userId) async {
+    try {
+      print('=== API getUserProfile ===');
+      print('User ID: $userId');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl?endpoint=auth&action=get-profile&user_id=$userId'),
+      );
+
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('Decoded data: $data');
+        return data;
+      } else {
+        return {'success': false, 'message': 'Failed to get profile'};
+      }
+    } catch (e) {
+      print('Error in getUserProfile: $e');
+      return {'success': false, 'message': 'Error: $e'};
     }
   }
 
@@ -207,12 +233,12 @@ class ApiService {
       int userId, String newEmail) async {
     try {
       print('=== API: Request Email Change OTP ===');
-      print('URL: $baseUrl?endpoint=auth&action=request-email-otp');
+      print('URL: $baseUrl?endpoint=auth&action=request-email-change-otp');
       print('User ID: $userId');
       print('New Email: $newEmail');
 
       final response = await http.post(
-        Uri.parse('$baseUrl?endpoint=auth&action=request-email-otp'),
+        Uri.parse('$baseUrl?endpoint=auth&action=request-email-change-otp'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'user_id': userId,
@@ -244,12 +270,12 @@ class ApiService {
       int userId, String newEmail, String otp) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl?endpoint=auth&action=verify-email-otp'),
+        Uri.parse('$baseUrl?endpoint=auth&action=verify-email-change-otp'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'user_id': userId,
           'new_email': newEmail,
-          'otp': otp,
+          'otp_code': otp,
         }),
       );
 
@@ -826,6 +852,183 @@ class ApiService {
         };
       }
     } catch (e) {
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  // Create device methods
+  Future<Map<String, dynamic>> createTower({
+    required String towerId,
+    required String location,
+    required String ipAddress,
+    required String containerYard,
+    int? deviceCount,
+    String? status,
+    String? traffic,
+    String? uptime,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl?endpoint=network&action=create'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'tower_id': towerId,
+          'location': location,
+          'ip_address': ipAddress,
+          'container_yard': containerYard,
+          'device_count': deviceCount ?? 1,
+          'status': status ?? 'UP',
+          'traffic': traffic ?? '0 Mbps',
+          'uptime': uptime ?? '0%',
+        }),
+      );
+
+      print('Create Tower Response Status: ${response.statusCode}');
+      print('Create Tower Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {'success': false, 'message': 'Failed to create tower'};
+      }
+    } catch (e) {
+      print('Error creating tower: $e');
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> createCamera({
+    required String cameraId,
+    required String location,
+    required String ipAddress,
+    required String containerYard,
+    String? status,
+    String? type,
+    String? areaType,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl?endpoint=cctv&action=create'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'camera_id': cameraId,
+          'location': location,
+          'ip_address': ipAddress,
+          'container_yard': containerYard,
+          'status': status ?? 'UP',
+          'type': type ?? 'Fixed',
+          'area_type': areaType ?? 'Warehouse',
+        }),
+      );
+
+      print('Create Camera Response Status: ${response.statusCode}');
+      print('Create Camera Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {'success': false, 'message': 'Failed to create camera'};
+      }
+    } catch (e) {
+      print('Error creating camera: $e');
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> createMMT({
+    required String mmtId,
+    required String location,
+    required String ipAddress,
+    required String containerYard,
+    String? status,
+    String? type,
+    int? deviceCount,
+    String? traffic,
+    String? uptime,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl?endpoint=mmt&action=create'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'mmt_id': mmtId,
+          'location': location,
+          'ip_address': ipAddress,
+          'container_yard': containerYard,
+          'status': status ?? 'UP',
+          'type': type ?? 'Mine Monitor',
+          'device_count': deviceCount ?? 1,
+          'traffic': traffic ?? '0 Mbps',
+          'uptime': uptime ?? '0%',
+        }),
+      );
+
+      print('Create MMT Response Status: ${response.statusCode}');
+      print('Create MMT Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {'success': false, 'message': 'Failed to create MMT'};
+      }
+    } catch (e) {
+      print('Error creating MMT: $e');
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  // Device connectivity test
+  Future<Map<String, dynamic>> testDeviceConnectivity({
+    String targetIp = '10.2.71.60',
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl?endpoint=device-ping&action=test&ip=$targetIp'),
+      );
+
+      print('Device Ping Test Response Status: ${response.statusCode}');
+      print('Device Ping Test Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {'success': false, 'message': 'Failed to test connectivity'};
+      }
+    } catch (e) {
+      print('Error testing device connectivity: $e');
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  // Report device status
+  Future<Map<String, dynamic>> reportDeviceStatus({
+    required String deviceType,
+    required String deviceId,
+    required String status,
+    String targetIp = '10.2.71.60',
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl?endpoint=device-ping&action=report'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'type': deviceType,
+          'device_id': deviceId,
+          'status': status,
+          'target_ip': targetIp,
+        }),
+      );
+
+      print('Report Device Status Response Status: ${response.statusCode}');
+      print('Report Device Status Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {'success': false, 'message': 'Failed to report device status'};
+      }
+    } catch (e) {
+      print('Error reporting device status: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }

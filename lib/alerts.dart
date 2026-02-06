@@ -64,29 +64,29 @@ class _AlertsPageState extends State<AlertsPage> {
       'route': '/cctv-cy3',
     },
     {
-      'title': 'Tower WARNING - CY1 T10',
-      'description': 'Tower T10 (CY1) latency/packet loss detected',
+      'title': 'Access Point WARNING - CY1 T10',
+      'description': 'Access Point T10 (CY1) latency/packet loss detected',
       'severity': 'warning',
       'timestamp': '23 minutes ago',
       'route': '/network',
     },
     {
-      'title': 'Tower WARNING - CY2 T3',
-      'description': 'Tower T3 (CY2) degraded performance',
+      'title': 'Access Point WARNING - CY2 T3',
+      'description': 'Access Point T3 (CY2) degraded performance',
       'severity': 'warning',
       'timestamp': '45 minutes ago',
       'route': '/network-cy2',
     },
     {
-      'title': 'Tower WARNING - CY3 T14',
-      'description': 'Tower T14 (CY3) degraded performance',
+      'title': 'Access Point WARNING - CY3 T14',
+      'description': 'Access Point T14 (CY3) degraded performance',
       'severity': 'warning',
       'timestamp': '1 hour ago',
       'route': '/network-cy3',
     },
     {
-      'title': 'Tower WARNING - CY3 T16',
-      'description': 'Tower T16 (CY3) degraded performance',
+      'title': 'Access Point WARNING - CY3 T16',
+      'description': 'Access Point T16 (CY3) degraded performance',
       'severity': 'warning',
       'timestamp': '1 hour ago',
       'route': '/network-cy3',
@@ -251,12 +251,13 @@ class _AlertsPageState extends State<AlertsPage> {
 
           generatedAlerts.add(Alert(
             id: alertId,
-            title: 'Tower DOWN - ${tower.towerId}',
-            description: '${tower.location} tower offline (${tower.towerId})',
+            title: 'Access Point DOWN - ${tower.towerId}',
+            description:
+                '${tower.location} access point offline (${tower.towerId})',
             severity: 'critical',
             timestamp: timestamp,
             route: route,
-            category: 'Tower',
+            category: 'Access Point',
           ));
         }
       }
@@ -370,7 +371,7 @@ class _AlertsPageState extends State<AlertsPage> {
                       _buildHeaderOpenButton('Dashboard', '/dashboard',
                           isActive: false),
                       const SizedBox(width: 8),
-                      _buildHeaderOpenButton('Tower', '/network',
+                      _buildHeaderOpenButton('Access Point', '/network',
                           isActive: false),
                       const SizedBox(width: 8),
                       _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
@@ -436,7 +437,8 @@ class _AlertsPageState extends State<AlertsPage> {
                 _buildHeaderOpenButton('Dashboard', '/dashboard',
                     isActive: false),
                 const SizedBox(width: 12),
-                _buildHeaderOpenButton('Tower', '/network', isActive: false),
+                _buildHeaderOpenButton('Access Point', '/network',
+                    isActive: false),
                 const SizedBox(width: 12),
                 _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
                 const SizedBox(width: 12),
@@ -598,11 +600,11 @@ class _AlertsPageState extends State<AlertsPage> {
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
     final towerAlerts =
-        sortedActiveAlerts.where((a) => a.category == 'Tower').toList();
+        sortedActiveAlerts.where((a) => a.category == 'Access Point').toList();
     final cctvAlerts =
         sortedActiveAlerts.where((a) => a.category == 'CCTV').toList();
     final otherAlerts = sortedActiveAlerts
-        .where((a) => a.category != 'Tower' && a.category != 'CCTV')
+        .where((a) => a.category != 'Access Point' && a.category != 'CCTV')
         .toList();
 
     return Container(
@@ -657,8 +659,8 @@ class _AlertsPageState extends State<AlertsPage> {
                   physics: const BouncingScrollPhysics(),
                   children: [
                     if (towerAlerts.isNotEmpty) ...[
-                      _buildCategoryHeader(
-                          'Tower Alerts', towerAlerts.length, Colors.blue),
+                      _buildCategoryHeader('Access Point Alerts',
+                          towerAlerts.length, Colors.blue),
                       ...towerAlerts.map((alert) => _buildAlertItem(alert)),
                       const SizedBox(height: 16),
                     ],
@@ -923,8 +925,11 @@ class _AlertsPageState extends State<AlertsPage> {
               style: TextStyle(color: Colors.black54, fontSize: 14),
             )
           else ...[
-            _buildCategoryBar('Tower', categories['Tower']!.length, total,
-                _categoryColor(categories['Tower']!)),
+            _buildCategoryBar(
+                'Access Point',
+                categories['Access Point']!.length,
+                total,
+                _categoryColor(categories['Access Point']!)),
             const SizedBox(height: 12),
             _buildCategoryBar('CCTV', categories['CCTV']!.length, total,
                 _categoryColor(categories['CCTV']!)),
@@ -941,7 +946,7 @@ class _AlertsPageState extends State<AlertsPage> {
 
   Map<String, List<Alert>> _alertsByCategory() {
     final categories = {
-      'Tower': <Alert>[],
+      'Access Point': <Alert>[],
       'CCTV': <Alert>[],
       'Other': <Alert>[],
     };
@@ -949,7 +954,7 @@ class _AlertsPageState extends State<AlertsPage> {
     for (final alert in activeAlerts) {
       final route = alert.route.toLowerCase();
       if (route.contains('tower')) {
-        categories['Tower']!.add(alert);
+        categories['Access Point']!.add(alert);
       } else if (route.contains('cctv')) {
         categories['CCTV']!.add(alert);
       } else {
