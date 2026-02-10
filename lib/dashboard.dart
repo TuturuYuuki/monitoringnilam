@@ -529,7 +529,9 @@ class _DashboardPageState extends State<DashboardPage> {
     mapController = MapController();
     apiService = ApiService();
     _loadDashboardData();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    // Refresh every 1 second for fast WiFi reconnect detection
+    // When ping timeout reduced to 2 seconds, this ensures quick status update
+    _refreshTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
         _loadDashboardData();
       }
@@ -777,8 +779,11 @@ class _DashboardPageState extends State<DashboardPage> {
   Future<void> _updateDeviceLocationStatuses() async {
     try {
       // Get all MMT devices from database
+      // The realtime ping check has already updated all statuses in the database
+      // So we just read the current status from database without individual pings
       final response = await http.get(
-        Uri.parse('http://localhost/monitoring_api/mmt.php?action=getAll'),
+        Uri.parse(
+            'http://localhost/monitoring_api/index.php?endpoint=mmt&action=all'),
       );
 
       if (response.statusCode == 200) {
@@ -789,45 +794,18 @@ class _DashboardPageState extends State<DashboardPage> {
           // Clear and prepare device statuses map
           deviceStatuses.clear();
 
-          // Ping each MMT device to update status
+          // Update device statuses from database
           for (var mmt in mmtList) {
-            final deviceId = mmt['device_id']?.toString() ?? '';
+            final deviceId =
+                mmt['id']?.toString() ?? mmt['device_id']?.toString() ?? '';
             final ipAddress = mmt['ip_address']?.toString() ?? '';
 
-            if (ipAddress.isNotEmpty) {
-              try {
-                // Test connectivity to IP
-                final testResult = await apiService.testDeviceConnectivity(
-                  targetIp: ipAddress,
-                );
+            // Read status directly from database (already updated by realtime ping)
+            final status = mmt['status']?.toString().toUpperCase() ?? 'DOWN';
 
-                if (testResult['success'] == true) {
-                  final status = testResult['data']?['status'] ?? 'DOWN';
-
-                  // Update MMT status in database
-                  await apiService.reportDeviceStatus(
-                    deviceType: 'mmt',
-                    deviceId: deviceId,
-                    status: status,
-                    targetIp: ipAddress,
-                  );
-
-                  deviceStatuses[deviceId] = status;
-                } else {
-                  deviceStatuses[deviceId] = 'DOWN';
-                }
-              } catch (e) {
-                print('Error testing MMT $deviceId: $e');
-                deviceStatuses[deviceId] = 'DOWN';
-              }
-            } else {
-              // No IP address, read from database
-              final status = mmt['status']?.toString() ?? 'DOWN';
+            if (deviceId.isNotEmpty) {
               deviceStatuses[deviceId] = status;
             }
-
-            // Small delay between tests
-            await Future.delayed(const Duration(milliseconds: 50));
           }
 
           // Update status in deviceLocationPoints
@@ -835,7 +813,8 @@ class _DashboardPageState extends State<DashboardPage> {
             device.status = deviceStatuses[device.id] ?? 'DOWN';
           }
 
-          print('Updated ${deviceStatuses.length} device statuses');
+          print(
+              'Updated ${deviceStatuses.length} device statuses from database');
         }
       }
     } catch (e) {
@@ -848,17 +827,29 @@ class _DashboardPageState extends State<DashboardPage> {
       const baseUrl = 'http://localhost/monitoring_api/index.php';
 
       // Call realtime ping endpoint yang update semua towers dan cameras sekaligus
-      final response = await http.get(
-        Uri.parse('$baseUrl?endpoint=realtime&type=all'),
+      final response = await http
+          .get(
+        Uri.parse('$baseUrl?endpoint=realtime&action=all'),
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('Realtime ping timed out - skipping');
+          return http.Response('{"success":false,"message":"Timeout"}', 408);
+        },
       );
 
-      // Wait a moment for database to update
-      await Future.delayed(const Duration(seconds: 1));
-
-      print('Realtime ping check completed: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        // Wait a moment for database to update
+        await Future.delayed(const Duration(milliseconds: 500));
+        print('Realtime ping check completed: ${response.statusCode}');
+      } else {
+        print('Realtime ping failed: ${response.statusCode}');
+      }
     } catch (e) {
-      print('Error triggering ping check: $e');
-      rethrow;
+      // Silent fail - just log, don't throw
+      // This prevents error snackbar spam during auto-refresh
+      print('Error triggering ping check (ignored): $e');
     }
   }
 

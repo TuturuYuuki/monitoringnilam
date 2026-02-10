@@ -977,17 +977,45 @@ class ApiService {
     }
   }
 
-  // Device connectivity test
+  // Trigger realtime ping untuk semua devices
+  Future<Map<String, dynamic>> triggerRealtimePing() async {
+    try {
+      final response = await http
+          .get(
+        Uri.parse('$baseUrl?endpoint=realtime&action=all'),
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('Realtime ping timed out after 10 seconds');
+          return http.Response('{"success":false,"message":"Timeout"}', 408);
+        },
+      );
+
+      print('Realtime Ping Response Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {'success': false, 'message': 'Failed to trigger realtime ping'};
+      }
+    } catch (e) {
+      print('Error triggering realtime ping: $e');
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  // Test connectivity untuk IP spesifik
   Future<Map<String, dynamic>> testDeviceConnectivity({
-    String targetIp = '10.2.71.60',
+    required String targetIp,
   }) async {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl?endpoint=device-ping&action=test&ip=$targetIp'),
       );
 
-      print('Device Ping Test Response Status: ${response.statusCode}');
-      print('Device Ping Test Response Body: ${response.body}');
+      print('Device Connectivity Test Response: ${response.statusCode}');
+      print('Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -1005,7 +1033,7 @@ class ApiService {
     required String deviceType,
     required String deviceId,
     required String status,
-    String targetIp = '10.2.71.60',
+    required String targetIp,
   }) async {
     try {
       final response = await http.post(

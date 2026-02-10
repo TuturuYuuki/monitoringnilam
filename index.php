@@ -35,6 +35,66 @@ if ($conn->connect_error) {
 
 $conn->set_charset("utf8");
 
+// ==================== SHARED HELPER FUNCTIONS ====================
+/**
+ * Get server's local network subnets
+ * Returns array of /24 subnets (first 3 octets)
+ */
+function getServerNetworkSubnets() {
+    $subnets = [];
+    
+    // Get local addresses
+    $hostName = @gethostname();
+    $hostIp = @gethostbyname($hostName);
+    
+    if ($hostIp && $hostIp !== $hostName) {
+        $subnets[] = getSubnetFromIp($hostIp);
+    }
+    
+    // Also get localhost network
+    $subnets[] = "127.0.0"; // localhost subnet
+    
+    // Common private network subnets
+    $subnets[] = "192.168.0";
+    $subnets[] = "192.168.1";
+    $subnets[] = "10.0.0";
+    $subnets[] = "10.0.1";
+    $subnets[] = "172.16.0";
+    
+    return array_unique($subnets);
+}
+
+/**
+ * Extract /24 subnet from IP (first 3 octets)
+ * Example: 192.168.1.100 -> 192.168.1
+ */
+function getSubnetFromIp($ip) {
+    $parts = explode('.', $ip);
+    if (count($parts) === 4) {
+        return implode('.', array_slice($parts, 0, 3));
+    }
+    return $ip;
+}
+
+/**
+ * Check if IP is in same subnet as server
+ */
+function isInSameSubnet($ip, $serverSubnets) {
+    if (!is_array($serverSubnets)) {
+        $serverSubnets = [$serverSubnets];
+    }
+    
+    $ipSubnet = getSubnetFromIp($ip);
+    
+    foreach ($serverSubnets as $serverSubnet) {
+        if ($ipSubnet === $serverSubnet) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
 // ==================== ENDPOINT ROUTING ====================
 
 $endpoint = isset($_GET['endpoint']) ? $_GET['endpoint'] : '';
@@ -94,6 +154,15 @@ try {
             } else {
                 http_response_code(404);
                 echo json_encode(['success' => false, 'message' => 'Alerts PHP file not found']);
+            }
+            break;
+            
+        case 'device-ping':
+            if (file_exists('device-ping.php')) {
+                require 'device-ping.php';
+            } else {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'message' => 'Device Ping PHP file not found']);
             }
             break;
             

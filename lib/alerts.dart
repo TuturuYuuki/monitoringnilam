@@ -107,8 +107,8 @@ class _AlertsPageState extends State<AlertsPage> {
     super.initState();
     apiService = ApiService();
     _loadAlerts();
-    // Auto-refresh data dari database dan update UI setiap 10 detik untuk monitoring realtime
-    _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    // Auto-refresh data dari database dan update UI setiap 2 detik untuk monitoring realtime
+    _timer = Timer.periodic(const Duration(seconds: 2), (timer) {
       if (mounted) {
         _loadAlerts(); // Refresh data dari database secara real-time
       }
@@ -218,6 +218,8 @@ class _AlertsPageState extends State<AlertsPage> {
 
   Future<void> _loadAlerts() async {
     try {
+      await apiService.triggerRealtimePing();
+
       // Load all data
       final fetchedAlerts = await apiService.getAllAlerts();
       final fetchedTowers = await apiService.getAllTowers();

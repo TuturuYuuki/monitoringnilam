@@ -42,8 +42,8 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
   }
 
   void _startAutoRefresh() {
-    // Refresh setiap 10 detik untuk monitoring realtime
-    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    // Refresh setiap 2 detik untuk monitoring realtime
+    _refreshTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       if (mounted) {
         _loadTowers();
       }
@@ -73,46 +73,15 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     try {
       print('=== Starting Realtime Ping for All Towers (CY2) ===');
 
-      // Test connectivity untuk setiap tower dengan IP masing-masing
-      for (final tower in towers) {
-        if (tower.ipAddress.isEmpty) {
-          print('Skipping ${tower.towerId}: No IP address');
-          continue;
-        }
+      // Trigger backend realtime ping untuk semua devices
+      final pingResult = await apiService.triggerRealtimePing();
 
-        print('Testing connectivity for ${tower.towerId}: ${tower.ipAddress}');
-
-        try {
-          // Test connectivity ke IP tower yang spesifik
-          final testResult = await apiService.testDeviceConnectivity(
-            targetIp: tower.ipAddress,
-          );
-
-          if (testResult['success'] == true) {
-            final towerStatus = testResult['data']?['status'] ?? 'DOWN';
-            print('${tower.towerId} connectivity test result: $towerStatus');
-
-            // Update tower status berdasarkan test result
-            final updateResult = await apiService.reportDeviceStatus(
-              deviceType: 'tower',
-              deviceId: tower.towerId,
-              status: towerStatus,
-              targetIp: tower.ipAddress,
-            );
-
-            print('${tower.towerId} status update: ${updateResult['success']}');
-          }
-        } catch (e) {
-          print('Error testing ${tower.towerId}: $e');
-        }
-
-        // Small delay between tests to avoid overwhelming the server
-        await Future.delayed(const Duration(milliseconds: 100));
+      if (pingResult['success'] == true) {
+        print('Realtime ping completed: ${pingResult['message']}');
+        print('IPs checked: ${pingResult['ips_checked']}');
       }
 
       print('=== Realtime Ping Completed (CY2) ===');
-      // Wait for database to update
-      await Future.delayed(const Duration(milliseconds: 500));
     } catch (e) {
       print('Error triggering realtime ping: $e');
     }
@@ -123,17 +92,25 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
       const baseUrl = 'http://localhost/monitoring_api/index.php';
 
       // Call realtime ping endpoint yang update semua towers sekaligus
-      final response = await http.get(
-        Uri.parse('\$baseUrl?endpoint=realtime&type=all'),
+      final response = await http
+          .get(
+        Uri.parse('$baseUrl?endpoint=realtime&action=all'),
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('Realtime ping timed out');
+          return http.Response('{"success":false}', 408);
+        },
       );
 
-      // Wait a moment for database to update
-      await Future.delayed(const Duration(seconds: 1));
-
-      print('Realtime ping check completed: \${response.statusCode}');
+      if (response.statusCode == 200) {
+        // Wait a moment for database to update
+        await Future.delayed(const Duration(milliseconds: 500));
+        print('Realtime ping check completed');
+      }
     } catch (e) {
-      print('Error triggering ping check: $e');
-      rethrow;
+      print('Error triggering ping check (ignored): $e');
     }
   }
 

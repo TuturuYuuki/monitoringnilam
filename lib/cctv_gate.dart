@@ -119,8 +119,8 @@ class _GateCCTVPageState extends State<GateCCTVPage> {
   void initState() {
     super.initState();
     _loadCameras();
-    // Refresh setiap 10 detik untuk monitoring realtime
-    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    // Refresh setiap 2 detik untuk monitoring realtime
+    _refreshTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       if (mounted) {
         _loadCameras();
       }
@@ -132,50 +132,14 @@ class _GateCCTVPageState extends State<GateCCTVPage> {
       print('=== Starting Realtime Ping for All Cameras (GATE) ===');
 
       final apiService = ApiService();
-      final cameras = await apiService.getCamerasByAreaType('Entrance');
+      final pingResult = await apiService.triggerRealtimePing();
 
-      // Test connectivity untuk setiap camera dengan IP masing-masing
-      for (final camera in cameras) {
-        if (camera.ipAddress.isEmpty) {
-          print('Skipping ${camera.cameraId}: No IP address');
-          continue;
-        }
-
-        print(
-            'Testing connectivity for ${camera.cameraId}: ${camera.ipAddress}');
-
-        try {
-          // Test connectivity ke IP camera yang spesifik
-          final testResult = await apiService.testDeviceConnectivity(
-            targetIp: camera.ipAddress,
-          );
-
-          if (testResult['success'] == true) {
-            final cameraStatus = testResult['data']?['status'] ?? 'DOWN';
-            print('${camera.cameraId} connectivity test result: $cameraStatus');
-
-            // Update camera status berdasarkan test result
-            final updateResult = await apiService.reportDeviceStatus(
-              deviceType: 'camera',
-              deviceId: camera.cameraId,
-              status: cameraStatus,
-              targetIp: camera.ipAddress,
-            );
-
-            print(
-                '${camera.cameraId} status update: ${updateResult['success']}');
-          }
-        } catch (e) {
-          print('Error testing ${camera.cameraId}: $e');
-        }
-
-        // Small delay between tests to avoid overwhelming the server
-        await Future.delayed(const Duration(milliseconds: 100));
+      if (pingResult['success'] == true) {
+        print('Realtime ping completed: ${pingResult['message']}');
+        print('IPs checked: ${pingResult['ips_checked']}');
       }
 
       print('=== Realtime Ping Completed (GATE) ===');
-      // Wait for database to update
-      await Future.delayed(const Duration(milliseconds: 500));
     } catch (e) {
       print('Error triggering realtime ping: $e');
     }
@@ -222,15 +186,23 @@ class _GateCCTVPageState extends State<GateCCTVPage> {
   Future<void> _triggerPingCheck() async {
     try {
       const baseUrl = 'http://localhost/monitoring_api/index.php';
-      await http.get(
-        Uri.parse('$baseUrl?endpoint=realtime&type=all'),
+      await http
+          .get(
+        Uri.parse('$baseUrl?endpoint=realtime&action=all'),
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('Realtime ping timed out');
+          return http.Response('{"success":false}', 408);
+        },
       );
-      await Future.delayed(const Duration(seconds: 1));
+      await Future.delayed(const Duration(milliseconds: 500));
       if (mounted) {
         await _loadCameras();
       }
     } catch (e) {
-      print('Error triggering ping check: $e');
+      print('Error triggering ping check (ignored): $e');
     }
   }
 
