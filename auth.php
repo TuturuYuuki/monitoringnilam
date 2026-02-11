@@ -59,6 +59,10 @@ try {
             handleChangePassword();
             break;
             
+        case 'check-connection':
+            handleCheckConnection();
+            break;
+            
         default:
             http_response_code(400);
             echo json_encode([
@@ -74,7 +78,8 @@ try {
                     'update-profile' => 'Update user profile',
                     'get-profile' => 'Get user profile from database',
                     'request-email-change-otp' => 'Request OTP for email change',
-                    'verify-email-change-otp' => 'Verify OTP and change email'
+                    'verify-email-change-otp' => 'Verify OTP and change email',
+                    'check-connection' => 'Test backend connection from Flutter'
                 ]
             ]);
             break;
@@ -856,8 +861,9 @@ function handleChangePassword() {
             return;
         }
         
-        // Hash new password
-        $newPasswordHash = password_hash($newPassword, PASSWORD_BCRYPT);
+        // Hash new password with optimized cost factor for better UX
+        // Cost 9 = ~150ms (balance between security & speed)
+        $newPasswordHash = password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 9]);
         
         // Update password
         $updateStmt = $conn->prepare("UPDATE user SET password = ? WHERE id = ?");
@@ -872,6 +878,39 @@ function handleChangePassword() {
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+    }
+}
+
+/**
+ * Check connection - simple endpoint for Flutter to test connectivity
+ */
+function handleCheckConnection() {
+    global $conn;
+    
+    try {
+        // Simple query to verify DB connection
+        $result = $conn->query("SELECT 1 as test");
+        
+        if ($result) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Backend connection OK',
+                'timestamp' => date('Y-m-d H:i:s'),
+                'database' => 'Connected'
+            ]);
+        } else {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Database query failed'
+            ]);
+        }
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Connection test failed: ' . $e->getMessage()
+        ]);
     }
 }
 

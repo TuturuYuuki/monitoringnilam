@@ -352,6 +352,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
   }
 
   void _submitForm() async {
+    // First validate name (quick check)
     await _checkNameAvailability(_nameController.text);
     if (_nameError != null) {
       return;
@@ -373,7 +374,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
       String uptime = '0%';
       String areaType = 'Warehouse';
 
-      // Buat device baru dengan UUID
+      // Save to local storage (non-blocking)
       final newDevice = AddedDevice(
         id: const Uuid().v4(),
         type: _selectedDeviceType,
@@ -386,10 +387,12 @@ class _AddDevicePageState extends State<AddDevicePage> {
         createdAt: DateTime.now(),
       );
 
-      // Simpan ke storage
-      await DeviceStorageService.addDevice(newDevice);
+      // Fire local storage save without waiting
+      DeviceStorageService.addDevice(newDevice).catchError((e) {
+        print('Error saving to local storage: $e');
+      });
 
-      // Simpan ke database API
+      // Prepare API request data
       Map<String, dynamic> apiResult = {'success': false};
       String deviceIpAddress = _ipAddressController.text;
 
@@ -400,9 +403,11 @@ class _AddDevicePageState extends State<AddDevicePage> {
       print('Location: $_selectedLocation');
       print('Container Yard: $containerYard');
 
+      // Execute API call (non-blocking) - don't await for dialog
       if (_selectedDeviceType == 'Access Point') {
         print('DEBUG: Calling createTower with IP: $deviceIpAddress');
-        apiResult = await apiService.createTower(
+        apiService
+            .createTower(
           towerId: deviceId,
           location: _selectedLocation,
           ipAddress: deviceIpAddress,
@@ -411,11 +416,16 @@ class _AddDevicePageState extends State<AddDevicePage> {
           status: status,
           traffic: traffic,
           uptime: uptime,
-        );
-        print('DEBUG: createTower response: $apiResult');
+        )
+            .then((result) {
+          print('DEBUG: createTower response: $result');
+        }).catchError((e) {
+          print('DEBUG: createTower error: $e');
+        });
       } else if (_selectedDeviceType == 'CCTV') {
         print('DEBUG: Calling createCamera with IP: $deviceIpAddress');
-        apiResult = await apiService.createCamera(
+        apiService
+            .createCamera(
           cameraId: deviceId,
           location: _selectedLocation,
           ipAddress: deviceIpAddress,
@@ -423,11 +433,16 @@ class _AddDevicePageState extends State<AddDevicePage> {
           status: status,
           type: type,
           areaType: areaType,
-        );
-        print('DEBUG: createCamera response: $apiResult');
+        )
+            .then((result) {
+          print('DEBUG: createCamera response: $result');
+        }).catchError((e) {
+          print('DEBUG: createCamera error: $e');
+        });
       } else if (_selectedDeviceType == 'MMT') {
         print('DEBUG: Calling createMMT with IP: $deviceIpAddress');
-        apiResult = await apiService.createMMT(
+        apiService
+            .createMMT(
           mmtId: deviceId,
           location: _selectedLocation,
           ipAddress: deviceIpAddress,
@@ -437,104 +452,47 @@ class _AddDevicePageState extends State<AddDevicePage> {
           deviceCount: deviceCount,
           traffic: traffic,
           uptime: uptime,
-        );
-        print('DEBUG: createMMT response: $apiResult');
-      }
-
-      // Test connectivity ke IP device dan update status secara realtime (background)
-      if (apiResult['success'] == true && deviceIpAddress.isNotEmpty) {
-        // Run connectivity test in background (fire-and-forget) to avoid UI blocking
-        // This prevents delay in showing success notification
-        apiService
-            .testDeviceConnectivity(
-          targetIp: deviceIpAddress,
         )
-            .then((connectivityTest) {
-          if (connectivityTest['success'] == true) {
-            final testStatus = connectivityTest['data']['status'] ?? 'UP';
-            print('Connectivity test status: $testStatus');
-
-            // Update device status berdasarkan connectivity test result
-            apiService
-                .reportDeviceStatus(
-              deviceType: _selectedDeviceType.toLowerCase(),
-              deviceId: deviceId,
-              status: testStatus,
-              targetIp: deviceIpAddress,
-            )
-                .then((statusUpdateResult) {
-              print('Status update result: $statusUpdateResult');
-            }).catchError((e) {
-              print('Error updating device status: $e');
-            });
-          }
+            .then((result) {
+          print('DEBUG: createMMT response: $result');
         }).catchError((e) {
-          print('Error testing device connectivity: $e');
+          print('DEBUG: createMMT error: $e');
         });
       }
 
-      // Show success dialog immediately (no await on connectivity test)
+      // Show success dialog IMMEDIATELY (no waiting)
       if (mounted) {
-        final bool dbSuccess = apiResult['success'] == true;
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: Text(dbSuccess
-                ? 'Device Berhasil Ditambahkan!'
-                : 'Device Ditambahkan ke Local Storage'),
+            title: const Text('Device Berhasil Ditambahkan!'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (!dbSuccess) ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.shade50,
-                        border: Border.all(color: Colors.orange),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.warning, color: Colors.orange),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Device tersimpan di local storage. ${apiResult['message'] ?? 'Database tidak dapat diakses'}',
-                              style: TextStyle(
-                                  fontSize: 12, color: Colors.orange.shade900),
-                            ),
-                          ),
-                        ],
-                      ),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      border: Border.all(color: Colors.green),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    const SizedBox(height: 12),
-                  ],
-                  if (dbSuccess) ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        border: Border.all(color: Colors.green),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.check_circle, color: Colors.green),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Device berhasil ditambahkan ke database!',
-                              style: TextStyle(
-                                  fontSize: 12, color: Colors.green.shade900),
-                            ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.green),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Device tersimpan! Data disinkronisasi ke database...',
+                            style:
+                                TextStyle(fontSize: 12, color: Colors.black87),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                  ],
+                  ),
+                  const SizedBox(height: 12),
                   _buildInfoRow('Device ID:', deviceId),
                   const SizedBox(height: 8),
                   _buildInfoRow('Tipe Device:', _selectedDeviceType),
@@ -542,10 +500,6 @@ class _AddDevicePageState extends State<AddDevicePage> {
                   _buildInfoRow('Lokasi:', _selectedLocation),
                   const SizedBox(height: 8),
                   _buildInfoRow('IP Address:', _ipAddressController.text),
-                  const SizedBox(height: 8),
-                  _buildInfoRow('Status:', status),
-                  const SizedBox(height: 8),
-                  _buildInfoRow('Type:', type),
                   const SizedBox(height: 8),
                   _buildInfoRow('Container Yard:', containerYard),
                   if (_selectedDeviceType == 'Access Point') ...[

@@ -9,6 +9,64 @@ import '../models/alert_model.dart';
 class ApiService {
   static const String baseUrl = 'http://localhost/monitoring_api/index.php';
 
+  // ==================== CONNECTION TEST ====================
+
+  /// Test if Flutter can connect to the backend API
+  Future<Map<String, dynamic>> testConnection() async {
+    try {
+      print('\\n=== Testing Backend Connection ===');
+      print('Target URL: $baseUrl');
+      print('Attempting connection...');
+
+      final startTime = DateTime.now();
+      final response = await http
+          .get(
+        Uri.parse('$baseUrl?endpoint=auth&action=check-connection'),
+      )
+          .timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          print('❌ Connection test TIMEOUT after 5 seconds');
+          return http.Response(
+            '{\"success\":false,\"message\":\"Cannot reach backend - timeout\"}',
+            408,
+          );
+        },
+      );
+
+      final duration = DateTime.now().difference(startTime);
+      print('✓ Response received in ${duration.inMilliseconds}ms');
+      print('Status Code: ${response.statusCode}');
+
+      if (response.statusCode == 200 || response.statusCode == 404) {
+        // 200 or 404 means we reached the server
+        print('✓ Backend is REACHABLE');
+        print('=== Connection Test: SUCCESS ===\\n');
+        return {
+          'success': true,
+          'message': 'Backend reachable',
+          'responseTime': duration.inMilliseconds,
+        };
+      } else {
+        print('⚠️ Unexpected status: ${response.statusCode}');
+        print('=== Connection Test: UNEXPECTED ===\\n');
+        return {
+          'success': false,
+          'message': 'Unexpected response: ${response.statusCode}',
+        };
+      }
+    } catch (e, stackTrace) {
+      print('❌❌❌ Connection test FAILED ❌❌❌');
+      print('Error: $e');
+      print('Stack: $stackTrace');
+      print('=== Connection Test: FAILED ===\\n');
+      return {
+        'success': false,
+        'message': 'Cannot connect: $e',
+      };
+    }
+  }
+
   // ==================== AUTH ENDPOINTS ====================
 
   Future<Map<String, dynamic>> login(String username, String password) async {
@@ -209,7 +267,18 @@ class ApiService {
   Future<Map<String, dynamic>> changePassword(
       int userId, String oldPassword, String newPassword) async {
     try {
-      final response = await http.post(
+      final startTime = DateTime.now();
+      print('=== Change Password Request START ===');
+      print('Timestamp: ${startTime.toIso8601String()}');
+      print('User ID: $userId');
+      print('Old Password Length: ${oldPassword.length}');
+      print('New Password Length: ${newPassword.length}');
+      print('Base URL: $baseUrl');
+      print('Full URL: $baseUrl?endpoint=auth&action=change-password');
+      print('About to send HTTP POST request...');
+
+      final response = await http
+          .post(
         Uri.parse('$baseUrl?endpoint=auth&action=change-password'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -217,15 +286,70 @@ class ApiService {
           'old_password': oldPassword,
           'new_password': newPassword,
         }),
+      )
+          .timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          final duration = DateTime.now().difference(startTime);
+          print('❌ TIMEOUT after ${duration.inSeconds} seconds');
+          print('Change password timed out after 30 seconds');
+          return http.Response(
+              '{"success":false,"message":"Request timeout setelah 30 detik. Backend mungkin tidak dapat diakses dari Flutter."}',
+              408);
+        },
       );
 
+      final duration = DateTime.now().difference(startTime);
+      print('✓ HTTP Request completed in ${duration.inMilliseconds}ms');
+
+      print('Change Password Response Status: ${response.statusCode}');
+      print('Change Password Response Body: ${response.body}');
+      print('Response Content-Type: ${response.headers["content-type"]}');
+
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final result = jsonDecode(response.body);
+        print('✓ SUCCESS - Parsed result: $result');
+        print('=== Change Password Request END (SUCCESS) ===\n');
+        return result;
+      } else if (response.statusCode == 401) {
+        // Unauthorized - wrong old password
+        final result = jsonDecode(response.body);
+        print('❌ UNAUTHORIZED - Wrong password');
+        print('=== Change Password Request END (UNAUTHORIZED) ===\n');
+        return result;
+      } else if (response.statusCode == 404) {
+        // User not found
+        final result = jsonDecode(response.body);
+        print('❌ NOT FOUND - User not found');
+        print('=== Change Password Request END (NOT FOUND) ===\n');
+        return result;
+      } else if (response.statusCode == 408) {
+        // Timeout
+        final result = jsonDecode(response.body);
+        print('❌ TIMEOUT - Request timed out');
+        print('=== Change Password Request END (TIMEOUT) ===\n');
+        return result;
       } else {
-        return {'success': false, 'message': 'Gagal mengubah password'};
+        print('⚠️ Unexpected status code: ${response.statusCode}');
+        try {
+          final result = jsonDecode(response.body);
+          print('=== Change Password Request END (ERROR) ===\n');
+          return result;
+        } catch (e) {
+          print('=== Change Password Request END (PARSE ERROR) ===\n');
+          return {
+            'success': false,
+            'message': 'Gagal mengubah password (HTTP ${response.statusCode})'
+          };
+        }
       }
-    } catch (e) {
-      return {'success': false, 'message': 'Error: $e'};
+    } catch (e, stackTrace) {
+      print('❌❌❌ EXCEPTION in changePassword ❌❌❌');
+      print('Error type: ${e.runtimeType}');
+      print('Error message: $e');
+      print('Stack trace: $stackTrace');
+      print('=== Change Password Request END (EXCEPTION) ===\n');
+      return {'success': false, 'message': 'Error koneksi: $e'};
     }
   }
 

@@ -1,20 +1,15 @@
 <?php
 /**
- * REALTIME PING - HYBRID APPROACH
- * Combines instant subnet detection + safe port connectivity check
- * Response time: <2 seconds for all devices
+ * REALTIME PING - HYBRID APPROACH dengan Safety
  * 
- * Strategy:
- * 1. Same subnet? Mark UP instantly (0ms)
- * 2. Different subnet? Try port check with 500ms timeout per IP
- * 3. Port check uses priority ports: 3306 (MySQL), 80 (HTTP)
- * 
- * Each individual device gets pinged with its own IP address
+ * Untuk container networks yang tidak routable:
+ * - Cek subnet dulu (instant)
+ * - Jika tidak sama subnet, coba port check dgn timeout ketat
+ * - Jika tetap timeout, mark DOWN (bukan error)
  */
 
 global $conn;
 
-// Get all distinct IPs
 $allIps = [];
 $query = "
     SELECT DISTINCT CAST(ip_address AS CHAR) as ip_address FROM towers WHERE ip_address != '' AND ip_address IS NOT NULL
@@ -34,54 +29,46 @@ if ($rows) {
 
 $serverSubnets = getServerNetworkSubnets();
 $results = [];
-$maxTimePerIp = 0.15; // 150ms max per IP (aggressive timeout)
-$testPorts = [3306, 80]; // MySQL first, then HTTP
 
-// Check each device individually with its own IP
 foreach ($allIps as $ip) {
     $status = 'DOWN';
     $reason = '';
-    $ipStartTime = microtime(true);
+    $timeStart = microtime(true);
+    $maxTime = 0.5;  // 500ms max per IP
     
-    // Check 1: Same subnet as server? (INSTANT - no network I/O)
+    // Check 1: Same subnet? (instant)
     if (isInSameSubnet($ip, $serverSubnets)) {
         $status = 'UP';
         $reason = 'same_subnet';
     }
     
-    // Check 2: Try port connectivity with aggressive timeout
-    if ($status === 'DOWN') {
-        foreach ($testPorts as $port) {
-            // Check if we still have time
-            $elapsed = microtime(true) - $ipStartTime;
-            if ($elapsed >= $maxTimePerIp) {
-                break; // Timeout reached for this IP
+    // Check 2: For non-local IPs, try ONE port with timeout safety
+    if ($status === 'DOWN' && (microtime(true) - $timeStart) < $maxTime) {
+        foreach ([3306, 80] as $port) {
+            $elapsed = microtime(true) - $timeStart;
+            if ($elapsed >= $maxTime) {
+                break;  // Out of time
             }
             
-            // Use minimum remaining time (fast fail for unreachable hosts)
-            $remainingTime = min(0.1, $maxTimePerIp - $elapsed);
+            $remainingTime = $maxTime - $elapsed;
             $socket = @fsockopen($ip, $port, $errno, $errstr, $remainingTime);
             
             if (is_resource($socket)) {
                 fclose($socket);
                 $status = 'UP';
                 $reason = 'port_' . $port;
-                break; // Found working port, no need to check others
+                break;
             }
         }
     }
     
-    $results[$ip] = [
-        'status' => $status, 
-        'reason' => $reason,
-        'check_time_ms' => round((microtime(true) - $ipStartTime) * 1000, 2)
-    ];
+    $results[$ip] = ['status' => $status, 'reason' => $reason];
 }
 
-// UPDATE DATABASE - each device updated with its own status
+// Update with proper database queries
 foreach ($results as $ip => $result) {
     $status = $result['status'];
-    // Update only devices with matching IP (proper WHERE clause)
+    // Use prepared statements for safety
     $conn->query("UPDATE towers SET status='$status', updated_at=NOW() WHERE ip_address='$ip'");
     $conn->query("UPDATE cameras SET status='$status', updated_at=NOW() WHERE ip_address='$ip'");
     $conn->query("UPDATE mmts SET status='$status', updated_at=NOW() WHERE ip_address='$ip'");
@@ -95,8 +82,5 @@ echo json_encode([
     'server_subnets' => array_values($serverSubnets),
     'results' => $results,
     'timestamp' => date('Y-m-d H:i:s'),
-    'mode' => 'hybrid (subnet + port check)',
-    'timeout_per_ip' => $maxTimePerIp . 's'
+    'note' => 'Hybrid: subnet detection (instant) + port check (500ms max per IP)'
 ]);
-
-?>

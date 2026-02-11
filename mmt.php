@@ -330,17 +330,17 @@ function createMMT($conn) {
         
         // Insert new MMT
         $stmt = $conn->prepare("INSERT INTO mmts 
-            (mmt_id, mmt_number, location, ip_address, status, type, container_yard, 
+            (mmt_id, location, ip_address, status, type, container_yard, 
              device_count, traffic, uptime, created_at, updated_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())");
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())");
         
         if (!$stmt) {
             throw new Exception($conn->error);
         }
         
-        $stmt->bind_param("sissssiss", 
-            $mmtId, $mmtNumber, $location, $ipAddress, $status, 
-            $type, $containerYard, $deviceCount, $traffic, $uptime);
+        $stmt->bind_param("ssssssiss", 
+            $mmtId, $location, $ipAddress, $status, $type, 
+            $containerYard, $deviceCount, $traffic, $uptime);
         
         if ($stmt->execute()) {
             $newId = $conn->insert_id;

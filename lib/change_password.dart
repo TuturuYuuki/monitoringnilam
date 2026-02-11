@@ -45,9 +45,21 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
   Future<void> _loadUser() async {
     final user = await AuthHelper.getUserData();
+    final userIdStr = user['user_id'] ?? user['id']?.toString() ?? '';
+    final parsedId = int.tryParse(userIdStr);
+
+    print('=== Loading User for Change Password ===');
+    print('User data: $user');
+    print('User ID string: $userIdStr');
+    print('Parsed User ID: $parsedId');
+
     setState(() {
-      _userId = int.tryParse(user['user_id'] ?? '');
+      _userId = parsedId;
     });
+
+    if (_userId == null) {
+      print('WARNING: User ID is null! Cannot change password.');
+    }
   }
 
   @override
@@ -76,6 +88,73 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       _confirmMatch =
           _confirmPasswordController.text == _newPasswordController.text;
     });
+  }
+
+  Future<void> _testConnection() async {
+    print('\\n=== User Triggered Connection Test ===');
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text('Testing koneksi ke backend...'),
+          ],
+        ),
+      ),
+    );
+
+    final result = await apiService.testConnection();
+
+    if (mounted) {
+      Navigator.pop(context); // Close loading dialog
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                result['success'] ? Icons.check_circle : Icons.error,
+                color: result['success'] ? Colors.green : Colors.red,
+              ),
+              const SizedBox(width: 8),
+              Text(result['success'] ? 'Koneksi Berhasil' : 'Koneksi Gagal'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(result['message'] ?? 'Unknown'),
+              if (result['responseTime'] != null)
+                Text('\\nWaktu respons: ${result['responseTime']}ms'),
+              if (!result['success']) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'Kemungkinan masalah:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const Text('• Backend tidak running (cek XAMPP Apache)'),
+                const Text('• Firewall memblokir koneksi'),
+                const Text('• URL salah (localhost vs 127.0.0.1)'),
+              ],
+            ],
+          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   void _changePassword() async {
@@ -157,11 +236,20 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       }
 
       try {
+        print('=== Starting Change Password ===');
+        print('User ID: $_userId');
+        print(
+            'Current Password: ${_currentPasswordController.text.isNotEmpty ? "[PROVIDED]" : "[EMPTY]"}');
+        print(
+            'New Password: ${_newPasswordController.text.isNotEmpty ? "[PROVIDED]" : "[EMPTY]"}');
+
         final res = await apiService.changePassword(
           _userId!,
           _currentPasswordController.text,
           _newPasswordController.text,
         );
+
+        print('Change Password Result: $res');
 
         setState(() {
           _isLoading = false;
@@ -172,6 +260,13 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             showDialog(
               context: context,
               builder: (context) => AlertDialog(
+                title: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green),
+                    const SizedBox(width: 8),
+                    const Text('Berhasil'),
+                  ],
+                ),
                 content: Text(res['message'] ?? 'Password berhasil diubah'),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
@@ -187,11 +282,22 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             );
           }
         } else {
+          // Show specific error message from backend
+          final errorMessage = res['message'] ?? 'Gagal mengubah password';
+          print('Error message: $errorMessage');
+
           if (mounted) {
             showDialog(
               context: context,
               builder: (context) => AlertDialog(
-                content: Text(res['message'] ?? 'Gagal mengubah password'),
+                title: Row(
+                  children: [
+                    Icon(Icons.error, color: Colors.red),
+                    const SizedBox(width: 8),
+                    const Text('Gagal'),
+                  ],
+                ),
+                content: Text(errorMessage),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
                 actions: [
@@ -439,8 +545,34 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 32),
-                // Action Buttons
+                const SizedBox(height: 32), // Test Connection Button
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _testConnection,
+                    icon: const Icon(Icons.network_check),
+                    label: const Text('Test Koneksi Backend'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF1976D2),
+                      side: const BorderSide(color: Color(0xFF1976D2)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Jika timeout terus, gunakan button di atas untuk cek koneksi',
+                  style: TextStyle(
+                    color: Colors.white60,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24), // Action Buttons
                 Row(
                   children: [
                     Expanded(
