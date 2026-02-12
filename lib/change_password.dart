@@ -260,11 +260,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             showDialog(
               context: context,
               builder: (context) => AlertDialog(
-                title: Row(
+                title: const Row(
                   children: [
                     Icon(Icons.check_circle, color: Colors.green),
-                    const SizedBox(width: 8),
-                    const Text('Berhasil'),
+                    SizedBox(width: 8),
+                    Text('Berhasil'),
                   ],
                 ),
                 content: Text(res['message'] ?? 'Password berhasil diubah'),
@@ -290,11 +290,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             showDialog(
               context: context,
               builder: (context) => AlertDialog(
-                title: Row(
+                title: const Row(
                   children: [
                     Icon(Icons.error, color: Colors.red),
-                    const SizedBox(width: 8),
-                    const Text('Gagal'),
+                    SizedBox(width: 8),
+                    Text('Gagal'),
                   ],
                 ),
                 content: Text(errorMessage),
@@ -733,18 +733,18 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     );
   }
 
-  Widget _buildFooter() {
+   Widget _buildFooter() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      color: const Color(0xFF1A252F),
-      child: const Center(
-        child: Text(
-          '© 2024 Terminal Nilam. All rights reserved.',
-          style: TextStyle(
-            color: Colors.white70,
-            fontSize: 12,
+      padding: const EdgeInsets.all(16),
+      color: Colors.black.withOpacity(0.8),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            '©2026 TPK Nilam Monitoring System',
+            style: TextStyle(color: Colors.white, fontSize: 12),
           ),
-        ),
+        ],
       ),
     );
   }

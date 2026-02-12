@@ -6,7 +6,6 @@ import 'package:http/http.dart' as http;
 import 'main.dart';
 import 'route_proxy_page.dart';
 import 'services/api_service.dart';
-import 'add_device.dart';
 import 'utils/tower_status_override.dart';
 
 // Fullscreen CCTV Page - All Areas
@@ -56,48 +55,55 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
 
   Future<void> _loadAllCameras() async {
     try {
-      setState(() {
-        isLoading = true;
-      });
+      // Don't show loading if already have data (prevents flickering)
+      if (allCameras.isEmpty) {
+        setState(() {
+          isLoading = true;
+        });
+      }
 
       final apiService = ApiService();
       final cameras = await apiService.getAllCameras();
       final updatedCameras = applyForcedCameraStatus(cameras);
 
-      setState(() {
-        allCameras.clear();
-        final camerasMap = updatedCameras
-            .map((c) => {
-                  'id': c.cameraId,
-                  'location': c.location,
-                  'status': c.status,
-                  'type': c.type,
-                  'containerYard': c.containerYard,
-                  'areaType': c.areaType,
-                })
-            .toList();
-        // Sort by container yard, then area type, then camera id
-        camerasMap.sort((a, b) {
-          int cmpYard = a['containerYard']
-              .toString()
-              .compareTo(b['containerYard'].toString());
-          if (cmpYard != 0) return cmpYard;
-          int cmpArea =
-              a['areaType'].toString().compareTo(b['areaType'].toString());
-          if (cmpArea != 0) return cmpArea;
-          return a['id'].toString().compareTo(b['id'].toString());
+      if (mounted) {
+        setState(() {
+          allCameras.clear();
+          final camerasMap = updatedCameras
+              .map((c) => {
+                    'id': c.cameraId,
+                    'location': c.location,
+                    'status': c.status,
+                    'type': c.type,
+                    'containerYard': c.containerYard,
+                    'areaType': c.areaType,
+                  })
+              .toList();
+          // Sort by container yard, then area type, then camera id
+          camerasMap.sort((a, b) {
+            int cmpYard = a['containerYard']
+                .toString()
+                .compareTo(b['containerYard'].toString());
+            if (cmpYard != 0) return cmpYard;
+            int cmpArea =
+                a['areaType'].toString().compareTo(b['areaType'].toString());
+            if (cmpArea != 0) return cmpArea;
+            return a['id'].toString().compareTo(b['id'].toString());
+          });
+          allCameras.addAll(camerasMap);
+          isLoading = false;
         });
-        allCameras.addAll(camerasMap);
-        isLoading = false;
-      });
+      }
 
       // Trigger realtime ping in background after UI loads
       _triggerRealtimePing();
     } catch (e) {
       print('Error loading cameras: $e');
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -346,7 +352,7 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
         // Title Section
         Row(
           children: [
-            Icon(Icons.videocam_rounded, color: Colors.blue, size: 32),
+            const Icon(Icons.videocam_rounded, color: Colors.blue, size: 32),
             const SizedBox(width: 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,

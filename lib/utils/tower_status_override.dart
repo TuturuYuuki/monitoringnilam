@@ -30,6 +30,7 @@ List<Tower> applyForcedTowerStatus(List<Tower> towers) {
     if (ip.isEmpty) {
       continue;
     }
+
     final status = _normalizeStatus(tower.status);
     final current = ipStatus[ip];
 
@@ -38,10 +39,10 @@ List<Tower> applyForcedTowerStatus(List<Tower> towers) {
       continue;
     }
 
-    if (current != 'DOWN' && status == 'DOWN') {
-      ipStatus[ip] = 'DOWN';
-    } else if (current == 'UNKNOWN' && status == 'UP') {
+    if (status == 'UP') {
       ipStatus[ip] = 'UP';
+    } else if (current != 'UP' && status == 'DOWN') {
+      ipStatus[ip] = 'DOWN';
     }
   }
 
@@ -82,6 +83,7 @@ List<Camera> applyForcedCameraStatus(List<Camera> cameras) {
     if (ip.isEmpty) {
       continue;
     }
+
     final status = _normalizeStatus(camera.status);
     final current = ipStatus[ip];
 
@@ -90,10 +92,10 @@ List<Camera> applyForcedCameraStatus(List<Camera> cameras) {
       continue;
     }
 
-    if (current != 'DOWN' && status == 'DOWN') {
-      ipStatus[ip] = 'DOWN';
-    } else if (current == 'UNKNOWN' && status == 'UP') {
+    if (status == 'UP') {
       ipStatus[ip] = 'UP';
+    } else if (current != 'UP' && status == 'DOWN') {
+      ipStatus[ip] = 'DOWN';
     }
   }
 

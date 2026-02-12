@@ -6,7 +6,6 @@ import 'services/api_service.dart';
 import 'models/alert_model.dart';
 import 'models/tower_model.dart';
 import 'models/camera_model.dart';
-import 'add_device.dart';
 import 'utils/tower_status_override.dart';
 import 'route_proxy_page.dart';
 
@@ -354,7 +353,7 @@ class _AlertsPageState extends State<AlertsPage> {
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Terminal Nilam',
                   style: TextStyle(
                     color: Colors.white,
@@ -422,7 +421,7 @@ class _AlertsPageState extends State<AlertsPage> {
             )
           : Row(
               children: [
-                Expanded(
+                const Expanded(
                   child: Text(
                     'Terminal Nilam',
                     style: TextStyle(

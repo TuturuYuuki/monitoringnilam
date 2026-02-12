@@ -28,7 +28,7 @@ class ApiService {
         onTimeout: () {
           print('❌ Connection test TIMEOUT after 5 seconds');
           return http.Response(
-            '{\"success\":false,\"message\":\"Cannot reach backend - timeout\"}',
+            '{"success":false,"message":"Cannot reach backend - timeout"}',
             408,
           );
         },
@@ -90,6 +90,11 @@ class ApiService {
   Future<Map<String, dynamic>> register(
       String username, String email, String password, String fullname) async {
     try {
+      print('=== Registration Request ===');
+      print('Username: $username');
+      print('Email: $email');
+      print('Fullname: $fullname');
+
       final response = await http.post(
         Uri.parse('$baseUrl?endpoint=auth&action=register'),
         headers: {'Content-Type': 'application/json'},
@@ -104,24 +109,44 @@ class ApiService {
       print('Response status: ${response.statusCode}');
       print('Response body: ${response.body}');
 
-      if (response.statusCode == 200) {
-        try {
-          return jsonDecode(response.body);
-        } catch (e) {
-          print('JSON decode error: $e');
+      // Parse response body untuk semua status code
+      try {
+        final result = jsonDecode(response.body);
+
+        if (response.statusCode == 200) {
+          // Success
+          return result;
+        } else if (response.statusCode == 409) {
+          // Conflict - username atau email sudah ada
+          print('Conflict: ${result['message']}');
           return {
             'success': false,
             'message':
-                'Server returned invalid response. Please check if XAMPP is running.'
+                result['message'] ?? 'Username atau email sudah terdaftar'
+          };
+        } else if (response.statusCode == 400) {
+          // Bad request - data tidak lengkap
+          return {
+            'success': false,
+            'message': result['message'] ?? 'Data tidak lengkap'
+          };
+        } else {
+          // Other errors
+          return {
+            'success': false,
+            'message': result['message'] ??
+                'Registration failed with status: ${response.statusCode}'
           };
         }
-      } else {
+      } catch (e) {
+        print('JSON decode error: $e');
         return {
           'success': false,
-          'message': 'Registration failed with status: ${response.statusCode}'
+          'message': 'Server error. Response: ${response.body}'
         };
       }
     } catch (e) {
+      print('Registration error: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }
@@ -196,11 +221,18 @@ class ApiService {
       print('URL: $baseUrl?endpoint=auth&action=update-profile');
       print('Body: $requestBody');
 
-      final response = await http.post(
-        Uri.parse('$baseUrl?endpoint=auth&action=update-profile'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(requestBody),
-      );
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl?endpoint=auth&action=update-profile'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(requestBody),
+          )
+          .timeout(
+            const Duration(seconds: 12),
+            onTimeout: () => http.Response(
+                '{"success":false,"message":"Request timeout setelah 12 detik"}',
+                408),
+          );
 
       print('=== API updateProfile Response ===');
       print('Status Code: ${response.statusCode}');
@@ -288,13 +320,13 @@ class ApiService {
         }),
       )
           .timeout(
-        const Duration(seconds: 30),
+        const Duration(seconds: 12),
         onTimeout: () {
           final duration = DateTime.now().difference(startTime);
           print('❌ TIMEOUT after ${duration.inSeconds} seconds');
-          print('Change password timed out after 30 seconds');
+          print('Change password timed out after 12 seconds');
           return http.Response(
-              '{"success":false,"message":"Request timeout setelah 30 detik. Backend mungkin tidak dapat diakses dari Flutter."}',
+              '{"success":false,"message":"Request timeout setelah 12 detik. Backend mungkin tidak dapat diakses dari Flutter."}',
               408);
         },
       );
@@ -361,14 +393,21 @@ class ApiService {
       print('User ID: $userId');
       print('New Email: $newEmail');
 
-      final response = await http.post(
-        Uri.parse('$baseUrl?endpoint=auth&action=request-email-change-otp'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'user_id': userId,
-          'new_email': newEmail,
-        }),
-      );
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl?endpoint=auth&action=request-email-change-otp'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'user_id': userId,
+              'new_email': newEmail,
+            }),
+          )
+          .timeout(
+            const Duration(seconds: 12),
+            onTimeout: () => http.Response(
+                '{"success":false,"message":"Request timeout setelah 12 detik"}',
+                408),
+          );
 
       print('Response Status: ${response.statusCode}');
       print('Response Body: ${response.body}');
@@ -393,15 +432,22 @@ class ApiService {
   Future<Map<String, dynamic>> verifyEmailChangeOtp(
       int userId, String newEmail, String otp) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl?endpoint=auth&action=verify-email-change-otp'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'user_id': userId,
-          'new_email': newEmail,
-          'otp_code': otp,
-        }),
-      );
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl?endpoint=auth&action=verify-email-change-otp'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'user_id': userId,
+              'new_email': newEmail,
+              'otp_code': otp,
+            }),
+          )
+          .timeout(
+            const Duration(seconds: 12),
+            onTimeout: () => http.Response(
+                '{"success":false,"message":"Request timeout setelah 12 detik"}',
+                408),
+          );
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -429,11 +475,18 @@ class ApiService {
       print('Request Body: $requestBody');
       print('URL: $baseUrl?endpoint=auth&action=update-profile');
 
-      final response = await http.post(
-        Uri.parse('$baseUrl?endpoint=auth&action=update-profile'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(requestBody),
-      );
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl?endpoint=auth&action=update-profile'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(requestBody),
+          )
+          .timeout(
+            const Duration(seconds: 12),
+            onTimeout: () => http.Response(
+                '{"success":false,"message":"Request timeout setelah 12 detik"}',
+                408),
+          );
 
       print('Response Status: ${response.statusCode}');
       print('Response Body: ${response.body}');
@@ -531,11 +584,18 @@ class ApiService {
         fieldName: fieldValue,
       };
 
-      final response = await http.post(
-        Uri.parse('$baseUrl?endpoint=auth&action=update-profile'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(requestBody),
-      );
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl?endpoint=auth&action=update-profile'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(requestBody),
+          )
+          .timeout(
+            const Duration(seconds: 12),
+            onTimeout: () => http.Response(
+                '{"success":false,"message":"Request timeout setelah 12 detik"}',
+                408),
+          );
 
       if (response.statusCode == 200) {
         try {

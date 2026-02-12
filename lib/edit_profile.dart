@@ -44,13 +44,24 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _loadUserData() async {
-    try {
-      // First, get user_id from SharedPreferences
-      final userData = await AuthHelper.getUserData();
-      final userId = int.tryParse(userData['user_id'] ?? '');
+    final cachedData = await AuthHelper.getUserData();
+    setState(() {
+      _userId = int.tryParse(cachedData['user_id'] ?? '');
+      _nameController.text = cachedData['fullname'] ?? '';
+      _usernameController.text = cachedData['username'] ?? '';
+      _emailController.text = cachedData['email'] ?? '';
+      _phoneController.text = cachedData['phone'] ?? '';
+      _locationController.text = cachedData['location'] ?? '';
+      _divisionController.text = cachedData['division']?.isNotEmpty == true
+          ? cachedData['division']!
+          : (cachedData['role'] ?? '');
+      _currentEmail = cachedData['email'] ?? '';
+      _emailVerified = true;
+    });
 
+    try {
+      final userId = _userId;
       if (userId != null) {
-        // Try to fetch fresh data from database via API
         print('Loading profile from database for user_id: $userId');
         final response = await apiService.getUserProfile(userId);
 
@@ -58,8 +69,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
           final profileData = response['data'];
           print('Profile data loaded from API: $profileData');
 
+          if (!mounted) return;
           setState(() {
-            _userId = userId;
             _nameController.text = profileData['fullname'] ?? '';
             _usernameController.text = profileData['username'] ?? '';
             _emailController.text = profileData['email'] ?? '';
@@ -69,8 +80,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 profileData['division']?.isNotEmpty == true
                     ? profileData['division']!
                     : (profileData['role'] ?? '');
-
-            // Set current email for comparison
             _currentEmail = profileData['email'] ?? '';
             _emailVerified = true;
           });
@@ -80,25 +89,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     } catch (e) {
       print('Error loading profile from API: $e');
     }
-
-    // Fallback: Load from SharedPreferences if API fails
-    print('Fallback: Loading profile from SharedPreferences');
-    final userData = await AuthHelper.getUserData();
-    setState(() {
-      _userId = int.tryParse(userData['user_id'] ?? '');
-      _nameController.text = userData['fullname'] ?? '';
-      _usernameController.text = userData['username'] ?? '';
-      _emailController.text = userData['email'] ?? '';
-      _phoneController.text = userData['phone'] ?? '';
-      _locationController.text = userData['location'] ?? '';
-      _divisionController.text = userData['division']?.isNotEmpty == true
-          ? userData['division']!
-          : (userData['role'] ?? '');
-
-      // Set current email for comparison
-      _currentEmail = userData['email'] ?? '';
-      _emailVerified = true; // Current email is verified
-    });
   }
 
   @override
@@ -257,9 +247,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            const Text(
               'Kode verifikasi telah dikirim ke:',
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
+              style: TextStyle(color: Colors.white70, fontSize: 14),
             ),
             const SizedBox(height: 8),
             Container(
@@ -277,9 +267,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
             ),
             const SizedBox(height: 16),
-            Text(
+            const Text(
               'Silakan masukkan kode OTP yang Anda terima:',
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
+              style: TextStyle(color: Colors.white70, fontSize: 14),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -662,34 +652,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
         await AuthHelper.saveUserData(updatedData);
         print('Data tersimpan di SharedPreferences: $updatedData');
 
-        // Verify each critical field was actually updated in database
-        print('\n=== VERIFYING DATABASE UPDATES ===');
-        bool allVerified = true;
-
-        final fieldsToVerify = [
-          'fullname',
-          'email',
-          'username',
-          'phone',
-          'location',
-          'division'
-        ];
-        for (var field in fieldsToVerify) {
-          final verifyResult = await apiService.verifyProfileUpdate(
-              _userId!, field, updateData[field] ?? '');
-
-          if (verifyResult['matched'] == true) {
-            print('✓ $field verified: ${updateData[field]}');
-          } else {
-            print(
-                '✗ $field NOT verified! Expected: ${updateData[field]}, Got: ${verifyResult['actual']}');
-            allVerified = false;
-          }
-        }
-
-        print('=== VERIFICATION COMPLETE ===');
-        print('All fields verified: $allVerified\n');
-
         // Fetch fresh profile from backend to confirm persistence and update cache
         try {
           final profile = await apiService.getProfile(_userId!);
@@ -703,15 +665,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
         }
 
         if (mounted) {
-          String message = allVerified
-              ? 'Profil berhasil diperbarui dan tersimpan di database!'
-              : 'Profil diperbarui, tapi beberapa field mungkin tidak tersimpan di database. Cek log backend.';
+          const message =
+              'Profil berhasil diperbarui dan tersimpan di database!';
 
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Text(message),
-              backgroundColor: allVerified ? Colors.green : Colors.orange,
-              duration: const Duration(seconds: 3),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
             ),
           );
 
@@ -990,9 +951,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        const Text(
           'Email',
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white70,
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -1023,7 +984,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 },
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  prefixIcon: Icon(Icons.email, color: const Color(0xFF1976D2)),
+                  prefixIcon: const Icon(Icons.email, color: Color(0xFF1976D2)),
                   suffixIcon: isEmailChanged
                       ? (isVerified
                           ? const Icon(Icons.check_circle, color: Colors.green)
@@ -1107,8 +1068,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ],
         ),
         if (isEmailChanged && !isVerified)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
             child: Row(
               children: [
                 Icon(
@@ -1116,11 +1077,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   size: 16,
                   color: Colors.orange,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Klik tombol Verifikasi untuk mengirim kode OTP ke email baru Anda',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.orange,
                       fontSize: 12,
                     ),
@@ -1130,20 +1091,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
             ),
           ),
         if (isVerified)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.check_circle,
                   size: 16,
                   color: Colors.green,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Email berhasil diverifikasi!',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.green,
                       fontSize: 12,
                     ),
@@ -1226,16 +1187,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   Widget _buildFooter() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      color: const Color(0xFF1A252F),
-      child: const Center(
-        child: Text(
-          '© 2024 Terminal Nilam. All rights reserved.',
-          style: TextStyle(
-            color: Colors.white70,
-            fontSize: 12,
+      padding: const EdgeInsets.all(16),
+      color: Colors.black.withOpacity(0.8),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            '©2026 TPK Nilam Monitoring System',
+            style: TextStyle(color: Colors.white, fontSize: 12),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -1360,15 +1321,15 @@ class _OtpDialogState extends State<_OtpDialog> {
                   ),
                 ),
                 padding: const EdgeInsets.all(24),
-                child: Column(
+                child: const Column(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.lock_outline,
                       color: Colors.white,
                       size: 48,
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
+                    SizedBox(height: 12),
+                    Text(
                       'Verifikasi Email Anda',
                       textAlign: TextAlign.center,
                       style: TextStyle(
@@ -1377,8 +1338,8 @@ class _OtpDialogState extends State<_OtpDialog> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
+                    SizedBox(height: 8),
+                    Text(
                       'Monitoring System',
                       textAlign: TextAlign.center,
                       style: TextStyle(
@@ -1507,18 +1468,18 @@ class _OtpDialogState extends State<_OtpDialog> {
                         ),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Column(
+                      child: const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.info_outline,
                                 color: Color(0xFFCC9900),
                                 size: 20,
                               ),
-                              const SizedBox(width: 12),
-                              const Text(
+                              SizedBox(width: 12),
+                              Text(
                                 'Penting:',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
@@ -1528,8 +1489,8 @@ class _OtpDialogState extends State<_OtpDialog> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
-                          const Text(
+                          SizedBox(height: 12),
+                          Text(
                             '• Kode ini berlaku selama 15 menit\n'
                             '• Masukkan kode di aplikasi untuk menyelesaikan verifikasi\n'
                             '• Jangan bagikan kode ini kepada siapapun',

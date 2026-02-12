@@ -923,13 +923,12 @@ class _SignUpPageState extends State<SignUpPage> {
                                 width: double.infinity,
                                 height: 55,
                                 child: ElevatedButton(
-                                  onPressed: (_isLoading || !_isPasswordValid)
-                                      ? null
-                                      : _handleSignUp,
+                                  onPressed: _isLoading ? null : _handleSignUp,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF1976D2),
                                     disabledBackgroundColor:
-                                        const Color(0xFF1976D2),
+                                        const Color(0xFF1976D2)
+                                            .withOpacity(0.6),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(50),
                                     ),

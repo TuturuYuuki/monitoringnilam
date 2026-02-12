@@ -19,6 +19,8 @@ import 'edit_profile.dart';
 import 'change_password.dart';
 import 'add_device.dart';
 
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
+
 void main() {
   runApp(const MyApp());
 }
@@ -430,6 +432,7 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/',
       home: const AuthWrapper(),
+      navigatorObservers: [routeObserver],
       routes: {
         '/login': (context) => const LoginPage(),
         '/signup': (context) => const SignUpPage(),

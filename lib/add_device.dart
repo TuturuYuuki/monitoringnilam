@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
-import 'main.dart';
 import 'dashboard.dart';
 import 'network.dart';
 import 'cctv.dart';
@@ -184,17 +183,30 @@ class _AddDevicePageState extends State<AddDevicePage> {
       final names = <String>{};
       if (_selectedDeviceType == 'Access Point') {
         names.addAll(towers.map((t) => t.towerId));
+        // Only include local devices that aren't already in DB
         names.addAll(addedDevices
-            .where((d) => d.type == 'Access Point')
+            .where((d) =>
+                d.type == 'Access Point' &&
+                !towers.any(
+                    (t) => t.towerId.toLowerCase() == d.name.toLowerCase()))
             .map((d) => d.name));
       } else if (_selectedDeviceType == 'CCTV') {
         names.addAll(cameras.map((c) => c.cameraId));
-        names.addAll(
-            addedDevices.where((d) => d.type == 'CCTV').map((d) => d.name));
+        // Only include local devices that aren't already in DB
+        names.addAll(addedDevices
+            .where((d) =>
+                d.type == 'CCTV' &&
+                !cameras.any(
+                    (c) => c.cameraId.toLowerCase() == d.name.toLowerCase()))
+            .map((d) => d.name));
       } else if (_selectedDeviceType == 'MMT') {
         names.addAll(mmts.map((m) => m.mmtId));
-        names.addAll(
-            addedDevices.where((d) => d.type == 'MMT').map((d) => d.name));
+        // Only include local devices that aren't already in DB
+        names.addAll(addedDevices
+            .where((d) =>
+                d.type == 'MMT' &&
+                !mmts.any((m) => m.mmtId.toLowerCase() == d.name.toLowerCase()))
+            .map((d) => d.name));
       }
 
       final nameList = names.where((n) => n.trim().isNotEmpty).toList();
@@ -240,7 +252,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                         children: [
                           Expanded(
                             child: Text(
-                              'Daftar Nama ${_selectedDeviceType}',
+                              'Daftar Nama $_selectedDeviceType',
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -329,11 +341,22 @@ class _AddDevicePageState extends State<AddDevicePage> {
       final mmts = results[2] as List<MMT>;
       final addedDevices = results[3] as List<AddedDevice>;
 
-      final existingNames = <String>{
+      // Get all DB device names for comparison
+      final dbNames = <String>{
         ...towers.map((t) => t.towerId.toLowerCase()),
         ...cameras.map((c) => c.cameraId.toLowerCase()),
         ...mmts.map((m) => m.mmtId.toLowerCase()),
-        ...addedDevices.map((d) => d.name.toLowerCase()),
+      };
+
+      // Only include local storage devices that don't exist in DB
+      // This prevents stale local data from blocking device names
+      final pendingDeviceNames = addedDevices
+          .where((d) => !dbNames.contains(d.name.toLowerCase()))
+          .map((d) => d.name.toLowerCase());
+
+      final existingNames = <String>{
+        ...dbNames,
+        ...pendingDeviceNames,
       };
 
       final isTaken = existingNames.contains(name.toLowerCase());
@@ -374,7 +397,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
       String uptime = '0%';
       String areaType = 'Warehouse';
 
-      // Save to local storage (non-blocking)
+      // Save to local storage
       final newDevice = AddedDevice(
         id: const Uuid().v4(),
         type: _selectedDeviceType,
@@ -387,14 +410,14 @@ class _AddDevicePageState extends State<AddDevicePage> {
         createdAt: DateTime.now(),
       );
 
-      // Fire local storage save without waiting
-      DeviceStorageService.addDevice(newDevice).catchError((e) {
+      final saveFuture =
+          DeviceStorageService.addDevice(newDevice).catchError((e) {
         print('Error saving to local storage: $e');
       });
 
       // Prepare API request data
-      Map<String, dynamic> apiResult = {'success': false};
       String deviceIpAddress = _ipAddressController.text;
+      Future<Map<String, dynamic>>? createFuture;
 
       print('=== DEBUG: Saving Device ===');
       print('Device Type: $_selectedDeviceType');
@@ -406,8 +429,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
       // Execute API call (non-blocking) - don't await for dialog
       if (_selectedDeviceType == 'Access Point') {
         print('DEBUG: Calling createTower with IP: $deviceIpAddress');
-        apiService
-            .createTower(
+        createFuture = apiService.createTower(
           towerId: deviceId,
           location: _selectedLocation,
           ipAddress: deviceIpAddress,
@@ -416,16 +438,15 @@ class _AddDevicePageState extends State<AddDevicePage> {
           status: status,
           traffic: traffic,
           uptime: uptime,
-        )
-            .then((result) {
+        );
+        createFuture.then((result) {
           print('DEBUG: createTower response: $result');
         }).catchError((e) {
           print('DEBUG: createTower error: $e');
         });
       } else if (_selectedDeviceType == 'CCTV') {
         print('DEBUG: Calling createCamera with IP: $deviceIpAddress');
-        apiService
-            .createCamera(
+        createFuture = apiService.createCamera(
           cameraId: deviceId,
           location: _selectedLocation,
           ipAddress: deviceIpAddress,
@@ -433,16 +454,15 @@ class _AddDevicePageState extends State<AddDevicePage> {
           status: status,
           type: type,
           areaType: areaType,
-        )
-            .then((result) {
+        );
+        createFuture.then((result) {
           print('DEBUG: createCamera response: $result');
         }).catchError((e) {
           print('DEBUG: createCamera error: $e');
         });
       } else if (_selectedDeviceType == 'MMT') {
         print('DEBUG: Calling createMMT with IP: $deviceIpAddress');
-        apiService
-            .createMMT(
+        createFuture = apiService.createMMT(
           mmtId: deviceId,
           location: _selectedLocation,
           ipAddress: deviceIpAddress,
@@ -452,8 +472,8 @@ class _AddDevicePageState extends State<AddDevicePage> {
           deviceCount: deviceCount,
           traffic: traffic,
           uptime: uptime,
-        )
-            .then((result) {
+        );
+        createFuture.then((result) {
           print('DEBUG: createMMT response: $result');
         }).catchError((e) {
           print('DEBUG: createMMT error: $e');
@@ -478,11 +498,11 @@ class _AddDevicePageState extends State<AddDevicePage> {
                       border: Border.all(color: Colors.green),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Row(
+                    child: const Row(
                       children: [
                         Icon(Icons.check_circle, color: Colors.green),
-                        const SizedBox(width: 8),
-                        const Expanded(
+                        SizedBox(width: 8),
+                        Expanded(
                           child: Text(
                             'Device tersimpan! Data disinkronisasi ke database...',
                             style:
@@ -526,15 +546,47 @@ class _AddDevicePageState extends State<AddDevicePage> {
                 child: const Text('Tambah Device Lagi'),
               ),
               ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context, rootNavigator: true)
-                      .pushNamedAndRemoveUntil('/dashboard', (route) => false);
+                onPressed: () async {
+                  try {
+                    // Wait for save operations to complete
+                    await saveFuture
+                        .timeout(const Duration(seconds: 3))
+                        .catchError((_) {
+                      print('Timeout or error waiting for save');
+                    });
+
+                    final pendingCreate = createFuture;
+                    if (pendingCreate != null) {
+                      await pendingCreate
+                          .timeout(const Duration(seconds: 8))
+                          .catchError((_) {
+                        print('Timeout or error waiting for device creation');
+                        return <String, dynamic>{};
+                      });
+                    }
+
+                    // Wait a moment for DB to settle
+                    await Future.delayed(const Duration(milliseconds: 500));
+                  } catch (e) {
+                    print('Error waiting for device creation: $e');
+                  }
+
+                  if (!context.mounted) return;
+
+                  // Navigate back to dashboard
+                  if (context.mounted) {
+                    Navigator.of(context).pushNamedAndRemoveUntil(
+                      '/dashboard',
+                      (route) => false,
+                      arguments: {'refresh': true},
+                    );
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1976D2),
                   foregroundColor: Colors.white,
                 ),
-                child: const Text('Kembah ke Dashboard'),
+                child: const Text('Kembali ke Dashboard'),
               ),
             ],
           ),
@@ -941,7 +993,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Nama ${_selectedDeviceType} yang sudah digunakan:',
+                                'Nama $_selectedDeviceType yang sudah digunakan:',
                                 style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,

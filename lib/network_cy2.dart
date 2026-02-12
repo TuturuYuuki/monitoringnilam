@@ -6,7 +6,6 @@ import 'main.dart';
 import 'services/api_service.dart';
 import 'models/tower_model.dart';
 import 'route_proxy_page.dart';
-import 'add_device.dart';
 import 'utils/tower_status_override.dart';
 
 // Network Page CY 2
@@ -790,9 +789,9 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
             color: const Color(0xFF4CAF50),
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Row(
+          child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
+            children: [
               Icon(Icons.refresh, color: Colors.white, size: 20),
               SizedBox(width: 8),
               Text(
@@ -833,7 +832,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
               CircularProgressIndicator(),
               SizedBox(height: 16),
               Text(
-                'Memuat data tower...',
+                'Memuat data access point...',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.black87,

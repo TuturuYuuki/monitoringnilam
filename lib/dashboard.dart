@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -491,7 +492,7 @@ class DashboardPage extends StatefulWidget {
   State<DashboardPage> createState() => _DashboardPageState();
 }
 
-class _DashboardPageState extends State<DashboardPage> {
+class _DashboardPageState extends State<DashboardPage> with RouteAware {
   late MapController mapController;
 
   late ApiService apiService;
@@ -500,15 +501,17 @@ class _DashboardPageState extends State<DashboardPage> {
   List<Alert> alerts = [];
   List<AddedDevice> addedDevices = [];
   Map<String, String> deviceStatuses = {};
+  Map<String, String> _mmtStatusByIp = {};
   Timer? _refreshTimer;
   Timer? _blinkTimer;
+  bool _isRouteSubscribed = false;
   int totalUpCameras = 0;
   int totalDownCameras = 0;
   int totalOnlineTowers = 0;
   int totalTowers = 0;
 
   // Tracking blinking locations with multiple devices where at least one is DOWN
-  Set<String> _locationKeysWithDownDevices = {};
+  final Set<String> _locationKeysWithDownDevices = {};
   bool _isBlinkVisible = true;
 
   int get totalDownTowers => totalTowers - totalOnlineTowers;
@@ -529,9 +532,9 @@ class _DashboardPageState extends State<DashboardPage> {
     mapController = MapController();
     apiService = ApiService();
     _loadDashboardData();
-    // Refresh every 1 second for fast WiFi reconnect detection
-    // When ping timeout reduced to 2 seconds, this ensures quick status update
-    _refreshTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    // Refresh every 2 seconds for better performance
+    // Parallel API calls reduce overall load time
+    _refreshTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       if (mounted) {
         _loadDashboardData();
       }
@@ -550,6 +553,15 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute && !_isRouteSubscribed) {
+      routeObserver.subscribe(this, route);
+      _isRouteSubscribed = true;
+    }
+    final args = route?.settings.arguments;
+    if (args is Map && args['refresh'] == true) {
+      _refreshAfterNavigation();
+    }
     // Reload data when returning from add device or other pages
     // This ensures added device icons appear immediately on map
     if (mounted) {
@@ -558,47 +570,77 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   @override
+  void didPopNext() {
+    _refreshAfterNavigation();
+  }
+
+  @override
   void dispose() {
     _refreshTimer?.cancel();
     _blinkTimer?.cancel();
+    if (_isRouteSubscribed) {
+      routeObserver.unsubscribe(this);
+    }
     super.dispose();
+  }
+
+  void _refreshAfterNavigation() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadDashboardData();
+      }
+    });
   }
 
   Future<void> _loadDashboardData() async {
     try {
       // Trigger realtime ping check first to update all statuses
-      // Add timeout to prevent hanging on long standby
-      await _triggerPingCheck().timeout(
+      // Run in background, don't block UI
+      _triggerPingCheck().timeout(
         const Duration(seconds: 15),
         onTimeout: () {
           print('Warning: Ping check timed out after 15 seconds');
         },
-      );
+      ).catchError((e) => print('Ping check error (ignored): $e'));
 
-      // Load core data with timeout
-      final fetchedCameras = await apiService.getAllCameras().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          print('Warning: Get cameras timed out');
-          return cameras; // Return existing data if timeout
-        },
-      );
+      // Load core data in parallel with Future.wait() for better performance
+      final results = await Future.wait([
+        apiService.getAllCameras().timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            print('Warning: Get cameras timed out');
+            return cameras; // Return existing data if timeout
+          },
+        ),
+        apiService.getAllTowers().timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            print('Warning: Get towers timed out');
+            return towers; // Return existing data if timeout
+          },
+        ),
+        apiService.getAllAlerts().timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            print('Warning: Get alerts timed out');
+            return alerts; // Return existing alerts if timeout
+          },
+        ),
+        _updateDeviceLocationStatuses().timeout(
+          const Duration(seconds: 15),
+          onTimeout: () {
+            print('Warning: Update device location statuses timed out');
+          },
+        ),
+      ], eagerError: false)
+          .catchError((e) {
+        print('Error loading dashboard data: $e');
+        return [cameras, towers, alerts, null];
+      });
 
-      final fetchedTowers = await apiService.getAllTowers().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          print('Warning: Get towers timed out');
-          return towers; // Return existing data if timeout
-        },
-      );
-
-      final fetchedAlerts = await apiService.getAllAlerts().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          print('Warning: Get alerts timed out');
-          return alerts; // Return existing alerts if timeout
-        },
-      );
+      final fetchedCameras = results[0] as List<Camera>;
+      final fetchedTowers = results[1] as List<Tower>;
+      final fetchedAlerts = results[2] as List<Alert>;
 
       // Apply forced status overrides before generating alerts
       final updatedTowers = applyForcedTowerStatus(fetchedTowers);
@@ -607,15 +649,12 @@ class _DashboardPageState extends State<DashboardPage> {
       // Auto-generate DOWN alerts so the dashboard card matches Alerts page
       final generatedAlerts = <Alert>[];
 
-      // Update device location point statuses from MMT data (with timeout)
-      await _updateDeviceLocationStatuses().timeout(
-        const Duration(seconds: 15),
-        onTimeout: () {
-          print('Warning: Update device location statuses timed out');
-        },
-      );
+      final ipStatus = _buildIpStatusMap(updatedTowers, updatedCameras);
+      final effectiveTowers = _applyIpStatusToTowers(updatedTowers, ipStatus);
+      final effectiveCameras =
+          _applyIpStatusToCameras(updatedCameras, ipStatus);
 
-      for (final tower in updatedTowers) {
+      for (final tower in effectiveTowers) {
         if (isDownStatus(tower.status)) {
           String route = '/ ';
           if (tower.containerYard == 'CY2') {
@@ -643,7 +682,7 @@ class _DashboardPageState extends State<DashboardPage> {
         }
       }
 
-      for (final camera in updatedCameras) {
+      for (final camera in effectiveCameras) {
         if (isDownStatus(camera.status)) {
           String route = '/cctv';
           if (camera.containerYard == 'CY2') {
@@ -692,23 +731,35 @@ class _DashboardPageState extends State<DashboardPage> {
               deviceStatuses[device.id] ??
               'DOWN';
         } else if (device.type == 'Access Point' || device.type == 'Tower') {
-          final tower = updatedTowers.firstWhere(
-            (t) => t.towerId == device.name || t.ipAddress == device.ipAddress,
-            orElse: () => updatedTowers.first,
-          );
-          if (tower.towerId == device.name ||
-              tower.ipAddress == device.ipAddress) {
-            device.status = tower.status;
+          if (effectiveTowers.isNotEmpty) {
+            final tower = effectiveTowers.firstWhere(
+              (t) =>
+                  t.towerId == device.name || t.ipAddress == device.ipAddress,
+              orElse: () => effectiveTowers.first,
+            );
+            if (tower.towerId == device.name ||
+                tower.ipAddress == device.ipAddress) {
+              device.status = tower.status;
+            }
           }
         } else if (device.type == 'CCTV') {
-          final camera = updatedCameras.firstWhere(
-            (c) => c.cameraId == device.name || c.ipAddress == device.ipAddress,
-            orElse: () => updatedCameras.first,
-          );
-          if (camera.cameraId == device.name ||
-              camera.ipAddress == device.ipAddress) {
-            device.status = camera.status;
+          if (effectiveCameras.isNotEmpty) {
+            final camera = effectiveCameras.firstWhere(
+              (c) =>
+                  c.cameraId == device.name || c.ipAddress == device.ipAddress,
+              orElse: () => effectiveCameras.first,
+            );
+            if (camera.cameraId == device.name ||
+                camera.ipAddress == device.ipAddress) {
+              device.status = camera.status;
+            }
           }
+        }
+
+        final ipKey = device.ipAddress.trim();
+        final ipStatusValue = ipStatus[ipKey];
+        if (ipStatusValue != null) {
+          device.status = ipStatusValue;
         }
       }
 
@@ -718,17 +769,17 @@ class _DashboardPageState extends State<DashboardPage> {
       // Only update state if we got valid data (not empty)
       // This prevents status becoming 0 after long standby errors
       if (mounted &&
-          (updatedCameras.isNotEmpty ||
-              updatedTowers.isNotEmpty ||
+          (effectiveCameras.isNotEmpty ||
+              effectiveTowers.isNotEmpty ||
               cameras.isNotEmpty ||
               towers.isNotEmpty)) {
         setState(() {
-          cameras = updatedCameras.isNotEmpty ? updatedCameras : cameras;
+          cameras = effectiveCameras.isNotEmpty ? effectiveCameras : cameras;
           totalUpCameras = cameras.where((c) => !isDownStatus(c.status)).length;
           totalDownCameras =
               cameras.where((c) => isDownStatus(c.status)).length;
 
-          towers = updatedTowers.isNotEmpty ? updatedTowers : towers;
+          towers = effectiveTowers.isNotEmpty ? effectiveTowers : towers;
           totalOnlineTowers =
               towers.where((t) => !isDownStatus(t.status)).length;
           totalTowers = towers.length;
@@ -742,12 +793,12 @@ class _DashboardPageState extends State<DashboardPage> {
       } else if (mounted && cameras.isEmpty && towers.isEmpty) {
         // First load case - set even if empty
         setState(() {
-          cameras = updatedCameras;
+          cameras = effectiveCameras;
           totalUpCameras = cameras.where((c) => !isDownStatus(c.status)).length;
           totalDownCameras =
               cameras.where((c) => isDownStatus(c.status)).length;
 
-          towers = updatedTowers;
+          towers = effectiveTowers;
           totalOnlineTowers =
               towers.where((t) => !isDownStatus(t.status)).length;
           totalTowers = towers.length;
@@ -793,6 +844,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
           // Clear and prepare device statuses map
           deviceStatuses.clear();
+          final mmtStatusByIp = <String, String>{};
 
           // Update device statuses from database
           for (var mmt in mmtList) {
@@ -806,7 +858,12 @@ class _DashboardPageState extends State<DashboardPage> {
             if (deviceId.isNotEmpty) {
               deviceStatuses[deviceId] = status;
             }
+            if (ipAddress.isNotEmpty) {
+              _mergeIpStatus(mmtStatusByIp, ipAddress, status);
+            }
           }
+
+          _mmtStatusByIp = mmtStatusByIp;
 
           // Update status in deviceLocationPoints
           for (var device in deviceLocationPoints) {
@@ -851,6 +908,176 @@ class _DashboardPageState extends State<DashboardPage> {
       // This prevents error snackbar spam during auto-refresh
       print('Error triggering ping check (ignored): $e');
     }
+  }
+
+  void _mergeIpStatus(Map<String, String> map, String ip, String status) {
+    final normalized = status.toUpperCase();
+    if (ip.isEmpty) {
+      return;
+    }
+    final current = map[ip];
+    if (normalized == 'UP') {
+      map[ip] = 'UP';
+      return;
+    }
+    if (current == null) {
+      map[ip] = normalized;
+      return;
+    }
+    if (current != 'UP' && normalized == 'DOWN') {
+      map[ip] = 'DOWN';
+    }
+  }
+
+  Map<String, String> _buildIpStatusMap(
+      List<Tower> towers, List<Camera> cameras) {
+    final map = <String, String>{};
+    for (final tower in towers) {
+      _mergeIpStatus(map, tower.ipAddress.trim(), tower.status);
+    }
+    for (final camera in cameras) {
+      _mergeIpStatus(map, camera.ipAddress.trim(), camera.status);
+    }
+    for (final entry in _mmtStatusByIp.entries) {
+      _mergeIpStatus(map, entry.key, entry.value);
+    }
+    return map;
+  }
+
+  List<Tower> _applyIpStatusToTowers(
+      List<Tower> towers, Map<String, String> ipStatus) {
+    return towers.map((tower) {
+      final ip = tower.ipAddress.trim();
+      final forced = ipStatus[ip];
+      if (forced == null || tower.status.toUpperCase() == forced) {
+        return tower;
+      }
+      return Tower(
+        id: tower.id,
+        towerId: tower.towerId,
+        towerNumber: tower.towerNumber,
+        location: tower.location,
+        ipAddress: tower.ipAddress,
+        deviceCount: tower.deviceCount,
+        status: forced,
+        traffic: tower.traffic,
+        uptime: tower.uptime,
+        containerYard: tower.containerYard,
+        createdAt: tower.createdAt,
+        updatedAt: tower.updatedAt,
+      );
+    }).toList(growable: false);
+  }
+
+  List<Camera> _applyIpStatusToCameras(
+      List<Camera> cameras, Map<String, String> ipStatus) {
+    return cameras.map((camera) {
+      final ip = camera.ipAddress.trim();
+      final forced = ipStatus[ip];
+      if (forced == null || camera.status.toUpperCase() == forced) {
+        return camera;
+      }
+      return Camera(
+        id: camera.id,
+        cameraId: camera.cameraId,
+        location: camera.location,
+        ipAddress: camera.ipAddress,
+        status: forced,
+        type: camera.type,
+        containerYard: camera.containerYard,
+        areaType: camera.areaType,
+        createdAt: camera.createdAt,
+        updatedAt: camera.updatedAt,
+      );
+    }).toList(growable: false);
+  }
+
+  LatLng _offsetPoint(double lat, double lng, int index, int total) {
+    if (total <= 1) {
+      return LatLng(lat, lng);
+    }
+
+    const radius = 0.00005; // ~5m - minimal offset to prevent overlap only
+    final angle = (2 * math.pi * index) / total;
+
+    return LatLng(
+        lat + (radius * math.cos(angle)), lng + (radius * math.sin(angle)));
+  }
+
+  List<Marker> _buildAddedDeviceMarkers() {
+    final totals = <String, int>{};
+    for (final device in addedDevices) {
+      final key = '${device.latitude}_${device.longitude}';
+      totals[key] = (totals[key] ?? 0) + 1;
+    }
+    final seen = <String, int>{};
+
+    return addedDevices.map((device) {
+      final key = '${device.latitude}_${device.longitude}';
+      final index = seen[key] ?? 0;
+      seen[key] = index + 1;
+      final total = totals[key] ?? 1;
+      final offset =
+          _offsetPoint(device.latitude, device.longitude, index, total);
+
+      final locationKey = '${device.latitude}_${device.longitude}';
+      final isBlinkingLocation =
+          _locationKeysWithDownDevices.contains(locationKey);
+
+      Color iconColor;
+      Color backgroundColor;
+
+      if (isBlinkingLocation && !_isBlinkVisible) {
+        iconColor = Colors.red;
+        backgroundColor = Colors.red;
+      } else {
+        iconColor = device.status == 'UP' ? Colors.green : Colors.red;
+        backgroundColor = device.status == 'UP' ? Colors.green : Colors.red;
+      }
+
+      return Marker(
+        point: offset,
+        width: 60,
+        height: 70,
+        child: GestureDetector(
+          onTap: () {
+            print(
+                'DEBUG: Tapped added device at ${device.latitude}, ${device.longitude}');
+            _showDevicesAtLocation(context, device.latitude, device.longitude);
+          },
+          behavior: HitTestBehavior.opaque,
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Icon(
+                  _getDeviceIcon(device.type),
+                  color: iconColor,
+                  size: 40,
+                ),
+                const SizedBox(height: 2),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: backgroundColor,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    device.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }).toList(growable: false);
   }
 
   Tower? _findTowerForPoint(TowerPoint point) {
@@ -1193,7 +1420,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                         ],
                                       ),
                                     ),
-                                    Icon(
+                                    const Icon(
                                       Icons.arrow_forward_ios,
                                       size: 16,
                                       color: Colors.black54,
@@ -1992,77 +2219,7 @@ class _DashboardPageState extends State<DashboardPage> {
                               )),
 
                           // Added Devices - User-added devices (DRAWN LAST - APPEARS ON TOP)
-                          ...addedDevices.map((device) {
-                            final locationKey =
-                                '${device.latitude}_${device.longitude}';
-                            final isBlinkingLocation =
-                                _locationKeysWithDownDevices
-                                    .contains(locationKey);
-
-                            // Determine icon color with blinking effect
-                            Color iconColor;
-                            Color backgroundColor;
-
-                            if (isBlinkingLocation && !_isBlinkVisible) {
-                              // Blinking state - show warning color (red)
-                              iconColor = Colors.red;
-                              backgroundColor = Colors.red;
-                            } else {
-                              // Normal state
-                              iconColor = device.status == 'UP'
-                                  ? Colors.green
-                                  : Colors.red;
-                              backgroundColor = device.status == 'UP'
-                                  ? Colors.green
-                                  : Colors.red;
-                            }
-
-                            return Marker(
-                              point: LatLng(device.latitude, device.longitude),
-                              width: 60,
-                              height: 70,
-                              child: GestureDetector(
-                                onTap: () {
-                                  print(
-                                      'DEBUG: Tapped added device at ${device.latitude}, ${device.longitude}');
-                                  _showDevicesAtLocation(context,
-                                      device.latitude, device.longitude);
-                                },
-                                behavior: HitTestBehavior.opaque,
-                                child: MouseRegion(
-                                  cursor: SystemMouseCursors.click,
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.start,
-                                    children: [
-                                      Icon(
-                                        _getDeviceIcon(device.type),
-                                        color: iconColor,
-                                        size: 40,
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 4),
-                                        decoration: BoxDecoration(
-                                          color: backgroundColor,
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          device.name,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 8,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
+                          ..._buildAddedDeviceMarkers(),
 
                           // Tower/Access Points - Tower PNG Image
                           ...towerPoints.map((point) {
@@ -2114,7 +2271,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 ),
                               ),
                             );
-                          }).toList(),
+                          }),
                         ],
                       ),
                     ],

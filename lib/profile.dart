@@ -109,7 +109,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Terminal Nilam',
                   style: TextStyle(
                     color: Colors.white,
@@ -162,7 +162,7 @@ class _ProfilePageState extends State<ProfilePage> {
             )
           : Row(
               children: [
-                Expanded(
+                const Expanded(
                   child: Text(
                     'Terminal Nilam',
                     style: TextStyle(
@@ -567,16 +567,16 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildFooter() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      color: const Color(0xFF1A252F),
-      child: const Center(
-        child: Text(
-          '© 2024 Terminal Nilam. All rights reserved.',
-          style: TextStyle(
-            color: Colors.white70,
-            fontSize: 12,
+      padding: const EdgeInsets.all(16),
+      color: Colors.black.withOpacity(0.8),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            '©2026 TPK Nilam Monitoring System',
+            style: TextStyle(color: Colors.white, fontSize: 12),
           ),
-        ),
+        ],
       ),
     );
   }

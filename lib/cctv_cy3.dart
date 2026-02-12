@@ -6,7 +6,6 @@ import 'package:http/http.dart' as http;
 import 'main.dart';
 import 'route_proxy_page.dart';
 import 'services/api_service.dart';
-import 'add_device.dart';
 import 'utils/tower_status_override.dart';
 
 // CCTV Page CY 3
@@ -148,31 +147,39 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
 
   Future<void> _loadCameras() async {
     try {
-      setState(() {
-        isLoading = true;
-      });
+      // Don't show loading if already have data (prevents flickering)
+      if (allCameras.isEmpty) {
+        setState(() {
+          isLoading = true;
+        });
+      }
 
       final apiService = ApiService();
       final cameras = await apiService.getCamerasByContainerYard('CY3');
       final updatedCameras = applyForcedCameraStatus(cameras);
 
-      setState(() {
-        allCameras.clear();
-        final camerasMap = updatedCameras
-            .map((c) => {
-                  'id': c.cameraId,
-                  'location': c.location,
-                  'status': c.status,
-                  'type': c.type,
-                })
-            .toList();
-        camerasMap
-            .sort((a, b) => a['id'].toString().compareTo(b['id'].toString()));
-        allCameras.addAll(camerasMap);
-        isLoading = false;
-        currentPage = 0;
-        lastUpdated = DateTime.now();
-      });
+      if (mounted) {
+        setState(() {
+          allCameras.clear();
+          final camerasMap = updatedCameras
+              .map((c) => {
+                    'id': c.cameraId,
+                    'location': c.location,
+                    'status': c.status,
+                    'type': c.type,
+                  })
+              .toList();
+          camerasMap
+              .sort((a, b) => a['id'].toString().compareTo(b['id'].toString()));
+          allCameras.addAll(camerasMap);
+          isLoading = false;
+          // Only reset page if current page exceeds available pages
+          if (currentPage >= totalPages && totalPages > 0) {
+            currentPage = totalPages - 1;
+          }
+          lastUpdated = DateTime.now();
+        });
+      }
 
       // Trigger realtime ping in background after UI loads
       _triggerRealtimePing();
@@ -315,11 +322,11 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
             )
           : Row(
               children: [
-                Expanded(
+                const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Terminal Nilam',
                         style: TextStyle(
                           color: Colors.white,
@@ -327,16 +334,6 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      if (lastUpdated != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4.0, bottom: 2.0),
-                          child: Text(
-                            'Last update: '
-                            '${lastUpdated!.hour.toString().padLeft(2, '0')}:${lastUpdated!.minute.toString().padLeft(2, '0')}:${lastUpdated!.second.toString().padLeft(2, '0')}',
-                            style: const TextStyle(
-                                color: Colors.white70, fontSize: 11),
-                          ),
-                        ),
                     ],
                   ),
                 ),
@@ -434,12 +431,12 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
       children: [
         Row(
           children: [
-            Icon(Icons.videocam, size: 40, color: Colors.white),
-            SizedBox(width: 16),
+            const Icon(Icons.videocam, size: 40, color: Colors.white),
+            const SizedBox(width: 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'CCTV Monitoring',
                   style: TextStyle(
                     color: Colors.white,
@@ -447,24 +444,41 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: 4),
-                Text(
-                  'Live camera feeds and surveillance system status',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Text(
+                      'Live camera feeds and surveillance system status - CY 3',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                    if (lastUpdated != null) ...[
+                      const SizedBox(width: 8),
+                      const Text('•', style: TextStyle(color: Colors.white70)),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Updated: ${lastUpdated!.hour.toString().padLeft(2, '0')}:${lastUpdated!.minute.toString().padLeft(2, '0')}',
+                        style: const TextStyle(
+                          color: Colors.greenAccent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
-            Spacer(),
+            const Spacer(),
             // Fullscreen Button
             MouseRegion(
               cursor: SystemMouseCursors.click,
               child: GestureDetector(
                 onTap: () => navigateWithLoading(context, '/cctv-fullscreen'),
                 child: Container(
-                  padding: EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
@@ -473,7 +487,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                       width: 1,
                     ),
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.fullscreen,
                     color: Colors.white,
                     size: 24,
@@ -678,9 +692,9 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
             color: const Color(0xFF4CAF50),
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Row(
+          child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
+            children: [
               Icon(Icons.refresh, color: Colors.white, size: 20),
               SizedBox(width: 8),
               Text(
