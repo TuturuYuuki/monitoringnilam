@@ -1,22 +1,25 @@
 import 'package:flutter/material.dart';
 import 'main.dart';
 import 'services/api_service.dart';
-import 'utils/auth_helper.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class ResetPasswordPage extends StatefulWidget {
+  const ResetPasswordPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<ResetPasswordPage> createState() => _ResetPasswordPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _ResetPasswordPageState extends State<ResetPasswordPage> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _obscurePassword = true;
+  final _newPasswordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  bool _obscureNewPassword = true;
+  bool _obscureConfirmPassword = true;
   bool _isLoading = false;
   late ApiService apiService;
+
+  String email = '';
+  String otp = '';
 
   @override
   void initState() {
@@ -25,22 +28,35 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Get email and otp from route arguments
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args != null) {
+      email = args['email'] ?? '';
+      otp = args['otp'] ?? '';
+    }
+  }
+
+  @override
   void dispose() {
-    _usernameController.dispose();
-    _passwordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  void _handleLogin() async {
+  void _handleResetPassword() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
       });
 
       try {
-        final response = await apiService.login(
-          _usernameController.text,
-          _passwordController.text,
+        final response = await apiService.resetPassword(
+          email,
+          otp,
+          _newPasswordController.text,
         );
 
         setState(() {
@@ -48,23 +64,44 @@ class _LoginPageState extends State<LoginPage> {
         });
 
         if (response['success'] == true) {
-          // Save minimal user data first
-          await AuthHelper.saveUserData(response['data']);
-
-          // Fetch full profile from API (to get phone/location/division) and update cache
-          try {
-            final userId = (response['data']?['id'] ?? 0) as int;
-            if (userId > 0) {
-              final profile = await apiService.getProfile(userId);
-              if (profile != null) {
-                await AuthHelper.saveUserData(profile.toJson());
-              }
-            }
-          } catch (_) {}
-
-          // Navigate to dashboard
+          // Password reset successful
           if (mounted) {
-            Navigator.pushReplacementNamed(context, '/dashboard');
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => AlertDialog(
+                title: const Text('Berhasil'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                      size: 64,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      response['message'] ?? 'Password berhasil diubah',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      // Navigate back to login
+                      Navigator.pushNamedAndRemoveUntil(
+                        context,
+                        '/login',
+                        (route) => false,
+                      );
+                    },
+                    child: const Text('Login Sekarang'),
+                  ),
+                ],
+              ),
+            );
           }
         } else {
           // Show error message
@@ -72,8 +109,8 @@ class _LoginPageState extends State<LoginPage> {
             showDialog(
               context: context,
               builder: (context) => AlertDialog(
-                title: const Text('Login Gagal'),
-                content: Text(response['message'] ?? 'Login failed'),
+                title: const Text('Gagal'),
+                content: Text(response['message'] ?? 'Gagal mengubah password'),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
@@ -107,11 +144,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _handleSignUp() {
-    // Navigate to sign up page
-    Navigator.pushNamed(context, '/signup');
-  }
-
   @override
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
@@ -128,7 +160,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
 
-          // Overlay untuk membuat teks lebih terbaca
+          // Overlay
           Container(
             color: Colors.black.withOpacity(0.3),
           ),
@@ -180,7 +212,7 @@ class _LoginPageState extends State<LoginPage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Login Form
+                      // Form
                       Container(
                         constraints: const BoxConstraints(maxWidth: 700),
                         padding: const EdgeInsets.all(40),
@@ -211,7 +243,7 @@ class _LoginPageState extends State<LoginPage> {
                                   borderRadius: BorderRadius.circular(50),
                                 ),
                                 child: const Text(
-                                  'Login Page',
+                                  'Reset Password',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 28,
@@ -221,41 +253,27 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                               ),
 
-                              const SizedBox(height: 40),
+                              const SizedBox(height: 24),
 
-                              // Username Field
-                              TextFormField(
-                                controller: _usernameController,
-                                keyboardType: TextInputType.text,
-                                decoration: InputDecoration(
-                                  hintText: 'Username',
-                                  filled: true,
-                                  fillColor: Colors.grey[100],
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(50),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 20,
-                                  ),
+                              // Info Text
+                              const Text(
+                                'Masukkan password baru Anda',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
                                 ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your username';
-                                  }
-                                  return null;
-                                },
                               ),
 
-                              const SizedBox(height: 20),
+                              const SizedBox(height: 40),
 
-                              // Password Field
+                              // New Password Field
                               TextFormField(
-                                controller: _passwordController,
-                                obscureText: _obscurePassword,
+                                controller: _newPasswordController,
+                                obscureText: _obscureNewPassword,
                                 decoration: InputDecoration(
-                                  hintText: 'Password',
+                                  hintText: 'Password Baru',
                                   filled: true,
                                   fillColor: Colors.grey[100],
                                   border: OutlineInputBorder(
@@ -266,23 +284,25 @@ class _LoginPageState extends State<LoginPage> {
                                     horizontal: 24,
                                     vertical: 20,
                                   ),
+                                  prefixIcon: const Icon(Icons.lock),
                                   suffixIcon: IconButton(
                                     icon: Icon(
-                                      _obscurePassword
+                                      _obscureNewPassword
                                           ? Icons.visibility_off
                                           : Icons.visibility,
                                       color: Colors.grey,
                                     ),
                                     onPressed: () {
                                       setState(() {
-                                        _obscurePassword = !_obscurePassword;
+                                        _obscureNewPassword =
+                                            !_obscureNewPassword;
                                       });
                                     },
                                   ),
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Please enter your password';
+                                    return 'Please enter new password';
                                   }
                                   if (value.length < 6) {
                                     return 'Password must be at least 6 characters';
@@ -291,36 +311,60 @@ class _LoginPageState extends State<LoginPage> {
                                 },
                               ),
 
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 20),
 
-                              // Forgot Password Link
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: TextButton(
-                                  onPressed: () {
-                                    Navigator.pushNamed(
-                                        context, '/forgot-password');
-                                  },
-                                  child: const Text(
-                                    'Lupa Password?',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                      decoration: TextDecoration.underline,
+                              // Confirm Password Field
+                              TextFormField(
+                                controller: _confirmPasswordController,
+                                obscureText: _obscureConfirmPassword,
+                                decoration: InputDecoration(
+                                  hintText: 'Konfirmasi Password Baru',
+                                  filled: true,
+                                  fillColor: Colors.grey[100],
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(50),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 20,
+                                  ),
+                                  prefixIcon: const Icon(Icons.lock_outline),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _obscureConfirmPassword
+                                          ? Icons.visibility_off
+                                          : Icons.visibility,
+                                      color: Colors.grey,
                                     ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _obscureConfirmPassword =
+                                            !_obscureConfirmPassword;
+                                      });
+                                    },
                                   ),
                                 ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please confirm your password';
+                                  }
+                                  if (value != _newPasswordController.text) {
+                                    return 'Passwords do not match';
+                                  }
+                                  return null;
+                                },
                               ),
 
-                              const SizedBox(height: 24),
+                              const SizedBox(height: 40),
 
-                              // Login Button
+                              // Reset Password Button
                               SizedBox(
                                 width: double.infinity,
                                 height: 55,
                                 child: ElevatedButton(
-                                  onPressed: _isLoading ? null : _handleLogin,
+                                  onPressed:
+                                      _isLoading ? null : _handleResetPassword,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF1976D2),
                                     shape: RoundedRectangleBorder(
@@ -338,7 +382,7 @@ class _LoginPageState extends State<LoginPage> {
                                           ),
                                         )
                                       : const Text(
-                                          'Login',
+                                          'Reset Password',
                                           style: TextStyle(
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,
@@ -346,47 +390,6 @@ class _LoginPageState extends State<LoginPage> {
                                           ),
                                         ),
                                 ),
-                              ),
-
-                              const SizedBox(height: 24),
-
-                              // Sign Up Section
-                              Column(
-                                children: [
-                                  const Text(
-                                    'No Account?',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      color: Color.fromARGB(255, 255, 255, 255),
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    height: 55,
-                                    child: ElevatedButton(
-                                      onPressed: _handleSignUp,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor:
-                                            const Color(0xFF1976D2),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(50),
-                                        ),
-                                        elevation: 5,
-                                      ),
-                                      child: const Text(
-                                        'Sign Up',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
                               ),
                             ],
                           ),

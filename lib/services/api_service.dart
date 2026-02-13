@@ -385,6 +385,140 @@ class ApiService {
     }
   }
 
+  // ==================== FORGOT PASSWORD ENDPOINTS ====================
+
+  /// Send OTP to email for password reset
+  Future<Map<String, dynamic>> sendForgotPasswordOtp(String email) async {
+    try {
+      print('=== Forgot Password - Send OTP ===');
+      print('Email: $email');
+
+      final response = await http
+          .post(
+        Uri.parse('http://localhost/monitoring_api/forgot_password.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('❌ Request timeout');
+          return http.Response(
+              '{"success":false,"message":"Request timeout"}', 408);
+        },
+      );
+
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        return result;
+      } else {
+        try {
+          final result = jsonDecode(response.body);
+          return result;
+        } catch (e) {
+          return {'success': false, 'message': 'Failed to send OTP'};
+        }
+      }
+    } catch (e) {
+      print('Error in sendForgotPasswordOtp: $e');
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  /// Verify OTP for password reset
+  Future<Map<String, dynamic>> verifyResetPasswordOtp(
+      String email, String otp) async {
+    try {
+      print('=== Verify Reset Password OTP ===');
+      print('Email: $email');
+      print('OTP: $otp');
+
+      final response = await http
+          .post(
+        Uri.parse('http://localhost/monitoring_api/verify_reset_otp.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'otp': otp}),
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('❌ Request timeout');
+          return http.Response(
+              '{"success":false,"message":"Request timeout"}', 408);
+        },
+      );
+
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        return result;
+      } else {
+        try {
+          final result = jsonDecode(response.body);
+          return result;
+        } catch (e) {
+          return {'success': false, 'message': 'Failed to verify OTP'};
+        }
+      }
+    } catch (e) {
+      print('Error in verifyResetPasswordOtp: $e');
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  /// Reset password with verified OTP
+  Future<Map<String, dynamic>> resetPassword(
+      String email, String otp, String newPassword) async {
+    try {
+      print('=== Reset Password ===');
+      print('Email: $email');
+      print('OTP: $otp');
+      print('New Password Length: ${newPassword.length}');
+
+      final response = await http
+          .post(
+        Uri.parse('http://localhost/monitoring_api/reset_password.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'otp': otp,
+          'new_password': newPassword,
+        }),
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('❌ Request timeout');
+          return http.Response(
+              '{"success":false,"message":"Request timeout"}', 408);
+        },
+      );
+
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        return result;
+      } else {
+        try {
+          final result = jsonDecode(response.body);
+          return result;
+        } catch (e) {
+          return {'success': false, 'message': 'Failed to reset password'};
+        }
+      }
+    } catch (e) {
+      print('Error in resetPassword: $e');
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
   Future<Map<String, dynamic>> requestEmailChangeOtp(
       int userId, String newEmail) async {
     try {

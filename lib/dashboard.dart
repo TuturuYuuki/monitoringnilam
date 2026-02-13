@@ -997,7 +997,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       return LatLng(lat, lng);
     }
 
-    const radius = 0.00005; // ~5m - minimal offset to prevent overlap only
+    const radius = 0.0000225; // ~2,5m - minimal offset to prevent overlap only
     final angle = (2 * math.pi * index) / total;
 
     return LatLng(

@@ -14,6 +14,9 @@ import 'cctv_fullscreen.dart';
 import 'alerts.dart';
 import 'login.dart';
 import 'signup.dart';
+import 'forgot_password.dart';
+import 'forgot_password_verify.dart';
+import 'reset_password.dart';
 import 'profile.dart';
 import 'edit_profile.dart';
 import 'change_password.dart';
@@ -451,6 +454,10 @@ class MyApp extends StatelessWidget {
         '/profile': (context) => const ProfilePage(),
         '/edit-profile': (context) => const EditProfilePage(),
         '/change-password': (context) => const ChangePasswordPage(),
+        '/forgot-password': (context) => const ForgotPasswordPage(),
+        '/forgot-password-verify': (context) =>
+            const ForgotPasswordVerifyPage(),
+        '/reset-password': (context) => const ResetPasswordPage(),
       },
     );
   }

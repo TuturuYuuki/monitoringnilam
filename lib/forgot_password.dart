@@ -1,20 +1,17 @@
 import 'package:flutter/material.dart';
 import 'main.dart';
 import 'services/api_service.dart';
-import 'utils/auth_helper.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class ForgotPasswordPage extends StatefulWidget {
+  const ForgotPasswordPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _obscurePassword = true;
+  final _emailController = TextEditingController();
   bool _isLoading = false;
   late ApiService apiService;
 
@@ -26,45 +23,84 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    _usernameController.dispose();
-    _passwordController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
-  void _handleLogin() async {
+  void _handleSendOtp() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
       });
 
       try {
-        final response = await apiService.login(
-          _usernameController.text,
-          _passwordController.text,
-        );
+        final response =
+            await apiService.sendForgotPasswordOtp(_emailController.text);
 
         setState(() {
           _isLoading = false;
         });
 
         if (response['success'] == true) {
-          // Save minimal user data first
-          await AuthHelper.saveUserData(response['data']);
-
-          // Fetch full profile from API (to get phone/location/division) and update cache
-          try {
-            final userId = (response['data']?['id'] ?? 0) as int;
-            if (userId > 0) {
-              final profile = await apiService.getProfile(userId);
-              if (profile != null) {
-                await AuthHelper.saveUserData(profile.toJson());
-              }
-            }
-          } catch (_) {}
-
-          // Navigate to dashboard
+          // OTP sent successfully, navigate to verify page
           if (mounted) {
-            Navigator.pushReplacementNamed(context, '/dashboard');
+            // Check if OTP is in response (development mode)
+            final String? devOtp = response['otp'];
+
+            // Show OTP in dialog if in development mode
+            if (devOtp != null) {
+              await showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('OTP Generated'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Development Mode - Your OTP:'),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          devOtp,
+                          style: const TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 8,
+                            color: Colors.blue,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        response['note'] ?? '',
+                        style:
+                            const TextStyle(fontSize: 12, color: Colors.grey),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('OK'),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            Navigator.pushNamed(
+              context,
+              '/forgot-password-verify',
+              arguments: {
+                'email': _emailController.text,
+                'expires_in': response['expires_in'] ?? 600,
+              },
+            );
           }
         } else {
           // Show error message
@@ -72,8 +108,8 @@ class _LoginPageState extends State<LoginPage> {
             showDialog(
               context: context,
               builder: (context) => AlertDialog(
-                title: const Text('Login Gagal'),
-                content: Text(response['message'] ?? 'Login failed'),
+                title: const Text('Gagal Mengirim OTP'),
+                content: Text(response['message'] ?? 'Gagal mengirim OTP'),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
@@ -107,11 +143,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _handleSignUp() {
-    // Navigate to sign up page
-    Navigator.pushNamed(context, '/signup');
-  }
-
   @override
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
@@ -128,7 +159,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
 
-          // Overlay untuk membuat teks lebih terbaca
+          // Overlay
           Container(
             color: Colors.black.withOpacity(0.3),
           ),
@@ -180,7 +211,7 @@ class _LoginPageState extends State<LoginPage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Login Form
+                      // Form
                       Container(
                         constraints: const BoxConstraints(maxWidth: 700),
                         padding: const EdgeInsets.all(40),
@@ -199,6 +230,18 @@ class _LoginPageState extends State<LoginPage> {
                           key: _formKey,
                           child: Column(
                             children: [
+                              // Back Button
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: IconButton(
+                                  icon: const Icon(Icons.arrow_back,
+                                      color: Colors.white, size: 28),
+                                  onPressed: () => Navigator.pop(context),
+                                ),
+                              ),
+
+                              const SizedBox(height: 10),
+
                               // Title
                               Container(
                                 width: double.infinity,
@@ -211,7 +254,7 @@ class _LoginPageState extends State<LoginPage> {
                                   borderRadius: BorderRadius.circular(50),
                                 ),
                                 child: const Text(
-                                  'Login Page',
+                                  'Lupa Password',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 28,
@@ -221,106 +264,58 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                               ),
 
-                              const SizedBox(height: 40),
-
-                              // Username Field
-                              TextFormField(
-                                controller: _usernameController,
-                                keyboardType: TextInputType.text,
-                                decoration: InputDecoration(
-                                  hintText: 'Username',
-                                  filled: true,
-                                  fillColor: Colors.grey[100],
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(50),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 20,
-                                  ),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your username';
-                                  }
-                                  return null;
-                                },
-                              ),
-
-                              const SizedBox(height: 20),
-
-                              // Password Field
-                              TextFormField(
-                                controller: _passwordController,
-                                obscureText: _obscurePassword,
-                                decoration: InputDecoration(
-                                  hintText: 'Password',
-                                  filled: true,
-                                  fillColor: Colors.grey[100],
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(50),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 20,
-                                  ),
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      _obscurePassword
-                                          ? Icons.visibility_off
-                                          : Icons.visibility,
-                                      color: Colors.grey,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _obscurePassword = !_obscurePassword;
-                                      });
-                                    },
-                                  ),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your password';
-                                  }
-                                  if (value.length < 6) {
-                                    return 'Password must be at least 6 characters';
-                                  }
-                                  return null;
-                                },
-                              ),
-
-                              const SizedBox(height: 16),
-
-                              // Forgot Password Link
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: TextButton(
-                                  onPressed: () {
-                                    Navigator.pushNamed(
-                                        context, '/forgot-password');
-                                  },
-                                  child: const Text(
-                                    'Lupa Password?',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                      decoration: TextDecoration.underline,
-                                    ),
-                                  ),
-                                ),
-                              ),
-
                               const SizedBox(height: 24),
 
-                              // Login Button
+                              // Info Text
+                              const Text(
+                                'Masukkan email Anda untuk menerima kode OTP',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+
+                              const SizedBox(height: 40),
+
+                              // Email Field
+                              TextFormField(
+                                controller: _emailController,
+                                keyboardType: TextInputType.emailAddress,
+                                decoration: InputDecoration(
+                                  hintText: 'Email',
+                                  filled: true,
+                                  fillColor: Colors.grey[100],
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(50),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 20,
+                                  ),
+                                  prefixIcon: const Icon(Icons.email),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter your email';
+                                  }
+                                  if (!value.contains('@')) {
+                                    return 'Please enter a valid email';
+                                  }
+                                  return null;
+                                },
+                              ),
+
+                              const SizedBox(height: 40),
+
+                              // Send OTP Button
                               SizedBox(
                                 width: double.infinity,
                                 height: 55,
                                 child: ElevatedButton(
-                                  onPressed: _isLoading ? null : _handleLogin,
+                                  onPressed: _isLoading ? null : _handleSendOtp,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF1976D2),
                                     shape: RoundedRectangleBorder(
@@ -338,7 +333,7 @@ class _LoginPageState extends State<LoginPage> {
                                           ),
                                         )
                                       : const Text(
-                                          'Login',
+                                          'Kirim OTP',
                                           style: TextStyle(
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,
@@ -346,47 +341,6 @@ class _LoginPageState extends State<LoginPage> {
                                           ),
                                         ),
                                 ),
-                              ),
-
-                              const SizedBox(height: 24),
-
-                              // Sign Up Section
-                              Column(
-                                children: [
-                                  const Text(
-                                    'No Account?',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      color: Color.fromARGB(255, 255, 255, 255),
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    height: 55,
-                                    child: ElevatedButton(
-                                      onPressed: _handleSignUp,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor:
-                                            const Color(0xFF1976D2),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(50),
-                                        ),
-                                        elevation: 5,
-                                      ),
-                                      child: const Text(
-                                        'Sign Up',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
                               ),
                             ],
                           ),
