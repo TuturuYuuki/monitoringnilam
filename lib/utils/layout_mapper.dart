@@ -22,9 +22,9 @@ class PixelCoordinate {
 
 class LayoutMapper {
   /// ===== PNG Layout Dimensions =====
-  /// Update these values to match your actual PNG size
-  static const double PNG_WIDTH = 1400;    // pixels
-  static const double PNG_HEIGHT = 900;    // pixels
+  /// Updated to match actual terminal layout image
+  static const double PNG_WIDTH = 2560;    // pixels
+  static const double PNG_HEIGHT = 1269;   // pixels
 
   /// ===== Bounding Box (Geographic Coordinates) =====
   /// These define the real-world boundaries that map to the PNG
