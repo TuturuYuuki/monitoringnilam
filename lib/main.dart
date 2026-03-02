@@ -21,6 +21,7 @@ import 'profile.dart';
 import 'edit_profile.dart';
 import 'change_password.dart';
 import 'add_device.dart';
+import 'report_page.dart';
 
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
@@ -76,7 +77,7 @@ Future<void> navigateWithLoading(BuildContext context, String routeName) async {
     }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Navigasi gagal: $routeName'),
+        content: Text('Failed Navigation: $routeName'),
         duration: const Duration(seconds: 2),
         backgroundColor: Colors.red,
       ),
@@ -90,12 +91,12 @@ void showLogoutDialog(BuildContext context) {
     context: context,
     builder: (context) => AlertDialog(
       title: const Text('Logout', style: TextStyle(color: Colors.black87)),
-      content: const Text('Apakah Anda yakin ingin logout?',
+      content: const Text('Are You Sure To Logout?',
           style: TextStyle(color: Colors.black87)),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Batal', style: TextStyle(color: Colors.black87)),
+          child: const Text('Cancel', style: TextStyle(color: Colors.black87)),
         ),
         ElevatedButton(
           onPressed: () async {
@@ -451,6 +452,7 @@ class MyApp extends StatelessWidget {
         '/cctv-parking': (context) => const ParkingCCTVPage(),
         '/cctv-fullscreen': (context) => const CCTVFullscreenPage(),
         '/alerts': (context) => const AlertsPage(),
+        '/report': (context) => const ReportPage(),
         '/profile': (context) => const ProfilePage(),
         '/edit-profile': (context) => const EditProfilePage(),
         '/change-password': (context) => const ChangePasswordPage(),

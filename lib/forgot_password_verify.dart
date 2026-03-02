@@ -48,36 +48,47 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
   }
 
   void _startTimer() {
+    _timer?.cancel(); // Pastikan tidak ada timer ganda yang berjalan
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      // PERBAIKAN: Tambahkan cek mounted di sini
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
       if (remainingSeconds > 0) {
         setState(() {
           remainingSeconds--;
         });
       } else {
         timer.cancel();
-        // OTP expired
+        // Cek mounted lagi sebelum menampilkan dialog
         if (mounted) {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => AlertDialog(
-              title: const Text('OTP Kadaluarsa'),
-              content: const Text(
-                  'Kode OTP telah kadaluarsa. Silakan minta OTP baru.'),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Close dialog
-                    Navigator.pop(context); // Back to forgot password page
-                  },
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
-          );
+          _showOtpExpiredDialog();
         }
       }
     });
+  }
+
+  void _showOtpExpiredDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('OTP Expired'),
+        content:
+            const Text('The OTP Code Has Expired. Please Request A New OTP'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Tutup Dialog
+              Navigator.pop(context); // Kembali ke halaman sebelumnya
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   String _formatTime(int seconds) {
@@ -118,8 +129,8 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
             showDialog(
               context: context,
               builder: (context) => AlertDialog(
-                title: const Text('OTP Tidak Valid'),
-                content: Text(response['message'] ?? 'OTP tidak valid'),
+                title: const Text('Invalid OTP'),
+                content: Text(response['message'] ?? 'Invalid OTP. Please Try Again.'),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
@@ -177,7 +188,7 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('OTP baru telah dikirim ke email Anda'),
+              content: Text('New OTP Has Been Sent To Your Email'),
               backgroundColor: Colors.green,
             ),
           );
@@ -187,8 +198,8 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
-              title: const Text('Gagal'),
-              content: Text(response['message'] ?? 'Gagal mengirim OTP baru'),
+              title: const Text('Failed'),
+              content: Text(response['message'] ?? 'Failed To Send New OTP'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
@@ -332,7 +343,7 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                                   borderRadius: BorderRadius.circular(50),
                                 ),
                                 child: const Text(
-                                  'Verifikasi OTP',
+                                  'Verification OTP',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 28,
@@ -346,11 +357,11 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
 
                               // Info Text
                               Text(
-                                'Kode OTP telah dikirim ke\n$email',
+                                'The OTP Code Has Been Sent To\n$email',
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   fontSize: 16,
-                                  color: Colors.white,
+                                  color: Color.fromARGB(255, 0, 0, 0),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -363,7 +374,7 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                                     horizontal: 20, vertical: 10),
                                 decoration: BoxDecoration(
                                   color: remainingSeconds < 60
-                                      ? Colors.red.withOpacity(0.7)
+                                      ? const Color.fromARGB(255, 176, 42, 32).withOpacity(0.7)
                                       : Colors.blue.withOpacity(0.7),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
@@ -393,7 +404,7 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                                 keyboardType: TextInputType.number,
                                 maxLength: 6,
                                 decoration: InputDecoration(
-                                  hintText: 'Masukkan 6 digit OTP',
+                                  hintText: 'Enter 6 Digit OTP',
                                   filled: true,
                                   fillColor: Colors.grey[100],
                                   border: OutlineInputBorder(
@@ -409,10 +420,10 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Please enter OTP';
+                                    return 'Please Enter OTP';
                                   }
                                   if (value.length != 6) {
-                                    return 'OTP must be 6 digits';
+                                    return 'OTP Must Be 6 Digits';
                                   }
                                   return null;
                                 },
@@ -444,7 +455,7 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                                           ),
                                         )
                                       : const Text(
-                                          'Verifikasi',
+                                          'Verification OTP',
                                           style: TextStyle(
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,
@@ -460,12 +471,11 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                               TextButton(
                                 onPressed: _isLoading ? null : _handleResendOtp,
                                 child: const Text(
-                                  'Kirim Ulang OTP',
+                                  'Resend OTP',
                                   style: TextStyle(
                                     fontSize: 16,
-                                    color: Colors.white,
+                                    color: Color.fromARGB(255, 0, 0, 0),
                                     fontWeight: FontWeight.w600,
-                                    decoration: TextDecoration.underline,
                                   ),
                                 ),
                               ),

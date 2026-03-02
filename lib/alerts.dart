@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:animations/animations.dart';
 import 'dart:async';
 import 'main.dart';
 import 'services/api_service.dart';
 import 'models/alert_model.dart';
-import 'models/tower_model.dart';
-import 'models/camera_model.dart';
-import 'utils/tower_status_override.dart';
-import 'route_proxy_page.dart';
+import 'dashboard.dart';
+import 'network.dart';
+import 'cctv.dart';
+import 'add_device.dart';
+import 'profile.dart';
+import 'report_page.dart'; 
 
-// Alerts & Notification Page
 class AlertsPage extends StatefulWidget {
   const AlertsPage({super.key});
 
@@ -20,302 +20,265 @@ class AlertsPage extends StatefulWidget {
 class _AlertsPageState extends State<AlertsPage> {
   late ApiService apiService;
   List<Alert> alerts = [];
-  List<Tower> towers = [];
-  List<Camera> cameras = [];
   bool isLoading = true;
   Timer? _timer;
-  Timer? _uiRefreshTimer; // Timer untuk refresh UI waktu real-time
-  final Map<String, String> _alertTimestamps = {}; // Track alert timestamps
-  final List<Map<String, dynamic>> alertsOld = [
-    {
-      'title': 'CCTV DOWN - CY1 Cam-12',
-      'description': 'Parking Area (CY1) camera offline (Cam-12)',
-      'severity': 'critical',
-      'timestamp': '5 minutes ago',
-      'route': '/cctv',
-    },
-    {
-      'title': 'CCTV DOWN - CY1 Cam-13',
-      'description': 'Loading Dock (CY1) camera offline (Cam-13)',
-      'severity': 'critical',
-      'timestamp': '4 minutes ago',
-      'route': '/cctv',
-    },
-    {
-      'title': 'CCTV DOWN - CY1 Cam-15',
-      'description': 'Office Area (CY1) camera offline (Cam-15)',
-      'severity': 'critical',
-      'timestamp': '3 minutes ago',
-      'route': '/cctv',
-    },
-    {
-      'title': 'CCTV DOWN - CY2 Cam-31',
-      'description': 'Container Yard 2 camera offline (Cam-31)',
-      'severity': 'critical',
-      'timestamp': '10 minutes ago',
-      'route': '/cctv-cy2',
-    },
-    {
-      'title': 'CCTV DOWN - CY3 Cam-16',
-      'description': 'Container Yard 3 camera offline (Cam-16)',
-      'severity': 'critical',
-      'timestamp': '18 minutes ago',
-      'route': '/cctv-cy3',
-    },
-    {
-      'title': 'Access Point WARNING - CY1 T10',
-      'description': 'Access Point T10 (CY1) latency/packet loss detected',
-      'severity': 'warning',
-      'timestamp': '23 minutes ago',
-      'route': '/network',
-    },
-    {
-      'title': 'Access Point WARNING - CY2 T3',
-      'description': 'Access Point T3 (CY2) degraded performance',
-      'severity': 'warning',
-      'timestamp': '45 minutes ago',
-      'route': '/network-cy2',
-    },
-    {
-      'title': 'Access Point WARNING - CY3 T14',
-      'description': 'Access Point T14 (CY3) degraded performance',
-      'severity': 'warning',
-      'timestamp': '1 hour ago',
-      'route': '/network-cy3',
-    },
-    {
-      'title': 'Access Point WARNING - CY3 T16',
-      'description': 'Access Point T16 (CY3) degraded performance',
-      'severity': 'warning',
-      'timestamp': '1 hour ago',
-      'route': '/network-cy3',
-    },
-  ];
-
-  List<Alert> get activeAlerts => alerts
-      .where((a) => a.severity == 'critical' || a.severity == 'warning')
-      .toList();
-  int get criticalCount =>
-      activeAlerts.where((a) => a.severity == 'critical').length;
-  int get warningCount =>
-      activeAlerts.where((a) => a.severity == 'warning').length;
-  int get infoCount => alerts.where((a) => a.severity == 'info').length;
+  DateTime? _lastRefreshTime = DateTime.now();
 
   @override
   void initState() {
     super.initState();
     apiService = ApiService();
     _loadAlerts();
-    // Auto-refresh data dari database dan update UI setiap 2 detik untuk monitoring realtime
-    _timer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (mounted) {
-        _loadAlerts(); // Refresh data dari database secara real-time
-      }
-    });
-    // Refresh UI untuk update timestamp setiap 1 detik
-    _uiRefreshTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        setState(() {}); // Trigger rebuild untuk update relative time
-      }
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (mounted) _loadAlerts(showLoading: false);
     });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    _uiRefreshTimer?.cancel();
     super.dispose();
   }
 
-  String _getRelativeTime(String timestamp) {
+  Future<void> _loadAlerts({bool showLoading = true}) async {
+    if (showLoading) setState(() => isLoading = true);
     try {
-      // Parse timestamp dari database
-      DateTime alertTime;
-      if (timestamp.contains('T')) {
-        alertTime = DateTime.parse(timestamp);
-      } else {
-        // Format: "2025-01-28 10:30:00"
-        alertTime = DateTime.parse(timestamp.replaceAll(' ', 'T'));
-      }
-
-      // Convert ke local time jika timestamp dalam UTC
-      if (alertTime.isUtc) {
-        alertTime = alertTime.toLocal();
-      }
-
-      final now = DateTime.now();
-      final difference = now.difference(alertTime);
-
-      if (difference.inSeconds < 60) {
-        return 'Baru saja';
-      } else if (difference.inMinutes < 60) {
-        return '${difference.inMinutes} menit yang lalu';
-      } else if (difference.inHours < 24) {
-        return '${difference.inHours} jam yang lalu';
-      } else if (difference.inDays < 7) {
-        return '${difference.inDays} hari yang lalu';
-      } else if (difference.inDays < 30) {
-        final weeks = (difference.inDays / 7).floor();
-        return '$weeks minggu yang lalu';
-      } else if (difference.inDays < 365) {
-        final months = (difference.inDays / 30).floor();
-        return '$months bulan yang lalu';
-      } else {
-        final years = (difference.inDays / 365).floor();
-        return '$years tahun yang lalu';
-      }
-    } catch (e) {
-      // Jika parsing gagal, return timestamp asli
-      return timestamp;
-    }
-  }
-
-  String _getFormattedDate(String timestamp) {
-    try {
-      // Parse timestamp dari database
-      DateTime alertTime;
-      if (timestamp.contains('T')) {
-        alertTime = DateTime.parse(timestamp);
-      } else {
-        // Format: "2025-01-28 10:30:00"
-        alertTime = DateTime.parse(timestamp.replaceAll(' ', 'T'));
-      }
-
-      // Convert ke local time jika timestamp dalam UTC
-      if (alertTime.isUtc) {
-        alertTime = alertTime.toLocal();
-      }
-
-      // Daftar nama bulan dalam Bahasa Indonesia
-      const months = [
-        'Januari',
-        'Februari',
-        'Maret',
-        'April',
-        'Mei',
-        'Juni',
-        'Juli',
-        'Agustus',
-        'September',
-        'Oktober',
-        'November',
-        'Desember'
-      ];
-
-      final day = alertTime.day;
-      final month = months[alertTime.month - 1];
-      final year = alertTime.year;
-      final hour = alertTime.hour.toString().padLeft(2, '0');
-      final minute = alertTime.minute.toString().padLeft(2, '0');
-
-      return '$day $month $year, $hour:$minute';
-    } catch (e) {
-      // Jika parsing gagal, return timestamp asli
-      return timestamp;
-    }
-  }
-
-  Future<void> _loadAlerts() async {
-    try {
-      await apiService.triggerRealtimePing();
-
-      // Load all data
-      final fetchedAlerts = await apiService.getAllAlerts();
-      final fetchedTowers = await apiService.getAllTowers();
-      final fetchedCameras = await apiService.getAllCameras();
-
-      // Apply forced status overrides
-      final updatedTowers = applyForcedTowerStatus(fetchedTowers);
-      final updatedCameras = applyForcedCameraStatus(fetchedCameras);
-
-      // Generate alerts from DOWN towers and cameras
-      final generatedAlerts = <Alert>[];
-
-      // Tower alerts
-      for (final tower in updatedTowers) {
-        if (isDownStatus(tower.status)) {
-          String route = '/network';
-          if (tower.containerYard == 'CY2') {
-            route = '/network-cy2';
-          } else if (tower.containerYard == 'CY3') {
-            route = '/network-cy3';
+      final results = await apiService.getAllAlerts();
+      if (mounted) {
+        // Handle paginated response format (getAllAlerts always returns Map<String, dynamic>)
+        List<Alert> loadedAlerts = [];
+        
+        // Extract alerts list from response map using explicit loop
+        final alertListRaw = results['alerts'] as List? ?? [];
+        for (var data in alertListRaw) {
+          if (data is Alert) {
+            loadedAlerts.add(data);
+          } else {
+            loadedAlerts.add(Alert.fromJson(data as Map<String, dynamic>));
           }
-
-          final alertId = 'tower-${tower.id}';
-          // Gunakan updatedAt dari database sebagai timestamp (fallback ke createdAt)
-          // Ini lebih reliable daripada generate di client-side
-          final timestamp = tower.updatedAt.isNotEmpty
-              ? tower.updatedAt
-              : (tower.createdAt.isNotEmpty
-                  ? tower.createdAt
-                  : DateTime.now().toString());
-
-          generatedAlerts.add(Alert(
-            id: alertId,
-            title: 'Access Point DOWN - ${tower.towerId}',
-            description:
-                '${tower.location} access point offline (${tower.towerId})',
-            severity: 'critical',
-            timestamp: timestamp,
-            route: route,
-            category: 'Access Point',
-          ));
         }
+        
+        setState(() {
+          alerts = loadedAlerts;
+          isLoading = false;
+          _lastRefreshTime = DateTime.now(); 
+        });
       }
-
-      // Camera alerts
-      for (final camera in updatedCameras) {
-        if (isDownStatus(camera.status)) {
-          String route = '/cctv';
-
-          // Check areaType first for specific areas
-          if (camera.areaType == 'Gate') {
-            route = '/cctv-gate';
-          } else if (camera.areaType == 'Parking') {
-            route = '/cctv-parking';
-          } else if (camera.containerYard == 'CY2') {
-            route = '/cctv-cy2';
-          } else if (camera.containerYard == 'CY3') {
-            route = '/cctv-cy3';
-          }
-
-          final alertId = 'camera-${camera.id}';
-          // Gunakan updatedAt dari database sebagai timestamp
-          // Ini lebih reliable daripada generate di client-side
-          final timestamp = camera.updatedAt.isNotEmpty
-              ? camera.updatedAt
-              : (camera.createdAt.isNotEmpty
-                  ? camera.createdAt
-                  : DateTime.now().toString());
-
-          generatedAlerts.add(Alert(
-            id: alertId,
-            title: 'CCTV DOWN - ${camera.cameraId}',
-            description:
-                '${camera.location} camera offline (${camera.cameraId})',
-            severity: 'critical',
-            timestamp: timestamp,
-            route: route,
-            category: 'CCTV',
-          ));
-        }
-      }
-
-      // No need for cleanup since we're using database timestamps directly
-
-      setState(() {
-        alerts = [...fetchedAlerts, ...generatedAlerts];
-        towers = updatedTowers;
-        cameras = updatedCameras;
-        isLoading = false;
-      });
     } catch (e) {
-      print('Error loading alerts: $e');
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) setState(() => isLoading = false);
     }
   }
+
+  Future<void> _deleteAlert(int id) async {
+  // Panggil API ke PHP
+  final success = await apiService.deleteAlert(id);
+  
+  if (success && mounted) {
+    setState(() {
+      // Langsung hapus dari list lokal, UI akan langsung berubah
+      alerts.removeWhere((element) => element.id == id);
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Alert deleted"),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  } else {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Failed to delete alert"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}
+
+Future<void> _deleteAllAlerts() async {
+  // 1. Tampilkan dialog konfirmasi dan simpan hasilnya di variabel 'isConfirmed'
+  final bool isConfirmed = await showDialog<bool>(
+    context: context,
+    builder: (BuildContext dialogContext) { // Gunakan nama variabel yang jelas
+      return AlertDialog(
+        title: const Text('Delete All Alert'),
+        content: const Text('Are You Sure Want To Delete All Notification?'),
+        actions: [
+          TextButton(
+            onPressed: (){
+              Navigator.of(context, rootNavigator: true).pop(false);
+            },
+          child: const Text('Cancel', style: TextStyle(color: Colors.black87)),
+          ),
+          ElevatedButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    shape: const StadiumBorder(),
+                  ),
+                  child: const Text('Delete All', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      );
+    },
+  ) ?? false; // Jika dialog ditutup paksa (klik luar), beri nilai false
+
+  // 2. Jalankan logika HANYA jika user menekan 'Delete All'
+  if (isConfirmed) {
+    setState(() => isLoading = true);
+
+    try {
+      final success = await apiService.deleteAllAlerts();
+
+      if (success && mounted) {
+        setState(() {
+          alerts.clear(); // Bersihkan list di UI
+          isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("All Alert Deleted Successfully"),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else if (mounted) {
+        setState(() => isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed To Delete Alert"), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e) {
+      if (mounted) setState(() => isLoading = false);
+      debugPrint("Error: $e");
+    }
+  }
+}
+  // ==================== HEADER FUNCTIONS ====================
+  
+  Widget _buildHeader(BuildContext context) {
+    double screenWidth = MediaQuery.of(context).size.width;
+    return Container(
+      width: screenWidth,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      color: const Color(0xFF1976D2),
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+      child: Row(
+        mainAxisSize: MainAxisSize.min, 
+            crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Text(
+            'Terminal Nilam',
+            style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(width: 30),
+          _buildHeaderOpenButton('+ Add New Device', const AddDevicePage()),
+          const SizedBox(width: 12),
+          _buildHeaderOpenButton('Dashboard', const DashboardPage()),
+          const SizedBox(width: 12),
+          _buildHeaderOpenButton('Access Point', const NetworkPage()),
+          const SizedBox(width: 12),
+          _buildHeaderOpenButton('CCTV', const CCTVPage()),
+          const SizedBox(width: 12),
+          _buildHeaderOpenButton('Alert', const AlertsPage(), isActive: true),
+          const SizedBox(width: 12),
+          _buildHeaderOpenButton('Alert Report', const ReportPage()), 
+          const SizedBox(width: 12),
+          _buildHeaderButton('Logout', () => _showLogoutDialog(context)),
+
+          const SizedBox(width: 24),
+          _buildProfileIcon(),
+        ],
+      ),
+    ),
+  ),
+);
+}
+
+  Widget _buildHeaderOpenButton(String text, Widget openPage, {bool isActive = false}) {
+  return buildLiquidGlassButton(
+    text, 
+    () {
+      // JIKA SUDAH AKTIF (berada di halaman Alert), JANGAN PINDAH KE MANA-MANA
+      if (isActive) return; 
+      
+      // Gunakan push biasa, JANGAN pushReplacement agar tidak merusak stack navigasi
+      Navigator.push(
+        context, 
+        MaterialPageRoute(builder: (context) => openPage)
+      );
+    }, 
+    isActive: isActive
+  );
+}
+
+  Widget _buildHeaderButton(String text, VoidCallback onPressed) {
+    return buildLiquidGlassButton(text, onPressed);
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showLogoutDialog(context); // Memanggil fungsi global dari main.dart
+  }
+
+  void _showDeleteConfirmation(int id) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Delete Notification', style: TextStyle(color: Colors.black87)),
+      content: const Text('Are You Sure Want To Delete This Alert?',
+          style: TextStyle(color: Colors.black87)),
+      actions: [
+        // Tombol Cancel (Flat)
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel', style: TextStyle(color: Colors.black87, fontSize: 16)),
+        ),
+        // Tombol Delete (Merah Lonjong/Stadium)
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(context); // Tutup dialog dulu
+            _deleteAlert(id);      // Langsung eksekusi hapus
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+            shape: const StadiumBorder(), // Membuat bentuk lonjong seperti tombol Logout
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          ),
+          child: const Text('Delete'),
+        ),
+      ],
+    ),
+  );
+}
+
+  Widget _buildProfileIcon() {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfilePage()));
+      },
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(50),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, spreadRadius: 1)],
+          ),
+          child: const Icon(Icons.person, color: Color(0xFF1976D2), size: 24),
+        ),
+      ),
+    );
+  }
+
+  // ==================== BODY & CONTENT ====================
 
   @override
   Widget build(BuildContext context) {
@@ -327,14 +290,8 @@ class _AlertsPageState extends State<AlertsPage> {
           _buildHeader(context),
           Expanded(
             child: SingleChildScrollView(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return Padding(
-                    padding: EdgeInsets.all(isMobile ? 8 : 16.0),
-                    child: _buildContent(context, constraints),
-                  );
-                },
-              ),
+              padding: EdgeInsets.all(isMobile ? 12 : 24.0),
+              child: _buildContent(context),
             ),
           ),
           _buildFooter(),
@@ -343,739 +300,205 @@ class _AlertsPageState extends State<AlertsPage> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildContent(BuildContext context) {
     final isMobile = isMobileScreen(context);
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 12 : 16, vertical: isMobile ? 10 : 12),
-      color: const Color(0xFF1976D2),
-      child: isMobile
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Terminal Nilam',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildHeaderOpenButton('+ Add Device', '/add-device',
-                          isActive: false),
-                      const SizedBox(width: 8),
-                      _buildHeaderOpenButton('Dashboard', '/dashboard',
-                          isActive: false),
-                      const SizedBox(width: 8),
-                      _buildHeaderOpenButton('Access Point', '/network',
-                          isActive: false),
-                      const SizedBox(width: 8),
-                      _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
-                      const SizedBox(width: 8),
-                      _buildHeaderOpenButton('Alerts', '/alerts',
-                          isActive: true),
-                      const SizedBox(width: 8),
-                      _buildHeaderLogoutButton(),
-                      const SizedBox(width: 8),
-                      MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: OpenContainer(
-                          transitionDuration: const Duration(milliseconds: 550),
-                          transitionType: ContainerTransitionType.fadeThrough,
-                          closedElevation: 0,
-                          closedColor: Colors.transparent,
-                          closedShape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(50),
-                          ),
-                          openElevation: 0,
-                          openBuilder: (context, _) =>
-                              const RouteProxyPage('/profile'),
-                          closedBuilder: (context, openContainer) {
-                            return GestureDetector(
-                              onTap: openContainer,
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.9),
-                                  borderRadius: BorderRadius.circular(50),
-                                ),
-                                child: const Icon(
-                                  Icons.person,
-                                  color: Color(0xFF1976D2),
-                                  size: 16,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            )
-          : Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Terminal Nilam',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                _buildHeaderOpenButton('+ Add Device', '/add-device',
-                    isActive: false),
-                const SizedBox(width: 12),
-                _buildHeaderOpenButton('Dashboard', '/dashboard',
-                    isActive: false),
-                const SizedBox(width: 12),
-                _buildHeaderOpenButton('Access Point', '/network',
-                    isActive: false),
-                const SizedBox(width: 12),
-                _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
-                const SizedBox(width: 12),
-                _buildHeaderOpenButton('Alerts', '/alerts', isActive: true),
-                const SizedBox(width: 12),
-                _buildHeaderLogoutButton(),
-                const SizedBox(width: 12),
-                MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: OpenContainer(
-                    transitionDuration: const Duration(milliseconds: 550),
-                    transitionType: ContainerTransitionType.fadeThrough,
-                    closedElevation: 0,
-                    closedColor: Colors.transparent,
-                    closedShape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                    openElevation: 0,
-                    openBuilder: (context, _) =>
-                        const RouteProxyPage('/profile'),
-                    closedBuilder: (context, openContainer) {
-                      return GestureDetector(
-                        onTap: openContainer,
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
-                            borderRadius: BorderRadius.circular(50),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 8,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.person,
-                            color: Color(0xFF1976D2),
-                            size: 20,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-    );
-  }
-
-  Widget _buildHeaderButton(String text, VoidCallback onPressed,
-      {bool isActive = false}) {
-    return buildLiquidGlassButton(text, onPressed, isActive: isActive);
-  }
-
-  Widget _buildHeaderOpenButton(String text, String route,
-      {bool isActive = false}) {
-    return OpenContainer(
-      transitionDuration: const Duration(milliseconds: 550),
-      transitionType: ContainerTransitionType.fadeThrough,
-      closedElevation: 0,
-      closedColor: Colors.transparent,
-      closedShape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      openElevation: 0,
-      openBuilder: (context, _) => RouteProxyPage(route),
-      closedBuilder: (context, openContainer) {
-        return buildLiquidGlassButton(text, openContainer, isActive: isActive);
-      },
-    );
-  }
-
-  Widget _buildHeaderLogoutButton() {
-    return buildLiquidGlassButton('Logout', () => _showLogoutDialog(context),
-        isActive: false);
-  }
-
-  Widget _buildContent(BuildContext context, BoxConstraints constraints) {
-    final isMobile = isMobileScreen(context);
-    final screenHeight = MediaQuery.of(context).size.height;
-    final listHeight = (screenHeight - 280).clamp(360.0, 900.0);
+    final listHeight = (MediaQuery.of(context).size.height - 250).clamp(400.0, 3000.0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Title Section
-        Row(
-          children: [
-            Icon(Icons.warning_rounded,
-                color: Colors.orange, size: isMobile ? 24 : 32),
-            SizedBox(width: isMobile ? 12 : 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Alerts',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: isMobile ? 20 : 28,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  isMobile
-                      ? 'Notifications'
-                      : 'Monitor and manage system alerts & notification',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: isMobile ? 12 : 14,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-
-        // Main Content Row or Column based on screen size
-        if (isMobile)
-          Column(
-            children: [
-              _buildAlertsList(listHeight),
-              const SizedBox(height: 20),
-              _buildAlertStatistics(),
-            ],
-          )
-        else
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                flex: 2,
-                child: _buildAlertsList(listHeight),
-              ),
-              const SizedBox(width: 20),
-              SizedBox(
-                width: constraints.maxWidth > 1200
-                    ? 350
-                    : constraints.maxWidth * 0.3,
-                child: Column(
-                  children: [
-                    _buildAlertStatistics(),
-                    const SizedBox(height: 20),
-                    _buildAlertsByCategory(),
-                  ],
-                ),
-              ),
-            ],
-          ),
+        _buildTitleSection(isMobile),
+        const SizedBox(height: 20),
+        _buildAlertsListWithoutFilter(listHeight),
       ],
     );
   }
 
-  Widget _buildAlertsList(double listHeight) {
-    // Sort alerts by timestamp (newest first)
-    final sortedActiveAlerts = List<Alert>.from(activeAlerts)
-      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
-
-    final towerAlerts =
-        sortedActiveAlerts.where((a) => a.category == 'Access Point').toList();
-    final cctvAlerts =
-        sortedActiveAlerts.where((a) => a.category == 'CCTV').toList();
-    final otherAlerts = sortedActiveAlerts
-        .where((a) => a.category != 'Access Point' && a.category != 'CCTV')
-        .toList();
-
+  Widget _buildAlertsListWithoutFilter(double listHeight) {
+    final sortedAlerts = alerts.toList()..sort((a, b) => b.id.compareTo(a.id));
     return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), borderRadius: BorderRadius.circular(15)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Active Alerts',
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("Recent Notification", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text("${sortedAlerts.length} Alert", style: const TextStyle(color: Colors.grey)),
+            ],
           ),
-          const SizedBox(height: 16),
+          if (alerts.isNotEmpty)
+              ElevatedButton(
+          onPressed: () {
+            // Navigator.pop(context);
+            _deleteAllAlerts();
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+            shape: const StadiumBorder(),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          ),
+          child: const Text('Delete All'),
+        ),
+          const Divider(height: 30),
           if (isLoading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 32),
-                child: CircularProgressIndicator(),
-              ),
-            )
-          else if (activeAlerts.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 32),
-              child: Center(
-                child: Text(
-                  'No active alerts right now',
-                  style: TextStyle(color: Colors.black54, fontSize: 14),
-                ),
-              ),
-            )
+            const Center(child: CircularProgressIndicator())
           else
             SizedBox(
               height: listHeight,
-              child: Scrollbar(
-                thumbVisibility: true,
-                child: ListView(
-                  padding: EdgeInsets.zero,
-                  physics: const BouncingScrollPhysics(),
-                  children: [
-                    if (towerAlerts.isNotEmpty) ...[
-                      _buildCategoryHeader('Access Point Alerts',
-                          towerAlerts.length, Colors.blue),
-                      ...towerAlerts.map((alert) => _buildAlertItem(alert)),
-                      const SizedBox(height: 16),
-                    ],
-                    if (cctvAlerts.isNotEmpty) ...[
-                      _buildCategoryHeader(
-                          'CCTV Alerts', cctvAlerts.length, Colors.green),
-                      ...cctvAlerts.map((alert) => _buildAlertItem(alert)),
-                      const SizedBox(height: 16),
-                    ],
-                    if (otherAlerts.isNotEmpty) ...[
-                      _buildCategoryHeader(
-                          'Other Alerts', otherAlerts.length, Colors.grey),
-                      ...otherAlerts.map((alert) => _buildAlertItem(alert)),
-                    ],
-                  ],
-                ),
+              child: ListView.separated(
+                itemCount: sortedAlerts.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemBuilder: (context, index) => _buildAlertItem(sortedAlerts[index]),
               ),
             ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryHeader(String title, int count, Color color) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12, top: 4),
-      child: Row(
-        children: [
-          Container(
-            width: 4,
-            height: 20,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              '$count',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
   Widget _buildAlertItem(Alert alert) {
-    Color severityColor;
-    IconData severityIcon;
-
-    switch (alert.severity) {
-      case 'critical':
-        severityColor = Colors.red;
-        severityIcon = Icons.error;
-        break;
-      case 'warning':
-        severityColor = Colors.orange;
-        severityIcon = Icons.warning;
-        break;
-      case 'info':
-        severityColor = Colors.blue;
-        severityIcon = Icons.info;
-        break;
-      default:
-        severityColor = Colors.grey;
-        severityIcon = Icons.info;
-    }
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: () {
-          navigateWithLoading(context, alert.route);
-        },
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border(
-              left: BorderSide(color: severityColor, width: 4),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: severityColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(severityIcon, color: severityColor, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      alert.title,
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      alert.description,
-                      style: const TextStyle(
-                        color: Colors.black54,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.red),
-                onPressed: () {
-                  // Delete alert
-                },
-                iconSize: 20,
-              ),
-            ],
+    bool isDown = alert.severity.toLowerCase() == 'critical' || alert.description.toLowerCase().contains('down');
+    Color statusColor = isDown ? Colors.red : Colors.green;
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+      child: Container(
+        decoration: BoxDecoration(border: Border(left: BorderSide(color: statusColor, width: 6))),
+        child: ListTile(
+          title: Text(alert.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          subtitle: Text("${alert.description}\n${alert.lokasi} - ${alert.tanggal}"),
+          trailing: IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+            onPressed: () {
+              _showDeleteConfirmation(alert.id);
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildAlertStatistics() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Alerts Statistics',
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 20),
-          _buildStatRow('Critical Alert', criticalCount.toString(), Colors.red),
-          const SizedBox(height: 12),
-          _buildStatRow(
-              'Warning Alert', warningCount.toString(), Colors.orange),
-          const SizedBox(height: 12),
-          _buildStatRow('Info Alert', infoCount.toString(), Colors.blue),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatRow(String label, String value, Color color) {
-    return Row(
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(3),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.black54,
-            fontSize: 14,
-          ),
-        ),
-        const Spacer(),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.black,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAlertsByCategory() {
-    final categories = _alertsByCategory();
-    final total = activeAlerts.length;
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Alerts by Category',
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (total == 0)
-            const Text(
-              'No active alerts by category',
-              style: TextStyle(color: Colors.black54, fontSize: 14),
-            )
-          else ...[
-            _buildCategoryBar(
-                'Access Point',
-                categories['Access Point']!.length,
-                total,
-                _categoryColor(categories['Access Point']!)),
-            const SizedBox(height: 12),
-            _buildCategoryBar('CCTV', categories['CCTV']!.length, total,
-                _categoryColor(categories['CCTV']!)),
-            if (categories['Other']!.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              _buildCategoryBar('Other', categories['Other']!.length, total,
-                  _categoryColor(categories['Other']!)),
-            ],
-          ],
-        ],
-      ),
-    );
-  }
-
-  Map<String, List<Alert>> _alertsByCategory() {
-    final categories = {
-      'Access Point': <Alert>[],
-      'CCTV': <Alert>[],
-      'Other': <Alert>[],
-    };
-
-    for (final alert in activeAlerts) {
-      final route = alert.route.toLowerCase();
-      if (route.contains('tower')) {
-        categories['Access Point']!.add(alert);
-      } else if (route.contains('cctv')) {
-        categories['CCTV']!.add(alert);
-      } else {
-        categories['Other']!.add(alert);
-      }
-    }
-
-    return categories;
-  }
-
-  Color _categoryColor(List<Alert> list) {
-    if (list.any((a) => a.severity == 'critical')) return Colors.red;
-    if (list.any((a) => a.severity == 'warning')) return Colors.orange;
-    if (list.any((a) => a.severity == 'info')) return Colors.blue;
-    return Colors.grey;
-  }
-
-  Widget _buildCategoryBar(String category, int count, int total, Color color) {
-    final safeTotal = total == 0 ? 1 : total;
-    final filledFlex = count == 0 ? 1 : count;
-    final emptyFlex = (safeTotal - count) <= 0 ? 1 : safeTotal - count;
+  Widget _buildTitleSection(bool isMobile) {
+  if (isMobile) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(Icons.notifications_active,
+              size: 24, color: Color(0xFF1976D2)),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Alert List',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              category,
-              style: const TextStyle(
-                color: Colors.black,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(
-              '$count alerts',
-              style: const TextStyle(
-                color: Colors.black54,
+            const Text(
+              'Monitoring Real Time',
+              style: TextStyle(
+                color: Colors.white70,
                 fontSize: 12,
               ),
             ),
+            if (_lastRefreshTime != null) ...[
+              const SizedBox(width: 8),
+              const Text('•', style: TextStyle(color: Colors.white70)),
+              const SizedBox(width: 8),
+              Text(
+                'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}',
+                style: const TextStyle(
+                  color: Colors.greenAccent,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ],
         ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: Container(
-            height: 8,
-            decoration: BoxDecoration(
-              color: Colors.black12,
-              borderRadius: BorderRadius.circular(4),
+      ],
+    );
+  } else {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1976D2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.notifications_active,
+              size: 32, color: Colors.white),
+        ),
+        const SizedBox(width: 16),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Alert Monitoring',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            child: Row(
+            const SizedBox(height: 4),
+            Row(
               children: [
-                Expanded(
-                  flex: filledFlex,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
+                const Text(
+                  'Real Time Device Status Monitoring and Alert History',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
                   ),
                 ),
-                Expanded(
-                  flex: emptyFlex,
-                  child: Container(),
-                ),
+                if (_lastRefreshTime != null) ...[
+                  const SizedBox(width: 8),
+                  const Text('•', style: TextStyle(color: Colors.white70)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}',
+                    style: const TextStyle(
+                      color: Colors.greenAccent,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ],
             ),
-          ),
+          ],
         ),
       ],
     );
   }
+}
 
   Widget _buildFooter() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      color: Colors.black.withOpacity(0.8),
-      child: const Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          '©2026 TPK Nilam Monitoring System',
-          style: TextStyle(color: Colors.white, fontSize: 12),
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        color: Colors.black.withOpacity(0.8),
+        child: const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            '©2026 TPK Nilam Monitoring System',
+            style: TextStyle(color: Colors.white, fontSize: 12),
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
-
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout', style: TextStyle(color: Colors.black87)),
-        content: const Text('Apakah Anda yakin ingin keluar?',
-            style: TextStyle(color: Colors.black87)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal', style: TextStyle(color: Colors.black87)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                '/login',
-                (route) => false,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
-  }
-}

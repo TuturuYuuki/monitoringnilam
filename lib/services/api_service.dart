@@ -5,9 +5,12 @@ import '../models/tower_model.dart';
 import '../models/camera_model.dart';
 import '../models/mmt_model.dart';
 import '../models/alert_model.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter/material.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost/monitoring_api/index.php';
+  static const String baseUrl = 'http://localhost/monitoring_api/index.php'; // Pakai 10.0.2.2 jika Emulator
+  static const String alertsUrl = 'http://localhost/monitoring_api/alerts.php';
 
   // ==================== CONNECTION TEST ====================
 
@@ -16,7 +19,7 @@ class ApiService {
     try {
       print('\\n=== Testing Backend Connection ===');
       print('Target URL: $baseUrl');
-      print('Attempting connection...');
+      print('Attempting Connection...');
 
       final startTime = DateTime.now();
       final response = await http
@@ -26,16 +29,16 @@ class ApiService {
           .timeout(
         const Duration(seconds: 5),
         onTimeout: () {
-          print('❌ Connection test TIMEOUT after 5 seconds');
+          print('❌ Connection Test TIMEOUT After 5 Seconds');
           return http.Response(
-            '{"success":false,"message":"Cannot reach backend - timeout"}',
+            '{"success":False,"Message":"Cannot Reach Backend - Timeout"}',
             408,
           );
         },
       );
 
       final duration = DateTime.now().difference(startTime);
-      print('✓ Response received in ${duration.inMilliseconds}ms');
+      print('✓ Response Received in ${duration.inMilliseconds}ms');
       print('Status Code: ${response.statusCode}');
 
       if (response.statusCode == 200 || response.statusCode == 404) {
@@ -244,7 +247,7 @@ class ApiService {
 
         // Check response success flag
         bool isSuccess = result['success'] == true || result['success'] == 1;
-        print('Is Success: $isSuccess');
+        print('Is success: $isSuccess');
 
         return result;
       } else {
@@ -647,6 +650,35 @@ class ApiService {
     }
   }
 
+// Update Access Point
+Future<Map<String, dynamic>> updateTower(int id, Map<String, dynamic> data) async {
+  try {
+    final response = await http.post(
+      Uri.parse('$baseUrl?endpoint=accesspoint&action=update'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'id': id,
+        'ip_address': data['ip_address'],
+        'location': data['location'],
+      }),
+    );
+    return jsonDecode(response.body);
+  } catch (e) {
+    return {'success': false, 'message': 'Koneksi Gagal: $e'};
+  }
+}
+
+// Delete Access Point
+Future<Map<String, dynamic>> deleteTower(int id) async {
+  try {
+    final response = await http.get(
+      Uri.parse('$baseUrl?endpoint=accesspoint&action=delete&id=$id'),
+    );
+    return jsonDecode(response.body);
+  } catch (e) {
+    return {'success': false, 'message': 'Koneksi Gagal: $e'};
+  }
+}
   // Enhanced update with field-by-field approach
   Future<Map<String, dynamic>> updateProfileFieldByField(
       int userId, Map<String, dynamic> data) async {
@@ -746,57 +778,87 @@ class ApiService {
     }
   }
 
+// ==================== DASHBOARD ENDPOINTS ====================
+
+  Future<Map<String, dynamic>> getDashboardStats() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl?endpoint=dashboard&action=stats'),
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        if (jsonResponse['success'] == true) {
+          return jsonResponse['data']; // Berisi: total_towers, total_cameras, total_warnings
+        }
+      }
+      return {
+        'total_towers': 0, 
+        'total_cameras': 0, 
+        'total_warnings': 0
+      };
+    } catch (e) {
+      debugPrint('Error stats dashboard: $e');
+      return {
+        'total_towers': 0, 
+        'total_cameras': 0, 
+        'total_warnings': 0
+      };
+    }
+  }
+  
   // ==================== NETWORK/TOWER ENDPOINTS ====================
 
   Future<List<Tower>> getAllTowers() async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl?endpoint=network&action=all'),
+        Uri.parse('$baseUrl?endpoint=accesspoint&action=all'),
       );
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
-        if (json['success'] == true && json['data'] != null) {
-          List<Tower> towers = (json['data'] as List)
-              .map((item) => Tower.fromJson(item as Map<String, dynamic>))
-              .toList();
-          return towers;
+        if (json['success'] == true && json['data'] != null && json['data']['access_points'] != null) {
+        List<Tower> towers = (json['data']['access_points'] as List)
+            .map((item) => Tower.fromJson(item as Map<String, dynamic>))
+            .toList();
+        return towers;
         }
       }
       return [];
     } catch (e) {
-      print('Error fetching towers: $e');
+      print('Error: $e');
       return [];
     }
   }
 
-  Future<List<Tower>> getTowersByContainerYard(String containerYard) async {
-    try {
-      final response = await http.get(
-        Uri.parse(
-            '$baseUrl?endpoint=network&action=by-yard&container_yard=$containerYard'),
-      );
+ // Fungsi ini fleksibel untuk CY berapa pun
+Future<List<Tower>> getTowersByContainerYard(String yardName) async {
+  try {
+    final response = await http.get(
+      Uri.parse('$baseUrl?endpoint=accesspoint&action=by-yard&container_yard=$yardName'),
+    );
 
-      if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
-        if (json['success'] == true && json['data'] != null) {
-          List<Tower> towers = (json['data'] as List)
-              .map((item) => Tower.fromJson(item as Map<String, dynamic>))
-              .toList();
-          return towers;
-        }
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      if (json['success'] == true && json['data'] != null) {
+        // Ambil dari path yang sudah kita perbaiki sebelumnya
+        List<Tower> towers = (json['data']['access_points'] as List)
+            .map((item) => Tower.fromJson(item as Map<String, dynamic>))
+            .toList();
+        return towers;
       }
-      return [];
-    } catch (e) {
-      print('Error fetching towers by yard: $e');
-      return [];
     }
+    return [];
+  } catch (e) {
+    print('Error Fetching $yardName: $e');
+    return [];
   }
+}
 
   Future<Tower?> getTowerById(int towerId) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl?endpoint=network&action=by-id&tower_id=$towerId'),
+        Uri.parse('$baseUrl?endpoint=accesspoint&action=by-id&tower_id=$towerId'),
       );
 
       if (response.statusCode == 200) {
@@ -814,7 +876,7 @@ class ApiService {
   Future<Map<String, dynamic>> getNetworkStats() async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl?endpoint=network&action=stats'),
+        Uri.parse('$baseUrl?endpoint=accesspoint&action=stats'),
       );
 
       if (response.statusCode == 200) {
@@ -851,6 +913,41 @@ class ApiService {
     } catch (e) {
       print('Error fetching cameras: $e');
       return [];
+    }
+  }
+
+// Fungsi untuk mengupdate data kamera
+  Future<Map<String, dynamic>> updateCamera(String cameraId, Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl?endpoint=cctv&action=update'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'camera_id': cameraId,
+          'ip_address': data['ip_address'],
+          'location': data['location'],
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {'success': false, 'message': 'Server Error: ${response.statusCode}'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  // Fungsi untuk menghapus kamera
+  Future<Map<String, dynamic>> deleteCamera(String cameraId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl?endpoint=cctv&action=delete&camera_id=$cameraId'),
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
     }
   }
 
@@ -1049,131 +1146,92 @@ class ApiService {
   }
 
   // ==================== ALERT ENDPOINTS ====================
+// ==================== ALERT ENDPOINTS ====================
 
-  Future<List<Alert>> getAllAlerts() async {
+  /// 1. Ambil SEMUA Alerts (Untuk Halaman Alerts - Realtime/Today) - Dengan Pagination
+  Future<Map<String, dynamic>> getAllAlerts({int limit = 100, int offset = 0}) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl?endpoint=alert&action=all'),
+        Uri.parse('$baseUrl?endpoint=alerts&limit=$limit&offset=$offset'),
       );
-
       if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
-        if (json['success'] == true && json['data'] != null) {
-          List<Alert> alerts = (json['data'] as List)
-              .map((item) => Alert.fromJson(item as Map<String, dynamic>))
-              .toList();
-          return alerts;
+        dynamic jsonResponse = json.decode(response.body);
+        
+        // Handle both old format (array) and new format (object with data + pagination)
+        if (jsonResponse is Map<String, dynamic> && jsonResponse.containsKey('data')) {
+          // New format with pagination
+          final alertData = jsonResponse['data'] as List? ?? [];
+          List<Alert> alerts = alertData.map((data) => Alert.fromJson(data as Map<String, dynamic>)).toList();
+          return {
+            'alerts': alerts,
+            'pagination': jsonResponse['pagination'] ?? {'total': alerts.length, 'limit': limit, 'offset': offset},
+          };
+        } else if (jsonResponse is List) {
+          // Old format (fallback)
+          List<Alert> alerts = jsonResponse.map((data) => Alert.fromJson(data as Map<String, dynamic>)).toList();
+          return {
+            'alerts': alerts,
+            'pagination': {'total': alerts.length, 'limit': limit, 'offset': offset},
+          };
         }
       }
-      return [];
+      return {'alerts': [], 'pagination': {'total': 0, 'limit': limit, 'offset': offset}};
     } catch (e) {
-      print('Error fetching alerts: $e');
-      return [];
+      debugPrint("Error Fetching All Alerts: $e");
+      return {'alerts': [], 'pagination': {'total': 0, 'limit': limit, 'offset': offset}};
+    }
+  }
+  
+  Future<List<Alert>> getAlertsReport({
+    required DateTime startDate,
+    required DateTime endDate,
+    required String status,
+  }) async {
+    // Format tanggal ke YYYY-MM-DD agar dimengerti MySQL
+    String start = DateFormat('yyyy-MM-dd').format(startDate);
+    String end = DateFormat('yyyy-MM-dd').format(endDate);
+
+    final response = await http.get(
+      Uri.parse('$baseUrl?endpoint=alerts&action=report&start=$start&end=$end&status=$status'),
+    );
+
+    if (response.statusCode == 200) {
+      List jsonResponse = json.decode(response.body);
+      return jsonResponse.map((data) => Alert.fromJson(data)).toList();
+    } else {
+      throw Exception('Failed To Load Report');
     }
   }
 
-  Future<List<Alert>> getUnreadAlerts() async {
+  /// 3. Fungsi Hapus Alert (Disederhanakan menggunakan baseUrl)
+ Future<bool> deleteAlert(int id) async {
     try {
+      // Perbaikan: Langsung panggil alertsUrl tanpa menumpuk index.php
       final response = await http.get(
-        Uri.parse('$baseUrl?endpoint=alert&action=unread'),
-      );
+        Uri.parse('$alertsUrl?action=delete&id=$id'),
+      ).timeout(const Duration(seconds: 10));
+
+      debugPrint("Respon Server: ${response.body}");
 
       if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
-        if (json['success'] == true && json['data'] != null) {
-          List<Alert> alerts = (json['data'] as List)
-              .map((item) => Alert.fromJson(item as Map<String, dynamic>))
-              .toList();
-          return alerts;
-        }
+        final data = json.decode(response.body);
+        // Mengembalikan true jika PHP mengirim {"success": true}
+        return data['success'] == true;
       }
-      return [];
+      return false;
     } catch (e) {
-      print('Error fetching unread alerts: $e');
-      return [];
+      debugPrint("Gagal hapus alert: $e");
+      return false;
     }
   }
 
-  Future<List<Alert>> getAlertsBySeverity(String severity) async {
-    try {
-      final response = await http.get(
-        Uri.parse(
-            '$baseUrl?endpoint=alert&action=by-severity&severity=$severity'),
-      );
-
-      if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
-        if (json['success'] == true && json['data'] != null) {
-          List<Alert> alerts = (json['data'] as List)
-              .map((item) => Alert.fromJson(item as Map<String, dynamic>))
-              .toList();
-          return alerts;
-        }
-      }
-      return [];
-    } catch (e) {
-      print('Error fetching alerts by severity: $e');
-      return [];
-    }
-  }
-
-  Future<Map<String, dynamic>> getAlertStats() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl?endpoint=alert&action=stats'),
-      );
-
-      if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
-        if (json['success'] == true && json['data'] != null) {
-          return json['data'];
-        }
-      }
-      return {};
-    } catch (e) {
-      print('Error fetching alert stats: $e');
-      return {};
-    }
-  }
-
-  Future<Map<String, dynamic>> markAlertAsRead(int alertId) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl?endpoint=alert&action=mark-read'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'alert_id': alertId}),
-      );
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        return {'success': false, 'message': 'Failed to mark alert as read'};
-      }
-    } catch (e) {
-      return {'success': false, 'message': 'Error: $e'};
-    }
-  }
-
-  Future<Map<String, dynamic>> markAllAlertsAsRead() async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl?endpoint=alert&action=mark-all-read'),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        return {
-          'success': false,
-          'message': 'Failed to mark all alerts as read'
-        };
-      }
-    } catch (e) {
-      return {'success': false, 'message': 'Error: $e'};
-    }
-  }
-
+  Future<bool> deleteAllAlerts() async {
+  try {
+    final response = await http.get(Uri.parse('$baseUrl?endpoint=alerts&action=delete_all'));
+    return response.statusCode == 200;
+  } catch (e) { return false; }
+}
+  
   // Create device methods
   Future<Map<String, dynamic>> createTower({
     required String towerId,
@@ -1182,8 +1240,6 @@ class ApiService {
     required String containerYard,
     int? deviceCount,
     String? status,
-    String? traffic,
-    String? uptime,
   }) async {
     try {
       final response = await http.post(
@@ -1196,8 +1252,6 @@ class ApiService {
           'container_yard': containerYard,
           'device_count': deviceCount ?? 1,
           'status': status ?? 'UP',
-          'traffic': traffic ?? '0 Mbps',
-          'uptime': uptime ?? '0%',
         }),
       );
 
@@ -1261,8 +1315,6 @@ class ApiService {
     String? status,
     String? type,
     int? deviceCount,
-    String? traffic,
-    String? uptime,
   }) async {
     try {
       final response = await http.post(
@@ -1276,8 +1328,6 @@ class ApiService {
           'status': status ?? 'UP',
           'type': type ?? 'Mine Monitor',
           'device_count': deviceCount ?? 1,
-          'traffic': traffic ?? '0 Mbps',
-          'uptime': uptime ?? '0%',
         }),
       );
 
@@ -1298,31 +1348,40 @@ class ApiService {
   // Trigger realtime ping untuk semua devices
   Future<Map<String, dynamic>> triggerRealtimePing() async {
     try {
-      final response = await http
-          .get(
+      print('=== Memulai Realtime Ping (Batas waktu 60 detik) ===');
+      
+      final response = await http.get(
         Uri.parse('$baseUrl?endpoint=realtime&action=all'),
-      )
-          .timeout(
-        const Duration(seconds: 10),
+      ).timeout(
+        const Duration(seconds: 60), // Memberikan waktu lebih lama untuk proses ping di server
         onTimeout: () {
-          print('Realtime ping timed out after 10 seconds');
-          return http.Response('{"success":false,"message":"Timeout"}', 408);
+          print('❌ Realtime ping GAGAL: Server tidak merespon dalam 60 detik');
+          // Mengembalikan response buatan agar catch error bisa menangkapnya
+          return http.Response('{"success":false,"message":"Server Timeout"}', 408);
         },
       );
 
-      print('Realtime Ping Response Status: ${response.statusCode}');
+      print('Realtime Ping Status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final decodedData = jsonDecode(response.body);
+        print('✓ Ping Berhasil: ${decodedData['message']}');
+        return decodedData;
       } else {
-        return {'success': false, 'message': 'Failed to trigger realtime ping'};
+        return {
+          'success': false, 
+          'message': 'Server Error: ${response.statusCode}'
+        };
       }
     } catch (e) {
-      print('Error triggering realtime ping: $e');
-      return {'success': false, 'message': 'Error: $e'};
+      print('❌ Error koneksi/ping: $e');
+      return {
+        'success': false, 
+        'message': 'Koneksi terputus atau server offline'
+      };
     }
   }
-
+  
   // Test connectivity untuk IP spesifik
   Future<Map<String, dynamic>> testDeviceConnectivity({
     required String targetIp,
@@ -1345,6 +1404,7 @@ class ApiService {
       return {'success': false, 'message': 'Error: $e'};
     }
   }
+
 
   // Report device status
   Future<Map<String, dynamic>> reportDeviceStatus({

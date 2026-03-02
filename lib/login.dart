@@ -72,7 +72,7 @@ class _LoginPageState extends State<LoginPage> {
             showDialog(
               context: context,
               builder: (context) => AlertDialog(
-                title: const Text('Login Gagal'),
+                title: const Text('Login Failed'),
                 content: Text(response['message'] ?? 'Login failed'),
                 actions: [
                   TextButton(
@@ -229,6 +229,8 @@ class _LoginPageState extends State<LoginPage> {
                                 keyboardType: TextInputType.text,
                                 decoration: InputDecoration(
                                   hintText: 'Username',
+                                  errorStyle: const TextStyle(
+                                      color: Colors.redAccent, fontSize: 16),
                                   filled: true,
                                   fillColor: Colors.grey[100],
                                   border: OutlineInputBorder(
@@ -242,7 +244,7 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Please enter your username';
+                                    return 'Please Enter Your Username';
                                   }
                                   return null;
                                 },
@@ -256,6 +258,8 @@ class _LoginPageState extends State<LoginPage> {
                                 obscureText: _obscurePassword,
                                 decoration: InputDecoration(
                                   hintText: 'Password',
+                                  errorStyle: const TextStyle(
+                                      color: Colors.redAccent, fontSize: 16),
                                   filled: true,
                                   fillColor: Colors.grey[100],
                                   border: OutlineInputBorder(
@@ -282,10 +286,10 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Please enter your password';
+                                    return 'Please Enter Your Password';
                                   }
                                   if (value.length < 6) {
-                                    return 'Password must be at least 6 characters';
+                                    return 'Password Must Be At Least 6 Characters';
                                   }
                                   return null;
                                 },
@@ -302,12 +306,11 @@ class _LoginPageState extends State<LoginPage> {
                                         context, '/forgot-password');
                                   },
                                   child: const Text(
-                                    'Lupa Password?',
+                                    'Forgot Password?',
                                     style: TextStyle(
                                       fontSize: 14,
                                       color: Colors.white,
                                       fontWeight: FontWeight.w600,
-                                      decoration: TextDecoration.underline,
                                     ),
                                   ),
                                 ),

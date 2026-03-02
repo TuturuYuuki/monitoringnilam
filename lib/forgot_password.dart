@@ -108,8 +108,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             showDialog(
               context: context,
               builder: (context) => AlertDialog(
-                title: const Text('Gagal Mengirim OTP'),
-                content: Text(response['message'] ?? 'Gagal mengirim OTP'),
+                title: const Text('Invalid OTP Sending'),
+                content: Text(response['message'] ?? 'Failed to send OTP'),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
@@ -254,7 +254,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                   borderRadius: BorderRadius.circular(50),
                                 ),
                                 child: const Text(
-                                  'Lupa Password',
+                                  'Forgot Password',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 28,
@@ -268,11 +268,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
                               // Info Text
                               const Text(
-                                'Masukkan email Anda untuk menerima kode OTP',
+                                'Enter Your Registered Email Address To Receive An OTP For Password Reset',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 16,
-                                  color: Colors.white,
+                                  color: Color.fromARGB(255, 0, 0, 0),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -299,10 +299,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Please enter your email';
+                                    return 'Please Enter Your Email';
                                   }
                                   if (!value.contains('@')) {
-                                    return 'Please enter a valid email';
+                                    return 'Please Enter A Valid Email';
                                   }
                                   return null;
                                 },
@@ -333,7 +333,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                           ),
                                         )
                                       : const Text(
-                                          'Kirim OTP',
+                                          'Send OTP',
                                           style: TextStyle(
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,

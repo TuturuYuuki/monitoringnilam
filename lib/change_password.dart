@@ -58,7 +58,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     });
 
     if (_userId == null) {
-      print('WARNING: User ID is null! Cannot change password.');
+      print('WARNING: User ID Is Null! Cannot Change Password.');
     }
   }
 
@@ -101,7 +101,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           children: [
             CircularProgressIndicator(),
             SizedBox(width: 16),
-            Text('Testing koneksi ke backend...'),
+            Text('Testing Connection To Backend...'),
           ],
         ),
       ),
@@ -122,7 +122,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                 color: result['success'] ? Colors.green : Colors.red,
               ),
               const SizedBox(width: 8),
-              Text(result['success'] ? 'Koneksi Berhasil' : 'Koneksi Gagal'),
+              Text(result['success'] ? 'Connection Successful' : 'Connection Failed'),
             ],
           ),
           content: Column(
@@ -131,16 +131,16 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             children: [
               Text(result['message'] ?? 'Unknown'),
               if (result['responseTime'] != null)
-                Text('\\nWaktu respons: ${result['responseTime']}ms'),
+                Text('\\nTime Respons: ${result['responseTime']}ms'),
               if (!result['success']) ...[
                 const SizedBox(height: 16),
                 const Text(
-                  'Kemungkinan masalah:',
+                  'Possible Issues:',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                const Text('• Backend tidak running (cek XAMPP Apache)'),
-                const Text('• Firewall memblokir koneksi'),
-                const Text('• URL salah (localhost vs 127.0.0.1)'),
+                const Text('• Backend Not Running (Check XAMPP Apache)'),
+                const Text('• Firewall Blocking Connection'),
+                const Text('• Wrong URL (Localhost vs 127.0.0.1)'),
               ],
             ],
           ),
@@ -164,7 +164,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            content: const Text('Password tidak cocok'),
+            content: const Text('Password Not Match'),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             actions: [
@@ -181,7 +181,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            content: const Text('Minimal 8 karakter'),
+            content: const Text('Minimum 8 Characters'),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             actions: [
@@ -198,7 +198,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            content: const Text('Harus huruf besar, kecil, dan angka'),
+            content: const Text('Must Contain Uppercase, Lowercase, And Number'),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             actions: [
@@ -222,7 +222,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            content: const Text('Login ulang diperlukan'),
+            content: const Text('Login Again Required'),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             actions: [
@@ -264,10 +264,10 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   children: [
                     Icon(Icons.check_circle, color: Colors.green),
                     SizedBox(width: 8),
-                    Text('Berhasil'),
+                    Text('Success'),
                   ],
                 ),
-                content: Text(res['message'] ?? 'Password berhasil diubah'),
+                content: Text(res['message'] ?? 'Password Successfully Changed'),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
                 actions: [
@@ -283,8 +283,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           }
         } else {
           // Show specific error message from backend
-          final errorMessage = res['message'] ?? 'Gagal mengubah password';
-          print('Error message: $errorMessage');
+          final errorMessage = res['message'] ?? 'Failed To Change Password';
+          print('Error Message: $errorMessage');
 
           if (mounted) {
             showDialog(
@@ -294,7 +294,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   children: [
                     Icon(Icons.error, color: Colors.red),
                     SizedBox(width: 8),
-                    Text('Gagal'),
+                    Text('Failed'),
                   ],
                 ),
                 content: Text(errorMessage),
@@ -367,9 +367,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       color: const Color(0xFF1976D2),
-      child: Row(
+      child: const Row(
         children: [
-          const Text(
+          Text(
             'Terminal Nilam',
             style: TextStyle(
               color: Colors.white,
@@ -377,35 +377,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const Spacer(),
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: () {
-                Navigator.pop(context);
-              },
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(25),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.2),
-                    width: 1.5,
-                  ),
-                ),
-                child: const Text(
-                  'Kembali',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ),
+          Spacer(),
         ],
       ),
     );
@@ -417,7 +389,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       children: [
         // Title
         const Text(
-          'Ubah Password',
+          'Change Password',
           style: TextStyle(
             color: Colors.white,
             fontSize: 28,
@@ -426,7 +398,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Perbarui password Anda dengan yang baru untuk keamanan lebih baik',
+          'Update Your password',
           style: TextStyle(
             color: Colors.white70,
             fontSize: 14,
@@ -449,7 +421,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             child: Column(
               children: [
                 _buildPasswordField(
-                  'Password Saat Ini',
+                  'Password Now',
                   _currentPasswordController,
                   _showCurrentPassword,
                   () {
@@ -459,14 +431,14 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   },
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Password saat ini tidak boleh kosong';
+                      return 'Password Now Cannot Be Empty';
                     }
                     return null;
                   },
                 ),
                 const SizedBox(height: 24),
                 _buildPasswordField(
-                  'Password Baru',
+                  'New Password',
                   _newPasswordController,
                   _showNewPassword,
                   () {
@@ -476,17 +448,17 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   },
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Password baru tidak boleh kosong';
+                      return 'New Password Cannot Be Empty';
                     }
                     if (value.length < 8) {
-                      return 'Password minimal harus 8 karakter';
+                      return 'New Password Must Be At Least 8 Characters';
                     }
                     return null;
                   },
                 ),
                 const SizedBox(height: 24),
                 _buildPasswordField(
-                  'Konfirmasi Password Baru',
+                  'Confirm New Password',
                   _confirmPasswordController,
                   _showConfirmPassword,
                   () {
@@ -496,7 +468,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   },
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Konfirmasi password tidak boleh kosong';
+                      return 'Confirm New Password Cannot Be Empty';
                     }
                     return null;
                   },
@@ -507,7 +479,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        'Password baru dan konfirmasi harus sama',
+                        'New Password and Confirm New Password Must Be Same',
                         style: TextStyle(color: Colors.red, fontSize: 12),
                       ),
                     ),
@@ -528,7 +500,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Persyaratan Password:',
+                        'Password Requirements:',
                         style: TextStyle(
                           color: Colors.orange,
                           fontSize: 12,
@@ -536,42 +508,16 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      _buildRequirement('Minimal 8 karakter', _ruleLength),
+                      _buildRequirement('Minimum 8 Characters', _ruleLength),
                       _buildRequirement(
-                          'Mengandung huruf besar (A-Z)', _ruleUpper),
+                          'Contains Uppercase Letters (A-Z)', _ruleUpper),
                       _buildRequirement(
-                          'Mengandung huruf kecil (a-z)', _ruleLower),
-                      _buildRequirement('Mengandung angka (0-9)', _ruleDigit),
+                          'Contains Lowercase Letters (a-z)', _ruleLower),
+                      _buildRequirement('Contains Numbers (0-9)', _ruleDigit),
                     ],
                   ),
                 ),
-                const SizedBox(height: 32), // Test Connection Button
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _testConnection,
-                    icon: const Icon(Icons.network_check),
-                    label: const Text('Test Koneksi Backend'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF1976D2),
-                      side: const BorderSide(color: Color(0xFF1976D2)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Jika timeout terus, gunakan button di atas untuk cek koneksi',
-                  style: TextStyle(
-                    color: Colors.white60,
-                    fontSize: 12,
-                    fontStyle: FontStyle.italic,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
+
                 const SizedBox(height: 24), // Action Buttons
                 Row(
                   children: [
@@ -590,7 +536,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text('Batal'),
+                        child: const Text('Cancel'),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -615,7 +561,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                       Colors.white),
                                 ),
                               )
-                            : const Text('Ubah Password'),
+                            : const Text('Change Password'),
                       ),
                     ),
                   ],

@@ -107,7 +107,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Persyaratan Password:',
+                      'Password Requirements:',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -128,12 +128,13 @@ class _SignUpPageState extends State<SignUpPage> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildPasswordRequirement('Minimal 8 karakter', _hasMinLength),
                 _buildPasswordRequirement(
-                    'Mengandung huruf besar (A-Z)', _hasUppercase),
+                    'Minimum 8 Characters', _hasMinLength),
                 _buildPasswordRequirement(
-                    'Mengandung huruf kecil (a-z)', _hasLowercase),
-                _buildPasswordRequirement('Mengandung angka (0-9)', _hasNumber),
+                    'Contains Uppercase Letter (A-Z)', _hasUppercase),
+                _buildPasswordRequirement(
+                    'Contains Lowercase Letter (a-z)', _hasLowercase),
+                _buildPasswordRequirement('Contains Number (0-9)', _hasNumber),
               ],
             ),
           ),
@@ -188,7 +189,7 @@ class _SignUpPageState extends State<SignUpPage> {
               context: context,
               barrierDismissible: false,
               builder: (context) => AlertDialog(
-                content: const Text('Akun berhasil dibuat'),
+                content: const Text('Account Successfully Created'),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
                 actions: [
@@ -241,29 +242,29 @@ class _SignUpPageState extends State<SignUpPage> {
     List<String> errorFields = [];
 
     if (_usernameController.text.isEmpty) {
-      errorFields.add('Username harus diisi');
+      errorFields.add('Username Must Be Filled');
     }
     if (_nameController.text.isEmpty) {
-      errorFields.add('Full Name harus diisi');
+      errorFields.add('Full Name Must Be Filled');
     }
     if (_emailController.text.isEmpty) {
-      errorFields.add('Email harus diisi');
+      errorFields.add('Email Must Be Filled');
     } else if (!_emailController.text.endsWith('@gmail.com')) {
-      errorFields.add('Email harus berformat @gmail.com');
+      errorFields.add('Email Must Be In @gmail.com Format');
     }
     if (_passwordController.text.isEmpty) {
-      errorFields.add('Password harus diisi');
+      errorFields.add('Password Must Be Filled');
     } else if (_passwordController.text.length < 8) {
-      errorFields.add('Password minimal 8 karakter');
+      errorFields.add('Password Minimum 8 Characters');
     } else if (!RegExp(r'[A-Z]').hasMatch(_passwordController.text)) {
-      errorFields.add('Password harus mengandung huruf besar');
+      errorFields.add('Password Must Contain Uppercase Letter');
     } else if (!RegExp(r'[a-z]').hasMatch(_passwordController.text)) {
-      errorFields.add('Password harus mengandung huruf kecil');
+      errorFields.add('Password Must Contain Lowercase Letter');
     } else if (!RegExp(r'[0-9]').hasMatch(_passwordController.text)) {
-      errorFields.add('Password harus mengandung angka');
+      errorFields.add('Password Must Contain Number');
     }
     if (_confirmPasswordController.text != _passwordController.text) {
-      errorFields.add('Konfirmasi password tidak sesuai');
+      errorFields.add('Confirm Password Does Not Match');
     }
 
     showDialog(
@@ -306,7 +307,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           ),
                           SizedBox(width: 12),
                           Text(
-                            'Data Tidak Valid',
+                            'Data Not Valid',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -323,7 +324,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Silakan perbaiki field berikut:',
+                    'Please Correct The Following Fields:',
                     style: TextStyle(
                       fontSize: 13,
                       color: Colors.black54,
@@ -370,7 +371,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         ),
                       ),
                       child: const Text(
-                        'Perbaiki Data',
+                        'Repair Data',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -428,7 +429,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           ),
                           SizedBox(width: 12),
                           Text(
-                            'Signup Gagal',
+                            'Signup Failed',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -445,7 +446,8 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    response['message'] ?? 'Terjadi kesalahan saat mendaftar',
+                    response['message'] ??
+                        'An Error Occurred While Registering',
                     style: const TextStyle(
                       fontSize: 13,
                       color: Colors.black54,
@@ -643,7 +645,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Please enter your username';
+                                    return 'Please Enter Your Username';
                                   }
                                   return null;
                                 },
@@ -669,7 +671,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Please enter your full name';
+                                    return 'Please Enter Your Full Name';
                                   }
                                   return null;
                                 },
@@ -708,7 +710,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                       SizedBox(width: 14),
                                       Expanded(
                                         child: Text(
-                                          'Format email tidak valid.',
+                                          'Invalid Email Format. Please Use @gmail.com',
                                           style: TextStyle(
                                             color: Color(0xFF8B0000),
                                             fontSize: 15,
@@ -740,11 +742,11 @@ class _SignUpPageState extends State<SignUpPage> {
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Please enter your email';
+                                    return 'Please Enter Your Email';
                                   }
                                   if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
                                       .hasMatch(value)) {
-                                    return 'Format email tidak valid';
+                                    return 'Invalid Email Format';
                                   }
                                   return null;
                                 },
@@ -790,19 +792,19 @@ class _SignUpPageState extends State<SignUpPage> {
                                     ),
                                     validator: (value) {
                                       if (value == null || value.isEmpty) {
-                                        return 'Please enter your password';
+                                        return 'Please Enter Your Password';
                                       }
                                       if (value.length < 8) {
-                                        return 'Password must be at least 8 characters';
+                                        return 'Password Must Be At Least 8 Characters';
                                       }
                                       if (!RegExp(r'[A-Z]').hasMatch(value)) {
-                                        return 'Password must contain uppercase letter';
+                                        return 'Password Must Contain Uppercase Letter';
                                       }
                                       if (!RegExp(r'[a-z]').hasMatch(value)) {
-                                        return 'Password must contain lowercase letter';
+                                        return 'Password Must Contain Lowercase Letter';
                                       }
                                       if (!RegExp(r'[0-9]').hasMatch(value)) {
-                                        return 'Password must contain number';
+                                        return 'Password Must Contain Number';
                                       }
                                       return null;
                                     },
@@ -840,7 +842,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             const Text(
-                                              'Persyaratan Password:',
+                                              'Password Requirements:',
                                               style: TextStyle(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.bold,
@@ -849,16 +851,16 @@ class _SignUpPageState extends State<SignUpPage> {
                                             ),
                                             const SizedBox(height: 8),
                                             _buildPasswordRequirement(
-                                                'Minimal 8 karakter',
+                                                'Minimum 8 Characters',
                                                 _hasMinLength),
                                             _buildPasswordRequirement(
-                                                'Mengandung huruf besar (A-Z)',
+                                                'Contains Uppercase Letters (A-Z)',
                                                 _hasUppercase),
                                             _buildPasswordRequirement(
-                                                'Mengandung huruf kecil (a-z)',
+                                                'Contains Lowercase Letters (a-z)',
                                                 _hasLowercase),
                                             _buildPasswordRequirement(
-                                                'Mengandung angka (0-9)',
+                                                'Contains Numbers (0-9)',
                                                 _hasNumber),
                                           ],
                                         ),
@@ -875,11 +877,6 @@ class _SignUpPageState extends State<SignUpPage> {
                                 obscureText: _obscureConfirmPassword,
                                 decoration: InputDecoration(
                                   hintText: 'Confirm Password',
-                                  helperText: 'Ulangi password yang sama',
-                                  helperStyle: const TextStyle(
-                                    color: Color.fromARGB(221, 255, 255, 255),
-                                    fontSize: 16,
-                                  ),
                                   filled: true,
                                   fillColor: Colors.grey[100],
                                   border: OutlineInputBorder(
@@ -907,10 +904,10 @@ class _SignUpPageState extends State<SignUpPage> {
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Please confirm your password';
+                                    return 'Please Confirm Your Password';
                                   }
                                   if (value != _passwordController.text) {
-                                    return 'Passwords do not match';
+                                    return 'Passwords Do Not Match';
                                   }
                                   return null;
                                 },
@@ -967,7 +964,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                   text: const TextSpan(
                                     children: [
                                       TextSpan(
-                                        text: 'Already have an account? ',
+                                        text: 'Already Have An Account? ',
                                         style: TextStyle(
                                           fontSize: 20,
                                           color: Colors.black87,

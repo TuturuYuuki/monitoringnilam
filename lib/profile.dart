@@ -100,57 +100,71 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    final isMobile = isMobileScreen(context);
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 12 : 16, vertical: isMobile ? 10 : 12),
-      color: const Color(0xFF1976D2),
-      child: isMobile
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Terminal Nilam',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+  double screenWidth = MediaQuery.of(context).size.width;
+  final isMobile = isMobileScreen(context);
+
+  return Container(
+    width: screenWidth,
+    padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 12 : 16, vertical: isMobile ? 10 : 12),
+    color: const Color(0xFF1976D2),
+    child: isMobile
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Terminal Nilam',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 28, // ← fix
+                  fontWeight: FontWeight.bold,
                 ),
-                const SizedBox(height: 10),
-                SingleChildScrollView(
+              ),
+              const SizedBox(height: 10),
+              ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      _buildHeaderOpenButton('Dashboard', '/dashboard',
-                          isActive: false),
+                      _buildHeaderOpenButton('+ Add New Device', '/add-device', isActive: false),
                       const SizedBox(width: 8),
-                      _buildHeaderOpenButton('Access Point', '/network',
-                          isActive: false),
+                      _buildHeaderOpenButton('Dashboard', '/dashboard', isActive: false),
+                      const SizedBox(width: 8),
+                      _buildHeaderOpenButton('Access Point', '/network', isActive: false),
                       const SizedBox(width: 8),
                       _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
                       const SizedBox(width: 8),
-                      _buildHeaderOpenButton('Alerts', '/alerts',
-                          isActive: false),
+                      _buildHeaderOpenButton('Alert', '/alerts', isActive: false),
+                      const SizedBox(width: 8),
+                      _buildHeaderOpenButton('Alert Report', '/report', isActive: false),
                       const SizedBox(width: 8),
                       _buildHeaderLogoutButton(),
                       const SizedBox(width: 8),
                       MouseRegion(
                         cursor: SystemMouseCursors.click,
                         child: GestureDetector(
-                          onTap: () {
-                            // Already on profile page
-                          },
+                          onTap: () {},
                           child: Container(
-                            padding: const EdgeInsets.all(6),
+                            padding: const EdgeInsets.all(8), // ← fix
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.9),
                               borderRadius: BorderRadius.circular(50),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
+                                ),
+                              ],
                             ),
                             child: const Icon(
                               Icons.person,
                               color: Color(0xFF1976D2),
-                              size: 16,
+                              size: 24, // ← fix
                             ),
                           ),
                         ),
@@ -158,64 +172,72 @@ class _ProfilePageState extends State<ProfilePage> {
                     ],
                   ),
                 ),
-              ],
-            )
-          : Row(
-              children: [
-                const Expanded(
-                  child: Text(
+              ),
+            ],
+          )
+        : ScrollConfiguration(
+            behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Text(
                     'Terminal Nilam',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 20,
+                      fontSize: 28, // ← fix
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                _buildHeaderOpenButton('Dashboard', '/dashboard',
-                    isActive: false),
-                const SizedBox(width: 12),
-                _buildHeaderOpenButton('Access Point', '/network',
-                    isActive: false),
-                const SizedBox(width: 12),
-                _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
-                const SizedBox(width: 12),
-                _buildHeaderOpenButton('Alerts', '/alerts', isActive: false),
-                const SizedBox(width: 12),
-                _buildHeaderLogoutButton(),
-                const SizedBox(width: 12),
-                MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTap: () {
-                      // Already on profile page
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(50),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 8,
-                            spreadRadius: 1,
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.person,
-                        color: Color(0xFF1976D2),
-                        size: 20,
+                  const SizedBox(width: 30),
+                  _buildHeaderOpenButton('+ Add New Device', '/add-device', isActive: false),
+                  const SizedBox(width: 12),
+                  _buildHeaderOpenButton('Dashboard', '/dashboard', isActive: false),
+                  const SizedBox(width: 12),
+                  _buildHeaderOpenButton('Access Point', '/network', isActive: false),
+                  const SizedBox(width: 12),
+                  _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
+                  const SizedBox(width: 12),
+                  _buildHeaderOpenButton('Alert', '/alerts', isActive: false),
+                  const SizedBox(width: 12),
+                  _buildHeaderOpenButton('Alert Report', '/report', isActive: false),
+                  const SizedBox(width: 12),
+                  _buildHeaderLogoutButton(),
+                  const SizedBox(width: 24),
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTap: () {},
+                      child: Container(
+                        padding: const EdgeInsets.all(8), // ← fix
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(50),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.person,
+                          color: Color(0xFF1976D2),
+                          size: 24, // ← fix
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-    );
-  }
+          ),
+  );
+}
 
   Widget _buildHeaderButton(String text, VoidCallback onPressed) {
     return buildLiquidGlassButton(text, onPressed, isActive: false);
@@ -249,12 +271,12 @@ class _ProfilePageState extends State<ProfilePage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Logout', style: TextStyle(color: Colors.black87)),
-        content: const Text('Apakah Anda yakin ingin keluar?',
+        content: const Text('Are You Sure To Logout?',
             style: TextStyle(color: Colors.black87)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Batal', style: TextStyle(color: Colors.black87)),
+            child: const Text('Cancel', style: TextStyle(color: Colors.black87)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -359,7 +381,7 @@ class _ProfilePageState extends State<ProfilePage> {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              division.isEmpty ? 'Divisi' : division,
+              division.isEmpty ? 'Division' : division,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 14,
@@ -388,7 +410,7 @@ class _ProfilePageState extends State<ProfilePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Informasi Profil',
+            'Profile Information',
             style: TextStyle(
               color: Colors.white,
               fontSize: 20,
@@ -396,13 +418,11 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
           const SizedBox(height: 20),
-          _buildInfoRow('Nama Lengkap', fullname),
+          _buildInfoRow('Full Name', fullname),
           const SizedBox(height: 16),
           _buildInfoRow('Username', username),
           const SizedBox(height: 16),
-          _buildInfoRow('Divisi', division),
-          const SizedBox(height: 16),
-          _buildInfoRow('Status Aktif', 'Aktif'),
+          _buildInfoRow('Division', division),
         ],
       ),
     );
@@ -423,7 +443,7 @@ class _ProfilePageState extends State<ProfilePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Informasi Kontak',
+            'Contact Information',
             style: TextStyle(
               color: Colors.white,
               fontSize: 20,
@@ -439,13 +459,13 @@ class _ProfilePageState extends State<ProfilePage> {
           const SizedBox(height: 16),
           _buildContactRow(
             icon: Icons.phone,
-            label: 'Nomor Telepon',
+            label: 'Phone Number',
             value: phone,
           ),
           const SizedBox(height: 16),
           _buildContactRow(
             icon: Icons.location_on,
-            label: 'Lokasi',
+            label: 'Location',
             value: location,
           ),
         ],
@@ -535,7 +555,7 @@ class _ProfilePageState extends State<ProfilePage> {
             }
           },
           icon: const Icon(Icons.edit),
-          label: const Text('Edit Profil'),
+          label: const Text('Edit Profile'),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF1976D2),
             foregroundColor: Colors.white,
@@ -551,7 +571,7 @@ class _ProfilePageState extends State<ProfilePage> {
             Navigator.pushNamed(context, '/change-password');
           },
           icon: const Icon(Icons.security),
-          label: const Text('Ubah Password'),
+          label: const Text('Change Password'),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF27AE60),
             foregroundColor: Colors.white,
@@ -612,7 +632,7 @@ class _ProfilePageState extends State<ProfilePage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  'Foto Profil',
+                  'Profile Photo',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -675,7 +695,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.close, color: Colors.white),
                   label: const Text(
-                    'Tutup',
+                    'Close',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,

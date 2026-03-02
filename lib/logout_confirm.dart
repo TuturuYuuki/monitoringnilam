@@ -30,7 +30,7 @@ class LogoutConfirmPage extends StatelessWidget {
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
-              const Text('Apakah Anda yakin ingin keluar?',
+              const Text('Are You Sure To Logout?',
                   style: TextStyle(color: Colors.black87)),
               const SizedBox(height: 16),
               Row(
@@ -38,7 +38,7 @@ class LogoutConfirmPage extends StatelessWidget {
                 children: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Batal'),
+                    child: const Text('Cancel'),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(

@@ -18,6 +18,7 @@ import 'profile.dart';
 import 'add_device.dart';
 import 'services/device_storage_service.dart';
 import 'utils/tower_status_override.dart';
+import 'report_page.dart'; 
 
 // Konstanta lokasi TPK Nilam - sesuai layout gambar
 class TPKNilamLocation {
@@ -504,17 +505,21 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   Map<String, String> _mmtStatusByIp = {};
   Timer? _refreshTimer;
   Timer? _blinkTimer;
+  bool _isLoadingDashboard = false;
+  bool _isPingInProgress = false;
+  DateTime? _lastPingCheckAt;
+  static const Duration _pingCheckInterval = Duration(seconds: 30);
   bool _isRouteSubscribed = false;
   int totalUpCameras = 0;
   int totalDownCameras = 0;
   int totalOnlineTowers = 0;
   int totalTowers = 0;
+  int totalWarnings = 0;
+  int totalDownTowers = 0;
 
   // Tracking blinking locations with multiple devices where at least one is DOWN
   final Set<String> _locationKeysWithDownDevices = {};
   bool _isBlinkVisible = true;
-
-  int get totalDownTowers => totalTowers - totalOnlineTowers;
   double get towerUptimePercent =>
       totalTowers == 0 ? 0 : (totalOnlineTowers / totalTowers) * 100;
   List<Alert> get activeAlerts => alerts
@@ -532,9 +537,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
     mapController = MapController();
     apiService = ApiService();
     _loadDashboardData();
-    // Refresh every 2 seconds for better performance
-    // Parallel API calls reduce overall load time
-    _refreshTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       if (mounted) {
         _loadDashboardData();
       }
@@ -593,66 +596,45 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   }
 
   Future<void> _loadDashboardData() async {
+    if (_isLoadingDashboard) {
+      return;
+    }
+
+    _isLoadingDashboard = true;
     try {
-      // Trigger realtime ping check first to update all statuses
-      // Run in background, don't block UI
-      _triggerPingCheck().timeout(
-        const Duration(seconds: 15),
-        onTimeout: () {
-          print('Warning: Ping check timed out after 15 seconds');
-        },
-      ).catchError((e) => print('Ping check error (ignored): $e'));
-
-      // Load core data in parallel with Future.wait() for better performance
+      _triggerPingCheck().catchError((e) => debugPrint('Ping error: $e'));
+      await apiService.getDashboardStats();
+      // Separate void future from non-void futures
       final results = await Future.wait([
-        apiService.getAllCameras().timeout(
-          const Duration(seconds: 10),
-          onTimeout: () {
-            print('Warning: Get cameras timed out');
-            return cameras; // Return existing data if timeout
-          },
-        ),
-        apiService.getAllTowers().timeout(
-          const Duration(seconds: 10),
-          onTimeout: () {
-            print('Warning: Get towers timed out');
-            return towers; // Return existing data if timeout
-          },
-        ),
-        apiService.getAllAlerts().timeout(
-          const Duration(seconds: 10),
-          onTimeout: () {
-            print('Warning: Get alerts timed out');
-            return alerts; // Return existing alerts if timeout
-          },
-        ),
-        _updateDeviceLocationStatuses().timeout(
-          const Duration(seconds: 15),
-          onTimeout: () {
-            print('Warning: Update device location statuses timed out');
-          },
-        ),
-      ], eagerError: false)
-          .catchError((e) {
-        print('Error loading dashboard data: $e');
-        return [cameras, towers, alerts, null];
-      });
-
+        apiService.getAllCameras(),
+        apiService.getAllTowers(),
+        apiService.getAllAlerts(),
+      ]);
       final fetchedCameras = results[0] as List<Camera>;
       final fetchedTowers = results[1] as List<Tower>;
-      final fetchedAlerts = results[2] as List<Alert>;
+      
+      // Handle new paginated response format (getAllAlerts always returns Map<String, dynamic>)
+      List<Alert> fetchedAlerts = [];
+      final alertsResponse = results[2] as Map<String, dynamic>;
+      
+      // Extract alerts list from response map using explicit loop
+      final alertListRaw = alertsResponse['alerts'] as List? ?? [];
+      for (var data in alertListRaw) {
+        if (data is Alert) {
+          fetchedAlerts.add(data);
+        } else {
+          fetchedAlerts.add(Alert.fromJson(data as Map<String, dynamic>));
+        }
+      }
+      // Run void future separately after other data loads
+      await _updateDeviceLocationStatuses();
 
-      // Apply forced status overrides before generating alerts
       final updatedTowers = applyForcedTowerStatus(fetchedTowers);
       final updatedCameras = applyForcedCameraStatus(fetchedCameras);
-
-      // Auto-generate DOWN alerts so the dashboard card matches Alerts page
-      final generatedAlerts = <Alert>[];
-
       final ipStatus = _buildIpStatusMap(updatedTowers, updatedCameras);
       final effectiveTowers = _applyIpStatusToTowers(updatedTowers, ipStatus);
-      final effectiveCameras =
-          _applyIpStatusToCameras(updatedCameras, ipStatus);
+      final effectiveCameras = _applyIpStatusToCameras(updatedCameras, ipStatus);
+      final List<Alert> generatedAlerts = [];
 
       for (final tower in effectiveTowers) {
         if (isDownStatus(tower.status)) {
@@ -670,7 +652,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                   : DateTime.now().toString());
 
           generatedAlerts.add(Alert(
-            id: 'tower-${tower.id}',
+            id: int.tryParse(tower.id.toString()) ?? 0, // Ubah ke int agar tidak error
             title: 'Access Point DOWN - ${tower.towerId}',
             description:
                 '${tower.location} access point offline (${tower.towerId})',
@@ -698,7 +680,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                   : DateTime.now().toString());
 
           generatedAlerts.add(Alert(
-            id: 'camera-${camera.id}',
+            id: (int.tryParse(camera.id.toString()) ?? 0) + 1000, // ID unik
             title: 'CCTV DOWN - ${camera.cameraId}',
             description:
                 '${camera.location} camera offline (${camera.cameraId})',
@@ -709,22 +691,21 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           ));
         }
       }
-      // Load added devices from storage (with error handling)
+      
       List<AddedDevice> devices = [];
       try {
         devices = await DeviceStorageService.getDevices().timeout(
           const Duration(seconds: 5),
           onTimeout: () {
             print('Warning: Get devices from storage timed out');
-            return addedDevices; // Return existing data if timeout
+            return addedDevices; 
           },
         );
       } catch (e) {
         print('Error loading devices from storage: $e');
-        devices = addedDevices; // Keep existing data on error
+        devices = addedDevices; 
       }
 
-      // Update added devices status from MMT/Tower/Camera data
       for (var device in devices) {
         if (device.type == 'MMT') {
           device.status = deviceStatuses[device.name] ??
@@ -763,59 +744,39 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
         }
       }
 
-      // Sort added devices so the newest appears on top (reverse order for drawing)
       devices.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-      // Only update state if we got valid data (not empty)
-      // This prevents status becoming 0 after long standby errors
-      if (mounted &&
-          (effectiveCameras.isNotEmpty ||
-              effectiveTowers.isNotEmpty ||
-              cameras.isNotEmpty ||
-              towers.isNotEmpty)) {
+      if (mounted) {
         setState(() {
-          cameras = effectiveCameras.isNotEmpty ? effectiveCameras : cameras;
-          totalUpCameras = cameras.where((c) => !isDownStatus(c.status)).length;
-          totalDownCameras =
-              cameras.where((c) => isDownStatus(c.status)).length;
-
-          towers = effectiveTowers.isNotEmpty ? effectiveTowers : towers;
-          totalOnlineTowers =
-              towers.where((t) => !isDownStatus(t.status)).length;
-          totalTowers = towers.length;
-
-          alerts = [...fetchedAlerts, ...generatedAlerts];
-          addedDevices = devices;
-
-          // Detect locations with multiple devices where at least one is DOWN
-          _updateBlinkingLocations();
-        });
-      } else if (mounted && cameras.isEmpty && towers.isEmpty) {
-        // First load case - set even if empty
-        setState(() {
+          // 1. Simpan Data Master ke List (Peta & Detail menggunakan ini)
           cameras = effectiveCameras;
-          totalUpCameras = cameras.where((c) => !isDownStatus(c.status)).length;
-          totalDownCameras =
-              cameras.where((c) => isDownStatus(c.status)).length;
-
           towers = effectiveTowers;
-          totalOnlineTowers =
-              towers.where((t) => !isDownStatus(t.status)).length;
-          totalTowers = towers.length;
 
+          // 2. HITUNG ULANG STATISTIK DARI LIST RIIL (Agar sinkron dengan warna peta)
+          // Access Point
+          totalTowers = towers.length; 
+          totalOnlineTowers = towers.where((t) => !isDownStatus(t.status)).length;
+          totalDownTowers = (totalTowers - totalOnlineTowers).clamp(0, 999);
+
+          // CCTV
+          int allCamerasCount = cameras.length;
+          totalUpCameras = cameras.where((c) => !isDownStatus(c.status)).length;
+          totalDownCameras = (allCamerasCount - totalUpCameras).clamp(0, 999);
+
+          // 3. ALERT: Gabungkan data DB dengan alert yang baru saja terdeteksi (DOWN baru)
           alerts = [...fetchedAlerts, ...generatedAlerts];
-          addedDevices = devices;
-
-          // Detect locations with multiple devices where at least one is DOWN
+          // Hitung total dari gabungan alert tersebut
+          totalWarnings = alerts.where((a) => a.severity == 'critical' || a.severity == 'warning').length;
+          
+          // 4. Update UI lainnya
+          addedDevices = devices; 
+          _syncAddedDevices(ipStatus); 
           _updateBlinkingLocations();
         });
       }
     } catch (e) {
       print('Error loading dashboard data: $e');
-      // Don't clear data on error - keep existing state to prevent status becoming 0
-      // Just log the error and let auto-refresh retry
       if (mounted) {
-        // Optionally show error snackbar
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error refreshing data: ${e.toString()}'),
@@ -824,6 +785,48 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           ),
         );
       }
+    } finally {
+      _isLoadingDashboard = false;
+    }
+  }
+
+  Future<void> _syncAddedDevices(Map<String, String> ipStatus) async {
+    try {
+      List<AddedDevice> storageDevices = await DeviceStorageService.getDevices();
+      for (var device in storageDevices) {
+        final ipKey = device.ipAddress.trim();
+        if (ipStatus.containsKey(ipKey)) {
+          device.status = ipStatus[ipKey]!;
+        }
+      }
+      if (mounted) {
+        setState(() {
+          addedDevices = storageDevices;
+          addedDevices.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        });
+      }
+    } catch (e) {
+      debugPrint("Error syncing storage devices: $e");
+    }
+  }
+
+  Future<void> _loadAddedDevices(Map<String, String> ipStatus) async {
+    try {
+      List<AddedDevice> devices = await DeviceStorageService.getDevices();
+      for (var device in devices) {
+        final ipKey = device.ipAddress.trim();
+        if (ipStatus.containsKey(ipKey)) {
+          device.status = ipStatus[ipKey]!;
+        }
+      }
+      if (mounted) {
+        setState(() {
+          addedDevices = devices;
+          addedDevices.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading added devices: $e");
     }
   }
 
@@ -871,15 +874,30 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           }
 
           print(
-              'Updated ${deviceStatuses.length} device statuses from database');
+              'Updated ${deviceStatuses.length} Device Statuses From Database');
         }
       }
     } catch (e) {
-      print('Error updating device location statuses: $e');
+      print('Error Updating Device Location Statuses: $e');
     }
   }
 
-  Future<void> _triggerPingCheck() async {
+  Future<void> _triggerPingCheck({bool force = false}) async {
+    final now = DateTime.now();
+
+    if (_isPingInProgress) {
+      return;
+    }
+
+    if (!force &&
+        _lastPingCheckAt != null &&
+        now.difference(_lastPingCheckAt!) < _pingCheckInterval) {
+      return;
+    }
+
+    _isPingInProgress = true;
+    _lastPingCheckAt = now;
+
     try {
       const baseUrl = 'http://localhost/monitoring_api/index.php';
 
@@ -891,7 +909,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           .timeout(
         const Duration(seconds: 10),
         onTimeout: () {
-          print('Realtime ping timed out - skipping');
+          print('Realtime Ping Timed Out - Skipping');
           return http.Response('{"success":false,"message":"Timeout"}', 408);
         },
       );
@@ -899,14 +917,16 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       if (response.statusCode == 200) {
         // Wait a moment for database to update
         await Future.delayed(const Duration(milliseconds: 500));
-        print('Realtime ping check completed: ${response.statusCode}');
+        print('Realtime Ping Check Completed: ${response.statusCode}');
       } else {
-        print('Realtime ping failed: ${response.statusCode}');
+        print('Realtime Ping Failed: ${response.statusCode}');
       }
     } catch (e) {
       // Silent fail - just log, don't throw
       // This prevents error snackbar spam during auto-refresh
-      print('Error triggering ping check (ignored): $e');
+      print('Error Triggering Ping Check (Ignored): $e');
+    } finally {
+      _isPingInProgress = false;
     }
   }
 
@@ -958,10 +978,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
         towerNumber: tower.towerNumber,
         location: tower.location,
         ipAddress: tower.ipAddress,
-        deviceCount: tower.deviceCount,
         status: forced,
-        traffic: tower.traffic,
-        uptime: tower.uptime,
         containerYard: tower.containerYard,
         createdAt: tower.createdAt,
         updatedAt: tower.updatedAt,
@@ -1196,7 +1213,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Data berhasil diperbarui'),
+                content: Text('Data Successfully Updated'),
                 duration: Duration(seconds: 1),
               ),
             );
@@ -1497,10 +1514,19 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   }
 
   Widget _buildHeader(BuildContext context) {
+    double screenWidth = MediaQuery.of(context).size.width;
     return Container(
+      width: screenWidth,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       color: const Color(0xFF1976D2),
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
       child: Row(
+       mainAxisSize: MainAxisSize.min, 
+            crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           const Text(
             'Terminal Nilam',
@@ -1510,8 +1536,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const Spacer(),
-          _buildHeaderOpenButton('+ Add Device', const AddDevicePage()),
+          const SizedBox(width: 30),
+          _buildHeaderOpenButton('+ Add New Device', const AddDevicePage()),
           const SizedBox(width: 12),
           _buildHeaderOpenButton('Dashboard', const DashboardPage(),
               isActive: true),
@@ -1520,10 +1546,12 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           const SizedBox(width: 12),
           _buildHeaderOpenButton('CCTV', const CCTVPage()),
           const SizedBox(width: 12),
-          _buildHeaderOpenButton('Alerts', const AlertsPage()),
+          _buildHeaderOpenButton('Alert', const AlertsPage()),
+          const SizedBox(width: 12),
+          _buildHeaderOpenButton('Alert Report', const ReportPage()),
           const SizedBox(width: 12),
           _buildHeaderButton('Logout', () => _showLogoutDialog(context)),
-          const SizedBox(width: 12),
+          const SizedBox(width: 24),
           // Profile Icon
           GestureDetector(
             onTap: () {
@@ -1557,6 +1585,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           ),
         ],
       ),
+    ),
+    ),
     );
   }
 
@@ -1866,6 +1896,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           ),
           child: Column(
             children: [
+              // Header Kartu
               Row(
                 children: [
                   Container(
@@ -1874,12 +1905,12 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                       color: const Color(0xFF1976D2),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.warning,
+                    child: const Icon(Icons.warning_amber_rounded,
                         color: Colors.white, size: 28),
                   ),
                   const SizedBox(width: 12),
                   const Text(
-                    'Active Alerts',
+                    'Alerts',
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 22,
@@ -1888,45 +1919,51 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(height: 24),
+              // Layout Counter Versi Warning (Seperti CCTV)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Critical: $criticalAlertsCount',
-                        style: const TextStyle(
-                          color: Colors.red,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        'Total: $totalActiveAlerts',
-                        style: const TextStyle(
-                          color: Colors.black87,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Warning: $warningAlertsCount',
-                    style: const TextStyle(
-                      color: Colors.orange,
-                      fontSize: 16,
-                    ),
-                  ),
+                  _buildAlertStatus(totalWarnings),
                 ],
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  // Update fungsi agar menerima data jumlah
+  Widget _buildAlertStatus(int count) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.red, // Background icon orange
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.report_problem, color: Colors.white, size: 32),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '$count', // Menampilkan angka dari database
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const Text(
+          'DOWN', // Label untuk counter
+          style: TextStyle(
+            color: Colors.black54,
+            fontSize: 14,
+            letterSpacing: 1.2,
+          ),
+        ),
+      ],
     );
   }
 
@@ -1971,16 +2008,16 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                 onPressed: () async {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Checking status...'),
+                      content: Text('Checking Status...'),
                       duration: Duration(seconds: 2),
                     ),
                   );
-                  await _triggerPingCheck();
+                  await _triggerPingCheck(force: true);
                   await _loadDashboardData();
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('✓ Status updated!'),
+                        content: Text('✓ Status Updated!'),
                         backgroundColor: Colors.green,
                         duration: Duration(seconds: 2),
                       ),
@@ -2396,12 +2433,12 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Logout', style: TextStyle(color: Colors.black87)),
-        content: const Text('Apakah Anda yakin ingin keluar?',
+        content: const Text('Are You Sure To Logout?',
             style: TextStyle(color: Colors.black87)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Batal', style: TextStyle(color: Colors.black87)),
+            child: const Text('Cancel', style: TextStyle(color: Colors.black87)),
           ),
           ElevatedButton(
             onPressed: () {

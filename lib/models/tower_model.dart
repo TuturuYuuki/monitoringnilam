@@ -4,10 +4,7 @@ class Tower {
   final int towerNumber;
   final String location;
   final String ipAddress;
-  final int deviceCount;
   final String status;
-  final String traffic;
-  final String uptime;
   final String containerYard;
   final String createdAt;
   final String updatedAt;
@@ -18,10 +15,7 @@ class Tower {
     required this.towerNumber,
     required this.location,
     required this.ipAddress,
-    required this.deviceCount,
     required this.status,
-    required this.traffic,
-    required this.uptime,
     required this.containerYard,
     required this.createdAt,
     required this.updatedAt,
@@ -34,10 +28,7 @@ class Tower {
       towerNumber: int.tryParse(json['tower_number'].toString()) ?? 0,
       location: json['location']?.toString() ?? '',
       ipAddress: json['ip_address']?.toString() ?? '',
-      deviceCount: int.tryParse(json['device_count'].toString()) ?? 0,
       status: json['status']?.toString() ?? 'Unknown',
-      traffic: json['traffic']?.toString() ?? '0 Mbps',
-      uptime: json['uptime']?.toString() ?? '0%',
       containerYard: json['container_yard']?.toString() ?? '',
       createdAt: json['created_at']?.toString() ?? '',
       updatedAt: json['updated_at']?.toString() ?? '',
@@ -51,10 +42,7 @@ class Tower {
       'tower_number': towerNumber,
       'location': location,
       'ip_address': ipAddress,
-      'device_count': deviceCount,
       'status': status,
-      'traffic': traffic,
-      'uptime': uptime,
       'container_yard': containerYard,
       'created_at': createdAt,
       'updated_at': updatedAt,

@@ -12,6 +12,7 @@ import 'models/mmt_model.dart';
 import 'models/tower_model.dart';
 import 'services/api_service.dart';
 import 'services/device_storage_service.dart';
+import 'report_page.dart';
 
 class AddDevicePage extends StatefulWidget {
   const AddDevicePage({super.key});
@@ -161,7 +162,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
     });
   }
 
-  Future<void> _loadUsedNamesForType() async {
+ Future<void> _loadUsedNamesForType() async {
     if (!mounted) return;
     setState(() {
       _isLoadingUsedNames = true;
@@ -183,7 +184,6 @@ class _AddDevicePageState extends State<AddDevicePage> {
       final names = <String>{};
       if (_selectedDeviceType == 'Access Point') {
         names.addAll(towers.map((t) => t.towerId));
-        // Only include local devices that aren't already in DB
         names.addAll(addedDevices
             .where((d) =>
                 d.type == 'Access Point' &&
@@ -192,7 +192,6 @@ class _AddDevicePageState extends State<AddDevicePage> {
             .map((d) => d.name));
       } else if (_selectedDeviceType == 'CCTV') {
         names.addAll(cameras.map((c) => c.cameraId));
-        // Only include local devices that aren't already in DB
         names.addAll(addedDevices
             .where((d) =>
                 d.type == 'CCTV' &&
@@ -201,7 +200,6 @@ class _AddDevicePageState extends State<AddDevicePage> {
             .map((d) => d.name));
       } else if (_selectedDeviceType == 'MMT') {
         names.addAll(mmts.map((m) => m.mmtId));
-        // Only include local devices that aren't already in DB
         names.addAll(addedDevices
             .where((d) =>
                 d.type == 'MMT' &&
@@ -210,7 +208,26 @@ class _AddDevicePageState extends State<AddDevicePage> {
       }
 
       final nameList = names.where((n) => n.trim().isNotEmpty).toList();
-      nameList.sort();
+
+      // ===== PERBAIKAN LOGIKA SORTING DI SINI =====
+      nameList.sort((a, b) {
+        // Fungsi untuk mengambil angka dari string (Contoh: "AP 32" -> 32)
+        int extractNumber(String s) {
+          final match = RegExp(r'\d+').firstMatch(s);
+          return match != null ? int.parse(match.group(0)!) : 0;
+        }
+
+        int numA = extractNumber(a);
+        int numB = extractNumber(b);
+
+        // Jika keduanya punya angka, bandingkan angkanya
+        if (numA != numB) {
+          return numA.compareTo(numB);
+        }
+        // Jika angka sama atau tidak ada angka, bandingkan teksnya secara normal
+        return a.toLowerCase().compareTo(b.toLowerCase());
+      });
+      // ===========================================
 
       if (!mounted) return;
       setState(() {
@@ -222,16 +239,15 @@ class _AddDevicePageState extends State<AddDevicePage> {
       setState(() {
         _isLoadingUsedNames = false;
       });
-      print('Error loading used device names: $e');
+      print('Error Loading Used Device Name: $e');
     }
   }
-
   void _showAllUsedNames() {
     if (_usedNamesForType.isEmpty) return;
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      barrierLabel: 'Daftar Nama Device',
+      barrierLabel: 'Device Name List',
       barrierColor: Colors.black26,
       transitionDuration: const Duration(milliseconds: 180),
       pageBuilder: (context, anim1, anim2) {
@@ -252,7 +268,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                         children: [
                           Expanded(
                             child: Text(
-                              'Daftar Nama $_selectedDeviceType',
+                              'Name List For $_selectedDeviceType',
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -266,7 +282,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                         ],
                       ),
                       Text(
-                        'Total: ${_usedNamesForType.length} nama',
+                        'Total: ${_usedNamesForType.length} Name',
                         style: const TextStyle(
                           fontSize: 12,
                           color: Colors.black54,
@@ -363,7 +379,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
       if (!mounted) return;
       setState(() {
         _isCheckingName = false;
-        _nameError = isTaken ? 'Nama device sudah dipakai' : null;
+        _nameError = isTaken ? 'The Device Name Is Already In Use' : null;
       });
       _formKey.currentState?.validate();
     } catch (_) {
@@ -393,9 +409,17 @@ class _AddDevicePageState extends State<AddDevicePage> {
       String status = 'UP';
       String type = 'Fixed';
       int deviceCount = 1;
-      String traffic = '0';
-      String uptime = '0%';
-      String areaType = 'Warehouse';
+      String areaType = 'Warehouse'; // Default
+
+      // Set areaType based on location for CCTV
+      if (_selectedDeviceType == 'CCTV') {
+        final locationLower = _selectedLocation.toLowerCase();
+        if (locationLower.contains('gate')) {
+          areaType = 'Gate';
+        } else if (locationLower.contains('parking')) {
+          areaType = 'Parking';
+        }
+      }
 
       // Save to local storage
       final newDevice = AddedDevice(
@@ -412,7 +436,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
 
       final saveFuture =
           DeviceStorageService.addDevice(newDevice).catchError((e) {
-        print('Error saving to local storage: $e');
+        print('Error Saving To Local Storage: $e');
       });
 
       // Prepare API request data
@@ -422,7 +446,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
       print('=== DEBUG: Saving Device ===');
       print('Device Type: $_selectedDeviceType');
       print('Device ID: $deviceId');
-      print('IP Address from input: $deviceIpAddress');
+      print('IP Address From Input: $deviceIpAddress');
       print('Location: $_selectedLocation');
       print('Container Yard: $containerYard');
 
@@ -436,16 +460,14 @@ class _AddDevicePageState extends State<AddDevicePage> {
           containerYard: containerYard,
           deviceCount: deviceCount,
           status: status,
-          traffic: traffic,
-          uptime: uptime,
         );
         createFuture.then((result) {
-          print('DEBUG: createTower response: $result');
+          print('DEBUG: createTower Response: $result');
         }).catchError((e) {
-          print('DEBUG: createTower error: $e');
+          print('DEBUG: createTower Error: $e');
         });
       } else if (_selectedDeviceType == 'CCTV') {
-        print('DEBUG: Calling createCamera with IP: $deviceIpAddress');
+        print('DEBUG: Calling createCamera With IP: $deviceIpAddress');
         createFuture = apiService.createCamera(
           cameraId: deviceId,
           location: _selectedLocation,
@@ -456,12 +478,12 @@ class _AddDevicePageState extends State<AddDevicePage> {
           areaType: areaType,
         );
         createFuture.then((result) {
-          print('DEBUG: createCamera response: $result');
+          print('DEBUG: createCamera Response: $result');
         }).catchError((e) {
-          print('DEBUG: createCamera error: $e');
+          print('DEBUG: createCamera Error: $e');
         });
       } else if (_selectedDeviceType == 'MMT') {
-        print('DEBUG: Calling createMMT with IP: $deviceIpAddress');
+        print('DEBUG: Calling createMMT With IP: $deviceIpAddress');
         createFuture = apiService.createMMT(
           mmtId: deviceId,
           location: _selectedLocation,
@@ -470,13 +492,11 @@ class _AddDevicePageState extends State<AddDevicePage> {
           status: status,
           type: type,
           deviceCount: deviceCount,
-          traffic: traffic,
-          uptime: uptime,
         );
         createFuture.then((result) {
-          print('DEBUG: createMMT response: $result');
+          print('DEBUG: createMMT Response: $result');
         }).catchError((e) {
-          print('DEBUG: createMMT error: $e');
+          print('DEBUG: createMMT Error: $e');
         });
       }
 
@@ -485,7 +505,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Device Berhasil Ditambahkan!'),
+            title: const Text('Device Successfully Added!'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -504,7 +524,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Device tersimpan! Data disinkronisasi ke database...',
+                            'Device Saved!',
                             style:
                                 TextStyle(fontSize: 12, color: Colors.black87),
                           ),
@@ -515,9 +535,9 @@ class _AddDevicePageState extends State<AddDevicePage> {
                   const SizedBox(height: 12),
                   _buildInfoRow('Device ID:', deviceId),
                   const SizedBox(height: 8),
-                  _buildInfoRow('Tipe Device:', _selectedDeviceType),
+                  _buildInfoRow('Device Type:', _selectedDeviceType),
                   const SizedBox(height: 8),
-                  _buildInfoRow('Lokasi:', _selectedLocation),
+                  _buildInfoRow('Location:', _selectedLocation),
                   const SizedBox(height: 8),
                   _buildInfoRow('IP Address:', _ipAddressController.text),
                   const SizedBox(height: 8),
@@ -525,10 +545,6 @@ class _AddDevicePageState extends State<AddDevicePage> {
                   if (_selectedDeviceType == 'Access Point') ...[
                     const SizedBox(height: 8),
                     _buildInfoRow('Device Count:', deviceCount.toString()),
-                    const SizedBox(height: 8),
-                    _buildInfoRow('Traffic:', traffic),
-                    const SizedBox(height: 8),
-                    _buildInfoRow('Uptime:', uptime),
                   ],
                   if (_selectedDeviceType == 'CCTV') ...[
                     const SizedBox(height: 8),
@@ -543,7 +559,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                   Navigator.pop(context);
                   _resetForm();
                 },
-                child: const Text('Tambah Device Lagi'),
+                child: const Text('Add Another Device'),
               ),
               ElevatedButton(
                 onPressed: () async {
@@ -552,7 +568,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                     await saveFuture
                         .timeout(const Duration(seconds: 3))
                         .catchError((_) {
-                      print('Timeout or error waiting for save');
+                      print('Timeout Or Error Waiting For Save');
                     });
 
                     final pendingCreate = createFuture;
@@ -560,7 +576,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                       await pendingCreate
                           .timeout(const Duration(seconds: 8))
                           .catchError((_) {
-                        print('Timeout or error waiting for device creation');
+                        print('Timeout Or Error Waiting For Device Creation');
                         return <String, dynamic>{};
                       });
                     }
@@ -568,7 +584,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                     // Wait a moment for DB to settle
                     await Future.delayed(const Duration(milliseconds: 500));
                   } catch (e) {
-                    print('Error waiting for device creation: $e');
+                    print('Error Waiting For Device Creation: $e');
                   }
 
                   if (!context.mounted) return;
@@ -578,7 +594,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                     Navigator.of(context).pushNamedAndRemoveUntil(
                       '/dashboard',
                       (route) => false,
-                      arguments: {'refresh': true},
+                      arguments: {'Refresh': true},
                     );
                   }
                 },
@@ -586,7 +602,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                   backgroundColor: const Color(0xFF1976D2),
                   foregroundColor: Colors.white,
                 ),
-                child: const Text('Kembali ke Dashboard'),
+                child: const Text('Back to Dashboard'),
               ),
             ],
           ),
@@ -631,10 +647,19 @@ class _AddDevicePageState extends State<AddDevicePage> {
   }
 
   Widget _buildHeader(BuildContext context) {
+    double screenWidth = MediaQuery.of(context).size.width;
     return Container(
+      width: screenWidth,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       color: const Color(0xFF1976D2),
-      child: Row(
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+        child: Row(
+            mainAxisSize: MainAxisSize.min, 
+            crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           const Text(
             'Terminal Nilam',
@@ -644,9 +669,9 @@ class _AddDevicePageState extends State<AddDevicePage> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const Spacer(),
+          const SizedBox(width: 30),
           _buildHeaderOpenButton(
-            '+ Add Device',
+            '+ Add New Device',
             const AddDevicePage(),
             isActive: true,
           ),
@@ -657,10 +682,13 @@ class _AddDevicePageState extends State<AddDevicePage> {
           const SizedBox(width: 12),
           _buildHeaderOpenButton('CCTV', const CCTVPage()),
           const SizedBox(width: 12),
-          _buildHeaderOpenButton('Alerts', const AlertsPage()),
+          _buildHeaderOpenButton('Alert', const AlertsPage()),
+          const SizedBox(width: 12),
+          _buildHeaderOpenButton('Alert Report', const ReportPage()),
           const SizedBox(width: 12),
           _buildHeaderButton('Logout', () => _showLogoutDialog(context)),
-          const SizedBox(width: 12),
+
+          const SizedBox(width: 24),
           // Profile Icon
           GestureDetector(
             onTap: () {
@@ -694,6 +722,8 @@ class _AddDevicePageState extends State<AddDevicePage> {
           ),
         ],
       ),
+    ),
+    ),
     );
   }
 
@@ -776,12 +806,12 @@ class _AddDevicePageState extends State<AddDevicePage> {
       builder: (context) => AlertDialog(
         title: const Text('Logout',
             style: TextStyle(color: Colors.black87, fontSize: 20)),
-        content: const Text('Apakah Anda yakin ingin logout?',
+        content: const Text('Are You Sure To Logout?',
             style: TextStyle(color: Colors.black87)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Batal', style: TextStyle(color: Colors.black87)),
+            child: const Text('Cancel', style: TextStyle(color: Colors.black87)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -806,7 +836,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFF2C3E50),
       body: Column(
         children: [
           _buildHeader(context),
@@ -835,7 +865,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Tambah Device Baru',
+                          'Add New Device',
                           style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
@@ -846,7 +876,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
 
                         // ===== TIPE DEVICE =====
                         const Text(
-                          'Tipe Device',
+                          'Device Type',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -902,7 +932,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
 
                         // ===== NAMA DEVICE =====
                         const Text(
-                          'Nama Device',
+                          'Device Name',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -914,9 +944,9 @@ class _AddDevicePageState extends State<AddDevicePage> {
                           controller: _nameController,
                           onChanged: _onNameChanged,
                           decoration: InputDecoration(
-                            hintText: 'Masukkan nama device',
+                            hintText: 'Enter Device Name',
                             helperText:
-                                'Contoh: ${_getDeviceNameExample(_selectedDeviceType)}',
+                                'Example: ${_getDeviceNameExample(_selectedDeviceType)}',
                             suffixIcon: _isCheckingName
                                 ? const Padding(
                                     padding: EdgeInsets.all(12),
@@ -959,7 +989,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Nama Device tidak boleh kosong';
+                              return 'Device Name Cannot Be Empty';
                             }
                             if (_nameError != null) {
                               return _nameError;
@@ -969,19 +999,19 @@ class _AddDevicePageState extends State<AddDevicePage> {
                         ),
                         const SizedBox(height: 8),
                         if (_isLoadingUsedNames)
-                          const Row(
+                          Row(
                             children: [
-                              SizedBox(
+                              const SizedBox(
                                 width: 14,
                                 height: 14,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
                                 ),
                               ),
-                              SizedBox(width: 8),
+                              const SizedBox(width: 8),
                               Text(
-                                'Memuat nama yang sudah digunakan...',
-                                style: TextStyle(
+                                'Loading Used Name For $_selectedDeviceType...',
+                                style: const TextStyle(
                                   fontSize: 12,
                                   color: Colors.black54,
                                 ),
@@ -993,7 +1023,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Nama $_selectedDeviceType yang sudah digunakan:',
+                                'Used Name For $_selectedDeviceType:',
                                 style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
@@ -1019,7 +1049,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                   if (_usedNamesForType.length > 10)
                                     ActionChip(
                                       label: Text(
-                                        '+${_usedNamesForType.length - 10} lainnya',
+                                        '+${_usedNamesForType.length - 10} Other',
                                         style: const TextStyle(fontSize: 11),
                                       ),
                                       backgroundColor: const Color(0xFFE0E0E0),
@@ -1031,7 +1061,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                           )
                         else
                           const Text(
-                            'Belum ada nama device terpakai untuk tipe ini.',
+                            'No Used Device Name Available For This Type.',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.black54,
@@ -1052,9 +1082,9 @@ class _AddDevicePageState extends State<AddDevicePage> {
                         TextFormField(
                           controller: _ipAddressController,
                           decoration: InputDecoration(
-                            hintText: 'Masukkan IP address',
+                            hintText: 'Entry An IP Address',
                             helperText:
-                                'Format: xxx.xxx.xxx.xxx (Contoh: 10.2.71.60)',
+                                'Format: xxx.xxx.xxx.xxx (Example: 10.2.71.60)',
                             prefixIcon: const Icon(Icons.router),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
@@ -1080,11 +1110,11 @@ class _AddDevicePageState extends State<AddDevicePage> {
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'IP Address tidak boleh kosong';
+                              return 'IP Address Cannot Be Empty';
                             }
                             final ipRegex = RegExp(r'^(\d{1,3}\.){3}\d{1,3}$');
                             if (!ipRegex.hasMatch(value)) {
-                              return 'Format IP Address tidak valid';
+                              return 'Invalid IP Address Format';
                             }
                             return null;
                           },
@@ -1093,7 +1123,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
 
                         // ===== LOKASI (DROPDOWN dari Tower Coordinates) =====
                         const Text(
-                          'Lokasi',
+                          'Location',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -1163,7 +1193,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                 Icon(Icons.add),
                                 SizedBox(width: 8),
                                 Text(
-                                  'Tambah Device',
+                                  'Add New Device',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
