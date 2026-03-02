@@ -37,7 +37,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
   int get upCameras => allCameras.where((c) => c['status'] == 'UP').length;
   int get downCameras => allCameras.where((c) => c['status'] == 'DOWN').length;
 
-  int _resolveCamerasPerPage({bool considerConstraints = false}) {
+  int _resolveCamerasPerPage() {
     final isMobile = isMobileScreen(context);
     if (isMobile) return 4;  // Mobile: 1 column layout
     

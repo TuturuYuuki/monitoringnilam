@@ -69,16 +69,57 @@ class _AlertsPageState extends State<AlertsPage> {
     }
   }
 
-  Future<void> _deleteAlert(int id) async {
-  // Panggil API ke PHP
-  final success = await apiService.deleteAlert(id);
-  
+  Future<void> _deleteAlert(Alert alert) async {
+  final bool isCurrentStatusOnly = alert.source == 'current' || alert.id <= 0;
+
+  if (isCurrentStatusOnly) {
+    final success = await apiService.dismissCurrentAlert(alert.alertKey);
+
+    if (!success) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Failed to delete alert"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        final idx = alerts.indexWhere((element) => element.alertKey == alert.alertKey);
+        if (idx >= 0) {
+          alerts.removeAt(idx);
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Alert deleted"),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+    return;
+  }
+
+  final success = await apiService.deleteAlert(alert.id);
+
   if (success && mounted) {
     setState(() {
-      // Langsung hapus dari list lokal, UI akan langsung berubah
-      alerts.removeWhere((element) => element.id == id);
+      final idx = alerts.indexWhere((element) => element.alertKey == alert.alertKey);
+
+      if (idx >= 0) {
+        alerts.removeAt(idx);
+      } else {
+        final fallbackIdx = alerts.indexOf(alert);
+        if (fallbackIdx >= 0) {
+          alerts.removeAt(fallbackIdx);
+        }
+      }
     });
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text("Alert deleted"),
@@ -226,7 +267,7 @@ Future<void> _deleteAllAlerts() async {
     showLogoutDialog(context); // Memanggil fungsi global dari main.dart
   }
 
-  void _showDeleteConfirmation(int id) {
+  void _showDeleteConfirmation(Alert alert) {
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
@@ -243,7 +284,7 @@ Future<void> _deleteAllAlerts() async {
         ElevatedButton(
           onPressed: () {
             Navigator.pop(context); // Tutup dialog dulu
-            _deleteAlert(id);      // Langsung eksekusi hapus
+            _deleteAlert(alert);      // Langsung eksekusi hapus
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.red,
@@ -315,7 +356,12 @@ Future<void> _deleteAllAlerts() async {
   }
 
   Widget _buildAlertsListWithoutFilter(double listHeight) {
-    final sortedAlerts = alerts.toList()..sort((a, b) => b.id.compareTo(a.id));
+    final sortedAlerts = alerts.toList()
+      ..sort((a, b) =>
+          DateTime.tryParse(b.timestamp)?.millisecondsSinceEpoch.compareTo(
+                DateTime.tryParse(a.timestamp)?.millisecondsSinceEpoch ?? 0,
+              ) ??
+          0);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), borderRadius: BorderRadius.circular(15)),
@@ -374,7 +420,7 @@ Future<void> _deleteAllAlerts() async {
           trailing: IconButton(
             icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
             onPressed: () {
-              _showDeleteConfirmation(alert.id);
+              _showDeleteConfirmation(alert);
             },
           ),
         ),
