@@ -1,5 +1,6 @@
 class Alert {
   final int id; // Ubah dynamic menjadi int agar pasti angka
+  final String alertKey;
   final String title;
   final String description;
   final String severity; 
@@ -8,6 +9,7 @@ class Alert {
   final bool isRead;
   final String createdAt;
   final String category;
+  final String source;
 
   final String? tanggal;
   final String? waktu;
@@ -15,6 +17,7 @@ class Alert {
 
   Alert({
     required this.id,
+    required this.alertKey,
     required this.title,
     required this.description,
     this.severity = 'critical',
@@ -23,14 +26,22 @@ class Alert {
     this.isRead = false,
     this.createdAt = '',
     this.category = 'Other',
+    this.source = 'history',
     this.tanggal,
     this.waktu,
     this.lokasi,
   });
 
   factory Alert.fromJson(Map<String, dynamic> json) {
+  final parsedId = int.tryParse((json['id'] ?? '').toString()) ?? 0;
+  final source = (json['source'] ?? 'history').toString();
+  final fallbackKey = source == 'current'
+      ? 'current:${json['id'] ?? ''}:${json['title'] ?? ''}'
+      : 'history:$parsedId';
+
   return Alert(
-    id: int.tryParse(json['id'].toString()) ?? 0,
+    id: parsedId,
+    alertKey: (json['alert_key'] ?? fallbackKey).toString(),
     title: json['title'] ?? '',
     description: json['description'] ?? '',
     lokasi: json['lokasi'], // Pastikan nama kolom di DB 'lokasi'
@@ -39,12 +50,14 @@ class Alert {
     severity: json['severity'] ?? 'critical',
     timestamp: json['timestamp'] ?? '',
     route: json['route'] ?? '/alerts',
+    source: source,
   );
 }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'alert_key': alertKey,
       'title': title,
       'description': description,
       'severity': severity,
@@ -53,6 +66,7 @@ class Alert {
       'is_read': isRead ? 1 : 0,
       'created_at': createdAt,
       'category': category,
+      'source': source,
       'tanggal': tanggal,
       'waktu': waktu,
       'lokasi': lokasi,

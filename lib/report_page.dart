@@ -322,10 +322,31 @@ class _ReportPageState extends State<ReportPage> {
         separatorBuilder: (_, __) => const Divider(height: 1),
         itemBuilder: (context, index) {
           final a = reportAlerts[index];
+          // Determine status based on description (DOWN/UP)
+          final isDown = a.description.toLowerCase().contains('down') || a.severity.toLowerCase() == 'critical';
           return ListTile(
-            leading: Icon(a.severity.toLowerCase() == 'critical' ? Icons.warning : Icons.check_circle, color: a.severity.toLowerCase() == 'critical' ? Colors.red : Colors.green),
+            leading: Icon(
+              isDown ? Icons.cloud_off : Icons.cloud_done,
+              color: isDown ? Colors.red : Colors.green,
+              size: 28,
+            ),
             title: Text(a.title, style: const TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Text("${a.lokasi} | ${a.tanggal} ${a.waktu}"),
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: isDown ? Colors.red.withOpacity(0.1) : Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                isDown ? 'DOWN' : 'UP',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: isDown ? Colors.red : Colors.green,
+                  fontSize: 12,
+                ),
+              ),
+            ),
           );
         },
       ),
