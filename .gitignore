@@ -41,3 +41,52 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# ============================================
+# SENSITIVE CONFIGURATION FILES
+# ============================================
+# Email credentials and API keys - NEVER commit these!
+config/email.php
+config/*.local.php
+config/api_keys.php
+
+# Email log files (may contain sensitive data)
+emails.log
+*.log
+
+# Environment-specific files
+.env
+.env.local
+.env.*.local
+
+# ============================================
+# BACKEND & DATABASE FILES (Not for public repo)
+# ============================================
+# PHP Backend files
+*.php
+
+# SQL and Database files
+*.sql
+
+# PowerShell scripts
+*.ps1
+
+# HTML test files
+test_*.html
+
+# ============================================
+# TECHNICAL DOCUMENTATION (Keep private)
+# ============================================
+# Exclude all MD files except README.md
+*.md
+!README.md
+
+# Technical guide files
+*_GUIDE.md
+*_COMPLETE.md
+*_SUMMARY.md
+*_FIX.md
+*_DEBUG.md
+*_SETUP.md
+*_IMPLEMENTATION.md
+*_REPORT.md
