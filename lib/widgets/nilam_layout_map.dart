@@ -82,12 +82,20 @@ class _NilamLayoutMapState extends State<NilamLayoutMap> {
         aspectRatio: LayoutMapper.PNG_WIDTH / LayoutMapper.PNG_HEIGHT,
         child: Container(
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[400]!, width: 2),
+            border: Border.all(
+              color: const Color(0xFF1976D2),
+              width: 3,
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+              BoxShadow(
+                color: const Color(0xFF1976D2).withOpacity(0.3),
                 blurRadius: 8,
-                offset: const Offset(0, 2),
+                spreadRadius: 1,
               ),
             ],
           ),

@@ -1225,6 +1225,24 @@ Future<List<Tower>> getTowersByContainerYard(String yardName) async {
     }
   }
 
+  Future<bool> dismissCurrentAlert(String alertKey) async {
+    try {
+      final encodedKey = Uri.encodeQueryComponent(alertKey);
+      final response = await http.get(
+        Uri.parse('$alertsUrl?action=dismiss_current&alert_key=$encodedKey'),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint("Gagal dismiss current alert: $e");
+      return false;
+    }
+  }
+
   Future<bool> deleteAllAlerts() async {
   try {
     final response = await http.get(Uri.parse('$baseUrl?endpoint=alerts&action=delete_all'));
@@ -1238,6 +1256,8 @@ Future<List<Tower>> getTowersByContainerYard(String yardName) async {
     required String location,
     required String ipAddress,
     required String containerYard,
+    required double latitude,
+    required double longitude,
     int? deviceCount,
     String? status,
   }) async {
@@ -1250,6 +1270,8 @@ Future<List<Tower>> getTowersByContainerYard(String yardName) async {
           'location': location,
           'ip_address': ipAddress,
           'container_yard': containerYard,
+          'latitude': latitude,
+          'longitude': longitude,
           'device_count': deviceCount ?? 1,
           'status': status ?? 'UP',
         }),
@@ -1274,6 +1296,8 @@ Future<List<Tower>> getTowersByContainerYard(String yardName) async {
     required String location,
     required String ipAddress,
     required String containerYard,
+    required double latitude,
+    required double longitude,
     String? status,
     String? type,
     String? areaType,
@@ -1287,6 +1311,8 @@ Future<List<Tower>> getTowersByContainerYard(String yardName) async {
           'location': location,
           'ip_address': ipAddress,
           'container_yard': containerYard,
+          'latitude': latitude,
+          'longitude': longitude,
           'status': status ?? 'UP',
           'type': type ?? 'Fixed',
           'area_type': areaType ?? 'Warehouse',

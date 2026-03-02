@@ -458,6 +458,8 @@ class _AddDevicePageState extends State<AddDevicePage> {
           location: _selectedLocation,
           ipAddress: deviceIpAddress,
           containerYard: containerYard,
+          latitude: latitude,
+          longitude: longitude,
           deviceCount: deviceCount,
           status: status,
         );
@@ -473,6 +475,8 @@ class _AddDevicePageState extends State<AddDevicePage> {
           location: _selectedLocation,
           ipAddress: deviceIpAddress,
           containerYard: containerYard,
+          latitude: latitude,
+          longitude: longitude,
           status: status,
           type: type,
           areaType: areaType,
