@@ -9,6 +9,8 @@ class Camera {
   final String areaType;
   final String createdAt;
   final String updatedAt;
+  final double? latitude;
+  final double? longitude;
 
   Camera({
     required this.id,
@@ -21,6 +23,8 @@ class Camera {
     required this.areaType,
     required this.createdAt,
     required this.updatedAt,
+    this.latitude,
+    this.longitude,
   });
 
   factory Camera.fromJson(Map<String, dynamic> json) {
@@ -35,6 +39,8 @@ class Camera {
       areaType: json['area_type']?.toString() ?? '',
       createdAt: json['created_at']?.toString() ?? '',
       updatedAt: json['updated_at']?.toString() ?? '',
+      latitude: json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null,
+      longitude: json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null,
     );
   }
 
@@ -50,6 +56,8 @@ class Camera {
       'area_type': areaType,
       'created_at': createdAt,
       'updated_at': updatedAt,
+      'latitude': latitude,
+      'longitude': longitude,
     };
   }
 }

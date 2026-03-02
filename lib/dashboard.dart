@@ -11,6 +11,7 @@ import 'models/camera_model.dart';
 import 'models/tower_model.dart';
 import 'models/alert_model.dart';
 import 'models/device_model.dart';
+import 'models/device_marker.dart';
 import 'network.dart';
 import 'cctv.dart';
 import 'alerts.dart';
@@ -18,6 +19,8 @@ import 'profile.dart';
 import 'add_device.dart';
 import 'services/device_storage_service.dart';
 import 'utils/tower_status_override.dart';
+import 'utils/layout_mapper.dart';
+import 'widgets/nilam_layout_map.dart';
 import 'report_page.dart'; 
 
 // Konstanta lokasi TPK Nilam - sesuai layout gambar
@@ -1967,6 +1970,56 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
         ),
       ],
     );
+  }
+
+  /// ===== Helper Function: Build Device Markers for PNG Layout Map =====
+  /// Converts towers and cameras data to DeviceMarker objects
+  /// for the NilamLayoutMap widget
+  /// Uses coordinates from database if available
+  List<DeviceMarker> _buildDeviceMarkersForLayoutMap() {
+    List<DeviceMarker> markers = [];
+
+    // Add Towers from database
+    for (var tower in towers) {
+      if (tower.latitude != null && tower.longitude != null) {
+        var pixel = LayoutMapper.latLngToPixel(tower.latitude!, tower.longitude!);
+        markers.add(DeviceMarker(
+          id: tower.towerId,
+          name: tower.towerId,
+          type: DeviceType.tower,
+          status: tower.status,
+          ipAddress: tower.ipAddress,
+          latitude: tower.latitude!,
+          longitude: tower.longitude!,
+          pixelX: pixel.x,
+          pixelY: pixel.y,
+          containerYard: tower.containerYard,
+          lastUpdated: DateTime.now(),
+        ));
+      }
+    }
+
+    // Add Cameras (CCTV) from database
+    for (var camera in cameras) {
+      if (camera.latitude != null && camera.longitude != null) {
+        var pixel = LayoutMapper.latLngToPixel(camera.latitude!, camera.longitude!);
+        markers.add(DeviceMarker(
+          id: camera.cameraId,
+          name: camera.cameraId,
+          type: DeviceType.cctv,
+          status: camera.status,
+          ipAddress: camera.ipAddress,
+          latitude: camera.latitude!,
+          longitude: camera.longitude!,
+          pixelX: pixel.x,
+          pixelY: pixel.y,
+          containerYard: camera.containerYard,
+          lastUpdated: DateTime.now(),
+        ));
+      }
+    }
+
+    return markers;
   }
 
   Widget _buildLiveTerminalMap(BuildContext context) {

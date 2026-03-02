@@ -8,6 +8,8 @@ class Tower {
   final String containerYard;
   final String createdAt;
   final String updatedAt;
+  final double? latitude;
+  final double? longitude;
 
   Tower({
     required this.id,
@@ -19,6 +21,8 @@ class Tower {
     required this.containerYard,
     required this.createdAt,
     required this.updatedAt,
+    this.latitude,
+    this.longitude,
   });
 
   factory Tower.fromJson(Map<String, dynamic> json) {
@@ -32,6 +36,8 @@ class Tower {
       containerYard: json['container_yard']?.toString() ?? '',
       createdAt: json['created_at']?.toString() ?? '',
       updatedAt: json['updated_at']?.toString() ?? '',
+      latitude: json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null,
+      longitude: json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null,
     );
   }
 
@@ -46,6 +52,8 @@ class Tower {
       'container_yard': containerYard,
       'created_at': createdAt,
       'updated_at': updatedAt,
+      'latitude': latitude,
+      'longitude': longitude,
     };
   }
 }
