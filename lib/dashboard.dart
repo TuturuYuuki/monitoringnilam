@@ -653,6 +653,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
 
           generatedAlerts.add(Alert(
             id: int.tryParse(tower.id.toString()) ?? 0, // Ubah ke int agar tidak error
+            alertKey: 'generated:${tower.id}:${tower.towerId}:AP_DOWN',
             title: 'Access Point DOWN - ${tower.towerId}',
             description:
                 '${tower.location} access point offline (${tower.towerId})',
@@ -681,6 +682,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
 
           generatedAlerts.add(Alert(
             id: (int.tryParse(camera.id.toString()) ?? 0) + 1000, // ID unik
+            alertKey: 'generated:${camera.id + 1000}:${camera.cameraId}:CCTV_DOWN',
             title: 'CCTV DOWN - ${camera.cameraId}',
             description:
                 '${camera.location} camera offline (${camera.cameraId})',
