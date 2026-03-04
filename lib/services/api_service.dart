@@ -679,7 +679,7 @@ Future<Map<String, dynamic>> updateTower(int id, Map<String, dynamic> data) asyn
 Future<Map<String, dynamic>> deleteTower(int id) async {
   try {
     final response = await http.get(
-      Uri.parse('$baseUrl?endpoint=accesspoint&action=delete&id=$id'),
+      Uri.parse('$baseUrl?endpoint=network&action=delete&id=$id'),
     );
     return jsonDecode(response.body);
   } catch (e) {
@@ -819,13 +819,13 @@ Future<Map<String, dynamic>> deleteTower(int id) async {
   Future<List<Tower>> getAllTowers() async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl?endpoint=accesspoint&action=all'),
+        Uri.parse('$baseUrl?endpoint=network&action=all'),
       );
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
-        if (json['success'] == true && json['data'] != null && json['data']['access_points'] != null) {
-        List<Tower> towers = (json['data']['access_points'] as List)
+        if (json['success'] == true && json['data'] != null) {
+        List<Tower> towers = (json['data'] as List)
             .map((item) => Tower.fromJson(item as Map<String, dynamic>))
             .toList();
         return towers;
@@ -842,14 +842,13 @@ Future<Map<String, dynamic>> deleteTower(int id) async {
 Future<List<Tower>> getTowersByContainerYard(String yardName) async {
   try {
     final response = await http.get(
-      Uri.parse('$baseUrl?endpoint=accesspoint&action=by-yard&container_yard=$yardName'),
+      Uri.parse('$baseUrl?endpoint=network&action=by-yard&container_yard=$yardName'),
     );
 
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body);
       if (json['success'] == true && json['data'] != null) {
-        // Ambil dari path yang sudah kita perbaiki sebelumnya
-        List<Tower> towers = (json['data']['access_points'] as List)
+        List<Tower> towers = (json['data'] as List)
             .map((item) => Tower.fromJson(item as Map<String, dynamic>))
             .toList();
         return towers;
@@ -1468,6 +1467,34 @@ Future<List<Tower>> getTowersByContainerYard(String yardName) async {
       }
     } catch (e) {
       print('Error reporting device status: $e');
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  // Update tower position (latitude/longitude)
+  Future<Map<String, dynamic>> updateTowerPosition(
+    int towerId,
+    double latitude,
+    double longitude,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl?endpoint=network&action=update-position'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'id': towerId,
+          'latitude': latitude,
+          'longitude': longitude,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {'success': false, 'message': 'Failed to update tower position'};
+      }
+    } catch (e) {
+      print('Error updating tower position: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }

@@ -1,7 +1,77 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import '../models/device_model.dart';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Write-Host "`n" -ForegroundColor WhiteWrite-Host "4. Look for tower_id: TEST-AP-01" -ForegroundColor WhiteWrite-Host "3. Check table: towers" -ForegroundColor WhiteWrite-Host "2. Open database: monitoring_api" -ForegroundColor WhiteWrite-Host "1. Check phpMyAdmin: http://localhost/phpmyadmin" -ForegroundColor WhiteWrite-Host "========================================" -ForegroundColor CyanWrite-Host "VERIFICATION STEPS:" -ForegroundColor CyanWrite-Host "`n========================================" -ForegroundColor Cyan}    }        Write-Host $responseBody -ForegroundColor Gray        Write-Host "`nResponse Body:" -ForegroundColor Yellow        $responseBody = $reader.ReadToEnd()        $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())        # Baca response body jika ada                Write-Host "Status Code: $statusCode" -ForegroundColor Red        $statusCode = $_.Exception.Response.StatusCode.value__    if ($_.Exception.Response) {        Write-Host $_.Exception.Message -ForegroundColor Red    Write-Host "❌ ERROR:" -ForegroundColor Red} catch {        }        Write-Host "`n❌ FAILED: $($jsonResponse.message)" -ForegroundColor Red    } else {        Write-Host "`n✅ SUCCESS: Tower berhasil dibuat!" -ForegroundColor Green    if ($jsonResponse.success -eq $true) {        $jsonResponse | ConvertTo-Json -Depth 5 | Write-Host -ForegroundColor Gray    $jsonResponse = $response.Content | ConvertFrom-Json    # Parse JSON response        Write-Host "`nResponse Body:" -ForegroundColor Yellow    Write-Host "✅ STATUS: $($response.StatusCode)" -ForegroundColor Green            -UseBasicParsing        -Body $testData `        -Headers @{"Content-Type" = "application/json"} `        -Method POST `        -Uri "http://localhost/monitoring_api/index.php?endpoint=network&action=create" `    $response = Invoke-WebRequest `try {Write-Host "`nSending POST to: http://localhost/monitoring_api/index.php?endpoint=network&action=create`n" -ForegroundColor YellowWrite-Host $testData -ForegroundColor GrayWrite-Host "Request Data:" -ForegroundColor Yellow} | ConvertTo-Json    status = "UP"    device_count = 1    longitude = 112.724717    latitude = -7.209459    container_yard = "CY2"    ip_address = "192.168.1.100"    location = "Tower 1 - CY2"    tower_id = "TEST-AP-01"$testData = @{# Test data sesuai dengan yang dikirim dari FlutterWrite-Host "========================================`n" -ForegroundColor CyanWrite-Host "TEST: Create Access Point (Tower)" -ForegroundColor CyanWrite-Host "`n========================================" -ForegroundColor Cyan# dengan benar saat menambahkan Access Point ke database# Test script untuk memverifikasi endpoint backend berfungsiimport '../models/device_model.dart';
 import '../models/tower_model.dart';
 
 class TowerCoordinateFallback {
@@ -41,8 +111,8 @@ class TowerCoordinateFallback {
     }
     final idMatch = RegExp(r'(\d+)').firstMatch(tower.towerId);
     if (idMatch != null) {
-      final num = int.tryParse(idMatch.group(1)!);
-      if (num != null && byTowerNumber.containsKey(num)) {
+      final num = int.tryParse(idMatch.group(1) ?? '');
+      if (num != null && num > 0 && byTowerNumber.containsKey(num)) {
         return byTowerNumber[num];
       }
     }

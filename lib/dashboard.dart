@@ -1588,6 +1588,10 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('Alert Report', const ReportPage()),
                     const SizedBox(width: 12),
+                    _buildHeaderButton('Tower Mgmt', () => Navigator.pushNamed(context, '/tower-management')),
+                    const SizedBox(width: 12),
+                    _buildHeaderButton('MMT Monitor', () => Navigator.pushNamed(context, '/mmt-monitoring')),
+                    const SizedBox(width: 12),
                     _buildHeaderButton('Logout', () => _showLogoutDialog(context)),
                     const SizedBox(width: 12),
                     // Profile Icon

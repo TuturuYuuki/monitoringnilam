@@ -447,7 +447,14 @@ class _AddDevicePageState extends State<AddDevicePage> {
 
       // Execute API call (non-blocking) - don't await for dialog
       if (_selectedDeviceType == 'Access Point') {
-        print('DEBUG: Calling createTower with IP: $deviceIpAddress');
+        print('\n════════════════════════════════════');
+        print('🚀 Creating Access Point (Tower)');
+        print('Device ID: $deviceId');
+        print('Location: $_selectedLocation');
+        print('IP: $deviceIpAddress');
+        print('Container Yard: $containerYard');
+        print('════════════════════════════════════\n');
+        
         createFuture = apiService.createTower(
           towerId: deviceId,
           location: _selectedLocation,
@@ -459,12 +466,42 @@ class _AddDevicePageState extends State<AddDevicePage> {
           status: status,
         );
         createFuture.then((result) {
-          print('DEBUG: createTower Response: $result');
+          if (result['success'] == true) {
+            print('✅ SUCCESS: Tower created in database');
+            print('Response: $result');
+          } else {
+            print('❌ FAILED: ${result['message'] ?? 'Unknown error'}');
+            print('Full response: $result');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('⚠️ Gagal simpan ke database: ${result['message']}'),
+                  backgroundColor: Colors.orange,
+                  duration: const Duration(seconds: 5),
+                ),
+              );
+            }
+          }
         }).catchError((e) {
-          print('DEBUG: createTower Error: $e');
+          print('❌❌❌ EXCEPTION: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('❌ Error API: $e'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 5),
+              ),
+            );
+          }
         });
       } else if (_selectedDeviceType == 'CCTV') {
-        print('DEBUG: Calling createCamera With IP: $deviceIpAddress');
+        print('\n════════════════════════════════════');
+        print('📹 Creating CCTV (Camera)');
+        print('Camera ID: $deviceId');
+        print('Location: $_selectedLocation');
+        print('IP: $deviceIpAddress');
+        print('════════════════════════════════════\n');
+        
         createFuture = apiService.createCamera(
           cameraId: deviceId,
           location: _selectedLocation,
@@ -477,12 +514,40 @@ class _AddDevicePageState extends State<AddDevicePage> {
           areaType: areaType,
         );
         createFuture.then((result) {
-          print('DEBUG: createCamera Response: $result');
+          if (result['success'] == true) {
+            print('✅ SUCCESS: Camera created in database');
+          } else {
+            print('❌ FAILED: ${result['message']}');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('⚠️ Gagal simpan ke database: ${result['message']}'),
+                  backgroundColor: Colors.orange,
+                  duration: const Duration(seconds: 5),
+                ),
+              );
+            }
+          }
         }).catchError((e) {
-          print('DEBUG: createCamera Error: $e');
+          print('❌ EXCEPTION: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('❌ Error API: $e'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 5),
+              ),
+            );
+          }
         });
       } else if (_selectedDeviceType == 'MMT') {
-        print('DEBUG: Calling createMMT With IP: $deviceIpAddress');
+        print('\n════════════════════════════════════');
+        print('📊 Creating MMT');
+        print('MMT ID: $deviceId');
+        print('Location: $_selectedLocation');
+        print('IP: $deviceIpAddress');
+        print('════════════════════════════════════\n');
+        
         createFuture = apiService.createMMT(
           mmtId: deviceId,
           location: _selectedLocation,
@@ -493,9 +558,31 @@ class _AddDevicePageState extends State<AddDevicePage> {
           deviceCount: deviceCount,
         );
         createFuture.then((result) {
-          print('DEBUG: createMMT Response: $result');
+          if (result['success'] == true) {
+            print('✅ SUCCESS: MMT created in database');
+          } else {
+            print('❌ FAILED: ${result['message']}');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('⚠️ Gagal simpan ke database: ${result['message']}'),
+                  backgroundColor: Colors.orange,
+                  duration: const Duration(seconds: 5),
+                ),
+              );
+            }
+          }
         }).catchError((e) {
-          print('DEBUG: createMMT Error: $e');
+          print('❌ EXCEPTION: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('❌ Error API: $e'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 5),
+              ),
+            );
+          }
         });
       }
 
@@ -682,6 +769,10 @@ class _AddDevicePageState extends State<AddDevicePage> {
                     _buildHeaderOpenButton('Alert', '/alerts'),
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('Alert Report', '/report'),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('Tower Mgmt', '/tower-management'),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('MMT Monitor', '/mmt-monitoring'),
                     const SizedBox(width: 12),
                     _buildHeaderButton('Logout', () => _showLogoutDialog(context)),
                     const SizedBox(width: 12),
