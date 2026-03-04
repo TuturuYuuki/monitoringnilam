@@ -6,6 +6,7 @@
 /// - Device markers positioned on the layout
 /// - Status indicators (UP/DOWN colors)
 /// ============================================================================
+library;
 
 import 'package:flutter/material.dart';
 import '../models/device_marker.dart';
@@ -31,14 +32,14 @@ class NilamLayoutMap extends StatefulWidget {
   final bool showCoordinateLabels;
 
   const NilamLayoutMap({
-    Key? key,
+    super.key,
     required this.markers,
     this.onMarkerTap,
     this.onMapTap,
     this.layoutImagePath = 'assets/images/nilam_layout.png',
     this.showDebugGrid = false,
     this.showCoordinateLabels = false,
-  }) : super(key: key);
+  });
 
   @override
   State<NilamLayoutMap> createState() => _NilamLayoutMapState();

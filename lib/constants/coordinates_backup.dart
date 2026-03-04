@@ -5,6 +5,7 @@
 /// Purpose: Backup semua koordinat lat/lng sebelum migration ke PNG layout
 /// Backup Date: 2026-03-02
 /// ============================================================================
+library;
 
 class CoordinatesBackup {
   /// Reference Center Point

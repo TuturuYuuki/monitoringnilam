@@ -20,8 +20,7 @@ import 'add_device.dart';
 import 'services/device_storage_service.dart';
 import 'utils/tower_status_override.dart';
 import 'utils/layout_mapper.dart';
-import 'widgets/nilam_layout_map.dart';
-import 'services/mock_data_service.dart';
+import 'widgets/terminal_layout_static.dart';
 import 'report_page.dart'; 
 
 // Konstanta lokasi TPK Nilam - sesuai layout gambar
@@ -488,6 +487,50 @@ final List<TowerPoint> towerPoints = [
       latitude: -7.207029,
       longitude: 112.722613,
       containerYard: 'CY3'),
+
+  // PARKING Towers (P1-P3)
+  TowerPoint(
+      number: 28,
+      name: 'Tower P1',
+      label: 'P1',
+      towerIdHint: 'P1',
+      latitude: -7.209600,
+      longitude: 112.725100,
+      containerYard: 'PARKING'),
+  TowerPoint(
+      number: 29,
+      name: 'Tower P2',
+      label: 'P2',
+      towerIdHint: 'P2',
+      latitude: -7.209850,
+      longitude: 112.724900,
+      containerYard: 'PARKING'),
+  TowerPoint(
+      number: 30,
+      name: 'Tower P3',
+      label: 'P3',
+      towerIdHint: 'P3',
+      latitude: -7.209950,
+      longitude: 112.725200,
+      containerYard: 'PARKING'),
+
+  // GATE Towers (G1-G2)
+  TowerPoint(
+      number: 31,
+      name: 'Tower G1',
+      label: 'G1',
+      towerIdHint: 'G1',
+      latitude: -7.209800,
+      longitude: 112.724400,
+      containerYard: 'GATE'),
+  TowerPoint(
+      number: 32,
+      name: 'Tower G2',
+      label: 'G2',
+      towerIdHint: 'G2',
+      latitude: -7.210050,
+      longitude: 112.724550,
+      containerYard: 'GATE'),
 ];
 
 class DashboardPage extends StatefulWidget {
@@ -1212,22 +1255,6 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF2C3E50),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          // Reload devices dan data dashboard
-          await _loadDashboardData();
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Data Successfully Updated'),
-                duration: Duration(seconds: 1),
-              ),
-            );
-          }
-        },
-        backgroundColor: const Color(0xFF1976D2),
-        child: const Icon(Icons.refresh),
-      ),
       body: Column(
         children: [
           // Header
@@ -1525,15 +1552,10 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       width: screenWidth,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       color: const Color(0xFF1976D2),
-      child: ScrollConfiguration(
-        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
       child: Row(
-       mainAxisSize: MainAxisSize.min, 
-            crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // Terminal Nilam - FIXED
           const Text(
             'Terminal Nilam',
             style: TextStyle(
@@ -1543,56 +1565,69 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
             ),
           ),
           const SizedBox(width: 30),
-          _buildHeaderOpenButton('+ Add New Device', const AddDevicePage()),
-          const SizedBox(width: 12),
-          _buildHeaderOpenButton('Dashboard', const DashboardPage(),
-              isActive: true),
-          const SizedBox(width: 12),
-          _buildHeaderOpenButton('Access Point', const NetworkPage()),
-          const SizedBox(width: 12),
-          _buildHeaderOpenButton('CCTV', const CCTVPage()),
-          const SizedBox(width: 12),
-          _buildHeaderOpenButton('Alert', const AlertsPage()),
-          const SizedBox(width: 12),
-          _buildHeaderOpenButton('Alert Report', const ReportPage()),
-          const SizedBox(width: 12),
-          _buildHeaderButton('Logout', () => _showLogoutDialog(context)),
-          const SizedBox(width: 24),
-          // Profile Icon
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ProfilePage()),
-              );
-            },
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(50),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
-                      spreadRadius: 1,
+          // Buttons + Profile - SCROLL HORIZONTAL
+          Expanded(
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildHeaderOpenButton('+ Add New Device', const AddDevicePage()),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('Dashboard', const DashboardPage(),
+                        isActive: true),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('Access Point', const NetworkPage()),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('CCTV', const CCTVPage()),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('Alert', const AlertsPage()),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('Alert Report', const ReportPage()),
+                    const SizedBox(width: 12),
+                    _buildHeaderButton('Logout', () => _showLogoutDialog(context)),
+                    const SizedBox(width: 12),
+                    // Profile Icon
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const ProfilePage()),
+                        );
+                      },
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.9),
+                            borderRadius: BorderRadius.circular(50),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            color: Color(0xFF1976D2),
+                            size: 24,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
-                ),
-                child: const Icon(
-                  Icons.person,
-                  color: Color(0xFF1976D2),
-                  size: 24,
                 ),
               ),
             ),
           ),
         ],
       ),
-    ),
-    ),
     );
   }
 
@@ -2095,28 +2130,28 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
             ],
           ),
           const SizedBox(height: 20),
-          // Google Maps Container
+          // Terminal Layout Static
           Expanded(
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
               ),
               clipBehavior: Clip.hardEdge,
-              child: NilamLayoutMap(
-                markers: _buildDeviceMarkersForLayoutMap(),
-                layoutImagePath: 'assets/images/nilam_layout.png',
-                showDebugGrid: false,
-                showCoordinateLabels: false,
-                onMarkerTap: (marker) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('📍 ${marker.name} - ${marker.status}'),
-                      duration: const Duration(seconds: 2),
-                      backgroundColor: marker.status == 'UP' ? Colors.green : Colors.red,
-                    ),
-                  );
-                },
-                onMapTap: () {},
+              child: TerminalLayoutStatic(
+                devices: addedDevices,
+                towers: towers,
+                towerPoints: towerPoints
+                    .map(
+                      (p) => StaticTowerPoint(
+                        number: p.number,
+                        label: p.label,
+                        latitude: p.latitude,
+                        longitude: p.longitude,
+                        containerYard: p.containerYard,
+                        towerIdHint: p.towerIdHint,
+                      ),
+                    )
+                    .toList(),
               ),
             ),
           ),

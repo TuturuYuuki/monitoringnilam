@@ -407,7 +407,8 @@ class _AnimatedDropdownButtonState extends State<AnimatedDropdownButton>
                 widget.value,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 16,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
               const Icon(

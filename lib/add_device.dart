@@ -1,18 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
-import 'dashboard.dart';
-import 'network.dart';
-import 'cctv.dart';
-import 'alerts.dart';
-import 'profile.dart';
 import 'models/camera_model.dart';
 import 'models/device_model.dart';
 import 'models/mmt_model.dart';
 import 'models/tower_model.dart';
 import 'services/api_service.dart';
 import 'services/device_storage_service.dart';
-import 'report_page.dart';
+import 'utils/navigation_helper.dart';
 
 class AddDevicePage extends StatefulWidget {
   const AddDevicePage({super.key});
@@ -656,14 +651,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
       width: screenWidth,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       color: const Color(0xFF1976D2),
-      child: ScrollConfiguration(
-        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-        child: Row(
-            mainAxisSize: MainAxisSize.min, 
-            crossAxisAlignment: CrossAxisAlignment.center,
+      child: Row(
         children: [
           const Text(
             'Terminal Nilam',
@@ -674,60 +662,64 @@ class _AddDevicePageState extends State<AddDevicePage> {
             ),
           ),
           const SizedBox(width: 30),
-          _buildHeaderOpenButton(
-            '+ Add New Device',
-            const AddDevicePage(),
-            isActive: true,
-          ),
-          const SizedBox(width: 12),
-          _buildHeaderOpenButton('Dashboard', const DashboardPage()),
-          const SizedBox(width: 12),
-          _buildHeaderOpenButton('Access Point', const NetworkPage()),
-          const SizedBox(width: 12),
-          _buildHeaderOpenButton('CCTV', const CCTVPage()),
-          const SizedBox(width: 12),
-          _buildHeaderOpenButton('Alert', const AlertsPage()),
-          const SizedBox(width: 12),
-          _buildHeaderOpenButton('Alert Report', const ReportPage()),
-          const SizedBox(width: 12),
-          _buildHeaderButton('Logout', () => _showLogoutDialog(context)),
-
-          const SizedBox(width: 24),
-          // Profile Icon
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ProfilePage()),
-              );
-            },
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(50),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
-                      spreadRadius: 1,
+          Expanded(
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildHeaderOpenButton('+ Add New Device', '/add-device', isActive: true),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('Dashboard', '/dashboard'),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('Access Point', '/network'),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('CCTV', '/cctv'),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('Alert', '/alerts'),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('Alert Report', '/report'),
+                    const SizedBox(width: 12),
+                    _buildHeaderButton('Logout', () => _showLogoutDialog(context)),
+                    const SizedBox(width: 12),
+                    // Profile Icon
+                    GestureDetector(
+                      onTap: () {
+                        NavigationHelper.navigateTo(context, '/profile');
+                      },
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.9),
+                            borderRadius: BorderRadius.circular(50),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            color: Color(0xFF1976D2),
+                            size: 24,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
-                ),
-                child: const Icon(
-                  Icons.person,
-                  color: Color(0xFF1976D2),
-                  size: 24,
                 ),
               ),
             ),
           ),
         ],
       ),
-    ),
-    ),
     );
   }
 
@@ -765,14 +757,11 @@ class _AddDevicePageState extends State<AddDevicePage> {
     );
   }
 
-  Widget _buildHeaderOpenButton(String text, Widget openPage,
+  Widget _buildHeaderOpenButton(String text, String routeName,
       {bool isActive = false}) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => openPage),
-        );
+        NavigationHelper.navigateTo(context, routeName, replace: true);
       },
       child: MouseRegion(
         cursor: SystemMouseCursors.click,

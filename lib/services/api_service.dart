@@ -81,12 +81,19 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        try {
+          return jsonDecode(response.body);
+        } catch (e) {
+          // Response bukan JSON valid (kemungkinan HTML error dari backend)
+          print('JSON Parse Error: $e');
+          print('Response body: ${response.body}');
+          return {'success': false, 'message': 'Server error: Invalid response format. Check backend logs.'};
+        }
       } else {
-        return {'success': false, 'message': 'Login failed'};
+        return {'success': false, 'message': 'Login failed (Status: ${response.statusCode})'};
       }
     } catch (e) {
-      return {'success': false, 'message': 'Error: $e'};
+      return {'success': false, 'message': 'Network error: $e'};
     }
   }
 

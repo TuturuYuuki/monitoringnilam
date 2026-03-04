@@ -9,6 +9,7 @@
 ///   PixelCoordinate pixel = LayoutMapper.latLngToPixel(lat, lng);
 ///   // Use pixel.x and pixel.y to position markers on PNG canvas
 /// ============================================================================
+library;
 
 class PixelCoordinate {
   final double x;  // pixels from left
@@ -118,7 +119,7 @@ class LayoutMapper {
 
   /// Get the center of the layout in pixel coordinates
   static PixelCoordinate get centerPixel {
-    return PixelCoordinate(PNG_WIDTH / 2, PNG_HEIGHT / 2);
+    return const PixelCoordinate(PNG_WIDTH / 2, PNG_HEIGHT / 2);
   }
 
   /// Get the center of the layout in geographic coordinates

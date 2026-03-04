@@ -134,40 +134,53 @@ class _ReportPageState extends State<ReportPage> {
       width: screenWidth,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       color: const Color(0xFF1976D2),
-      child: ScrollConfiguration(
-        // Menghilangkan scrollbar bawaan yang kadang mengganggu tampilan header
-        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
       child: Row(
-        mainAxisSize: MainAxisSize.min, 
-            crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Text('Terminal Nilam', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+          // Terminal Nilam - FIXED
+          const Text(
+            'Terminal Nilam',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(width: 30),
-          _buildHeaderOpenButton('+ Add New Device', const AddDevicePage()),
-          const SizedBox(width: 12),
-          _buildHeaderOpenButton('Dashboard', const DashboardPage()),
-          const SizedBox(width: 12),
-          _buildHeaderOpenButton('Access Point', const NetworkPage()),
-          const SizedBox(width: 12),
-          _buildHeaderOpenButton('CCTV', const CCTVPage()),
-          const SizedBox(width: 12),
-          _buildHeaderOpenButton('Alert', const AlertsPage()),
-          const SizedBox(width: 12),
-          _buildHeaderOpenButton('Alert Report', const ReportPage(), isActive: true),
-          const SizedBox(width: 12),
-          _buildHeaderButton('Logout', () => showLogoutDialog(context)),
-
-          const SizedBox(width: 24),
-          _buildProfileIcon(),
+          // Buttons + Profile - SCROLL HORIZONTAL
+          Expanded(
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildHeaderOpenButton('+ Add New Device', const AddDevicePage()),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('Dashboard', const DashboardPage()),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('Access Point', const NetworkPage()),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('CCTV', const CCTVPage()),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('Alert', const AlertsPage()),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('Alert Report', const ReportPage(), isActive: true),
+                    const SizedBox(width: 12),
+                    _buildHeaderButton('Logout', () => showLogoutDialog(context)),
+                    const SizedBox(width: 12),
+                    _buildProfileIcon(),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       ),
-    ),
-  ),
-);
-}
+    );
+  }
 
   Widget _buildHeaderOpenButton(String text, Widget openPage, {bool isActive = false}) {
     return buildLiquidGlassButton(text, () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => openPage)), isActive: isActive);

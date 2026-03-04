@@ -106,20 +106,51 @@ class _ProfilePageState extends State<ProfilePage> {
   return Container(
     width: screenWidth,
     padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 12 : 16, vertical: isMobile ? 10 : 12),
+        horizontal: isMobile ? 12 : 24, vertical: isMobile ? 12 : 16),
     color: const Color(0xFF1976D2),
     child: isMobile
         ? Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Terminal Nilam',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28, // ← fix
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Terminal Nilam',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTap: () {},
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(50),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.person,
+                          color: Color(0xFF1976D2),
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 10),
               ScrollConfiguration(
@@ -143,98 +174,80 @@ class _ProfilePageState extends State<ProfilePage> {
                       _buildHeaderOpenButton('Alert Report', '/report', isActive: false),
                       const SizedBox(width: 8),
                       _buildHeaderLogoutButton(),
-                      const SizedBox(width: 8),
-                      MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: GestureDetector(
-                          onTap: () {},
-                          child: Container(
-                            padding: const EdgeInsets.all(8), // ← fix
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(50),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 8,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.person,
-                              color: Color(0xFF1976D2),
-                              size: 24, // ← fix
-                            ),
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),
               ),
             ],
           )
-        : ScrollConfiguration(
-            behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Text(
-                    'Terminal Nilam',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28, // ← fix
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(width: 30),
-                  _buildHeaderOpenButton('+ Add New Device', '/add-device', isActive: false),
-                  const SizedBox(width: 12),
-                  _buildHeaderOpenButton('Dashboard', '/dashboard', isActive: false),
-                  const SizedBox(width: 12),
-                  _buildHeaderOpenButton('Access Point', '/network', isActive: false),
-                  const SizedBox(width: 12),
-                  _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
-                  const SizedBox(width: 12),
-                  _buildHeaderOpenButton('Alert', '/alerts', isActive: false),
-                  const SizedBox(width: 12),
-                  _buildHeaderOpenButton('Alert Report', '/report', isActive: false),
-                  const SizedBox(width: 12),
-                  _buildHeaderLogoutButton(),
-                  const SizedBox(width: 24),
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      onTap: () {},
-                      child: Container(
-                        padding: const EdgeInsets.all(8), // ← fix
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(50),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 8,
-                              spreadRadius: 1,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.person,
-                          color: Color(0xFF1976D2),
-                          size: 24, // ← fix
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Terminal Nilam - FIXED
+              const Text(
+                'Terminal Nilam',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
+              const SizedBox(width: 30),
+              // Buttons + Profile - SCROLL HORIZONTAL
+              Expanded(
+                child: ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildHeaderOpenButton('+ Add New Device', '/add-device', isActive: false),
+                        const SizedBox(width: 12),
+                        _buildHeaderOpenButton('Dashboard', '/dashboard', isActive: false),
+                        const SizedBox(width: 12),
+                        _buildHeaderOpenButton('Access Point', '/network', isActive: false),
+                        const SizedBox(width: 12),
+                        _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
+                        const SizedBox(width: 12),
+                        _buildHeaderOpenButton('Alert', '/alerts', isActive: false),
+                        const SizedBox(width: 12),
+                        _buildHeaderOpenButton('Alert Report', '/report', isActive: false),
+                        const SizedBox(width: 12),
+                        _buildHeaderLogoutButton(),
+                        const SizedBox(width: 12),
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: () {},
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.9),
+                                borderRadius: BorderRadius.circular(50),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 8,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.person,
+                                color: Color(0xFF1976D2),
+                                size: 24,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
   );
 }

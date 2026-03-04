@@ -4,6 +4,7 @@
 /// Represents a single device/location marker on the Nilam Layout Map
 /// Contains both geographic (lat/lng) and visual (pixel) coordinates
 /// ============================================================================
+library;
 
 import 'package:flutter/material.dart';
 
@@ -195,7 +196,7 @@ class DeviceMarker {
 DeviceMarker:
   ID: $id
   Name: $name
-  Type: ${typeName} ($type)
+  Type: $typeName ($type)
   Status: $status
   Coord: ($latitude, $longitude)
   Pixel: ($pixelX, $pixelY)

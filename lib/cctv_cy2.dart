@@ -367,83 +367,92 @@ class _CCTVCy2PageState extends State<CCTVCy2Page> {
               ),
             ],
           )
-        : ScrollConfiguration(
-            behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Text(
-                    'Terminal Nilam',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(width: 30),
-                  _buildHeaderOpenButton('+ Add New Device', '/add-device',
-                      isActive: false),
-                  const SizedBox(width: 12),
-                  _buildHeaderOpenButton('Dashboard', '/dashboard',
-                      isActive: false),
-                  const SizedBox(width: 12),
-                  _buildHeaderOpenButton('Access Point', '/network',
-                      isActive: false),
-                  const SizedBox(width: 12),
-                  _buildHeaderOpenButton('CCTV', '/cctv', isActive: true),
-                  const SizedBox(width: 12),
-                  _buildHeaderOpenButton('Alert', '/alerts', isActive: false),
-                  const SizedBox(width: 12),
-                  _buildHeaderOpenButton('Alert Report', '/report', isActive: false),
-                  const SizedBox(width: 12),
-                  _buildHeaderLogoutButton(),
-                  const SizedBox(width: 24),
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: OpenContainer(
-                      transitionDuration: const Duration(milliseconds: 550),
-                      transitionType: ContainerTransitionType.fadeThrough,
-                      closedElevation: 0,
-                      closedColor: Colors.transparent,
-                      closedShape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                      openElevation: 0,
-                      openBuilder: (context, _) =>
-                          const RouteProxyPage('/profile'),
-                      closedBuilder: (context, openContainer) {
-                        return GestureDetector(
-                          onTap: openContainer,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(50),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 8,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.person,
-                              color: Color(0xFF1976D2),
-                              size: 24,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Terminal Nilam - TETAP FIXED
+              const Text(
+                'Terminal Nilam',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
+              const SizedBox(width: 30),
+              // Buttons - SCROLL HORIZONTAL
+              Expanded(
+                child: ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildHeaderOpenButton('+ Add New Device', '/add-device',
+                            isActive: false),
+                        const SizedBox(width: 12),
+                        _buildHeaderOpenButton('Dashboard', '/dashboard',
+                            isActive: false),
+                        const SizedBox(width: 12),
+                        _buildHeaderOpenButton('Access Point', '/network',
+                            isActive: false),
+                        const SizedBox(width: 12),
+                        _buildHeaderOpenButton('CCTV', '/cctv', isActive: true),
+                        const SizedBox(width: 12),
+                        _buildHeaderOpenButton('Alert', '/alerts', isActive: false),
+                        const SizedBox(width: 12),
+                        _buildHeaderOpenButton('Alert Report', '/report', isActive: false),
+                        const SizedBox(width: 12),
+                        _buildHeaderLogoutButton(),
+                        const SizedBox(width: 12),
+                        // Profile Icon - SCROLL dengan buttons
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: OpenContainer(
+                            transitionDuration: const Duration(milliseconds: 550),
+                            transitionType: ContainerTransitionType.fadeThrough,
+                            closedElevation: 0,
+                            closedColor: Colors.transparent,
+                            closedShape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(50),
+                            ),
+                            openElevation: 0,
+                            openBuilder: (context, _) =>
+                                const RouteProxyPage('/profile'),
+                            closedBuilder: (context, openContainer) {
+                              return GestureDetector(
+                                onTap: openContainer,
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.9),
+                                    borderRadius: BorderRadius.circular(50),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 8,
+                                        spreadRadius: 1,
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(
+                                    Icons.person,
+                                    color: Color(0xFF1976D2),
+                                    size: 24,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
   );
 }
@@ -728,10 +737,12 @@ class _CCTVCy2PageState extends State<CCTVCy2Page> {
       children: [
         Container(
           width: width,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          height: 80,
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: const Color(0xFF4A5F7F),
             borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white24, width: 1.0),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -744,8 +755,9 @@ class _CCTVCy2PageState extends State<CCTVCy2Page> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 8),
-              AnimatedDropdownButton(
+              const SizedBox(height: 4),
+              Flexible(
+                child: AnimatedDropdownButton(
                 value: selectedYard,
                 items: const ['CY 1', 'CY 2', 'CY 3', 'Parking', 'Gate'],
                 backgroundColor: const Color(0xFF4A5F7F),
@@ -769,6 +781,7 @@ class _CCTVCy2PageState extends State<CCTVCy2Page> {
                   }
                 },
               ),
+              ),
             ],
           ),
         ),
@@ -779,10 +792,12 @@ class _CCTVCy2PageState extends State<CCTVCy2Page> {
   Widget _buildContainerYardButton(double width) {
     return Container(
       width: width,
-      padding: const EdgeInsets.all(20),
+      height: 80,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF5D6D7E),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white24, width: 1.0),
       ),
       child: const Center(
         child: Text(
@@ -823,10 +838,12 @@ class _CCTVCy2PageState extends State<CCTVCy2Page> {
         },
         child: Container(
           width: width,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          height: 80,
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: const Color(0xFF4CAF50),
             borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white24, width: 1.0),
           ),
           child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,

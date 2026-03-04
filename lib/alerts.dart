@@ -205,59 +205,70 @@ Future<void> _deleteAllAlerts() async {
       width: screenWidth,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       color: const Color(0xFF1976D2),
-      child: ScrollConfiguration(
-        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
       child: Row(
-        mainAxisSize: MainAxisSize.min, 
-            crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // Terminal Nilam - FIXED
           const Text(
             'Terminal Nilam',
-            style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(width: 30),
-          _buildHeaderOpenButton('+ Add New Device', const AddDevicePage()),
-          const SizedBox(width: 12),
-          _buildHeaderOpenButton('Dashboard', const DashboardPage()),
-          const SizedBox(width: 12),
-          _buildHeaderOpenButton('Access Point', const NetworkPage()),
-          const SizedBox(width: 12),
-          _buildHeaderOpenButton('CCTV', const CCTVPage()),
-          const SizedBox(width: 12),
-          _buildHeaderOpenButton('Alert', const AlertsPage(), isActive: true),
-          const SizedBox(width: 12),
-          _buildHeaderOpenButton('Alert Report', const ReportPage()), 
-          const SizedBox(width: 12),
-          _buildHeaderButton('Logout', () => _showLogoutDialog(context)),
-
-          const SizedBox(width: 24),
-          _buildProfileIcon(),
+          // Buttons + Profile - SCROLL HORIZONTAL
+          Expanded(
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildHeaderOpenButton('+ Add New Device', const AddDevicePage()),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('Dashboard', const DashboardPage()),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('Access Point', const NetworkPage()),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('CCTV', const CCTVPage()),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('Alert', const AlertsPage(), isActive: true),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('Alert Report', const ReportPage()), 
+                    const SizedBox(width: 12),
+                    _buildHeaderButton('Logout', () => _showLogoutDialog(context)),
+                    const SizedBox(width: 12),
+                    _buildProfileIcon(),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       ),
-    ),
-  ),
-);
-}
+    );
+  }
 
   Widget _buildHeaderOpenButton(String text, Widget openPage, {bool isActive = false}) {
-  return buildLiquidGlassButton(
-    text, 
-    () {
-      // JIKA SUDAH AKTIF (berada di halaman Alert), JANGAN PINDAH KE MANA-MANA
-      if (isActive) return; 
-      
-      // Gunakan push biasa, JANGAN pushReplacement agar tidak merusak stack navigasi
-      Navigator.push(
-        context, 
-        MaterialPageRoute(builder: (context) => openPage)
-      );
-    }, 
-    isActive: isActive
-  );
-}
+    return buildLiquidGlassButton(
+      text, 
+      () {
+        // JIKA SUDAH AKTIF (berada di halaman Alert), JANGAN PINDAH KE MANA-MANA
+        if (isActive) return; 
+        
+        // Gunakan push biasa, JANGAN pushReplacement agar tidak merusak stack navigasi
+        Navigator.push(
+          context, 
+          MaterialPageRoute(builder: (context) => openPage)
+        );
+      }, 
+      isActive: isActive
+    );
+  }
 
   Widget _buildHeaderButton(String text, VoidCallback onPressed) {
     return buildLiquidGlassButton(text, onPressed);
