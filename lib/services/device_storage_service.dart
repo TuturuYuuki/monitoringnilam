@@ -26,10 +26,26 @@ class DeviceStorageService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final jsonList = prefs.getStringList(_storageKey) ?? [];
+      final devices = <AddedDevice>[];
 
-      return jsonList
-          .map((json) => AddedDevice.fromJson(jsonDecode(json)))
-          .toList();
+      for (final item in jsonList) {
+        try {
+          final decoded = jsonDecode(item);
+          if (decoded is Map<String, dynamic>) {
+            devices.add(AddedDevice.fromJson(decoded));
+          } else if (decoded is Map) {
+            devices.add(
+              AddedDevice.fromJson(
+                decoded.map((key, value) => MapEntry(key.toString(), value)),
+              ),
+            );
+          }
+        } catch (e) {
+          print('Warning: Skipping invalid device record in storage: $e');
+        }
+      }
+
+      return devices;
     } catch (e) {
       print('Warning: Could not retrieve devices from storage: $e');
       return [];

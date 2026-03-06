@@ -3,6 +3,7 @@ import 'package:monitoring/models/tower_model.dart';
 import 'package:monitoring/models/device_model.dart';
 import 'package:monitoring/models/camera_model.dart';
 import 'package:monitoring/services/ping_service.dart';
+import 'package:monitoring/utils/device_icon_resolver.dart';
 
 class TowerDetailPanel extends StatefulWidget {
   final Tower tower;
@@ -183,7 +184,7 @@ class _TowerDetailPanelState extends State<TowerDetailPanel> {
                   _buildInfoRow(
                     'IP Address:',
                     widget.tower.ipAddress,
-                    Icons.router,
+                    DeviceIconResolver.iconForType('TOWER'),
                   ),
                   const SizedBox(height: 12),
 
@@ -299,7 +300,7 @@ class _TowerDetailPanelState extends State<TowerDetailPanel> {
                                   tower.name,
                                   tower.ipAddress ?? 'N/A',
                                   isUp,
-                                  Icons.router,
+                                  DeviceIconResolver.iconForType('TOWER'),
                                 );
                               }),
                               // Devices
@@ -309,7 +310,7 @@ class _TowerDetailPanelState extends State<TowerDetailPanel> {
                                   device.name,
                                   device.ipAddress ?? 'N/A',
                                   isUp,
-                                  Icons.devices,
+                                  DeviceIconResolver.iconForType(device.type),
                                 );
                               }),
                               // Cameras
@@ -319,7 +320,7 @@ class _TowerDetailPanelState extends State<TowerDetailPanel> {
                                   camera.cameraId,
                                   camera.ipAddress,
                                   isUp,
-                                  Icons.videocam,
+                                  DeviceIconResolver.iconForType('CCTV'),
                                 );
                               }),
                             ],

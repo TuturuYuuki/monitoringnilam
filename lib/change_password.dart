@@ -283,7 +283,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           }
         } else {
           // Show specific error message from backend
-          final errorMessage = res['message'] ?? 'Failed To Change Password';
+          final errorMessage = res['message'] ?? 'Failed to Change Password';
           print('Error Message: $errorMessage');
 
           if (mounted) {

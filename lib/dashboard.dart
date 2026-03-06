@@ -20,8 +20,11 @@ import 'add_device.dart';
 import 'services/device_storage_service.dart';
 import 'utils/tower_status_override.dart';
 import 'utils/layout_mapper.dart';
+import 'utils/device_icon_resolver.dart';
 import 'widgets/terminal_layout_static.dart';
 import 'report_page.dart'; 
+import 'pages/tower_management.dart';
+import 'pages/mmt_monitoring.dart';
 
 // Konstanta lokasi TPK Nilam - sesuai layout gambar
 class TPKNilamLocation {
@@ -548,8 +551,13 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   List<Tower> towers = [];
   List<Alert> alerts = [];
   List<AddedDevice> addedDevices = [];
+  List<Map<String, dynamic>> masterLocations = [];
   Map<String, String> deviceStatuses = {};
   Map<String, String> _mmtStatusByIp = {};
+    bool _isPickTowerMode = false;
+    String? _pickTowerYard;
+    int totalUpMMT = 0;
+    int totalDownMMT = 0;
   Timer? _refreshTimer;
   Timer? _blinkTimer;
   bool _isLoadingDashboard = false;
@@ -563,6 +571,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   int totalTowers = 0;
   int totalWarnings = 0;
   int totalDownTowers = 0;
+  bool _isFreeroamEditMode = false;
 
   // Tracking blinking locations with multiple devices where at least one is DOWN
   final Set<String> _locationKeysWithDownDevices = {};
@@ -609,8 +618,24 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       _isRouteSubscribed = true;
     }
     final args = route?.settings.arguments;
-    if (args is Map && args['refresh'] == true) {
-      _refreshAfterNavigation();
+    if (args is Map) {
+      if (args['refresh'] == true) {
+        _refreshAfterNavigation();
+      }
+
+      final pickMode = args['pickTowerPosition'] == true;
+      final targetYard = args['yard']?.toString();
+      if (pickMode != _isPickTowerMode || targetYard != _pickTowerYard) {
+        setState(() {
+          _isPickTowerMode = pickMode;
+          _pickTowerYard = targetYard;
+        });
+      }
+    } else if (_isPickTowerMode || _pickTowerYard != null) {
+      setState(() {
+        _isPickTowerMode = false;
+        _pickTowerYard = null;
+      });
     }
     // Reload data when returning from add device or other pages
     // This ensures added device icons appear immediately on map
@@ -656,6 +681,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
         apiService.getAllCameras(),
         apiService.getAllTowers(),
         apiService.getAllAlerts(),
+        apiService.getAllMasterLocations(),
       ]);
       final fetchedCameras = results[0] as List<Camera>;
       final fetchedTowers = results[1] as List<Tower>;
@@ -673,6 +699,10 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           fetchedAlerts.add(Alert.fromJson(data as Map<String, dynamic>));
         }
       }
+      
+      // Extract master locations
+      final fetchedMasterLocations = results[3] as List<Map<String, dynamic>>;
+      
       // Run void future separately after other data loads
       await _updateDeviceLocationStatuses();
 
@@ -800,6 +830,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           // 1. Simpan Data Master ke List (Peta & Detail menggunakan ini)
           cameras = effectiveCameras;
           towers = effectiveTowers;
+          masterLocations = fetchedMasterLocations;
 
           // 2. HITUNG ULANG STATISTIK DARI LIST RIIL (Agar sinkron dengan warna peta)
           // Access Point
@@ -897,6 +928,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           // Clear and prepare device statuses map
           deviceStatuses.clear();
           final mmtStatusByIp = <String, String>{};
+          var upCount = 0;
+          var downCount = 0;
 
           // Update device statuses from database
           for (var mmt in mmtList) {
@@ -907,6 +940,12 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
             // Read status directly from database (already updated by realtime ping)
             final status = mmt['status']?.toString().toUpperCase() ?? 'DOWN';
 
+            if (status == 'UP') {
+              upCount++;
+            } else {
+              downCount++;
+            }
+
             if (deviceId.isNotEmpty) {
               deviceStatuses[deviceId] = status;
             }
@@ -916,6 +955,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           }
 
           _mmtStatusByIp = mmtStatusByIp;
+          totalUpMMT = upCount;
+          totalDownMMT = downCount;
 
           // Update status in deviceLocationPoints
           for (var device in deviceLocationPoints) {
@@ -1146,6 +1187,71 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
     }).toList(growable: false);
   }
 
+  // Build markers for master locations (RTG, RS, CC, etc) with color-coding
+  List<Marker> _buildMasterLocationMarkers() {
+    if (masterLocations.isEmpty) {
+      return [];
+    }
+
+    return masterLocations.map((location) {
+      final locType = (location['location_type'] ?? '').toString().toUpperCase();
+      final locCode = (location['location_code'] ?? '').toString();
+      final locName = (location['location_name'] ?? '').toString();
+      final lat = double.tryParse((location['latitude'] ?? '0').toString()) ?? 0.0;
+      final lng = double.tryParse((location['longitude'] ?? '0').toString()) ?? 0.0;
+
+      final markerColor = DeviceIconResolver.colorForType(locType);
+      final markerIcon = DeviceIconResolver.iconForType(locType);
+
+      return Marker(
+        point: LatLng(lat, lng),
+        width: 60,
+        height: 70,
+        child: GestureDetector(
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Master Location: $locName ($locType)'),
+                duration: const Duration(seconds: 2),
+                backgroundColor: markerColor,
+              ),
+            );
+          },
+          behavior: HitTestBehavior.opaque,
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Icon(
+                  markerIcon,
+                  color: markerColor,
+                  size: 35,
+                ),
+                const SizedBox(height: 2),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: markerColor,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    locCode,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }).toList();
+  }
+
   Tower? _findTowerForPoint(TowerPoint point) {
     try {
       return towers.firstWhere((t) => t.towerNumber == point.number);
@@ -1199,33 +1305,223 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
 
   // Get icon untuk added device
   IconData _getDeviceIcon(String deviceType) {
-    switch (deviceType) {
-      case 'Access Point':
-        return Icons.router;
-      case 'CCTV':
-        return Icons.videocam;
-      case 'MMT':
-        return Icons.table_chart;
-      default:
-        return Icons.device_unknown;
-    }
+    return DeviceIconResolver.iconForType(deviceType);
   }
 
   // Get color untuk device berdasarkan tipe
   Color _getDeviceColor(String deviceType) {
-    switch (deviceType) {
-      case 'Access Point':
-        return const Color(0xFF9C27B0); // Purple untuk tower
-      case 'CCTV':
-        return const Color(0xFF00BCD4); // Cyan untuk CCTV
-      case 'MMT':
-        return const Color(0xFFFF9800); // Orange untuk MMT
-      default:
-        return Colors.grey;
-    }
+    return DeviceIconResolver.colorForType(deviceType);
   }
 
   int get totalCameras => totalUpCameras + totalDownCameras;
+
+  // ═══════════════════════════════════════════════════════════════
+  // TOWER POSITION UPDATE - FREEROAM CALLBACK
+  // ═══════════════════════════════════════════════════════════════
+  Future<void> _handleTowerPositionUpdate(
+    String towerId,
+    double newLatitude,
+    double newLongitude,
+  ) async {
+    try {
+      // Find tower
+      final towerIndex = towers.indexWhere((t) => t.towerId == towerId);
+      if (towerIndex == -1) return;
+
+      final tower = towers[towerIndex];
+
+      // ────────────────────────────────────────────────────────────
+      // VALIDATE POSITION
+      // ────────────────────────────────────────────────────────────
+      final validationResult = await apiService.validateTowerPosition(
+        tower.containerYard,
+        newLatitude,
+        newLongitude,
+      );
+
+      if (validationResult['success'] == true && validationResult['valid'] == false) {
+        print('⚠️ Position validation failed - outside bounds');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Position outside allowed bounds for this yard'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // ────────────────────────────────────────────────────────────
+      // UPDATE UI IMMEDIATELY
+      // ────────────────────────────────────────────────────────────
+      setState(() {
+        towers[towerIndex] = Tower(
+          id: tower.id,
+          towerId: tower.towerId,
+          towerNumber: tower.towerNumber,
+          location: tower.location,
+          ipAddress: tower.ipAddress,
+          status: tower.status,
+          containerYard: tower.containerYard,
+          createdAt: tower.createdAt,
+          updatedAt: tower.updatedAt,
+          latitude: newLatitude,
+          longitude: newLongitude,
+        );
+
+        // Keep master location point in sync immediately so grouped devices follow tower drag in UI.
+        final towerCode = tower.towerId.toUpperCase();
+        final masterIdx = masterLocations.indexWhere((m) {
+          final type = (m['location_type'] ?? '').toString().toUpperCase();
+          final code = (m['location_code'] ?? '').toString().toUpperCase();
+          final name = (m['location_name'] ?? '').toString().toUpperCase();
+          return type == 'TOWER' && (code == towerCode || name == towerCode);
+        });
+
+        if (masterIdx >= 0) {
+          masterLocations[masterIdx] = {
+            ...masterLocations[masterIdx],
+            'latitude': newLatitude,
+            'longitude': newLongitude,
+          };
+        }
+      });
+
+      // ────────────────────────────────────────────────────────────
+      // SAVE TO DATABASE WITH HISTORY
+      // ────────────────────────────────────────────────────────────
+      final result = await apiService.updateTowerPositionWithHistory(
+        tower.id,
+        newLatitude,
+        newLongitude,
+        changedBy: 'freeroam_drag',
+        changeReason: 'Position updated via map drag (freeroam mode)',
+      );
+
+      if (!result['success']) {
+        print('⚠️ Warning: Failed to save position to database: ${result['message']}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Position updated locally but DB save failed: ${result['message']}')),
+        );
+      } else {
+        print('✓ Tower position updated and saved to database');
+      }
+    } catch (e) {
+      print('Error handling tower position update: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating tower position: $e')),
+      );
+    }
+  }
+
+  String _normalizeMasterKey(String value) {
+    return value.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+  }
+
+  Future<void> _handleMasterPositionUpdate(
+    Map<String, dynamic> master,
+    double newLatitude,
+    double newLongitude,
+  ) async {
+    final itemId = int.tryParse((master['item_id'] ?? '').toString());
+    if (itemId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Master location tidak memiliki item_id. Tidak bisa disimpan.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    final locType = (master['location_type'] ?? '').toString().toUpperCase();
+    final codeKey = _normalizeMasterKey((master['location_code'] ?? '').toString());
+    final nameKey = _normalizeMasterKey((master['location_name'] ?? '').toString());
+
+    setState(() {
+      final idx = masterLocations.indexWhere(
+        (m) => (m['item_id'] ?? '').toString() == itemId.toString(),
+      );
+
+      if (idx >= 0) {
+        masterLocations[idx] = {
+          ...masterLocations[idx],
+          'latitude': newLatitude,
+          'longitude': newLongitude,
+        };
+      }
+
+      if (locType == 'TOWER') {
+        for (var i = 0; i < towers.length; i++) {
+          final tower = towers[i];
+          final towerIdKey = _normalizeMasterKey(tower.towerId);
+          final towerLocKey = _normalizeMasterKey(tower.location);
+          final isMatch =
+              (codeKey.isNotEmpty && (towerIdKey.contains(codeKey) || towerLocKey.contains(codeKey))) ||
+              (nameKey.isNotEmpty && (towerIdKey.contains(nameKey) || towerLocKey.contains(nameKey)));
+
+          if (!isMatch) continue;
+
+          towers[i] = Tower(
+            id: tower.id,
+            towerId: tower.towerId,
+            towerNumber: tower.towerNumber,
+            location: tower.location,
+            ipAddress: tower.ipAddress,
+            status: tower.status,
+            containerYard: tower.containerYard,
+            createdAt: tower.createdAt,
+            updatedAt: tower.updatedAt,
+            latitude: newLatitude,
+            longitude: newLongitude,
+          );
+          break;
+        }
+      }
+    });
+
+    final saveMasterResult = await apiService.updateMasterLocation(itemId, {
+      'latitude': newLatitude,
+      'longitude': newLongitude,
+    });
+
+    if (!saveMasterResult['success']) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal simpan posisi master: ${saveMasterResult['message']}'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (locType == 'TOWER') {
+      Tower? matchedTower;
+      try {
+        matchedTower = towers.firstWhere((tower) {
+          final towerIdKey = _normalizeMasterKey(tower.towerId);
+          final towerLocKey = _normalizeMasterKey(tower.location);
+          return (codeKey.isNotEmpty && (towerIdKey.contains(codeKey) || towerLocKey.contains(codeKey))) ||
+              (nameKey.isNotEmpty && (towerIdKey.contains(nameKey) || towerLocKey.contains(nameKey)));
+        });
+      } catch (_) {
+        matchedTower = null;
+      }
+
+      if (matchedTower != null) {
+        await apiService.updateTowerPositionWithHistory(
+          matchedTower.id,
+          newLatitude,
+          newLongitude,
+          changedBy: 'freeroam_drag_master',
+          changeReason: 'Master tower position updated via freeroam',
+        );
+      }
+    }
+  }
 
   void _centerMapToTPK() {
     final points = [
@@ -1283,6 +1579,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
               const SizedBox(height: 20),
               _buildCCTVMonitoringCard(context),
               const SizedBox(height: 20),
+              _buildMMTMonitoringCard(context),
+              const SizedBox(height: 20),
               _buildActiveAlertsCard(context),
               const SizedBox(height: 20),
               SizedBox(
@@ -1309,6 +1607,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                   _buildNetworkStatusCard(context),
                   const SizedBox(height: 20),
                   _buildCCTVMonitoringCard(context),
+                  const SizedBox(height: 20),
+                  _buildMMTMonitoringCard(context),
                   const SizedBox(height: 20),
                   _buildActiveAlertsCard(context),
                 ],
@@ -1575,7 +1875,9 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildHeaderOpenButton('+ Add New Device', const AddDevicePage()),
+                    _buildHeaderOpenButton('Add New Device', const AddDevicePage()),
+                    const SizedBox(width: 12),
+                     _buildHeaderOpenButton('Master Data', const TowerManagementPage()),
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('Dashboard', const DashboardPage(),
                         isActive: true),
@@ -1584,13 +1886,11 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('CCTV', const CCTVPage()),
                     const SizedBox(width: 12),
+                    _buildHeaderOpenButton('MMT', const MMTMonitoringPage()),
+                    const SizedBox(width: 12),
                     _buildHeaderOpenButton('Alert', const AlertsPage()),
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('Alert Report', const ReportPage()),
-                    const SizedBox(width: 12),
-                    _buildHeaderButton('Tower Mgmt', () => Navigator.pushNamed(context, '/tower-management')),
-                    const SizedBox(width: 12),
-                    _buildHeaderButton('MMT Monitor', () => Navigator.pushNamed(context, '/mmt-monitoring')),
                     const SizedBox(width: 12),
                     _buildHeaderButton('Logout', () => _showLogoutDialog(context)),
                     const SizedBox(width: 12),
@@ -1825,6 +2125,104 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
         ),
       ],
     );
+  }
+
+  Widget _buildMMTMonitoringCard(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const MMTMonitoringPage()),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.75),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1976D2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.router, color: Colors.white, size: 28),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'MMT Monitoring',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Expanded(
+                    child: _buildTowerStatusTile(
+                      count: totalUpMMT,
+                      label: 'UP',
+                      color: Colors.green,
+                      icon: Icons.wifi,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildTowerStatusTile(
+                      count: totalDownMMT,
+                      label: 'DOWN',
+                      color: Colors.red,
+                      icon: Icons.wifi_off,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _handleAreaPickedForTower(String areaId, double relX, double relY) {
+    if (!_isPickTowerMode) return;
+
+    if (_pickTowerYard != null && _pickTowerYard != areaId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Silakan pilih area $_pickTowerYard.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    Navigator.pop(context, {
+      'containerYard': areaId,
+      'lat': relX,
+      'lng': relY,
+    });
   }
 
   Widget _buildCCTVMonitoringCard(BuildContext context) {
@@ -2098,6 +2496,57 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                 ),
               ),
               const Spacer(),
+              if (_isPickTowerMode)
+                Container(
+                  margin: const EdgeInsets.only(right: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.shade300),
+                  ),
+                  child: Text(
+                    'Pick Mode: ${_pickTowerYard ?? 'Pilih area CY'}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _isFreeroamEditMode = !_isFreeroamEditMode;
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        _isFreeroamEditMode
+                            ? 'Edit Freeroam ON'
+                            : 'Edit Freeroam OFF',
+                      ),
+                      backgroundColor:
+                          _isFreeroamEditMode ? Colors.orange : Colors.blueGrey,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+                icon: Icon(
+                  _isFreeroamEditMode ? Icons.edit_off : Icons.edit,
+                  size: 18,
+                ),
+                label: Text(
+                  _isFreeroamEditMode ? 'Save' : 'Edit',
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      _isFreeroamEditMode ? Colors.orange : const Color(0xFF607D8B),
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
               // Tombol Check Status Now
               ElevatedButton.icon(
                 onPressed: () async {
@@ -2144,6 +2593,17 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
               child: TerminalLayoutStatic(
                 devices: addedDevices,
                 towers: towers,
+                masterLocations: masterLocations,
+                isPickMode: _isPickTowerMode,
+                pickYardFilter: _pickTowerYard,
+                onAreaPicked: _handleAreaPickedForTower,
+                isFreeroamEditEnabled: _isFreeroamEditMode,
+                onTowerMoved: (towerId, latitude, longitude) {
+                  _handleTowerPositionUpdate(towerId, latitude, longitude);
+                },
+                onMasterMoved: (master, latitude, longitude) {
+                  _handleMasterPositionUpdate(master, latitude, longitude);
+                },
                 towerPoints: towerPoints
                     .map(
                       (p) => StaticTowerPoint(

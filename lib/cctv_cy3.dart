@@ -391,7 +391,10 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildHeaderOpenButton('+ Add New Device', '/add-device',
+                        _buildHeaderOpenButton('Add New Device', '/add-device',
+                            isActive: false),
+                        const SizedBox(width: 12),
+                        _buildHeaderOpenButton('Master Data', '/tower-management',
                             isActive: false),
                         const SizedBox(width: 12),
                         _buildHeaderOpenButton('Dashboard', '/dashboard',
@@ -401,6 +404,8 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                             isActive: false),
                         const SizedBox(width: 12),
                         _buildHeaderOpenButton('CCTV', '/cctv', isActive: true),
+                        const SizedBox(width: 12),
+                        _buildHeaderOpenButton('MMT', '/mmt-monitoring', isActive: false),
                         const SizedBox(width: 12),
                         _buildHeaderOpenButton('Alert', '/alerts', isActive: false),
                         const SizedBox(width: 12),
@@ -557,7 +562,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                   Row(
                     children: [
                       const Text(
-                        'Live Camera Feeds And Surveillance System Status - CY 3',
+                        'Live Camera Feeds And Surveillance System Status',
                         style: TextStyle(
                           color: Colors.white70,
                           fontSize: 14,
@@ -733,62 +738,68 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
   }
 
   Widget _buildCCTVDropdown(double width) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: width,
-          height: 80,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF4A5F7F),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white24, width: 1.0),
+    return Container(
+      width: width,
+      height: 80,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF4A5F7F),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white24, width: 1.0),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'AREA',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'AREA',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+          const SizedBox(height: 4),
+          Flexible(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                // --- FIX: TAMPILAN "SELECT AREA" ---
+                value: null, // Set null agar value lama tidak tampil di kotak utama
+                hint: const Text(
+                  "Select Area", 
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)
                 ),
-              ),
-              const SizedBox(height: 4),
-              Flexible(
-                child: AnimatedDropdownButton(
-                value: selectedYard,
-                items: const ['CY 1', 'CY 2', 'CY 3', 'Parking', 'Gate'],
-                backgroundColor: const Color(0xFF4A5F7F),
+                dropdownColor: const Color(0xFF4A5F7F),
+                isExpanded: true,
+                icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+                items: const ['CY 1', 'CY 2', 'CY 3', 'Parking', 'Gate']
+                    .map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value, style: const TextStyle(color: Colors.white)),
+                  );
+                }).toList(),
                 onChanged: (String? newValue) {
                   if (newValue != null) {
                     setState(() {
                       selectedYard = newValue;
-                      isLoading = true; // Show loading when changing area
+                      isLoading = true;
                     });
                     if (newValue == 'CY 1') {
                       Navigator.pushReplacementNamed(context, '/cctv');
-                    } else if (newValue == 'CY 2') {
-                      Navigator.pushReplacementNamed(context, '/cctv-cy2');
-                    } else if (newValue == 'CY 3') {
-                      // Already on CY 3
-                    } else if (newValue == 'Parking') {
-                      Navigator.pushReplacementNamed(context, '/cctv-parking');
-                    } else if (newValue == 'Gate') {
-                      Navigator.pushReplacementNamed(context, '/cctv-gate');
-                    }
+                    } else if (newValue == 'CY 2') Navigator.pushReplacementNamed(context, '/cctv-cy2');
+                    else if (newValue == 'CY 3') Navigator.pushReplacementNamed(context, '/cctv-cy3');
+                    else if (newValue == 'Parking') Navigator.pushReplacementNamed(context, '/cctv-parking');
+                    else if (newValue == 'Gate') Navigator.pushReplacementNamed(context, '/cctv-gate');
                   }
                 },
               ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
+
 
   Widget _buildContainerYardButton(double width) {
     return Container(
@@ -919,15 +930,6 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
                 ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'There Are No Registered Camera For Container Yard 3 Yet',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
-                textAlign: TextAlign.center,
               ),
             ],
           ),
@@ -1199,7 +1201,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Edit Camera ${camera['id']}'),
+        title: Text('Edit ${camera['id']}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1209,7 +1211,12 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
             ),
             TextField(
               controller: locationController,
-              decoration: const InputDecoration(labelText: 'Location'),
+              readOnly: true,
+              enabled: false,
+              decoration: const InputDecoration(
+                labelText: 'Location (Locked)',
+                helperText: 'Pindah lokasi wajib delete camera lalu add ulang di lokasi tujuan.',
+              ),
             ),
           ],
         ),
@@ -1228,7 +1235,6 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                 camera['id'], // Argumen 1: ID Kamera
                 {              // Argumen 2: Map Data yang diubah
                   'ip_address': ipController.text,
-                  'location': locationController.text,
                 },
               );
 

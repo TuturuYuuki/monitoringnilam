@@ -413,8 +413,10 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildHeaderOpenButton('+ Add New Device', '/add-device',
+                        _buildHeaderOpenButton('Add New Device', '/add-device',
                             isActive: false),
+                        const SizedBox(width: 12),
+                        _buildHeaderOpenButton('Master Data', '/tower-management', isActive: false),
                         const SizedBox(width: 12),
                         _buildHeaderOpenButton('Dashboard', '/dashboard',
                             isActive: false),
@@ -423,6 +425,8 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                             isActive: false),
                         const SizedBox(width: 12),
                         _buildHeaderOpenButton('CCTV', '/cctv', isActive: true),
+                        const SizedBox(width: 12),
+                        _buildHeaderOpenButton('MMT', '/mmt-monitoring', isActive: false),
                         const SizedBox(width: 12),
                         _buildHeaderOpenButton('Alert', '/alerts', isActive: false),
                         const SizedBox(width: 12),
@@ -540,7 +544,7 @@ Widget _buildContent(BuildContext context, BoxConstraints constraints) {
               ),
             ),
             const Text(
-              'Parking Area Surveillance',
+              'Live Camera Feeds And Surveillance System Status',
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 12,
@@ -742,42 +746,49 @@ Widget _buildContent(BuildContext context, BoxConstraints constraints) {
     );
   }
 
-  Widget _buildCCTVDropdown(double width) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: width,
-          height: 80,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF4A5F7F),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white24, width: 1.0),
+ Widget _buildCCTVDropdown(double width) {
+    return Container(
+      width: width,
+      height: 80,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF4A5F7F),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white24, width: 1.0),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'AREA',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'AREA',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+          const SizedBox(height: 4),
+          Flexible(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                // --- FIX: TAMPILAN "SELECT AREA" ---
+                value: null, // Set null agar value lama tidak tampil di kotak utama
+                hint: const Text(
+                  "Select Area", 
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)
                 ),
-              ),
-              const SizedBox(height: 4),
-              Flexible(
-                child: AnimatedDropdownButton(
-                value: selectedArea,
-                items: const ['CY 1', 'CY 2', 'CY 3', 'Parking', 'Gate'],
-                backgroundColor: const Color(0xFF4A5F7F),
+                dropdownColor: const Color(0xFF4A5F7F),
+                isExpanded: true,
+                icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+                items: const ['CY 1', 'CY 2', 'CY 3', 'Parking', 'Gate']
+                    .map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value, style: const TextStyle(color: Colors.white)),
+                  );
+                }).toList(),
                 onChanged: (String? newValue) {
                   if (newValue != null) {
-                    setState(() {
-                      selectedArea = newValue;
-                      isLoading = true; // Show loading when changing area
-                    });
                     if (newValue == 'CY 1') {
                       Navigator.pushReplacementNamed(context, '/cctv');
                     } else if (newValue == 'CY 2') {
@@ -785,20 +796,20 @@ Widget _buildContent(BuildContext context, BoxConstraints constraints) {
                     } else if (newValue == 'CY 3') {
                       Navigator.pushReplacementNamed(context, '/cctv-cy3');
                     } else if (newValue == 'Parking') {
-                      // Already on Parking
+                      Navigator.pushReplacementNamed(context, '/cctv-parking');
                     } else if (newValue == 'Gate') {
                       Navigator.pushReplacementNamed(context, '/cctv-gate');
                     }
                   }
                 },
               ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
+
 
   Widget _buildAreaButton(double width) {
     return Container(
@@ -927,15 +938,6 @@ Widget _buildContent(BuildContext context, BoxConstraints constraints) {
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
                 ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'There Are No Registered Camera For Parking Area Yet',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
-                textAlign: TextAlign.center,
               ),
             ],
           ),
@@ -1207,7 +1209,7 @@ void _showEditCameraForm(Map<String, dynamic> camera) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Edit Camera ${camera['id']}'),
+        title: Text('Edit ${camera['id']}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1217,7 +1219,12 @@ void _showEditCameraForm(Map<String, dynamic> camera) {
             ),
             TextField(
               controller: locationController,
-              decoration: const InputDecoration(labelText: 'Location'),
+              readOnly: true,
+              enabled: false,
+              decoration: const InputDecoration(
+                labelText: 'Location (Locked)',
+                helperText: 'Pindah lokasi wajib delete camera lalu add ulang di lokasi tujuan.',
+              ),
             ),
           ],
         ),
@@ -1236,7 +1243,6 @@ void _showEditCameraForm(Map<String, dynamic> camera) {
                 camera['id'], // Argumen 1: ID Kamera
                 {              // Argumen 2: Map Data yang diubah
                   'ip_address': ipController.text,
-                  'location': locationController.text,
                 },
               );
 

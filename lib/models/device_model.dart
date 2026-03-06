@@ -43,19 +43,28 @@ class AddedDevice {
     };
   }
 
+  static double _toDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
+
   // Create from JSON
   factory AddedDevice.fromJson(Map<String, dynamic> json) {
+    final createdAtRaw = (json['createdAt'] ?? '').toString();
+    final parsedCreatedAt = DateTime.tryParse(createdAtRaw) ?? DateTime.now();
+
     return AddedDevice(
-      id: json['id'] as String,
-      type: json['type'] as String,
-      name: json['name'] as String,
-      ipAddress: json['ipAddress'] as String,
-      locationName: json['locationName'] as String,
-      latitude: json['latitude'] as double,
-      longitude: json['longitude'] as double,
-      containerYard: json['containerYard'] as String,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      status: json['status'] as String? ?? 'DOWN',
+      id: (json['id'] ?? '').toString(),
+      type: (json['type'] ?? '').toString(),
+      name: (json['name'] ?? '').toString(),
+      ipAddress: (json['ipAddress'] ?? '').toString(),
+      locationName: (json['locationName'] ?? '').toString(),
+      latitude: _toDouble(json['latitude']),
+      longitude: _toDouble(json['longitude']),
+      containerYard: (json['containerYard'] ?? '').toString(),
+      createdAt: parsedCreatedAt,
+      status: (json['status'] ?? 'DOWN').toString(),
     );
   }
 }

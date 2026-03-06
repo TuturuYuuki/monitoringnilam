@@ -12,6 +12,8 @@ import 'add_device.dart';
 import 'alerts.dart';
 import 'profile.dart';
 import 'main.dart';
+import 'pages/tower_management.dart';
+import 'pages/mmt_monitoring.dart';
 
 class ReportPage extends StatefulWidget {
   const ReportPage({super.key});
@@ -157,7 +159,9 @@ class _ReportPageState extends State<ReportPage> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildHeaderOpenButton('+ Add New Device', const AddDevicePage()),
+                    _buildHeaderOpenButton('Add New Device', const AddDevicePage()),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('Master Data', const TowerManagementPage()),
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('Dashboard', const DashboardPage()),
                     const SizedBox(width: 12),
@@ -165,13 +169,11 @@ class _ReportPageState extends State<ReportPage> {
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('CCTV', const CCTVPage()),
                     const SizedBox(width: 12),
+                    _buildHeaderOpenButton('MMT', const MMTMonitoringPage()),
+                    const SizedBox(width: 12),
                     _buildHeaderOpenButton('Alert', const AlertsPage()),
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('Alert Report', const ReportPage(), isActive: true),
-                    const SizedBox(width: 12),
-                    _buildHeaderButton('Tower Mgmt', () => Navigator.pushNamed(context, '/tower-management')),
-                    const SizedBox(width: 12),
-                    _buildHeaderButton('MMT Monitor', () => Navigator.pushNamed(context, '/mmt-monitoring')),
                     const SizedBox(width: 12),
                     _buildHeaderButton('Logout', () => showLogoutDialog(context)),
                     const SizedBox(width: 12),

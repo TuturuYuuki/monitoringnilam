@@ -7,6 +7,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../utils/device_icon_resolver.dart';
 
 enum DeviceType {
   tower,
@@ -83,17 +84,17 @@ class DeviceMarker {
   IconData get icon {
     switch (type) {
       case DeviceType.tower:
-        return Icons.router;
+        return DeviceIconResolver.iconForType('TOWER');
       case DeviceType.cctv:
-        return Icons.videocam;
+        return DeviceIconResolver.iconForType('CCTV');
       case DeviceType.rtg:
-        return Icons.local_shipping;
+        return DeviceIconResolver.iconForType('RTG');
       case DeviceType.rs:
-        return Icons.construction;
+        return DeviceIconResolver.iconForType('RS');
       case DeviceType.gate:
-        return Icons.directions_walk;
+        return DeviceIconResolver.iconForType('GATE');
       case DeviceType.parking:
-        return Icons.local_parking;
+        return DeviceIconResolver.iconForType('PARKING');
     }
   }
 
@@ -113,17 +114,17 @@ class DeviceMarker {
   Color get typeColor {
     switch (type) {
       case DeviceType.tower:
-        return Colors.blue;
+        return DeviceIconResolver.colorForType('TOWER');
       case DeviceType.cctv:
-        return Colors.purple;
+        return DeviceIconResolver.colorForType('CCTV');
       case DeviceType.rtg:
-        return Colors.orange;
+        return DeviceIconResolver.colorForType('RTG');
       case DeviceType.rs:
-        return Colors.teal;
+        return DeviceIconResolver.colorForType('RS');
       case DeviceType.gate:
-        return Colors.brown;
+        return DeviceIconResolver.colorForType('GATE');
       case DeviceType.parking:
-        return Colors.indigo;
+        return DeviceIconResolver.colorForType('PARKING');
     }
   }
 

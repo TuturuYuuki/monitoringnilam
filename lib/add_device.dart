@@ -4,10 +4,10 @@ import 'package:uuid/uuid.dart';
 import 'models/camera_model.dart';
 import 'models/device_model.dart';
 import 'models/mmt_model.dart';
-import 'models/tower_model.dart';
 import 'services/api_service.dart';
 import 'services/device_storage_service.dart';
 import 'utils/navigation_helper.dart';
+import 'utils/device_icon_resolver.dart';
 
 class AddDevicePage extends StatefulWidget {
   const AddDevicePage({super.key});
@@ -26,9 +26,10 @@ class _AddDevicePageState extends State<AddDevicePage> {
   String? _nameError;
   bool _isLoadingUsedNames = false;
   List<String> _usedNamesForType = [];
+  bool _isLoadingLocations = false;
 
   String _selectedDeviceType = 'Access Point';
-  String _selectedLocation = 'Tower 1 - CY2';
+  String _selectedLocation = '';
 
   final List<String> deviceTypes = ['Access Point', 'CCTV', 'MMT'];
 
@@ -38,6 +39,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
     apiService = ApiService();
     _nameController = TextEditingController();
     _ipAddressController = TextEditingController();
+    _loadLocationOptions();
     _loadUsedNamesForType();
   }
 
@@ -49,79 +51,69 @@ class _AddDevicePageState extends State<AddDevicePage> {
     super.dispose();
   }
 
-  // Location data sesuai dengan tower points dan special locations
-  final Map<String, Map<String, dynamic>> locationData = {
-    // CY2 Towers
-    'Tower 1 - CY2': {'lat': -7.209459, 'lng': 112.724717, 'cy': 'CY2'},
-    'Tower 2 - CY2': {'lat': -7.209191, 'lng': 112.725250, 'cy': 'CY2'},
-    'Tower 3 - CY2': {'lat': -7.208561, 'lng': 112.724946, 'cy': 'CY2'},
-    'Tower 4 - CY2': {'lat': -7.208150, 'lng': 112.724395, 'cy': 'CY2'},
-    'Tower 5 - CY2': {'lat': -7.208262, 'lng': 112.724161, 'cy': 'CY2'},
-    'Tower 6 - CY2': {'lat': -7.208956, 'lng': 112.724173, 'cy': 'CY2'},
-    // CY1 Towers
-    'Tower 7 - CY1': {'lat': -7.207690, 'lng': 112.723693, 'cy': 'CY1'},
-    'Tower 8 - CY1': {'lat': -7.207567, 'lng': 112.723945, 'cy': 'CY1'},
-    'Tower 9 - CY1': {'lat': -7.207156, 'lng': 112.724302, 'cy': 'CY1'},
-    'Tower 10 - CY1': {'lat': -7.204341, 'lng': 112.722956, 'cy': 'CY1'},
-    'Tower 11 - CY1': {'lat': -7.204080, 'lng': 112.722354, 'cy': 'CY1'},
-    'Tower 12A - CY1': {'lat': -7.204228, 'lng': 112.722045, 'cy': 'CY1'},
-    'Tower 12 - CY1': {'lat': -7.204460, 'lng': 112.721970, 'cy': 'CY1'},
-    'Tower 13 - CY1': {'lat': -7.205410, 'lng': 112.722386, 'cy': 'CY1'},
-    'Tower 14 - CY1': {'lat': -7.206786, 'lng': 112.723023, 'cy': 'CY1'},
-    'Tower 15 - CY1': {'lat': -7.207566, 'lng': 112.723469, 'cy': 'CY1'},
-    'Tower 16 - CY1': {'lat': -7.207342, 'lng': 112.723059, 'cy': 'CY1'},
-    'Tower 17 - CY1': {'lat': -7.209240, 'lng': 112.723915, 'cy': 'CY1'},
-    // CY3 Towers
-    'Tower 18 - CY3': {'lat': -7.210090, 'lng': 112.724321, 'cy': 'CY3'},
-    'Tower 19 - CY3': {'lat': -7.210336, 'lng': 112.723639, 'cy': 'CY3'},
-    'Tower 20 - CY3': {'lat': -7.210082, 'lng': 112.723303, 'cy': 'CY3'},
-    'Tower 21 - CY3': {'lat': -7.209070, 'lng': 112.722914, 'cy': 'CY3'},
-    'Tower 22 - CY3': {'lat': -7.208501, 'lng': 112.722942, 'cy': 'CY3'},
-    'Tower 23 - CY3': {'lat': -7.208017, 'lng': 112.722195, 'cy': 'CY3'},
-    'Tower 24 - CY3': {'lat': -7.207314, 'lng': 112.722005, 'cy': 'CY3'},
-    'Tower 25 - CY3': {'lat': -7.207213, 'lng': 112.722232, 'cy': 'CY3'},
-    'Tower 26 - CY3': {'lat': -7.207029, 'lng': 112.722613, 'cy': 'CY3'},
-    // CC (CY1)
-    'CC01 - CY1': {'lat': -7.204768, 'lng': 112.723299, 'cy': 'CY1'},
-    'CC02 - CY1': {'lat': -7.205358, 'lng': 112.723571, 'cy': 'CY1'},
-    'CC03 - CY1': {'lat': -7.205947, 'lng': 112.723840, 'cy': 'CY1'},
-    'CC04 - CY1': {'lat': -7.206656, 'lng': 112.724164, 'cy': 'CY1'},
-    // RTG
-    'RTG01 - CY1': {'lat': -7.204805, 'lng': 112.722550, 'cy': 'CY1'},
-    'RTG02 - CY1': {'lat': -7.205129, 'lng': 112.723000, 'cy': 'CY1'},
-    'RTG03 - CY1': {'lat': -7.205998, 'lng': 112.722836, 'cy': 'CY1'},
-    'RTG04 - CY1': {'lat': -7.206359, 'lng': 112.723258, 'cy': 'CY1'},
-    'RTG05 - CY1': {'lat': -7.206749, 'lng': 112.723464, 'cy': 'CY1'},
-    'RTG06 - CY1': {'lat': -7.207079, 'lng': 112.723899, 'cy': 'CY1'},
-    'RTG07 - CY2': {'lat': -7.208641, 'lng': 112.724410, 'cy': 'CY2'},
-    'RTG08 - CY2': {'lat': -7.208957, 'lng': 112.724877, 'cy': 'CY2'},
-    // RS
-    'RS - CY3': {'lat': -7.207700, 'lng': 112.723028, 'cy': 'CY3'},
-    // Special Locations
-    'Gate In/Out': {'lat': -7.2099123, 'lng': 112.7244489, 'cy': 'Special'},
-    'Parking': {'lat': -7.209907, 'lng': 112.724877, 'cy': 'Special'},
-  };
+  final Map<String, Map<String, dynamic>> _locationData = {};
+
+  Future<void> _loadLocationOptions() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingLocations = true;
+    });
+
+    try {
+      final locations = await apiService.getAllMasterLocations();
+      final map = <String, Map<String, dynamic>>{};
+
+      for (final loc in locations) {
+        final locationType = (loc['location_type'] ?? '').toString().toUpperCase();
+        final locationCode = (loc['location_code'] ?? '').toString();
+        final containerYard = (loc['container_yard'] ?? '').toString();
+        final locationName = (loc['location_name'] ?? '').toString();
+
+        final codeOrName = locationCode.isNotEmpty
+            ? locationCode
+            : (locationName.isNotEmpty ? locationName : 'UNKNOWN');
+        final displayName = locationName.isNotEmpty && locationName != codeOrName
+          ? ' ($locationName)'
+          : '';
+        final label = '$locationType - $codeOrName$displayName - $containerYard';
+
+        map[label] = {
+          'lat': double.tryParse((loc['latitude'] ?? 0).toString()) ?? 0.0,
+          'lng': double.tryParse((loc['longitude'] ?? 0).toString()) ?? 0.0,
+          'cy': containerYard,
+          'location_type': locationType,
+          'location_code': locationCode,
+        };
+      }
+
+      final sortedEntries = map.entries.toList()
+        ..sort((a, b) => a.key.toLowerCase().compareTo(b.key.toLowerCase()));
+
+      if (!mounted) return;
+      setState(() {
+        _locationData
+          ..clear()
+          ..addEntries(sortedEntries);
+        if (_locationData.isNotEmpty) {
+          if (_selectedLocation.isEmpty || !_locationData.containsKey(_selectedLocation)) {
+            _selectedLocation = _locationData.keys.first;
+          }
+        } else {
+          _selectedLocation = '';
+        }
+        _isLoadingLocations = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingLocations = false;
+      });
+      print('Error loading location options from master location endpoint: $e');
+    }
+  }
 
   IconData _getLocationIcon(String locationName) {
-    if (locationName.startsWith('CC')) {
-      return Icons.camera_alt;
-    }
-    if (locationName.startsWith('RTG')) {
-      return Icons.local_shipping;
-    }
-    if (locationName.startsWith('RS')) {
-      return Icons.construction;
-    }
-    if (locationName.startsWith('Tower')) {
-      return Icons.router;
-    }
-    if (locationName == 'Gate In/Out') {
-      return Icons.directions_walk;
-    }
-    if (locationName == 'Parking') {
-      return Icons.local_parking;
-    }
-    return Icons.location_on;
+    return DeviceIconResolver.iconForLocationName(locationName);
   }
 
   String _getDeviceNameExample(String deviceType) {
@@ -138,16 +130,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
   }
 
   IconData _getDeviceIcon(String deviceType) {
-    switch (deviceType) {
-      case 'Access Point':
-        return Icons.router;
-      case 'CCTV':
-        return Icons.videocam;
-      case 'MMT':
-        return Icons.table_chart;
-      default:
-        return Icons.device_unknown;
-    }
+    return DeviceIconResolver.iconForType(deviceType);
   }
 
   void _onNameChanged(String value) {
@@ -165,25 +148,19 @@ class _AddDevicePageState extends State<AddDevicePage> {
 
     try {
       final results = await Future.wait([
-        apiService.getAllTowers(),
         apiService.getAllCameras(),
         apiService.getAllMMTs(),
         DeviceStorageService.getDevices(),
       ]);
 
-      final towers = results[0] as List<Tower>;
-      final cameras = results[1] as List<Camera>;
-      final mmts = results[2] as List<MMT>;
-      final addedDevices = results[3] as List<AddedDevice>;
+      final cameras = results[0] as List<Camera>;
+      final mmts = results[1] as List<MMT>;
+      final addedDevices = results[2] as List<AddedDevice>;
 
       final names = <String>{};
       if (_selectedDeviceType == 'Access Point') {
-        names.addAll(towers.map((t) => t.towerId));
         names.addAll(addedDevices
-            .where((d) =>
-                d.type == 'Access Point' &&
-                !towers.any(
-                    (t) => t.towerId.toLowerCase() == d.name.toLowerCase()))
+        .where((d) => d.type == 'Access Point')
             .map((d) => d.name));
       } else if (_selectedDeviceType == 'CCTV') {
         names.addAll(cameras.map((c) => c.cameraId));
@@ -341,27 +318,33 @@ class _AddDevicePageState extends State<AddDevicePage> {
 
     try {
       final results = await Future.wait([
-        apiService.getAllTowers(),
         apiService.getAllCameras(),
         apiService.getAllMMTs(),
         DeviceStorageService.getDevices(),
       ]);
 
-      final towers = results[0] as List<Tower>;
-      final cameras = results[1] as List<Camera>;
-      final mmts = results[2] as List<MMT>;
-      final addedDevices = results[3] as List<AddedDevice>;
+      final cameras = results[0] as List<Camera>;
+      final mmts = results[1] as List<MMT>;
+      final addedDevices = results[2] as List<AddedDevice>;
 
       // Get all DB device names for comparison
-      final dbNames = <String>{
-        ...towers.map((t) => t.towerId.toLowerCase()),
-        ...cameras.map((c) => c.cameraId.toLowerCase()),
-        ...mmts.map((m) => m.mmtId.toLowerCase()),
-      };
+      final dbNames = <String>{};
+      if (_selectedDeviceType == 'Access Point') {
+        dbNames.addAll(
+          addedDevices
+              .where((d) => d.type == 'Access Point')
+              .map((d) => d.name.toLowerCase()),
+        );
+      } else if (_selectedDeviceType == 'CCTV') {
+        dbNames.addAll(cameras.map((c) => c.cameraId.toLowerCase()));
+      } else if (_selectedDeviceType == 'MMT') {
+        dbNames.addAll(mmts.map((m) => m.mmtId.toLowerCase()));
+      }
 
       // Only include local storage devices that don't exist in DB
       // This prevents stale local data from blocking device names
-      final pendingDeviceNames = addedDevices
+        final pendingDeviceNames = addedDevices
+          .where((d) => d.type == _selectedDeviceType)
           .where((d) => !dbNames.contains(d.name.toLowerCase()))
           .map((d) => d.name.toLowerCase());
 
@@ -391,28 +374,45 @@ class _AddDevicePageState extends State<AddDevicePage> {
     if (_nameError != null) {
       return;
     }
+    if (_selectedLocation.isEmpty || !_locationData.containsKey(_selectedLocation)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lokasi belum tersedia. Tambahkan master tower terlebih dahulu.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
-      final locationInfo = locationData[_selectedLocation];
+      final locationInfo = _locationData[_selectedLocation];
       final latitude = locationInfo?['lat'] ?? 0.0;
       final longitude = locationInfo?['lng'] ?? 0.0;
       final containerYard = locationInfo?['cy'] ?? '';
 
       // Auto-fill fields sesuai template
       String deviceId = _nameController.text;
-      String status = 'UP';
+      String status = 'DOWN';
       String type = 'Fixed';
       int deviceCount = 1;
       String areaType = 'Warehouse'; // Default
 
-      // Set areaType based on location for CCTV
+      // Set areaType based on master location type/name for CCTV
       if (_selectedDeviceType == 'CCTV') {
         final locationLower = _selectedLocation.toLowerCase();
+        final locType = (locationInfo?['location_type'] ?? '').toString().toUpperCase();
         if (locationLower.contains('gate')) {
           areaType = 'Gate';
         } else if (locationLower.contains('parking')) {
           areaType = 'Parking';
+        } else if (locType == 'RTG') {
+          areaType = 'RTG';
+        } else if (locType == 'CC') {
+          areaType = 'CC';
+        } else if (locType == 'RS') {
+          areaType = 'RS';
         }
       }
 
@@ -701,12 +701,13 @@ class _AddDevicePageState extends State<AddDevicePage> {
     _formKey.currentState!.reset();
     setState(() {
       _selectedDeviceType = 'Access Point';
-      _selectedLocation = 'Tower 1 - CY2';
+      _selectedLocation = _locationData.isNotEmpty ? _locationData.keys.first : '';
       _nameController.clear();
       _ipAddressController.clear();
       _nameError = null;
       _isCheckingName = false;
     });
+    _loadUsedNamesForType();
   }
 
   Widget _buildInfoRow(String label, String value) {
@@ -758,7 +759,9 @@ class _AddDevicePageState extends State<AddDevicePage> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildHeaderOpenButton('+ Add New Device', '/add-device', isActive: true),
+                    _buildHeaderOpenButton('Add New Device', '/add-device', isActive: true),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('Master Data', '/tower-management'),
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('Dashboard', '/dashboard'),
                     const SizedBox(width: 12),
@@ -766,13 +769,11 @@ class _AddDevicePageState extends State<AddDevicePage> {
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('CCTV', '/cctv'),
                     const SizedBox(width: 12),
+                    _buildHeaderOpenButton('MMT', '/mmt-monitoring'),
+                    const SizedBox(width: 12),
                     _buildHeaderOpenButton('Alert', '/alerts'),
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('Alert Report', '/report'),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('Tower Mgmt', '/tower-management'),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('MMT Monitor', '/mmt-monitoring'),
                     const SizedBox(width: 12),
                     _buildHeaderButton('Logout', () => _showLogoutDialog(context)),
                     const SizedBox(width: 12),
@@ -1226,9 +1227,12 @@ class _AddDevicePageState extends State<AddDevicePage> {
                             color: Colors.grey[50],
                           ),
                           child: DropdownButton<String>(
-                            value: _selectedLocation,
+                            value: _locationData.containsKey(_selectedLocation)
+                                ? _selectedLocation
+                                : null,
                             isExpanded: true,
                             underline: const SizedBox(),
+                            hint: const Text('Select location from master tower'),
                             onChanged: (String? newValue) {
                               if (newValue != null) {
                                 setState(() {
@@ -1236,7 +1240,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                 });
                               }
                             },
-                            items: locationData.keys
+                            items: _locationData.keys
                                 .map<DropdownMenuItem<String>>((String value) {
                               return DropdownMenuItem<String>(
                                 value: value,
@@ -1255,6 +1259,14 @@ class _AddDevicePageState extends State<AddDevicePage> {
                             }).toList(),
                           ),
                         ),
+                        if (_isLoadingLocations)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8),
+                            child: Text(
+                              'Loading locations from unified master data...',
+                              style: TextStyle(fontSize: 12, color: Colors.black54),
+                            ),
+                          ),
                         const SizedBox(height: 40),
 
                         // ===== SUBMIT BUTTON =====

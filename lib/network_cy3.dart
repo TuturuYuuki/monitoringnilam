@@ -18,6 +18,11 @@ class NetworkCY3Page extends StatefulWidget {
 
 class _NetworkCY3PageState extends State<NetworkCY3Page> {
   String selectedTower = 'CY 3';
+  static const List<String> _areaOptions = [
+    'CY 1',
+    'CY 2',
+    'CY 3',
+  ];
   int currentPage = 0;
   final int itemsPerPage = 5;
   late ApiService apiService;
@@ -499,7 +504,10 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildHeaderOpenButton('+ Add New Device', '/add-device',
+                        _buildHeaderOpenButton('Add New Device', '/add-device',
+                            isActive: false),
+                        const SizedBox(width: 12),
+                         _buildHeaderOpenButton('Master Data', '/tower-management',
                             isActive: false),
                         const SizedBox(width: 12),
                         _buildHeaderOpenButton('Dashboard', '/dashboard',
@@ -509,6 +517,8 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                             isActive: true),
                         const SizedBox(width: 12),
                         _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
+                        const SizedBox(width: 12),
+                        _buildHeaderOpenButton('MMT', '/mmt-monitoring', isActive: false),
                         const SizedBox(width: 12),
                         _buildHeaderOpenButton('Alert', '/alerts', isActive: false),
                         const SizedBox(width: 12),
@@ -628,7 +638,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                 Row(
                   children: [
                     const Text(
-                      'Real Time Access Point Monitoring And Diagnostics - CY 3',
+                      'Real Time Access Point Monitoring And Diagnostics',
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: 14,
@@ -787,56 +797,62 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
   }
 
   Widget _buildNetworkDropdown(double width) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: width,
-          height: 80,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF4A5F7F),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white24, width: 1.0),
+    return Container(
+      width: width,
+      height: 80,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF4A5F7F),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white24, width: 1.0),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'AREA',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'AREA',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+          const SizedBox(height: 4),
+          Flexible(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                // --- FIX: TAMPILAN "SELECT AREA" ---
+                value: null, // Set null agar value lama tidak tampil di kotak utama
+                hint: const Text(
+                  "Select Area", 
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)
                 ),
-              ),
-              const SizedBox(height: 4),
-              Flexible(
-                child: AnimatedDropdownButton(
-                value: selectedTower,
-                items: const ['CY 1', 'CY 2', 'CY 3'],
-                backgroundColor: const Color(0xFF4A5F7F),
+                dropdownColor: const Color(0xFF4A5F7F),
+                isExpanded: true,
+                icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+                items: const ['CY 1', 'CY 2', 'CY 3']
+                    .map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value, style: const TextStyle(color: Colors.white)),
+                  );
+                }).toList(),
                 onChanged: (String? newValue) {
-                  if (newValue == null) return;
-                  setState(() {
-                    selectedTower = newValue;
-                    currentPage = 0;
-                    isLoading = true;
-                  });
-                  if (newValue == 'CY 1') {
-                    Navigator.pushReplacementNamed(context, '/network');
-                  } else if (newValue == 'CY 2') {
-                    Navigator.pushReplacementNamed(context, '/network-cy2');
-                  } else if (newValue == 'CY 3') {
-                    Navigator.pushReplacementNamed(context, '/network-cy3');
+                  if (newValue != null) {
+                    if (newValue == 'CY 1') {
+                      Navigator.pushReplacementNamed(context, '/network');
+                    } else if (newValue == 'CY 2') {
+                      Navigator.pushReplacementNamed(context, '/network-cy2');
+                    } else if (newValue == 'CY 3') {
+                      Navigator.pushReplacementNamed(context, '/network-cy3');
+                    }
                   }
                 },
               ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -993,15 +1009,6 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
                 ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'There Are No Registered Access Point For Container Yard 1 Yet',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
-                textAlign: TextAlign.center,
               ),
             ],
           ),
@@ -1283,7 +1290,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Edit Tower CY3 - ${tower.towerId}'),
+        title: Text('Edit ${tower.towerId}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

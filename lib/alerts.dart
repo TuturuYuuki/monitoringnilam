@@ -9,6 +9,8 @@ import 'cctv.dart';
 import 'add_device.dart';
 import 'profile.dart';
 import 'report_page.dart'; 
+import 'pages/tower_management.dart';
+import 'pages/mmt_monitoring.dart';
 
 class AlertsPage extends StatefulWidget {
   const AlertsPage({super.key});
@@ -96,7 +98,7 @@ class _AlertsPageState extends State<AlertsPage> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Alert deleted"),
+          content: Text("Alert Deleted"),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -228,7 +230,9 @@ Future<void> _deleteAllAlerts() async {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildHeaderOpenButton('+ Add New Device', const AddDevicePage()),
+                    _buildHeaderOpenButton('Add New Device', const AddDevicePage()),
+                    const SizedBox(width: 12),
+                    _buildHeaderOpenButton('Master Data', const TowerManagementPage()),
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('Dashboard', const DashboardPage()),
                     const SizedBox(width: 12),
@@ -236,13 +240,11 @@ Future<void> _deleteAllAlerts() async {
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('CCTV', const CCTVPage()),
                     const SizedBox(width: 12),
+                    _buildHeaderOpenButton('MMT', const MMTMonitoringPage()),
+                    const SizedBox(width: 12),
                     _buildHeaderOpenButton('Alert', const AlertsPage(), isActive: true),
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('Alert Report', const ReportPage()),
-                    const SizedBox(width: 12),
-                    _buildHeaderButton('Tower Mgmt', () => Navigator.pushNamed(context, '/tower-management')),
-                    const SizedBox(width: 12),
-                    _buildHeaderButton('MMT Monitor', () => Navigator.pushNamed(context, '/mmt-monitoring')),
                     const SizedBox(width: 12),
                     _buildHeaderButton('Logout', () => _showLogoutDialog(context)),
                     const SizedBox(width: 12),

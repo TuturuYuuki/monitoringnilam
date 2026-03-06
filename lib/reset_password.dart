@@ -126,7 +126,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                   children: [
                     const Icon(Icons.check_circle, color: Colors.green, size: 64),
                     const SizedBox(height: 16),
-                    Text(response['message'] ?? 'Password Changed Successfully', textAlign: TextAlign.center),
+                    Text(response['message'] ?? 'Password Successfully Changed', textAlign: TextAlign.center),
                   ],
                 ),
                 actions: [
@@ -139,7 +139,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
             );
           }
         } else {
-          _showError(response['message'] ?? 'Failed To Change Password');
+          _showError(response['message'] ?? 'Failed to Change Password');
         }
       } catch (e) {
         setState(() => _isLoading = false);
@@ -293,7 +293,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) return 'Please Confirm Your Password';
-                                  if (value != _newPasswordController.text) return 'Passwords Do Not Match';
+                                  if (value != _newPasswordController.text) return 'Password Do Not Match';
                                   return null;
                                 },
                               ),

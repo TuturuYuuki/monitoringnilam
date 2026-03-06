@@ -469,12 +469,16 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
 
                               // Resend OTP Button
                               TextButton(
-                                onPressed: _isLoading ? null : _handleResendOtp,
-                                child: const Text(
-                                  'Resend OTP',
+                onPressed: _isLoading || remainingSeconds > 0 ? null : _handleResendOtp,
+                child: Text(
+                  remainingSeconds > 0
+                      ? 'Resend OTP (${_formatTime(remainingSeconds)})'
+                      : 'Resend OTP',
                                   style: TextStyle(
                                     fontSize: 16,
-                                    color: Color.fromARGB(255, 0, 0, 0),
+                    color: remainingSeconds > 0
+                        ? Colors.grey[400]
+                        : const Color.fromARGB(255, 0, 0, 0),
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),

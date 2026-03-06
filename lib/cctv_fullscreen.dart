@@ -249,7 +249,7 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _buildHeaderOpenButton('+ Add New Device', '/add-device',
+                      _buildHeaderOpenButton('Add New Device', '/add-device',
                           isActive: false),
                       const SizedBox(width: 4),
                       _buildHeaderOpenButton('Dashboard', '/dashboard',
@@ -296,7 +296,10 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildHeaderOpenButton('+ Add New Device', '/add-device',
+                        _buildHeaderOpenButton('Add New Device', '/add-device',
+                            isActive: false),
+                        const SizedBox(width: 12),
+                        _buildHeaderOpenButton('Master Data', '/tower-management',
                             isActive: false),
                         const SizedBox(width: 12),
                         _buildHeaderOpenButton('Dashboard', '/dashboard',
@@ -306,6 +309,8 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
                             isActive: false),
                         const SizedBox(width: 12),
                         _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
+                        const SizedBox(width: 12),
+                        _buildHeaderOpenButton('MMT', '/mmt-monitoring', isActive: false),
                         const SizedBox(width: 12),
                         _buildHeaderOpenButton('Alert', '/alerts', isActive: false),
                         const SizedBox(width: 12),

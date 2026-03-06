@@ -661,13 +661,9 @@ class ApiService {
 Future<Map<String, dynamic>> updateTower(int id, Map<String, dynamic> data) async {
   try {
     final response = await http.post(
-      Uri.parse('$baseUrl?endpoint=accesspoint&action=update'),
+      Uri.parse('$baseUrl?endpoint=network&action=update'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'id': id,
-        'ip_address': data['ip_address'],
-        'location': data['location'],
-      }),
+      body: jsonEncode({'id': id, ...data}),
     );
     return jsonDecode(response.body);
   } catch (e) {
@@ -835,6 +831,91 @@ Future<Map<String, dynamic>> deleteTower(int id) async {
     } catch (e) {
       print('Error: $e');
       return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getAllMasterLocations() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl?endpoint=network&action=all-locations'),
+      );
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        if (json['success'] == true && json['data'] is List) {
+          return (json['data'] as List)
+              .whereType<Map>()
+              .map((e) => e.map((key, value) => MapEntry(key.toString(), value)))
+              .toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      print('Error fetching master locations: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> createMasterLocation({
+    required String locationType,
+    required String locationCode,
+    required String locationName,
+    required String containerYard,
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl?endpoint=network&action=create-location'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'location_type': locationType,
+          'location_code': locationCode,
+          'location_name': locationName,
+          'container_yard': containerYard,
+          'latitude': latitude,
+          'longitude': longitude,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return {'success': false, 'message': 'Failed to create master location'};
+    } catch (e) {
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> updateMasterLocation(int id, Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl?endpoint=network&action=update-location'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'id': id, ...data}),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return {'success': false, 'message': 'Failed to update master location'};
+    } catch (e) {
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> deleteMasterLocation(int id) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl?endpoint=network&action=delete-location&id=$id'),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return {'success': false, 'message': 'Failed to delete master location'};
+    } catch (e) {
+      return {'success': false, 'message': 'Error: $e'};
     }
   }
 
@@ -1155,10 +1236,16 @@ Future<List<Tower>> getTowersByContainerYard(String yardName) async {
 // ==================== ALERT ENDPOINTS ====================
 
   /// 1. Ambil SEMUA Alerts (Untuk Halaman Alerts - Realtime/Today) - Dengan Pagination
-  Future<Map<String, dynamic>> getAllAlerts({int limit = 100, int offset = 0}) async {
+  Future<Map<String, dynamic>> getAllAlerts({
+    int limit = 100,
+    int offset = 0,
+    String source = 'DEVICES',
+  }) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl?endpoint=alerts&limit=$limit&offset=$offset'),
+        Uri.parse(
+          '$baseUrl?endpoint=alerts&source=${Uri.encodeQueryComponent(source)}&limit=$limit&offset=$offset',
+        ),
       );
       if (response.statusCode == 200) {
         dynamic jsonResponse = json.decode(response.body);
@@ -1202,8 +1289,29 @@ Future<List<Tower>> getTowersByContainerYard(String yardName) async {
     );
 
     if (response.statusCode == 200) {
-      List jsonResponse = json.decode(response.body);
-      return jsonResponse.map((data) => Alert.fromJson(data)).toList();
+      final dynamic jsonResponse = json.decode(response.body);
+      if (jsonResponse is List) {
+        return jsonResponse
+            .whereType<Map>()
+            .map((data) => Alert.fromJson(
+                  data.map((key, value) => MapEntry(key.toString(), value)),
+                ))
+            .toList();
+      }
+
+      if (jsonResponse is Map<String, dynamic>) {
+        final rows = jsonResponse['data'];
+        if (rows is List) {
+          return rows
+              .whereType<Map>()
+              .map((data) => Alert.fromJson(
+                    data.map((key, value) => MapEntry(key.toString(), value)),
+                  ))
+              .toList();
+        }
+      }
+
+      return <Alert>[];
     } else {
       throw Exception('Failed To Load Report');
     }
@@ -1250,17 +1358,27 @@ Future<List<Tower>> getTowersByContainerYard(String yardName) async {
   }
 
   Future<bool> deleteAllAlerts() async {
-  try {
-    final response = await http.get(Uri.parse('$baseUrl?endpoint=alerts&action=delete_all'));
-    return response.statusCode == 200;
-  } catch (e) { return false; }
-}
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl?endpoint=alerts&action=delete_all'),
+      );
+
+      if (response.statusCode != 200) return false;
+      final dynamic data = json.decode(response.body);
+      if (data is Map<String, dynamic>) {
+        return data['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
   
   // Create device methods
   Future<Map<String, dynamic>> createTower({
     required String towerId,
-    required String location,
-    required String ipAddress,
+    String? location,
+    String? ipAddress,
     required String containerYard,
     required double latitude,
     required double longitude,
@@ -1273,13 +1391,13 @@ Future<List<Tower>> getTowersByContainerYard(String yardName) async {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'tower_id': towerId,
-          'location': location,
-          'ip_address': ipAddress,
+          'location': location ?? '',
+          'ip_address': ipAddress ?? '',
           'container_yard': containerYard,
           'latitude': latitude,
           'longitude': longitude,
           'device_count': deviceCount ?? 1,
-          'status': status ?? 'UP',
+          'status': status ?? 'DOWN',
         }),
       );
 
@@ -1374,6 +1492,36 @@ Future<List<Tower>> getTowersByContainerYard(String yardName) async {
     } catch (e) {
       print('Error creating MMT: $e');
       return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> updateMMT(int id, Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl?endpoint=mmt&action=update'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'id': id,
+          'ip_address': data['ip_address'],
+          'location': data['location'],
+        }),
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': 'Koneksi Gagal: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> deleteMMT(int id) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl?endpoint=mmt&action=delete'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'id': id}),
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': 'Koneksi Gagal: $e'};
     }
   }
 
@@ -1495,6 +1643,85 @@ Future<List<Tower>> getTowersByContainerYard(String yardName) async {
       }
     } catch (e) {
       print('Error updating tower position: $e');
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  // Update tower position dengan history tracking (untuk freeroam)
+  Future<Map<String, dynamic>> updateTowerPositionWithHistory(
+    int towerId,
+    double latitude,
+    double longitude, {
+    String changedBy = 'dragged',
+    String changeReason = 'Position update via freeroam',
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl?endpoint=network&action=update-position-with-history'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'id': towerId,
+          'latitude': latitude,
+          'longitude': longitude,
+          'changed_by': changedBy,
+          'change_reason': changeReason,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {'success': false, 'message': 'Failed to update tower position'};
+      }
+    } catch (e) {
+      print('Error updating tower position with history: $e');
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  // Get tower position history
+  Future<Map<String, dynamic>> getTowerPositionHistory(int towerId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl?endpoint=network&action=get-position-history&tower_id=$towerId'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {'success': false, 'message': 'Failed to get position history'};
+      }
+    } catch (e) {
+      print('Error getting position history: $e');
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  // Validate tower position against bounds
+  Future<Map<String, dynamic>> validateTowerPosition(
+    String containerYard,
+    double latitude,
+    double longitude,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl?endpoint=network&action=validate-position'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'container_yard': containerYard,
+          'latitude': latitude,
+          'longitude': longitude,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {'success': false, 'message': 'Failed to validate position'};
+      }
+    } catch (e) {
+      print('Error validating position: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }

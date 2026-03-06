@@ -18,6 +18,11 @@ class NetworkPage extends StatefulWidget {
 
 class _NetworkPageState extends State<NetworkPage> {
   String selectedTower = 'CY 1';
+  static const List<String> _areaOptions = [
+    'CY 1',
+    'CY 2',
+    'CY 3',
+  ];
   int currentPage = 0;
   final int itemsPerPage = 5;
   late ApiService apiService;
@@ -49,10 +54,20 @@ class _NetworkPageState extends State<NetworkPage> {
     });
   }
 
+  String _selectedAreaId() {
+    final normalized = selectedTower.toUpperCase().replaceAll(' ', '');
+    if (normalized == 'CY1') return 'CY1';
+    if (normalized == 'CY2') return 'CY2';
+    if (normalized == 'CY3') return 'CY3';
+    if (normalized == 'GATE') return 'GATE';
+    if (normalized == 'PARKING') return 'PARKING';
+    return 'CY1';
+  }
+
   Future<void> _loadTowers() async {
   try {
-    // 1. Ambil data dulu dari database agar tabel TIDAK KOSONG
-    final fetchedTowers = await apiService.getTowersByContainerYard('CY1');
+    // 1. Ambil data berdasarkan area yang dipilih
+    final fetchedTowers = await apiService.getTowersByContainerYard(_selectedAreaId());
     
     if (mounted) {
       setState(() {
@@ -454,16 +469,16 @@ class _NetworkPageState extends State<NetworkPage> {
                       const SizedBox(width: 4),
                       _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
                       const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Alert', '/alerts',
+                        _buildHeaderOpenButton('MMT Monitoring', '/mmt-monitoring',
                           isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Alert Report', '/report',
+                        const SizedBox(width: 4),
+                        _buildHeaderOpenButton('Alert', '/alerts',
                           isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Tower Mgmt', '/tower-management',
+                        const SizedBox(width: 4),
+                        _buildHeaderOpenButton('Alert Report', '/report',
                           isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('MMT Monitor', '/mmt-monitoring',
+                        const SizedBox(width: 4),
+                        _buildHeaderOpenButton('Master Tower', '/tower-management',
                           isActive: false),
                       const SizedBox(width: 4),
                       _buildHeaderLogoutButton(),
@@ -496,7 +511,10 @@ class _NetworkPageState extends State<NetworkPage> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildHeaderOpenButton('+ Add New Device', '/add-device',
+                        _buildHeaderOpenButton('Add New Device', '/add-device',
+                            isActive: false),
+                        const SizedBox(width: 12),
+                        _buildHeaderOpenButton('Master Data', '/tower-management',
                             isActive: false),
                         const SizedBox(width: 12),
                         _buildHeaderOpenButton('Dashboard', '/dashboard',
@@ -507,13 +525,11 @@ class _NetworkPageState extends State<NetworkPage> {
                         const SizedBox(width: 12),
                         _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
                         const SizedBox(width: 12),
+                        _buildHeaderOpenButton('MMT', '/mmt-monitoring', isActive: false),
+                        const SizedBox(width: 12),
                         _buildHeaderOpenButton('Alert', '/alerts', isActive: false),
                         const SizedBox(width: 12),
                         _buildHeaderOpenButton('Alert Report', '/report', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Tower Mgmt', '/tower-management', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('MMT Monitor', '/mmt-monitoring', isActive: false),
                         const SizedBox(width: 12),
                         _buildHeaderLogoutButton(),
                         const SizedBox(width: 12),
@@ -660,7 +676,7 @@ class _NetworkPageState extends State<NetworkPage> {
                   Row(
                     children: [
                       const Text(
-                        'Real Time Access Point Monitoring And Diagnostics - CY 1',
+                        'Real Time Access Point Monitoring And Diagnostics',
                         style: TextStyle(
                           color: Colors.white70,
                           fontSize: 14,
@@ -825,58 +841,64 @@ class _NetworkPageState extends State<NetworkPage> {
   }
 
   Widget _buildNetworkDropdown(double width) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: width,
-          height: 80,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF4A5F7F),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white24, width: 1.0),
+    return Container(
+      width: width,
+      height: 80,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF4A5F7F),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white24, width: 1.0),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'AREA',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'AREA',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+          const SizedBox(height: 4),
+          Flexible(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                // --- FIX: TAMPILAN "SELECT AREA" ---
+                value: null, // Set null agar value lama tidak tampil di kotak utama
+                hint: const Text(
+                  "Select Area", 
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)
                 ),
-              ),
-              const SizedBox(height: 4),
-              Flexible(
-                child: AnimatedDropdownButton(
-                value: selectedTower,
-                items: const ['CY 1', 'CY 2', 'CY 3'],
-                backgroundColor: const Color(0xFF4A5F7F),
+                dropdownColor: const Color(0xFF4A5F7F),
+                isExpanded: true,
+                icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+                items: _areaOptions
+                    .map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value, style: const TextStyle(color: Colors.white)),
+                  );
+                }).toList(),
                 onChanged: (String? newValue) {
-                  if (newValue == null) return;
-                  setState(() {
-                    selectedTower = newValue;
-                    currentPage = 0;
-                    isLoading = true;
-                  });
-                  if (newValue == 'CY 1') {
-                    Navigator.pushReplacementNamed(context, '/network');
-                  } else if (newValue == 'CY 2') {
-                    Navigator.pushReplacementNamed(context, '/network-cy2');
-                  } else if (newValue == 'CY 3') {
-                    Navigator.pushReplacementNamed(context, '/network-cy3');
+                  if (newValue != null) {
+                    setState(() {
+                      selectedTower = newValue;
+                      currentPage = 0;
+                      isLoading = true;
+                    });
+                    _loadTowers();
                   }
                 },
               ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
+
 
   Widget _buildContainerYardButton(double width) {
     return Container(
@@ -888,11 +910,13 @@ class _NetworkPageState extends State<NetworkPage> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white24, width: 1.0),
       ),
-      child: const Center(
+      child: Center(
         child: Text(
-          'Container\nYard 1',
+          selectedTower == 'GATE' || selectedTower == 'PARKING'
+              ? selectedTower
+              : 'Container\nYard ${selectedTower.replaceAll('CY ', '')}',
           textAlign: TextAlign.center,
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 16,
             fontWeight: FontWeight.bold,
@@ -1031,15 +1055,6 @@ class _NetworkPageState extends State<NetworkPage> {
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
                 ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'There Are No Registered Access Point For Container Yard 1 Yet',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
-                textAlign: TextAlign.center,
               ),
             ],
           ),
@@ -1319,7 +1334,15 @@ void _showEditForm(Tower tower) {
         mainAxisSize: MainAxisSize.min,
         children: [
           TextField(controller: ipController, decoration: const InputDecoration(labelText: 'IP Address')),
-          TextField(controller: locationController, decoration: const InputDecoration(labelText: 'Location')),
+          TextField(
+            controller: locationController,
+            readOnly: true,
+            enabled: false,
+            decoration: const InputDecoration(
+              labelText: 'Location (Locked)',
+              helperText: 'Untuk pindah lokasi, delete device lalu add ulang di lokasi baru.',
+            ),
+          ),
         ],
       ),
       actions: [
@@ -1328,7 +1351,6 @@ void _showEditForm(Tower tower) {
           onPressed: () async {
             final response = await apiService.updateTower(tower.id, {
               'ip_address': ipController.text,
-              'location': locationController.text,
             });
             
             if (response['success'] == true) {
