@@ -2,15 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:monitoring/models/mmt_model.dart';
 import 'package:monitoring/services/api_service.dart';
 import 'dart:async';
-import '../dashboard.dart';
-import '../network.dart';
-import '../cctv.dart';
-import '../alerts.dart';
-import '../report_page.dart';
-import '../add_device.dart';
-import '../profile.dart';
 import '../main.dart';
-import 'tower_management.dart';
+import '../widgets/global_header_bar.dart';
 
 class MMTMonitoringPage extends StatefulWidget {
   const MMTMonitoringPage({super.key});
@@ -97,7 +90,7 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
       backgroundColor: const Color(0xFF2C3E50),
       body: Column(
         children: [
-          _buildHeader(context),
+          const GlobalHeaderBar(currentRoute: '/mmt-monitoring'),
           Expanded(
             child: SingleChildScrollView(
               child: LayoutBuilder(
@@ -470,92 +463,6 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
         ),
       ),
     );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      width: MediaQuery.of(context).size.width,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      color: const Color(0xFF1976D2),
-      child: Row(
-        children: [
-          const Text(
-            'Terminal Nilam',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(width: 30),
-          Expanded(
-            child: ScrollConfiguration(
-              behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildHeaderOpenButton('Add New Device', const AddDevicePage()),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('Master Data', const TowerManagementPage()),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('Dashboard', const DashboardPage()),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('Access Point', const NetworkPage()),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('CCTV', const CCTVPage()),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('MMT', const MMTMonitoringPage(), isActive: true),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('Alert', const AlertsPage()),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('Alert Report', const ReportPage()),
-                    const SizedBox(width: 12),
-                    _buildHeaderButton('Logout', () => showLogoutDialog(context)),
-                    const SizedBox(width: 12),
-                    GestureDetector(
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage())),
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
-                            borderRadius: BorderRadius.circular(50),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 8,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.person,
-                            color: Color(0xFF1976D2),
-                            size: 24,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeaderOpenButton(String text, Widget page, {bool isActive = false}) {
-    return buildLiquidGlassButton(text, () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => page)), isActive: isActive);
-  }
-
-  Widget _buildHeaderButton(String text, VoidCallback onPressed, {bool isActive = false}) {
-    return buildLiquidGlassButton(text, onPressed, isActive: isActive);
   }
 
   Widget _buildDetailRow(String label, String value, IconData icon) {

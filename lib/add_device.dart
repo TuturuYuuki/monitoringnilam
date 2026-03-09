@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'models/camera_model.dart';
@@ -8,6 +8,8 @@ import 'services/api_service.dart';
 import 'services/device_storage_service.dart';
 import 'utils/navigation_helper.dart';
 import 'utils/device_icon_resolver.dart';
+import 'widgets/global_header_bar.dart';
+import 'widgets/expandable_fab_nav.dart';
 
 class AddDevicePage extends StatefulWidget {
   const AddDevicePage({super.key});
@@ -447,13 +449,13 @@ class _AddDevicePageState extends State<AddDevicePage> {
 
       // Execute API call (non-blocking) - don't await for dialog
       if (_selectedDeviceType == 'Access Point') {
-        print('\n════════════════════════════════════');
-        print('🚀 Creating Access Point (Tower)');
+        print('\nΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ');
+        print('≡ƒÜÇ Creating Access Point (Tower)');
         print('Device ID: $deviceId');
         print('Location: $_selectedLocation');
         print('IP: $deviceIpAddress');
         print('Container Yard: $containerYard');
-        print('════════════════════════════════════\n');
+        print('ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ\n');
         
         createFuture = apiService.createTower(
           towerId: deviceId,
@@ -467,15 +469,15 @@ class _AddDevicePageState extends State<AddDevicePage> {
         );
         createFuture.then((result) {
           if (result['success'] == true) {
-            print('✅ SUCCESS: Tower created in database');
+            print('Γ£à SUCCESS: Tower created in database');
             print('Response: $result');
           } else {
-            print('❌ FAILED: ${result['message'] ?? 'Unknown error'}');
+            print('Γ¥î FAILED: ${result['message'] ?? 'Unknown error'}');
             print('Full response: $result');
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('⚠️ Gagal simpan ke database: ${result['message']}'),
+                  content: Text('ΓÜá∩╕Å Gagal simpan ke database: ${result['message']}'),
                   backgroundColor: Colors.orange,
                   duration: const Duration(seconds: 5),
                 ),
@@ -483,11 +485,11 @@ class _AddDevicePageState extends State<AddDevicePage> {
             }
           }
         }).catchError((e) {
-          print('❌❌❌ EXCEPTION: $e');
+          print('Γ¥îΓ¥îΓ¥î EXCEPTION: $e');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('❌ Error API: $e'),
+                content: Text('Γ¥î Error API: $e'),
                 backgroundColor: Colors.red,
                 duration: const Duration(seconds: 5),
               ),
@@ -495,12 +497,12 @@ class _AddDevicePageState extends State<AddDevicePage> {
           }
         });
       } else if (_selectedDeviceType == 'CCTV') {
-        print('\n════════════════════════════════════');
-        print('📹 Creating CCTV (Camera)');
+        print('\nΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ');
+        print('≡ƒô╣ Creating CCTV (Camera)');
         print('Camera ID: $deviceId');
         print('Location: $_selectedLocation');
         print('IP: $deviceIpAddress');
-        print('════════════════════════════════════\n');
+        print('ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ\n');
         
         createFuture = apiService.createCamera(
           cameraId: deviceId,
@@ -515,13 +517,13 @@ class _AddDevicePageState extends State<AddDevicePage> {
         );
         createFuture.then((result) {
           if (result['success'] == true) {
-            print('✅ SUCCESS: Camera created in database');
+            print('Γ£à SUCCESS: Camera created in database');
           } else {
-            print('❌ FAILED: ${result['message']}');
+            print('Γ¥î FAILED: ${result['message']}');
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('⚠️ Gagal simpan ke database: ${result['message']}'),
+                  content: Text('ΓÜá∩╕Å Gagal simpan ke database: ${result['message']}'),
                   backgroundColor: Colors.orange,
                   duration: const Duration(seconds: 5),
                 ),
@@ -529,11 +531,11 @@ class _AddDevicePageState extends State<AddDevicePage> {
             }
           }
         }).catchError((e) {
-          print('❌ EXCEPTION: $e');
+          print('Γ¥î EXCEPTION: $e');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('❌ Error API: $e'),
+                content: Text('Γ¥î Error API: $e'),
                 backgroundColor: Colors.red,
                 duration: const Duration(seconds: 5),
               ),
@@ -541,12 +543,12 @@ class _AddDevicePageState extends State<AddDevicePage> {
           }
         });
       } else if (_selectedDeviceType == 'MMT') {
-        print('\n════════════════════════════════════');
-        print('📊 Creating MMT');
+        print('\nΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ');
+        print('≡ƒôè Creating MMT');
         print('MMT ID: $deviceId');
         print('Location: $_selectedLocation');
         print('IP: $deviceIpAddress');
-        print('════════════════════════════════════\n');
+        print('ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ\n');
         
         createFuture = apiService.createMMT(
           mmtId: deviceId,
@@ -559,13 +561,13 @@ class _AddDevicePageState extends State<AddDevicePage> {
         );
         createFuture.then((result) {
           if (result['success'] == true) {
-            print('✅ SUCCESS: MMT created in database');
+            print('Γ£à SUCCESS: MMT created in database');
           } else {
-            print('❌ FAILED: ${result['message']}');
+            print('Γ¥î FAILED: ${result['message']}');
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('⚠️ Gagal simpan ke database: ${result['message']}'),
+                  content: Text('ΓÜá∩╕Å Gagal simpan ke database: ${result['message']}'),
                   backgroundColor: Colors.orange,
                   duration: const Duration(seconds: 5),
                 ),
@@ -573,11 +575,11 @@ class _AddDevicePageState extends State<AddDevicePage> {
             }
           }
         }).catchError((e) {
-          print('❌ EXCEPTION: $e');
+          print('Γ¥î EXCEPTION: $e');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('❌ Error API: $e'),
+                content: Text('Γ¥î Error API: $e'),
                 backgroundColor: Colors.red,
                 duration: const Duration(seconds: 5),
               ),
@@ -922,11 +924,13 @@ class _AddDevicePageState extends State<AddDevicePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF2C3E50),
-      body: Column(
+      body: Stack(
         children: [
-          _buildHeader(context),
-          Expanded(
-            child: SingleChildScrollView(
+          Column(
+            children: [
+              const GlobalHeaderBar(currentRoute: '/add-device'),
+              Expanded(
+                child: SingleChildScrollView(
               padding: const EdgeInsets.all(32),
               child: Center(
                 child: Container(
@@ -1306,6 +1310,9 @@ class _AddDevicePageState extends State<AddDevicePage> {
               ),
             ),
           ),
+            ],
+          ),
+          const ExpandableFabNav(currentRoute: '/add-device'),
         ],
       ),
     );

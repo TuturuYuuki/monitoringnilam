@@ -14,6 +14,8 @@ import 'profile.dart';
 import 'main.dart';
 import 'pages/tower_management.dart';
 import 'pages/mmt_monitoring.dart';
+import 'widgets/expandable_fab_nav.dart';
+import 'widgets/global_header_bar.dart';
 
 class ReportPage extends StatefulWidget {
   const ReportPage({super.key});
@@ -109,22 +111,27 @@ class _ReportPageState extends State<ReportPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF2C3E50),
-      body: Column(
+      body: Stack(
         children: [
-          _buildHeader(context),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  _buildFilterBar(),
-                  const SizedBox(height: 20),
-                  _buildReportTable(),
-                ],
+          Column(
+            children: [
+              const GlobalHeaderBar(currentRoute: '/report'),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    children: [
+                      _buildFilterBar(),
+                      const SizedBox(height: 20),
+                      _buildReportTable(),
+                    ],
+                  ),
+                ),
               ),
-            ),
+              _buildFooter(),
+            ],
           ),
-          _buildFooter(), // Footer sekarang dipanggil di sini
+          const ExpandableFabNav(currentRoute: '/report'),
         ],
       ),
     );

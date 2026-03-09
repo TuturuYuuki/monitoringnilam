@@ -1,12 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:animations/animations.dart';
 import 'package:http/http.dart' as http;
 import 'main.dart';
-import 'route_proxy_page.dart';
 import 'services/api_service.dart';
 import 'utils/tower_status_override.dart';
+import 'widgets/global_header_bar.dart';
 
 // Fullscreen CCTV Page - All Areas
 class CCTVFullscreenPage extends StatefulWidget {
@@ -155,7 +154,7 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
       backgroundColor: const Color(0xFF2C3E50),
       body: Column(
         children: [
-          _buildHeader(context),
+          const GlobalHeaderBar(currentRoute: '/cctv-fullscreen'),
           Expanded(
             child: SingleChildScrollView(
               child: LayoutBuilder(
@@ -172,223 +171,6 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
         ],
       ),
     );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-  final isMobile = isMobileScreen(context);
-  double screenWidth = MediaQuery.of(context).size.width;
-  return Container(
-    width: screenWidth,
-    padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 12 : 24, vertical: isMobile ? 12 : 16),
-    color: const Color(0xFF1976D2),
-    child: isMobile
-        ? Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Terminal Nilam',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: isMobile ? 28 : 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: OpenContainer(
-                      transitionDuration: const Duration(milliseconds: 550),
-                      transitionType: ContainerTransitionType.fadeThrough,
-                      closedElevation: 0,
-                      closedColor: Colors.transparent,
-                      closedShape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                      openElevation: 0,
-                      openBuilder: (context, _) =>
-                          const RouteProxyPage('/profile'),
-                      closedBuilder: (context, openContainer) {
-                        return GestureDetector(
-                          onTap: openContainer,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(50),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 8,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.person,
-                              color: Color(0xFF1976D2),
-                              size: 24,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ScrollConfiguration(
-                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildHeaderOpenButton('Add New Device', '/add-device',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Dashboard', '/dashboard',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Access Point', '/network',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Alert', '/alerts',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Alert Report', '/report',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderLogoutButton(),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          )
-        : Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Terminal Nilam - FIXED
-              const Text(
-                'Terminal Nilam',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 30),
-              // Buttons + Profile - SCROLL HORIZONTAL
-              Expanded(
-                child: ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildHeaderOpenButton('Add New Device', '/add-device',
-                            isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Master Data', '/tower-management',
-                            isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Dashboard', '/dashboard',
-                            isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Access Point', '/network',
-                            isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('MMT', '/mmt-monitoring', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Alert', '/alerts', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Alert Report', '/report', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderLogoutButton(),
-                        const SizedBox(width: 12),
-                        // Profile Icon - SCROLL dengan buttons
-                        MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: OpenContainer(
-                            transitionDuration: const Duration(milliseconds: 550),
-                            transitionType: ContainerTransitionType.fadeThrough,
-                            closedElevation: 0,
-                            closedColor: Colors.transparent,
-                            closedShape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(50),
-                            ),
-                            openElevation: 0,
-                            openBuilder: (context, _) =>
-                                const RouteProxyPage('/profile'),
-                            closedBuilder: (context, openContainer) {
-                              return GestureDetector(
-                                onTap: openContainer,
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.9),
-                                    borderRadius: BorderRadius.circular(50),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.1),
-                                        blurRadius: 8,
-                                        spreadRadius: 1,
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Icon(
-                                    Icons.person,
-                                    color: Color(0xFF1976D2),
-                                    size: 24,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-  );
-}
-
-  Widget _buildHeaderOpenButton(String text, String route,
-      {bool isActive = false}) {
-    return OpenContainer(
-      transitionDuration: const Duration(milliseconds: 550),
-      transitionType: ContainerTransitionType.fadeThrough,
-      closedElevation: 0,
-      closedColor: Colors.transparent,
-      closedShape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      openElevation: 0,
-      openBuilder: (context, _) => RouteProxyPage(route),
-      closedBuilder: (context, openContainer) {
-        return buildLiquidGlassButton(text, openContainer, isActive: isActive);
-      },
-    );
-  }
-
-  Widget _buildHeaderLogoutButton() {
-    return buildLiquidGlassButton('Logout', () => _showLogoutDialog(context),
-        isActive: false);
   }
 
   Widget _buildContent(BuildContext context, BoxConstraints constraints) {

@@ -1,0 +1,182 @@
+import 'package:flutter/material.dart';
+import '../utils/auth_helper.dart';
+
+class GlobalHeaderBar extends StatefulWidget {
+  final String currentRoute;
+
+  const GlobalHeaderBar({
+    super.key,
+    required this.currentRoute,
+  });
+
+  @override
+  State<GlobalHeaderBar> createState() => _GlobalHeaderBarState();
+}
+
+class _GlobalHeaderBarState extends State<GlobalHeaderBar> {
+  String _name = 'User';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    final userData = await AuthHelper.getUserData();
+    if (!mounted) return;
+    setState(() {
+      final fullname = (userData['fullname'] ?? '').trim();
+      final username = (userData['username'] ?? '').trim();
+      _name = fullname.isNotEmpty
+          ? fullname
+          : (username.isNotEmpty ? username : 'User');
+    });
+  }
+
+  void _openProfile() {
+    if (widget.currentRoute == '/profile') return;
+    Navigator.pushReplacementNamed(context, '/profile');
+  }
+
+  Future<void> _logout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Logout'),
+        content: const Text('Are You Sure To Logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await AuthHelper.clearUserData();
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/login');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      // Hilangkan batasan kliping agar menu melayang bisa keluar dari box biru
+      clipBehavior: Clip.none,
+      decoration: const BoxDecoration(
+        color: Color(0xFF1976D2),
+        boxShadow: [
+          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
+        ],
+      ),
+      child: SafeArea(
+        bottom: false,
+        // Wrap Row dengan Stack jika menu masih terpotong konten di bawah header
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Row(
+              children: [
+                // Home Button - Back to Dashboard
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Tooltip(
+                    message: 'Dashboard',
+                    child: InkWell(
+                      onTap: () {
+                        if (widget.currentRoute != '/dashboard') {
+                          Navigator.pushReplacementNamed(context, '/dashboard');
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(25),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: widget.currentRoute == '/dashboard'
+                              ? Colors.white.withOpacity(0.2)
+                              : Colors.transparent,
+                        ),
+                        child: const Icon(
+                          Icons.home,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Logo + TPK Nilam
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.warehouse,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'TPK Nilam',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+
+                // Area Profile
+                InkWell(
+                  onTap: _openProfile,
+                  borderRadius: BorderRadius.circular(30),
+                  child: Row(
+                    children: [
+                      Text(
+                        _name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Colors.white24,
+                        child:
+                            Icon(Icons.person, color: Colors.white, size: 20),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: _logout,
+                  icon: const Icon(Icons.logout, color: Colors.white, size: 22),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

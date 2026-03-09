@@ -6,6 +6,8 @@ import 'main.dart';
 import 'route_proxy_page.dart';
 import 'services/api_service.dart';
 import 'utils/tower_status_override.dart';
+import 'widgets/expandable_fab_nav.dart';
+import 'widgets/global_header_bar.dart';
 
 // Gate CCTV Page (Gate In & Gate Out)
 class GateCCTVPage extends StatefulWidget {
@@ -258,22 +260,27 @@ class _GateCCTVPageState extends State<GateCCTVPage> {
     final isMobile = isMobileScreen(context);
     return Scaffold(
       backgroundColor: const Color(0xFF2C3E50),
-      body: Column(
+      body: Stack(
         children: [
-          _buildHeader(context),
-          Expanded(
-            child: SingleChildScrollView(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return Padding(
-                    padding: EdgeInsets.all(isMobile ? 12 : 20.0),
-                    child: _buildContent(context, constraints),
-                  );
-                },
+          Column(
+            children: [
+              const GlobalHeaderBar(currentRoute: '/cctv-gate'),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Padding(
+                        padding: EdgeInsets.all(isMobile ? 12 : 24),
+                        child: _buildContent(context, constraints),
+                      );
+                    },
+                  ),
+                ),
               ),
-            ),
+              _buildFooter(),
+            ],
           ),
-          _buildFooter(),
+          const ExpandableFabNav(currentRoute: '/cctv-gate'),
         ],
       ),
     );

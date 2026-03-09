@@ -11,6 +11,8 @@ import 'profile.dart';
 import 'report_page.dart'; 
 import 'pages/tower_management.dart';
 import 'pages/mmt_monitoring.dart';
+import 'widgets/expandable_fab_nav.dart';
+import 'widgets/global_header_bar.dart';
 
 class AlertsPage extends StatefulWidget {
   const AlertsPage({super.key});
@@ -343,16 +345,21 @@ Future<void> _deleteAllAlerts() async {
     final isMobile = isMobileScreen(context);
     return Scaffold(
       backgroundColor: const Color(0xFF2C3E50),
-      body: Column(
+      body: Stack(
         children: [
-          _buildHeader(context),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(isMobile ? 12 : 24.0),
-              child: _buildContent(context),
-            ),
+          Column(
+            children: [
+              const GlobalHeaderBar(currentRoute: '/alerts'),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(isMobile ? 12 : 24.0),
+                  child: _buildContent(context),
+                ),
+              ),
+              _buildFooter(),
+            ],
           ),
-          _buildFooter(),
+          const ExpandableFabNav(currentRoute: '/alerts'),
         ],
       ),
     );

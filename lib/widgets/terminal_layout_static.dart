@@ -634,6 +634,16 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     final codeKey = _normalizeMatchKey((location['location_code'] ?? '').toString());
     final nameKey = _normalizeMatchKey((location['location_name'] ?? '').toString());
 
+    // Debug logging for RTG matching
+    if (kDebugMode && locType == 'RTG') {
+      debugPrint('[RTG MATCH DEBUG] Location: $nameKey / $codeKey');
+      debugPrint('[RTG MATCH DEBUG] Available devices:');
+      for (final device in widget.devices) {
+        final deviceLocKey = _normalizeMatchKey(device.locationName);
+        debugPrint('  - Device location: $deviceLocKey (${device.name})');
+      }
+    }
+
     if (locType == 'TOWER') {
       final relatedTowerKeys = <String>{};
       for (final tower in widget.towers) {
@@ -659,11 +669,27 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       }).toList(growable: false);
     }
 
-    return widget.devices.where((device) {
+    // For RTG, RS, CC, etc., match by location name or code
+    final matches = widget.devices.where((device) {
       final deviceLocKey = _normalizeMatchKey(device.locationName);
-      return _isKeyRelated(deviceLocKey, codeKey) ||
+      final typeKey = _normalizeMatchKey(device.type);
+      
+      // Match by exact location
+      final locationMatch = _isKeyRelated(deviceLocKey, codeKey) ||
           _isKeyRelated(deviceLocKey, nameKey);
+      
+      // Also check if device type contains the location type (e.g., CCTV at RTG02)
+      final typeMatch = typeKey.contains(locType) && 
+                        (deviceLocKey.contains(codeKey) || codeKey.contains(deviceLocKey));
+      
+      return locationMatch || typeMatch;
     }).toList(growable: false);
+    
+    if (kDebugMode && locType == 'RTG') {
+      debugPrint('[RTG MATCH DEBUG] Found ${matches.length} devices for $nameKey');
+    }
+    
+    return matches;
   }
 
   // ─── Tower color ─────────────────────────────────────────────
@@ -958,28 +984,44 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
           child: MouseRegion(
             cursor: SystemMouseCursors.click,
             child: Container(
-              width: markerW,
-              height: markerH,
               decoration: BoxDecoration(
-                color: markerColor,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
-                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.18),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                    offset: const Offset(0, 2),
+                  ),
+                  BoxShadow(
+                    color: Colors.white.withOpacity(0.45),
+                    blurRadius: 6,
+                    spreadRadius: -1,
+                    offset: const Offset(0, -1),
+                  ),
+                ],
               ),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildMasterTypeVisual(locType, size: 28),
-                  const SizedBox(height: 3),
-                  Text(
-                    locCode.isNotEmpty ? locCode : locName,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                  _buildMasterTypeVisual(locType, size: 48),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: markerColor.withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.white, width: 1),
                     ),
-                    textAlign: TextAlign.center,  
-                    maxLines: 1,
+                    child: Text(
+                      locCode.isNotEmpty ? locCode : locName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,  
+                      maxLines: 1,
+                    ),
                   ),
                 ],
               ),
@@ -1050,27 +1092,36 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
-                    width: markerW,
-                    height: markerH,
                     decoration: BoxDecoration(
-                      color: markerColor,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2.5),
-                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.18),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                          offset: const Offset(0, 2),
+                        ),
+                        BoxShadow(
+                          color: Colors.white.withOpacity(0.45),
+                          blurRadius: 6,
+                          spreadRadius: -1,
+                          offset: const Offset(0, -1),
+                        ),
+                      ],
                     ),
-                    child: Center(child: _buildMasterTypeVisual(locType, size: 30)),
+                    child: _buildMasterTypeVisual(locType, size: 48),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: markerColor,
+                      color: markerColor.withOpacity(0.9),
                       borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.white, width: 1),
                     ),
                     child: Text(
                       locCode.isNotEmpty ? locCode : locName,
                       style: const TextStyle(
-                        fontSize: 8,
+                        fontSize: 9,
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1091,23 +1142,39 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
 
   Widget _buildMasterTypeVisual(String locType, {double size = 20}) {
     final asset = DeviceIconResolver.assetForType(locType);
+    final iconColor = DeviceIconResolver.colorForType(locType);
+
     if (asset != null) {
-      return Image.asset(
-        asset,
-        width: size,
-        height: size,
-        fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => Icon(
-          DeviceIconResolver.iconForType(locType),
-          color: Colors.white,
-          size: size,
+      return Container(
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withOpacity(0.9),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 3,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Image.asset(
+          asset,
+          width: size,
+          height: size,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => Icon(
+            DeviceIconResolver.iconForType(locType),
+            color: iconColor,
+            size: size,
+          ),
         ),
       );
     }
 
     return Icon(
       DeviceIconResolver.iconForType(locType),
-      color: Colors.white,
+      color: iconColor,
       size: size,
     );
   }
@@ -1285,7 +1352,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       // Apply trigonometric circular offset.
       // Single device is also shifted slightly so it does not sit exactly on parent icon.
       final deviceCount = devices.length;
-      final radius = deviceCount == 1 ? 18.0 : 30.0;
+      final radius = deviceCount == 1 ? 24.0 : 40.0;
       
       for (var i = 0; i < deviceCount; i++) {
         // For a single device, pin it to a fixed angle for consistent UI.
@@ -1455,7 +1522,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       // Render devices around base position.
       // Keep behavior consistent with non-zoom mode.
       final count = grouped.length;
-      final radius = count == 1 ? 18.0 : 30.0;
+      final radius = count == 1 ? 24.0 : 40.0;
 
       for (var i = 0; i < count; i++) {
         final angle = count == 1 ? -pi / 2 : (2 * pi * i) / count;
@@ -1474,18 +1541,11 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     const markerSize = 28.0;
     const iconSize = 13.0;
     const half = markerSize / 2;
-    const labelWidth = 84.0;
-    const labelHeight = 14.0;
-
-    final displayName = device.name.length > 10
-        ? '${device.name.substring(0, 10)}...'
-        : device.name;
-
     final clampedX = x.clamp(half, w - half);
-    final clampedY = y.clamp(half + 4, h - (half + labelHeight + 4));
+    final clampedY = y.clamp(half + 4, h - (half + 4));
 
     return Positioned(
-      left: clampedX - (labelWidth / 2),
+      left: clampedX - half,
       top: clampedY - half,
       child: GestureDetector(
         onTap: () {
@@ -1494,50 +1554,21 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
         },
         child: MouseRegion(
           cursor: SystemMouseCursors.click,
-          child: SizedBox(
-            width: labelWidth,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: markerSize,
-                  height: markerSize,
-                  decoration: BoxDecoration(
-                    color: device.status.toUpperCase() == 'UP' ? Colors.green : Colors.red,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                    boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
-                  ),
-                  child: Center(
-                    child: Icon(
-                      DeviceIconResolver.iconForType(device.type),
-                      size: iconSize,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Container(
-                  height: labelHeight,
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.65),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Center(
-                    child: Text(
-                      displayName,
-                      style: const TextStyle(
-                        fontSize: 9,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                  ),
-                ),
-              ],
+          child: Container(
+            width: markerSize,
+            height: markerSize,
+            decoration: BoxDecoration(
+              color: device.status.toUpperCase() == 'UP' ? Colors.green : Colors.red,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+            ),
+            child: Center(
+              child: Icon(
+                DeviceIconResolver.iconForType(device.type),
+                size: iconSize,
+                color: Colors.white,
+              ),
             ),
           ),
         ),
@@ -1560,17 +1591,18 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     if (loc.contains('park')) return areas.firstWhere((a) => a.id == 'PARKING');
     if (loc.contains('gate')) return areas.firstWhere((a) => a.id == 'GATE');
 
-    final normalizedYard = _normalizeAreaId(d.containerYard);
-    final explicitArea = areas.where((a) => a.id == normalizedYard).toList(growable: false);
-    if (explicitArea.isNotEmpty) {
-      return explicitArea.first;
-    }
-
-    // API data can have missing/inconsistent container_yard, so use parent mapping as fallback.
+    // Prefer parent mapping from master location code/name so area stays correct
+    // even if containerYard from API is stale or inconsistent.
     final parentPos = _getParentPosition(d.locationName);
     if (parentPos != null) {
       final parentArea = parentPos['area'] as ContainerYardArea;
       return parentArea;
+    }
+
+    final normalizedYard = _normalizeAreaId(d.containerYard);
+    final explicitArea = areas.where((a) => a.id == normalizedYard).toList(growable: false);
+    if (explicitArea.isNotEmpty) {
+      return explicitArea.first;
     }
 
     return areas[0];

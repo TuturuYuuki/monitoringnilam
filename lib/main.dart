@@ -22,6 +22,10 @@ import 'edit_profile.dart';
 import 'change_password.dart';
 import 'add_device.dart';
 import 'report_page.dart';
+import 'master_data.dart';
+import 'access_point.dart';
+import 'mmt.dart';
+import 'alert_report.dart';
 import 'pages/tower_management.dart';
 import 'pages/mmt_monitoring.dart';
 import 'mmt_monitoring_cy2.dart';
@@ -457,6 +461,7 @@ class MyApp extends StatelessWidget {
         '/cctv-parking': (context) => const ParkingCCTVPage(),
         '/cctv-fullscreen': (context) => const CCTVFullscreenPage(),
         '/alerts': (context) => const AlertsPage(),
+        '/alert-report': (context) => const AlertReportPage(),
         '/report': (context) => const ReportPage(),
         '/profile': (context) => const ProfilePage(),
         '/edit-profile': (context) => const EditProfilePage(),

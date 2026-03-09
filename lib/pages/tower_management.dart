@@ -3,6 +3,8 @@ import 'package:monitoring/models/tower_model.dart';
 import 'package:monitoring/services/api_service.dart';
 import '../main.dart';
 import '../utils/device_icon_resolver.dart';
+import '../widgets/expandable_fab_nav.dart';
+import '../widgets/global_header_bar.dart';
 
 class TowerManagementPage extends StatefulWidget {
   const TowerManagementPage({super.key});
@@ -24,7 +26,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
   List<Map<String, dynamic>> _masterLocations = [];
   bool _isLoading = true;
   final int itemsPerPage = 10;
-  int _currentPage = 1;  // ← Added for pagination
+  int _currentPage = 1;
   DateTime? _lastRefreshTime;
 
   @override
@@ -359,38 +361,44 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = isMobileScreen(context);
     return Scaffold(
       backgroundColor: const Color(0xFF2C3E50),
-      body: Column(
+      body: Stack(
         children: [
-          _buildHeader(context),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildInventoryStats(),
-                        const SizedBox(height: 24),
-                        _buildAddTowerForm(),
-                        const SizedBox(height: 28),
-                        const Text(
-                          'All Master Location',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
+          Column(
+            children: [
+              const GlobalHeaderBar(currentRoute: '/tower-management'),
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : SingleChildScrollView(
+                        padding: EdgeInsets.all(isMobile ? 10 : 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildInventoryStats(),
+                            const SizedBox(height: 24),
+                            _buildAddTowerForm(),
+                            const SizedBox(height: 28),
+                            const Text(
+                              'All Master Location',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            _buildUnifiedMasterTable(),
+                          ],
                         ),
-                        const SizedBox(height: 14),
-                        _buildUnifiedMasterTable(),
-                      ],
-                    ),
-                  ),
+                      ),
+              ),
+              _buildFooter(),
+            ],
           ),
-          _buildFooter(),
+          const ExpandableFabNav(currentRoute: '/tower-management'),
         ],
       ),
     );
@@ -858,7 +866,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
               ),
               const SizedBox(height: 14),
               if (devices.isEmpty)
-                const Text('Belum ada device terdeteksi di lokasi ini.')
+                const Text('No Device Have Been Detected At This Location')
               else
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxHeight: 220),

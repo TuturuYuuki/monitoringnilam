@@ -22,7 +22,8 @@ import 'utils/tower_status_override.dart';
 import 'utils/layout_mapper.dart';
 import 'utils/device_icon_resolver.dart';
 import 'widgets/terminal_layout_static.dart';
-import 'report_page.dart'; 
+import 'widgets/global_header_bar.dart';
+import 'report_page.dart';
 import 'pages/tower_management.dart';
 import 'pages/mmt_monitoring.dart';
 
@@ -554,10 +555,10 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   List<Map<String, dynamic>> masterLocations = [];
   Map<String, String> deviceStatuses = {};
   Map<String, String> _mmtStatusByIp = {};
-    bool _isPickTowerMode = false;
-    String? _pickTowerYard;
-    int totalUpMMT = 0;
-    int totalDownMMT = 0;
+  bool _isPickTowerMode = false;
+  String? _pickTowerYard;
+  int totalUpMMT = 0;
+  int totalDownMMT = 0;
   Timer? _refreshTimer;
   Timer? _blinkTimer;
   bool _isLoadingDashboard = false;
@@ -685,11 +686,11 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       ]);
       final fetchedCameras = results[0] as List<Camera>;
       final fetchedTowers = results[1] as List<Tower>;
-      
+
       // Handle new paginated response format (getAllAlerts always returns Map<String, dynamic>)
       List<Alert> fetchedAlerts = [];
       final alertsResponse = results[2] as Map<String, dynamic>;
-      
+
       // Extract alerts list from response map using explicit loop
       final alertListRaw = alertsResponse['alerts'] as List? ?? [];
       for (var data in alertListRaw) {
@@ -699,10 +700,10 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           fetchedAlerts.add(Alert.fromJson(data as Map<String, dynamic>));
         }
       }
-      
+
       // Extract master locations
       final fetchedMasterLocations = results[3] as List<Map<String, dynamic>>;
-      
+
       // Run void future separately after other data loads
       await _updateDeviceLocationStatuses();
 
@@ -710,7 +711,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       final updatedCameras = applyForcedCameraStatus(fetchedCameras);
       final ipStatus = _buildIpStatusMap(updatedTowers, updatedCameras);
       final effectiveTowers = _applyIpStatusToTowers(updatedTowers, ipStatus);
-      final effectiveCameras = _applyIpStatusToCameras(updatedCameras, ipStatus);
+      final effectiveCameras =
+          _applyIpStatusToCameras(updatedCameras, ipStatus);
       final List<Alert> generatedAlerts = [];
 
       for (final tower in effectiveTowers) {
@@ -729,7 +731,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                   : DateTime.now().toString());
 
           generatedAlerts.add(Alert(
-            id: int.tryParse(tower.id.toString()) ?? 0, // Ubah ke int agar tidak error
+            id: int.tryParse(tower.id.toString()) ??
+                0, // Ubah ke int agar tidak error
             alertKey: 'generated:${tower.id}:${tower.towerId}:AP_DOWN',
             title: 'Access Point DOWN - ${tower.towerId}',
             description:
@@ -759,7 +762,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
 
           generatedAlerts.add(Alert(
             id: (int.tryParse(camera.id.toString()) ?? 0) + 1000, // ID unik
-            alertKey: 'generated:${camera.id + 1000}:${camera.cameraId}:CCTV_DOWN',
+            alertKey:
+                'generated:${camera.id + 1000}:${camera.cameraId}:CCTV_DOWN',
             title: 'CCTV DOWN - ${camera.cameraId}',
             description:
                 '${camera.location} camera offline (${camera.cameraId})',
@@ -770,19 +774,19 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           ));
         }
       }
-      
+
       List<AddedDevice> devices = [];
       try {
         devices = await DeviceStorageService.getDevices().timeout(
           const Duration(seconds: 5),
           onTimeout: () {
             print('Warning: Get devices from storage timed out');
-            return addedDevices; 
+            return addedDevices;
           },
         );
       } catch (e) {
         print('Error loading devices from storage: $e');
-        devices = addedDevices; 
+        devices = addedDevices;
       }
 
       for (var device in devices) {
@@ -834,8 +838,9 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
 
           // 2. HITUNG ULANG STATISTIK DARI LIST RIIL (Agar sinkron dengan warna peta)
           // Access Point
-          totalTowers = towers.length; 
-          totalOnlineTowers = towers.where((t) => !isDownStatus(t.status)).length;
+          totalTowers = towers.length;
+          totalOnlineTowers =
+              towers.where((t) => !isDownStatus(t.status)).length;
           totalDownTowers = (totalTowers - totalOnlineTowers).clamp(0, 999);
 
           // CCTV
@@ -846,11 +851,13 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           // 3. ALERT: Gabungkan data DB dengan alert yang baru saja terdeteksi (DOWN baru)
           alerts = [...fetchedAlerts, ...generatedAlerts];
           // Hitung total dari gabungan alert tersebut
-          totalWarnings = alerts.where((a) => a.severity == 'critical' || a.severity == 'warning').length;
-          
+          totalWarnings = alerts
+              .where((a) => a.severity == 'critical' || a.severity == 'warning')
+              .length;
+
           // 4. Update UI lainnya
-          addedDevices = devices; 
-          _syncAddedDevices(ipStatus); 
+          addedDevices = devices;
+          _syncAddedDevices(ipStatus);
           _updateBlinkingLocations();
         });
       }
@@ -872,7 +879,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
 
   Future<void> _syncAddedDevices(Map<String, String> ipStatus) async {
     try {
-      List<AddedDevice> storageDevices = await DeviceStorageService.getDevices();
+      List<AddedDevice> storageDevices =
+          await DeviceStorageService.getDevices();
       for (var device in storageDevices) {
         final ipKey = device.ipAddress.trim();
         if (ipStatus.containsKey(ipKey)) {
@@ -1194,11 +1202,14 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
     }
 
     return masterLocations.map((location) {
-      final locType = (location['location_type'] ?? '').toString().toUpperCase();
+      final locType =
+          (location['location_type'] ?? '').toString().toUpperCase();
       final locCode = (location['location_code'] ?? '').toString();
       final locName = (location['location_name'] ?? '').toString();
-      final lat = double.tryParse((location['latitude'] ?? '0').toString()) ?? 0.0;
-      final lng = double.tryParse((location['longitude'] ?? '0').toString()) ?? 0.0;
+      final lat =
+          double.tryParse((location['latitude'] ?? '0').toString()) ?? 0.0;
+      final lng =
+          double.tryParse((location['longitude'] ?? '0').toString()) ?? 0.0;
 
       final markerColor = DeviceIconResolver.colorForType(locType);
       final markerIcon = DeviceIconResolver.iconForType(locType);
@@ -1315,6 +1326,45 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
 
   int get totalCameras => totalUpCameras + totalDownCameras;
 
+  List<AddedDevice> _buildLayoutDevices() {
+    final merged = <AddedDevice>[...addedDevices];
+    final existingKeys = <String>{};
+
+    for (final device in merged) {
+      final key =
+          '${device.type.toUpperCase()}|${device.ipAddress.trim().toUpperCase()}|${device.locationName.toUpperCase()}';
+      existingKeys.add(key);
+    }
+
+    for (final camera in cameras) {
+      final locationName = camera.location.trim();
+      if (locationName.isEmpty) {
+        continue;
+      }
+
+      final cameraAsDevice = AddedDevice(
+        id: 'camera_${camera.id}',
+        type: 'CCTV',
+        name: camera.cameraId,
+        ipAddress: camera.ipAddress,
+        locationName: locationName,
+        latitude: camera.latitude ?? 0,
+        longitude: camera.longitude ?? 0,
+        containerYard: camera.containerYard,
+        createdAt: DateTime.tryParse(camera.createdAt) ?? DateTime.now(),
+        status: camera.status,
+      );
+
+      final key =
+          '${cameraAsDevice.type.toUpperCase()}|${cameraAsDevice.ipAddress.trim().toUpperCase()}|${cameraAsDevice.locationName.toUpperCase()}';
+      if (existingKeys.add(key)) {
+        merged.add(cameraAsDevice);
+      }
+    }
+
+    return merged;
+  }
+
   // ═══════════════════════════════════════════════════════════════
   // TOWER POSITION UPDATE - FREEROAM CALLBACK
   // ═══════════════════════════════════════════════════════════════
@@ -1339,7 +1389,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
         newLongitude,
       );
 
-      if (validationResult['success'] == true && validationResult['valid'] == false) {
+      if (validationResult['success'] == true &&
+          validationResult['valid'] == false) {
         print('⚠️ Position validation failed - outside bounds');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -1398,9 +1449,12 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       );
 
       if (!result['success']) {
-        print('⚠️ Warning: Failed to save position to database: ${result['message']}');
+        print(
+            '⚠️ Warning: Failed to save position to database: ${result['message']}');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Position updated locally but DB save failed: ${result['message']}')),
+          SnackBar(
+              content: Text(
+                  'Position updated locally but DB save failed: ${result['message']}')),
         );
       } else {
         print('✓ Tower position updated and saved to database');
@@ -1427,7 +1481,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Master location tidak memiliki item_id. Tidak bisa disimpan.'),
+            content: Text(
+                'Master location tidak memiliki item_id. Tidak bisa disimpan.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -1436,8 +1491,10 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
     }
 
     final locType = (master['location_type'] ?? '').toString().toUpperCase();
-    final codeKey = _normalizeMasterKey((master['location_code'] ?? '').toString());
-    final nameKey = _normalizeMasterKey((master['location_name'] ?? '').toString());
+    final codeKey =
+        _normalizeMasterKey((master['location_code'] ?? '').toString());
+    final nameKey =
+        _normalizeMasterKey((master['location_name'] ?? '').toString());
 
     setState(() {
       final idx = masterLocations.indexWhere(
@@ -1457,9 +1514,12 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           final tower = towers[i];
           final towerIdKey = _normalizeMasterKey(tower.towerId);
           final towerLocKey = _normalizeMasterKey(tower.location);
-          final isMatch =
-              (codeKey.isNotEmpty && (towerIdKey.contains(codeKey) || towerLocKey.contains(codeKey))) ||
-              (nameKey.isNotEmpty && (towerIdKey.contains(nameKey) || towerLocKey.contains(nameKey)));
+          final isMatch = (codeKey.isNotEmpty &&
+                  (towerIdKey.contains(codeKey) ||
+                      towerLocKey.contains(codeKey))) ||
+              (nameKey.isNotEmpty &&
+                  (towerIdKey.contains(nameKey) ||
+                      towerLocKey.contains(nameKey)));
 
           if (!isMatch) continue;
 
@@ -1490,7 +1550,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal simpan posisi master: ${saveMasterResult['message']}'),
+            content: Text(
+                'Gagal simpan posisi master: ${saveMasterResult['message']}'),
             backgroundColor: Colors.orange,
           ),
         );
@@ -1504,8 +1565,12 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
         matchedTower = towers.firstWhere((tower) {
           final towerIdKey = _normalizeMasterKey(tower.towerId);
           final towerLocKey = _normalizeMasterKey(tower.location);
-          return (codeKey.isNotEmpty && (towerIdKey.contains(codeKey) || towerLocKey.contains(codeKey))) ||
-              (nameKey.isNotEmpty && (towerIdKey.contains(nameKey) || towerLocKey.contains(nameKey)));
+          return (codeKey.isNotEmpty &&
+                  (towerIdKey.contains(codeKey) ||
+                      towerLocKey.contains(codeKey))) ||
+              (nameKey.isNotEmpty &&
+                  (towerIdKey.contains(nameKey) ||
+                      towerLocKey.contains(nameKey)));
         });
       } catch (_) {
         matchedTower = null;
@@ -1551,16 +1616,30 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF2C3E50),
-      body: Column(
+      body: Stack(
         children: [
-          // Header
-          _buildHeader(context),
-          // Content
-          Expanded(
-            child: _buildContent(context),
+          // LAYER 1: ISI HALAMAN (Paling Belakang)
+          Positioned.fill(
+            child: Column(
+              children: [
+                const SizedBox(height: 50), // Jarak agar tidak tertutup header
+                Expanded(
+                  child: _buildContent(context),
+                ),
+                _buildFooter(),
+              ],
+            ),
           ),
-          // Footer
-          _buildFooter(),
+
+          // LAYER 2: HEADER (Paling Depan)
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: GlobalHeaderBar(
+              currentRoute: '/dashboard',
+            ),
+          ),
         ],
       ),
     );
@@ -1575,6 +1654,9 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           padding: const EdgeInsets.all(8.0),
           child: Column(
             children: [
+              // Mobile: Badges at top
+              _buildNavigationBadges(context, isMobile: true),
+              const SizedBox(height: 16),
               _buildNetworkStatusCard(context),
               const SizedBox(height: 20),
               _buildCCTVMonitoringCard(context),
@@ -1593,12 +1675,15 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       );
     }
 
-    // Desktop layout
+    // Desktop layout with sidebar badges
     return Row(
       children: [
-        // Left Panel
+        // Navigation Sidebar (Fixed badges)
+        _buildNavigationBadges(context, isMobile: false),
+        const SizedBox(width: 12),
+        // Left Panel - Info Cards
         SizedBox(
-          width: 380,
+          width: 340,
           child: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -1616,7 +1701,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
             ),
           ),
         ),
-        const SizedBox(width: 20),
+        const SizedBox(width: 12),
         // Right Panel - Map
         Expanded(
           child: Padding(
@@ -1625,6 +1710,158 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           ),
         ),
       ],
+    );
+  }
+
+  // Build Navigation Badges Sidebar
+  Widget _buildNavigationBadges(BuildContext context,
+      {required bool isMobile}) {
+    final badges = [
+      _BadgeItem(
+        icon: Icons.dashboard,
+        label: 'Dashboard',
+        route: '/dashboard',
+        color: const Color(0xFF1976D2),
+      ),
+      _BadgeItem(
+        icon: Icons.storage,
+        label: 'Tower Mgmt',
+        route: '/tower-management',
+        color: const Color(0xFF607D8B),
+      ),
+      _BadgeItem(
+        icon: Icons.add_circle,
+        label: 'Add Device',
+        route: '/add-device',
+        color: const Color(0xFFFB8C00),
+      ),
+      _BadgeItem(
+        icon: Icons.router,
+        label: 'Network',
+        route: '/network',
+        color: const Color(0xFF546E7A),
+      ),
+      _BadgeItem(
+        icon: Icons.videocam,
+        label: 'CCTV',
+        route: '/cctv',
+        color: const Color(0xFF00897B),
+      ),
+      _BadgeItem(
+        icon: Icons.monitor,
+        label: 'MMT',
+        route: '/mmt-monitoring',
+        color: const Color(0xFF43A047),
+      ),
+      _BadgeItem(
+        icon: Icons.warning,
+        label: 'Alerts',
+        route: '/alerts',
+        color: const Color(0xFFE53935),
+      ),
+      _BadgeItem(
+        icon: Icons.assessment,
+        label: 'Alert Report',
+        route: '/alert-report',
+        color: const Color(0xFF8E24AA),
+      ),
+      _BadgeItem(
+        icon: Icons.settings,
+        label: 'Settings',
+        route: '/profile',
+        color: const Color(0xFF607D8B),
+      ),
+    ];
+
+    if (isMobile) {
+      // Mobile: Horizontal scrollable badges
+      return SizedBox(
+        height: 70,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          itemCount: badges.length,
+          itemBuilder: (context, index) {
+            final badge = badges[index];
+            final isActive = badge.route == '/dashboard';
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: _buildBadgeButton(badge, isActive),
+            );
+          },
+        ),
+      );
+    }
+
+    // Desktop: Vertical sidebar
+    return Container(
+      width: 180,
+      margin: const EdgeInsets.only(left: 16, top: 16, bottom: 16),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: badges.map((badge) {
+            final isActive = badge.route == '/dashboard';
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _buildBadgeButton(badge, isActive),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBadgeButton(_BadgeItem badge, bool isActive) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () {
+          if (badge.route != '/dashboard') {
+            Navigator.pushReplacementNamed(context, badge.route);
+          }
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: isActive ? badge.color : const Color(0xFF0F172A),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isActive ? Colors.white38 : const Color(0xFF334155),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                badge.icon,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  badge.label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -1846,6 +2083,148 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
     );
   }
 
+  Widget _buildMinimalHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFF1A237E).withOpacity(0.9),
+            const Color(0xFF0D47A1).withOpacity(0.9),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.monitor_heart,
+            color: Colors.white,
+            size: 32,
+          ),
+          const SizedBox(width: 12),
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'TPK Nilam Monitoring',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                'Real-time Dashboard',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          // Status indicators
+          _buildHeaderStatusBadge(
+            'Towers',
+            '$totalOnlineTowers/$totalTowers',
+            totalDownTowers > 0 ? Colors.red : Colors.green,
+          ),
+          const SizedBox(width: 12),
+          _buildHeaderStatusBadge(
+            'Cameras',
+            '$totalUpCameras/$totalCameras',
+            totalDownCameras > 0 ? Colors.orange : Colors.green,
+          ),
+          const SizedBox(width: 12),
+          _buildHeaderStatusBadge(
+            'Alerts',
+            '$totalActiveAlerts',
+            totalActiveAlerts > 0 ? Colors.red : Colors.green,
+          ),
+          const SizedBox(width: 16),
+          // Profile button
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ProfilePage()),
+              );
+            },
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: const Icon(
+                Icons.person,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderStatusBadge(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: color.withOpacity(0.5),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Keep old header for reference/backup
   Widget _buildHeader(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
     return Container(
@@ -1868,16 +2247,19 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           // Buttons + Profile - SCROLL HORIZONTAL
           Expanded(
             child: ScrollConfiguration(
-              behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+              behavior:
+                  ScrollConfiguration.of(context).copyWith(scrollbars: false),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildHeaderOpenButton('Add New Device', const AddDevicePage()),
+                    _buildHeaderOpenButton(
+                        'Add New Device', const AddDevicePage()),
                     const SizedBox(width: 12),
-                     _buildHeaderOpenButton('Master Data', const TowerManagementPage()),
+                    _buildHeaderOpenButton(
+                        'Master Data', const TowerManagementPage()),
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('Dashboard', const DashboardPage(),
                         isActive: true),
@@ -1892,14 +2274,16 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('Alert Report', const ReportPage()),
                     const SizedBox(width: 12),
-                    _buildHeaderButton('Logout', () => _showLogoutDialog(context)),
+                    _buildHeaderButton(
+                        'Logout', () => _showLogoutDialog(context)),
                     const SizedBox(width: 12),
                     // Profile Icon
                     GestureDetector(
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const ProfilePage()),
+                          MaterialPageRoute(
+                              builder: (context) => const ProfilePage()),
                         );
                       },
                       child: MouseRegion(
@@ -2160,7 +2544,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                       color: const Color(0xFF1976D2),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.router, color: Colors.white, size: 28),
+                    child:
+                        const Icon(Icons.router, color: Colors.white, size: 28),
                   ),
                   const SizedBox(width: 12),
                   const Expanded(
@@ -2387,7 +2772,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
             color: Colors.red, // Background icon orange
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(Icons.report_problem, color: Colors.white, size: 32),
+          child:
+              const Icon(Icons.report_problem, color: Colors.white, size: 32),
         ),
         const SizedBox(height: 8),
         Text(
@@ -2420,7 +2806,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
     // Add Towers from database
     for (var tower in towers) {
       if (tower.latitude != null && tower.longitude != null) {
-        var pixel = LayoutMapper.latLngToPixel(tower.latitude!, tower.longitude!);
+        var pixel =
+            LayoutMapper.latLngToPixel(tower.latitude!, tower.longitude!);
         markers.add(DeviceMarker(
           id: tower.towerId,
           name: tower.towerId,
@@ -2440,7 +2827,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
     // Add Cameras (CCTV) from database
     for (var camera in cameras) {
       if (camera.latitude != null && camera.longitude != null) {
-        var pixel = LayoutMapper.latLngToPixel(camera.latitude!, camera.longitude!);
+        var pixel =
+            LayoutMapper.latLngToPixel(camera.latitude!, camera.longitude!);
         markers.add(DeviceMarker(
           id: camera.cameraId,
           name: camera.cameraId,
@@ -2499,7 +2887,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
               if (_isPickTowerMode)
                 Container(
                   margin: const EdgeInsets.only(right: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.orange.shade100,
                     borderRadius: BorderRadius.circular(8),
@@ -2507,7 +2896,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                   ),
                   child: Text(
                     'Pick Mode: ${_pickTowerYard ?? 'Pilih area CY'}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                 ),
               ElevatedButton.icon(
@@ -2536,8 +2926,9 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                   _isFreeroamEditMode ? 'Save' : 'Edit',
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      _isFreeroamEditMode ? Colors.orange : const Color(0xFF607D8B),
+                  backgroundColor: _isFreeroamEditMode
+                      ? Colors.orange
+                      : const Color(0xFF607D8B),
                   foregroundColor: Colors.white,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -2591,7 +2982,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
               ),
               clipBehavior: Clip.hardEdge,
               child: TerminalLayoutStatic(
-                devices: addedDevices,
+                devices: _buildLayoutDevices(),
                 towers: towers,
                 masterLocations: masterLocations,
                 isPickMode: _isPickTowerMode,
@@ -2729,7 +3120,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.black87)),
+            child:
+                const Text('Cancel', style: TextStyle(color: Colors.black87)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -2750,4 +3142,19 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       ),
     );
   }
+}
+
+// Helper class for navigation badge items
+class _BadgeItem {
+  final IconData icon;
+  final String label;
+  final String route;
+  final Color color;
+
+  _BadgeItem({
+    required this.icon,
+    required this.label,
+    required this.route,
+    required this.color,
+  });
 }

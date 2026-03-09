@@ -4,6 +4,8 @@ import 'main.dart';
 import 'utils/auth_helper.dart';
 import 'route_proxy_page.dart';
 import 'services/api_service.dart';
+import 'widgets/expandable_fab_nav.dart';
+import 'widgets/global_header_bar.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -73,27 +75,29 @@ class _ProfilePageState extends State<ProfilePage> {
     final isMobile = isMobileScreen(context);
     return Scaffold(
       backgroundColor: const Color(0xFF2C3E50),
-      body: Column(
+      body: Stack(
         children: [
-          // Header
-          _buildHeader(context),
-          // Content
-          Expanded(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: EdgeInsets.all(isMobile ? 8 : 24.0),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                        maxWidth: isMobile ? double.infinity : 800),
-                    child: _buildContent(context),
+          Column(
+            children: [
+              const GlobalHeaderBar(currentRoute: '/profile'),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: EdgeInsets.all(isMobile ? 8 : 24.0),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                            maxWidth: isMobile ? double.infinity : 800),
+                        child: _buildContent(context),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
+              _buildFooter(),
+            ],
           ),
-          // Footer
-          _buildFooter(),
+          const ExpandableFabNav(currentRoute: '/profile'),
         ],
       ),
     );
