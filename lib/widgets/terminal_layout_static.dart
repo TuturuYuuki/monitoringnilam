@@ -487,6 +487,27 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     return null;
   }
 
+  // Check if tower matches ANY master location (TOWER/RTG/RS/CC)
+  Map<String, dynamic>? _findAnyMasterLocationForTower(Tower tower) {
+    final towerIdKey = _normalizeMatchKey(tower.towerId);
+    final locKey = _normalizeMatchKey(tower.location);
+
+    for (final location in widget.masterLocations) {
+      final code = _normalizeMatchKey((location['location_code'] ?? '').toString());
+      final name = _normalizeMatchKey((location['location_name'] ?? '').toString());
+
+      final isMatch =
+          (code.isNotEmpty && (towerIdKey.contains(code) || locKey.contains(code))) ||
+          (name.isNotEmpty && (towerIdKey.contains(name) || locKey.contains(name)));
+
+      if (isMatch) {
+        return location;
+      }
+    }
+
+    return null;
+  }
+
   Map<String, double>? _resolveTowerPosition(Tower tower) {
     final preview = _dragPreview[tower.towerId];
     if (preview != null) {
@@ -809,6 +830,14 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
 
     for (final tower in _uniqueTowersForRender()) {
       if (_isHiddenCy3Tower(tower)) continue;
+      
+      // Skip tower if it matches with non-TOWER master location (RTG/RS/CC)
+      final anyMaster = _findAnyMasterLocationForTower(tower);
+      if (anyMaster != null) {
+        final masterType = (anyMaster['location_type'] ?? '').toString().toUpperCase();
+        if (masterType != 'TOWER') continue;
+      }
+      
       final pos = _resolveTowerPosition(tower);
       if (pos == null) continue;
 
@@ -845,6 +874,14 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     for (final tower in _uniqueTowersForRender()) {
       if (_normalizeAreaId(tower.containerYard) != area.id) continue;
       if (_isHiddenCy3Tower(tower)) continue;
+      
+      // Skip tower if it matches with non-TOWER master location (RTG/RS/CC)
+      final anyMaster = _findAnyMasterLocationForTower(tower);
+      if (anyMaster != null) {
+        final masterType = (anyMaster['location_type'] ?? '').toString().toUpperCase();
+        if (masterType != 'TOWER') continue;
+      }
+      
       final pos = _resolveTowerPosition(tower);
       if (pos == null) continue;
 
@@ -1245,20 +1282,16 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       final baseX = (area.left + cx * area.width) * w;
       final baseY = (area.top + cy * area.height) * h;
       
-      // Apply trigonometric circular offset
+      // Apply trigonometric circular offset.
+      // Single device is also shifted slightly so it does not sit exactly on parent icon.
       final deviceCount = devices.length;
-      final radius = deviceCount > 1 ? 30.0 : 0.0; // offset radius in pixels
+      final radius = deviceCount == 1 ? 18.0 : 30.0;
       
       for (var i = 0; i < deviceCount; i++) {
-        double offsetX = 0;
-        double offsetY = 0;
-        
-        if (deviceCount > 1) {
-          // Circular pattern: 360° / deviceCount
-          final angle = (2 * pi * i) / deviceCount;
-          offsetX = radius * cos(angle);
-          offsetY = radius * sin(angle);
-        }
+        // For a single device, pin it to a fixed angle for consistent UI.
+        final angle = deviceCount == 1 ? -pi / 2 : (2 * pi * i) / deviceCount;
+        final offsetX = radius * cos(angle);
+        final offsetY = radius * sin(angle);
         
         final x = baseX + offsetX;
         final y = baseY + offsetY;
@@ -1419,14 +1452,15 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
         if (kDebugMode) print('✓ Parent found for "$locationName" at ($cx, $cy) → pixel ($baseX, $baseY)');
       }
 
-      // Render devices around base position
+      // Render devices around base position.
+      // Keep behavior consistent with non-zoom mode.
       final count = grouped.length;
-      final radius = count > 1 ? 26.0 : 0.0;
+      final radius = count == 1 ? 18.0 : 30.0;
 
       for (var i = 0; i < count; i++) {
-        final angle = count > 1 ? (2 * pi * i) / count : 0.0;
-        final x = baseX + (count > 1 ? radius * cos(angle) : 0.0);
-        final y = baseY + (count > 1 ? radius * sin(angle) : 0.0);
+        final angle = count == 1 ? -pi / 2 : (2 * pi * i) / count;
+        final x = baseX + radius * cos(angle);
+        final y = baseY + radius * sin(angle);
         if (kDebugMode) print('  → Rendering ${grouped[i].name} at ($x, $y)');
         markers.add(_buildZoomedDeviceMarker(grouped[i], x, y, w, h));
       }
