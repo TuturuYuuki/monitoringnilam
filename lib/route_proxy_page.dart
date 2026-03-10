@@ -20,10 +20,32 @@ class _RouteProxyPageState extends State<RouteProxyPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Minimal scaffold to satisfy OpenContainer openBuilder
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      body: const SizedBox.shrink(),
+    return const Scaffold(
+      backgroundColor: Color(0xFF2C3E50),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 34,
+              height: 34,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1976D2)),
+              ),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'Loading page...',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

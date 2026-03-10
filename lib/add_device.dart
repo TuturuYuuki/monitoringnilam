@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'models/camera_model.dart';
@@ -9,7 +9,7 @@ import 'services/device_storage_service.dart';
 import 'utils/navigation_helper.dart';
 import 'utils/device_icon_resolver.dart';
 import 'widgets/global_header_bar.dart';
-import 'widgets/expandable_fab_nav.dart';
+import 'widgets/global_sidebar_nav.dart';
 
 class AddDevicePage extends StatefulWidget {
   const AddDevicePage({super.key});
@@ -66,7 +66,8 @@ class _AddDevicePageState extends State<AddDevicePage> {
       final map = <String, Map<String, dynamic>>{};
 
       for (final loc in locations) {
-        final locationType = (loc['location_type'] ?? '').toString().toUpperCase();
+        final locationType =
+            (loc['location_type'] ?? '').toString().toUpperCase();
         final locationCode = (loc['location_code'] ?? '').toString();
         final containerYard = (loc['container_yard'] ?? '').toString();
         final locationName = (loc['location_name'] ?? '').toString();
@@ -74,10 +75,12 @@ class _AddDevicePageState extends State<AddDevicePage> {
         final codeOrName = locationCode.isNotEmpty
             ? locationCode
             : (locationName.isNotEmpty ? locationName : 'UNKNOWN');
-        final displayName = locationName.isNotEmpty && locationName != codeOrName
-          ? ' ($locationName)'
-          : '';
-        final label = '$locationType - $codeOrName$displayName - $containerYard';
+        final displayName =
+            locationName.isNotEmpty && locationName != codeOrName
+                ? ' ($locationName)'
+                : '';
+        final label =
+            '$locationType - $codeOrName$displayName - $containerYard';
 
         map[label] = {
           'lat': double.tryParse((loc['latitude'] ?? 0).toString()) ?? 0.0,
@@ -97,7 +100,8 @@ class _AddDevicePageState extends State<AddDevicePage> {
           ..clear()
           ..addEntries(sortedEntries);
         if (_locationData.isNotEmpty) {
-          if (_selectedLocation.isEmpty || !_locationData.containsKey(_selectedLocation)) {
+          if (_selectedLocation.isEmpty ||
+              !_locationData.containsKey(_selectedLocation)) {
             _selectedLocation = _locationData.keys.first;
           }
         } else {
@@ -142,7 +146,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
     });
   }
 
- Future<void> _loadUsedNamesForType() async {
+  Future<void> _loadUsedNamesForType() async {
     if (!mounted) return;
     setState(() {
       _isLoadingUsedNames = true;
@@ -162,7 +166,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
       final names = <String>{};
       if (_selectedDeviceType == 'Access Point') {
         names.addAll(addedDevices
-        .where((d) => d.type == 'Access Point')
+            .where((d) => d.type == 'Access Point')
             .map((d) => d.name));
       } else if (_selectedDeviceType == 'CCTV') {
         names.addAll(cameras.map((c) => c.cameraId));
@@ -216,6 +220,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
       print('Error Loading Used Device Name: $e');
     }
   }
+
   void _showAllUsedNames() {
     if (_usedNamesForType.isEmpty) return;
     showGeneralDialog(
@@ -345,7 +350,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
 
       // Only include local storage devices that don't exist in DB
       // This prevents stale local data from blocking device names
-        final pendingDeviceNames = addedDevices
+      final pendingDeviceNames = addedDevices
           .where((d) => d.type == _selectedDeviceType)
           .where((d) => !dbNames.contains(d.name.toLowerCase()))
           .map((d) => d.name.toLowerCase());
@@ -376,11 +381,13 @@ class _AddDevicePageState extends State<AddDevicePage> {
     if (_nameError != null) {
       return;
     }
-    if (_selectedLocation.isEmpty || !_locationData.containsKey(_selectedLocation)) {
+    if (_selectedLocation.isEmpty ||
+        !_locationData.containsKey(_selectedLocation)) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Lokasi belum tersedia. Tambahkan master tower terlebih dahulu.'),
+          content: Text(
+              'Lokasi belum tersedia. Tambahkan master tower terlebih dahulu.'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -404,7 +411,8 @@ class _AddDevicePageState extends State<AddDevicePage> {
       // Set areaType based on master location type/name for CCTV
       if (_selectedDeviceType == 'CCTV') {
         final locationLower = _selectedLocation.toLowerCase();
-        final locType = (locationInfo?['location_type'] ?? '').toString().toUpperCase();
+        final locType =
+            (locationInfo?['location_type'] ?? '').toString().toUpperCase();
         if (locationLower.contains('gate')) {
           areaType = 'Gate';
         } else if (locationLower.contains('parking')) {
@@ -449,14 +457,16 @@ class _AddDevicePageState extends State<AddDevicePage> {
 
       // Execute API call (non-blocking) - don't await for dialog
       if (_selectedDeviceType == 'Access Point') {
-        print('\nΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ');
-        print('≡ƒÜÇ Creating Access Point (Tower)');
+        print(
+            '\nG??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??');
+        print('=??? Creating Access Point (Tower)');
         print('Device ID: $deviceId');
         print('Location: $_selectedLocation');
         print('IP: $deviceIpAddress');
         print('Container Yard: $containerYard');
-        print('ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ\n');
-        
+        print(
+            'G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??\n');
+
         createFuture = apiService.createTower(
           towerId: deviceId,
           location: _selectedLocation,
@@ -469,15 +479,16 @@ class _AddDevicePageState extends State<AddDevicePage> {
         );
         createFuture.then((result) {
           if (result['success'] == true) {
-            print('Γ£à SUCCESS: Tower created in database');
+            print('G?? SUCCESS: Tower created in database');
             print('Response: $result');
           } else {
-            print('Γ¥î FAILED: ${result['message'] ?? 'Unknown error'}');
+            print('G?? FAILED: ${result['message'] ?? 'Unknown error'}');
             print('Full response: $result');
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('ΓÜá∩╕Å Gagal simpan ke database: ${result['message']}'),
+                  content: Text(
+                      'G??n+? Gagal simpan ke database: ${result['message']}'),
                   backgroundColor: Colors.orange,
                   duration: const Duration(seconds: 5),
                 ),
@@ -485,11 +496,11 @@ class _AddDevicePageState extends State<AddDevicePage> {
             }
           }
         }).catchError((e) {
-          print('Γ¥îΓ¥îΓ¥î EXCEPTION: $e');
+          print('G??G??G?? EXCEPTION: $e');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Γ¥î Error API: $e'),
+                content: Text('G?? Error API: $e'),
                 backgroundColor: Colors.red,
                 duration: const Duration(seconds: 5),
               ),
@@ -497,13 +508,15 @@ class _AddDevicePageState extends State<AddDevicePage> {
           }
         });
       } else if (_selectedDeviceType == 'CCTV') {
-        print('\nΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ');
-        print('≡ƒô╣ Creating CCTV (Camera)');
+        print(
+            '\nG??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??');
+        print('=?? Creating CCTV (Camera)');
         print('Camera ID: $deviceId');
         print('Location: $_selectedLocation');
         print('IP: $deviceIpAddress');
-        print('ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ\n');
-        
+        print(
+            'G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??\n');
+
         createFuture = apiService.createCamera(
           cameraId: deviceId,
           location: _selectedLocation,
@@ -517,13 +530,14 @@ class _AddDevicePageState extends State<AddDevicePage> {
         );
         createFuture.then((result) {
           if (result['success'] == true) {
-            print('Γ£à SUCCESS: Camera created in database');
+            print('G?? SUCCESS: Camera created in database');
           } else {
-            print('Γ¥î FAILED: ${result['message']}');
+            print('G?? FAILED: ${result['message']}');
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('ΓÜá∩╕Å Gagal simpan ke database: ${result['message']}'),
+                  content: Text(
+                      'G??n+? Gagal simpan ke database: ${result['message']}'),
                   backgroundColor: Colors.orange,
                   duration: const Duration(seconds: 5),
                 ),
@@ -531,11 +545,11 @@ class _AddDevicePageState extends State<AddDevicePage> {
             }
           }
         }).catchError((e) {
-          print('Γ¥î EXCEPTION: $e');
+          print('G?? EXCEPTION: $e');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Γ¥î Error API: $e'),
+                content: Text('G?? Error API: $e'),
                 backgroundColor: Colors.red,
                 duration: const Duration(seconds: 5),
               ),
@@ -543,13 +557,15 @@ class _AddDevicePageState extends State<AddDevicePage> {
           }
         });
       } else if (_selectedDeviceType == 'MMT') {
-        print('\nΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ');
-        print('≡ƒôè Creating MMT');
+        print(
+            '\nG??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??');
+        print('=??? Creating MMT');
         print('MMT ID: $deviceId');
         print('Location: $_selectedLocation');
         print('IP: $deviceIpAddress');
-        print('ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ\n');
-        
+        print(
+            'G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??\n');
+
         createFuture = apiService.createMMT(
           mmtId: deviceId,
           location: _selectedLocation,
@@ -561,13 +577,14 @@ class _AddDevicePageState extends State<AddDevicePage> {
         );
         createFuture.then((result) {
           if (result['success'] == true) {
-            print('Γ£à SUCCESS: MMT created in database');
+            print('G?? SUCCESS: MMT created in database');
           } else {
-            print('Γ¥î FAILED: ${result['message']}');
+            print('G?? FAILED: ${result['message']}');
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('ΓÜá∩╕Å Gagal simpan ke database: ${result['message']}'),
+                  content: Text(
+                      'G??n+? Gagal simpan ke database: ${result['message']}'),
                   backgroundColor: Colors.orange,
                   duration: const Duration(seconds: 5),
                 ),
@@ -575,11 +592,11 @@ class _AddDevicePageState extends State<AddDevicePage> {
             }
           }
         }).catchError((e) {
-          print('Γ¥î EXCEPTION: $e');
+          print('G?? EXCEPTION: $e');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Γ¥î Error API: $e'),
+                content: Text('G?? Error API: $e'),
                 backgroundColor: Colors.red,
                 duration: const Duration(seconds: 5),
               ),
@@ -703,7 +720,8 @@ class _AddDevicePageState extends State<AddDevicePage> {
     _formKey.currentState!.reset();
     setState(() {
       _selectedDeviceType = 'Access Point';
-      _selectedLocation = _locationData.isNotEmpty ? _locationData.keys.first : '';
+      _selectedLocation =
+          _locationData.isNotEmpty ? _locationData.keys.first : '';
       _nameController.clear();
       _ipAddressController.clear();
       _nameError = null;
@@ -754,14 +772,16 @@ class _AddDevicePageState extends State<AddDevicePage> {
           const SizedBox(width: 30),
           Expanded(
             child: ScrollConfiguration(
-              behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+              behavior:
+                  ScrollConfiguration.of(context).copyWith(scrollbars: false),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildHeaderOpenButton('Add New Device', '/add-device', isActive: true),
+                    _buildHeaderOpenButton('Add New Device', '/add-device',
+                        isActive: true),
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('Master Data', '/tower-management'),
                     const SizedBox(width: 12),
@@ -777,7 +797,8 @@ class _AddDevicePageState extends State<AddDevicePage> {
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('Alert Report', '/report'),
                     const SizedBox(width: 12),
-                    _buildHeaderButton('Logout', () => _showLogoutDialog(context)),
+                    _buildHeaderButton(
+                        'Logout', () => _showLogoutDialog(context)),
                     const SizedBox(width: 12),
                     // Profile Icon
                     GestureDetector(
@@ -898,7 +919,8 @@ class _AddDevicePageState extends State<AddDevicePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.black87)),
+            child:
+                const Text('Cancel', style: TextStyle(color: Colors.black87)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -930,389 +952,422 @@ class _AddDevicePageState extends State<AddDevicePage> {
             children: [
               const GlobalHeaderBar(currentRoute: '/add-device'),
               Expanded(
-                child: SingleChildScrollView(
-              padding: const EdgeInsets.all(32),
-              child: Center(
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 600),
-                  padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Add New Device',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-
-                        // ===== TIPE DEVICE =====
-                        const Text(
-                          'Device Type',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: Colors.grey[300]!,
-                              width: 1,
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                            color: Colors.grey[50],
-                          ),
-                          child: DropdownButton<String>(
-                            value: _selectedDeviceType,
-                            isExpanded: true,
-                            underline: const SizedBox(),
-                            onChanged: (String? newValue) {
-                              if (newValue != null) {
-                                setState(() {
-                                  _selectedDeviceType = newValue;
-                                  _nameController.clear();
-                                  _nameError = null;
-                                  _isCheckingName = false;
-                                });
-                                _loadUsedNamesForType();
-                              }
-                            },
-                            items: deviceTypes
-                                .map<DropdownMenuItem<String>>((String value) {
-                              return DropdownMenuItem<String>(
-                                value: value,
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      _getDeviceIcon(value),
-                                      color: const Color(0xFF1976D2),
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(value),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // ===== NAMA DEVICE =====
-                        const Text(
-                          'Device Name',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _nameController,
-                          onChanged: _onNameChanged,
-                          decoration: InputDecoration(
-                            hintText: 'Enter Device Name',
-                            helperText:
-                                'Example: ${_getDeviceNameExample(_selectedDeviceType)}',
-                            suffixIcon: _isCheckingName
-                                ? const Padding(
-                                    padding: EdgeInsets.all(12),
-                                    child: SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    ),
-                                  )
-                                : (_nameController.text.isNotEmpty &&
-                                        _nameError == null)
-                                    ? const Icon(
-                                        Icons.check_circle,
-                                        color: Colors.green,
-                                      )
-                                    : null,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.grey[300]!),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.grey[300]!),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(
-                                color: Color(0xFF1976D2),
-                                width: 2,
-                              ),
-                            ),
-                            filled: true,
-                            fillColor: Colors.grey[50],
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Device Name Cannot Be Empty';
-                            }
-                            if (_nameError != null) {
-                              return _nameError;
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 8),
-                        if (_isLoadingUsedNames)
-                          Row(
-                            children: [
-                              const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Loading Used Name For $_selectedDeviceType...',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                            ],
-                          )
-                        else if (_usedNamesForType.isNotEmpty)
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Used Name For $_selectedDeviceType:',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Wrap(
-                                spacing: 6,
-                                runSpacing: 6,
-                                children: [
-                                  ..._usedNamesForType
-                                      .take(10)
-                                      .map((name) => Chip(
-                                            label: Text(
-                                              name,
-                                              style:
-                                                  const TextStyle(fontSize: 11),
-                                            ),
-                                            backgroundColor:
-                                                const Color(0xFFF1F3F4),
-                                          )),
-                                  if (_usedNamesForType.length > 10)
-                                    ActionChip(
-                                      label: Text(
-                                        '+${_usedNamesForType.length - 10} Other',
-                                        style: const TextStyle(fontSize: 11),
-                                      ),
-                                      backgroundColor: const Color(0xFFE0E0E0),
-                                      onPressed: _showAllUsedNames,
-                                    ),
-                                ],
-                              ),
-                            ],
-                          )
-                        else
-                          const Text(
-                            'No Used Device Name Available For This Type.',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.black54,
-                            ),
-                          ),
-                        const SizedBox(height: 24),
-
-                        // ===== IP ADDRESS =====
-                        const Text(
-                          'IP Address',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _ipAddressController,
-                          decoration: InputDecoration(
-                            hintText: 'Entry An IP Address',
-                            helperText:
-                                'Format: xxx.xxx.xxx.xxx (Example: 10.2.71.60)',
-                            prefixIcon: const Icon(Icons.router),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.grey[300]!),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.grey[300]!),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(
-                                color: Color(0xFF1976D2),
-                                width: 2,
-                              ),
-                            ),
-                            filled: true,
-                            fillColor: Colors.grey[50],
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'IP Address Cannot Be Empty';
-                            }
-                            final ipRegex = RegExp(r'^(\d{1,3}\.){3}\d{1,3}$');
-                            if (!ipRegex.hasMatch(value)) {
-                              return 'Invalid IP Address Format';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 24),
-
-                        // ===== LOKASI (DROPDOWN dari Tower Coordinates) =====
-                        const Text(
-                          'Location',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: Colors.grey[300]!,
-                              width: 1,
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                            color: Colors.grey[50],
-                          ),
-                          child: DropdownButton<String>(
-                            value: _locationData.containsKey(_selectedLocation)
-                                ? _selectedLocation
-                                : null,
-                            isExpanded: true,
-                            underline: const SizedBox(),
-                            hint: const Text('Select location from master tower'),
-                            onChanged: (String? newValue) {
-                              if (newValue != null) {
-                                setState(() {
-                                  _selectedLocation = newValue;
-                                });
-                              }
-                            },
-                            items: _locationData.keys
-                                .map<DropdownMenuItem<String>>((String value) {
-                              return DropdownMenuItem<String>(
-                                value: value,
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      _getLocationIcon(value),
-                                      color: const Color(0xFF1976D2),
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(child: Text(value)),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                        if (_isLoadingLocations)
-                          const Padding(
-                            padding: EdgeInsets.only(top: 8),
-                            child: Text(
-                              'Loading locations from unified master data...',
-                              style: TextStyle(fontSize: 12, color: Colors.black54),
-                            ),
-                          ),
-                        const SizedBox(height: 40),
-
-                        // ===== SUBMIT BUTTON =====
-                        SizedBox(
-                          width: double.infinity,
-                          height: 52,
-                          child: ElevatedButton(
-                            onPressed: _submitForm,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF1976D2),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              elevation: 4,
-                            ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.add),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Add New Device',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Sidebar (Kiri)
+                    const GlobalSidebarNav(currentRoute: '/add-device'),
+                    const SizedBox(width: 12),
+                    // Content (Kanan)
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(32),
+                        child: Center(
+                          child: Container(
+                            constraints: const BoxConstraints(maxWidth: 600),
+                            padding: const EdgeInsets.all(32),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
+                            child: Form(
+                              key: _formKey,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Add New Device',
+                                    style: TextStyle(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 32),
+
+                                  // ===== TIPE DEVICE =====
+                                  const Text(
+                                    'Device Type',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: Colors.grey[300]!,
+                                        width: 1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                      color: Colors.grey[50],
+                                    ),
+                                    child: DropdownButton<String>(
+                                      value: _selectedDeviceType,
+                                      isExpanded: true,
+                                      underline: const SizedBox(),
+                                      onChanged: (String? newValue) {
+                                        if (newValue != null) {
+                                          setState(() {
+                                            _selectedDeviceType = newValue;
+                                            _nameController.clear();
+                                            _nameError = null;
+                                            _isCheckingName = false;
+                                          });
+                                          _loadUsedNamesForType();
+                                        }
+                                      },
+                                      items: deviceTypes
+                                          .map<DropdownMenuItem<String>>(
+                                              (String value) {
+                                        return DropdownMenuItem<String>(
+                                          value: value,
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                _getDeviceIcon(value),
+                                                color: const Color(0xFF1976D2),
+                                                size: 20,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(value),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+
+                                  // ===== NAMA DEVICE =====
+                                  const Text(
+                                    'Device Name',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextFormField(
+                                    controller: _nameController,
+                                    onChanged: _onNameChanged,
+                                    decoration: InputDecoration(
+                                      hintText: 'Enter Device Name',
+                                      helperText:
+                                          'Example: ${_getDeviceNameExample(_selectedDeviceType)}',
+                                      suffixIcon: _isCheckingName
+                                          ? const Padding(
+                                              padding: EdgeInsets.all(12),
+                                              child: SizedBox(
+                                                width: 16,
+                                                height: 16,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                ),
+                                              ),
+                                            )
+                                          : (_nameController.text.isNotEmpty &&
+                                                  _nameError == null)
+                                              ? const Icon(
+                                                  Icons.check_circle,
+                                                  color: Colors.green,
+                                                )
+                                              : null,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                            color: Colors.grey[300]!),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                            color: Colors.grey[300]!),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFF1976D2),
+                                          width: 2,
+                                        ),
+                                      ),
+                                      filled: true,
+                                      fillColor: Colors.grey[50],
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 12,
+                                      ),
+                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'Device Name Cannot Be Empty';
+                                      }
+                                      if (_nameError != null) {
+                                        return _nameError;
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 8),
+                                  if (_isLoadingUsedNames)
+                                    Row(
+                                      children: [
+                                        const SizedBox(
+                                          width: 14,
+                                          height: 14,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Loading Used Name For $_selectedDeviceType...',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.black54,
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  else if (_usedNamesForType.isNotEmpty)
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Used Name For $_selectedDeviceType:',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black54,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Wrap(
+                                          spacing: 6,
+                                          runSpacing: 6,
+                                          children: [
+                                            ..._usedNamesForType
+                                                .take(10)
+                                                .map((name) => Chip(
+                                                      label: Text(
+                                                        name,
+                                                        style: const TextStyle(
+                                                            fontSize: 11),
+                                                      ),
+                                                      backgroundColor:
+                                                          const Color(
+                                                              0xFFF1F3F4),
+                                                    )),
+                                            if (_usedNamesForType.length > 10)
+                                              ActionChip(
+                                                label: Text(
+                                                  '+${_usedNamesForType.length - 10} Other',
+                                                  style: const TextStyle(
+                                                      fontSize: 11),
+                                                ),
+                                                backgroundColor:
+                                                    const Color(0xFFE0E0E0),
+                                                onPressed: _showAllUsedNames,
+                                              ),
+                                          ],
+                                        ),
+                                      ],
+                                    )
+                                  else
+                                    const Text(
+                                      'No Used Device Name Available For This Type.',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                  const SizedBox(height: 24),
+
+                                  // ===== IP ADDRESS =====
+                                  const Text(
+                                    'IP Address',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextFormField(
+                                    controller: _ipAddressController,
+                                    decoration: InputDecoration(
+                                      hintText: 'Entry An IP Address',
+                                      helperText:
+                                          'Format: xxx.xxx.xxx.xxx (Example: 10.2.71.60)',
+                                      prefixIcon: const Icon(Icons.router),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                            color: Colors.grey[300]!),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                            color: Colors.grey[300]!),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFF1976D2),
+                                          width: 2,
+                                        ),
+                                      ),
+                                      filled: true,
+                                      fillColor: Colors.grey[50],
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 12,
+                                      ),
+                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'IP Address Cannot Be Empty';
+                                      }
+                                      final ipRegex =
+                                          RegExp(r'^(\d{1,3}\.){3}\d{1,3}$');
+                                      if (!ipRegex.hasMatch(value)) {
+                                        return 'Invalid IP Address Format';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 24),
+
+                                  // ===== LOKASI (DROPDOWN dari Tower Coordinates) =====
+                                  const Text(
+                                    'Location',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: Colors.grey[300]!,
+                                        width: 1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                      color: Colors.grey[50],
+                                    ),
+                                    child: DropdownButton<String>(
+                                      value: _locationData
+                                              .containsKey(_selectedLocation)
+                                          ? _selectedLocation
+                                          : null,
+                                      isExpanded: true,
+                                      underline: const SizedBox(),
+                                      hint: const Text(
+                                          'Select location from master tower'),
+                                      onChanged: (String? newValue) {
+                                        if (newValue != null) {
+                                          setState(() {
+                                            _selectedLocation = newValue;
+                                          });
+                                        }
+                                      },
+                                      items: _locationData.keys
+                                          .map<DropdownMenuItem<String>>(
+                                              (String value) {
+                                        return DropdownMenuItem<String>(
+                                          value: value,
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                _getLocationIcon(value),
+                                                color: const Color(0xFF1976D2),
+                                                size: 20,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(child: Text(value)),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                  if (_isLoadingLocations)
+                                    const Padding(
+                                      padding: EdgeInsets.only(top: 8),
+                                      child: Text(
+                                        'Loading locations from unified master data...',
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.black54),
+                                      ),
+                                    ),
+                                  const SizedBox(height: 40),
+
+                                  // ===== SUBMIT BUTTON =====
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 52,
+                                    child: ElevatedButton(
+                                      onPressed: _submitForm,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            const Color(0xFF1976D2),
+                                        foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        elevation: 4,
+                                      ),
+                                      child: const Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.add),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Add New Device',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
-            ),
-          ),
             ],
           ),
-          const ExpandableFabNav(currentRoute: '/add-device'),
         ],
       ),
     );

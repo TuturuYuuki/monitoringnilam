@@ -94,8 +94,11 @@ class TerminalLayoutStatic extends StatefulWidget {
   final List<StaticTowerPoint> towerPoints;
   final List<Map<String, dynamic>> masterLocations;
   final Function(AddedDevice)? onDeviceTap;
-  final Function(String towerId, double latitude, double longitude)? onTowerMoved;
-  final Function(Map<String, dynamic> master, double latitude, double longitude)? onMasterMoved;
+  final Function(String towerId, double latitude, double longitude)?
+      onTowerMoved;
+  final Function(
+          Map<String, dynamic> master, double latitude, double longitude)?
+      onMasterMoved;
   final bool isFreeroamEditEnabled;
   final bool isPickMode;
   final String? pickYardFilter;
@@ -126,8 +129,8 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
   String? _zoomedAreaId;
   Tower? _selectedTower;
   final List<AddedDevice> _devicesAtTower = [];
-  double? _pickedCx;  // ← For precise position picking
-  double? _pickedCy;  // ← For precise position picking
+  double? _pickedCx; // ← For precise position picking
+  double? _pickedCy; // ← For precise position picking
   final Map<String, Offset> _dragPreview = {};
   final Map<String, Offset> _masterDragPreview = {};
 
@@ -137,51 +140,50 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
   // cy (0.0 - 1.0): 0.0=Atas, 1.0=Bawah
   // ─────────────────────────────────────────────────────────────
   static const Map<String, Map<String, double>> _towerPos = {
-
     // ── CY1 (Container Yard 1) ───────────────────────────────
     // Tower 7-15 only (T1-T3 belong to CY2, T4-T6 reserved for future)
     // KIRI PINGGIR (T11, T12A)
-    'Tower 11 - CY1':  {'cx': 0.06, 'cy': 0.30},
+    'Tower 11 - CY1': {'cx': 0.06, 'cy': 0.30},
     'Tower 12A - CY1': {'cx': 0.06, 'cy': 0.70},
-    
+
     // KIRI AGAK TENGAH (T10, T12)
-    'Tower 10 - CY1':  {'cx': 0.25, 'cy': 0.30},
-    'Tower 12 - CY1':  {'cx': 0.25, 'cy': 0.70},
-    
+    'Tower 10 - CY1': {'cx': 0.25, 'cy': 0.30},
+    'Tower 12 - CY1': {'cx': 0.25, 'cy': 0.70},
+
     // BAWAH TENGAH (T13, T14)
-    'Tower 13 - CY1':  {'cx': 0.42, 'cy': 0.85},
-    'Tower 14 - CY1':  {'cx': 0.58, 'cy': 0.85},
-    
+    'Tower 13 - CY1': {'cx': 0.42, 'cy': 0.85},
+    'Tower 14 - CY1': {'cx': 0.58, 'cy': 0.85},
+
     // KANAN AGAK TENGAH (T15, T9)
-    'Tower 9 - CY1':   {'cx': 0.75, 'cy': 0.30},
-    'Tower 15 - CY1':  {'cx': 0.75, 'cy': 0.70},
-    
+    'Tower 9 - CY1': {'cx': 0.75, 'cy': 0.30},
+    'Tower 15 - CY1': {'cx': 0.75, 'cy': 0.70},
+
     // KANAN PINGGIR (T7, T8)
-    'Tower 7 - CY1':   {'cx': 0.94, 'cy': 0.30},
-    'Tower 8 - CY1':   {'cx': 0.94, 'cy': 0.70},
-    
+    'Tower 7 - CY1': {'cx': 0.94, 'cy': 0.30},
+    'Tower 8 - CY1': {'cx': 0.94, 'cy': 0.70},
+
     // ── CY2 (Container Yard 2) ───────────────────────────────
     // Tower 1-6 (all towers in CY2)
-    'Tower 1 - CY2':   {'cx': 0.94, 'cy': 0.65},
-    'Tower 2 - CY2':   {'cx': 0.94, 'cy': 0.25},
-    'Tower 3 - CY2':   {'cx': 0.46, 'cy': 0.06},
-    'Tower 4 - CY2':   {'cx': 0.04, 'cy': 0.28},
-    'Tower 5 - CY2':   {'cx': 0.04, 'cy': 0.68},
-    'Tower 6 - CY2':   {'cx': 0.46, 'cy': 0.90},
+    'Tower 1 - CY2': {'cx': 0.94, 'cy': 0.65},
+    'Tower 2 - CY2': {'cx': 0.94, 'cy': 0.25},
+    'Tower 3 - CY2': {'cx': 0.46, 'cy': 0.06},
+    'Tower 4 - CY2': {'cx': 0.04, 'cy': 0.28},
+    'Tower 5 - CY2': {'cx': 0.04, 'cy': 0.68},
+    'Tower 6 - CY2': {'cx': 0.46, 'cy': 0.90},
 
     // ── CY3 (Container Yard 3) ───────────────────────────────
     // Tower 16-26 (T1-T3 are hidden/not rendered)
-    'Tower 16 - CY3':  {'cx': 0.40, 'cy': 0.06},
-    'Tower 17 - CY3':  {'cx': 0.60, 'cy': 0.06},
-    'Tower 18 - CY3':  {'cx': 0.92, 'cy': 0.24},
-    'Tower 19 - CY3':  {'cx': 0.92, 'cy': 0.48},
-    'Tower 20 - CY3':  {'cx': 0.92, 'cy': 0.72},
-    'Tower 21 - CY3':  {'cx': 0.38, 'cy': 0.88},
-    'Tower 22 - CY3':  {'cx': 0.52, 'cy': 0.88},
-    'Tower 23 - CY3':  {'cx': 0.66, 'cy': 0.88},
-    'Tower 24 - CY3':  {'cx': 0.08, 'cy': 0.24},
-    'Tower 25 - CY3':  {'cx': 0.08, 'cy': 0.48},
-    'Tower 26 - CY3':  {'cx': 0.08, 'cy': 0.72},
+    'Tower 16 - CY3': {'cx': 0.40, 'cy': 0.06},
+    'Tower 17 - CY3': {'cx': 0.60, 'cy': 0.06},
+    'Tower 18 - CY3': {'cx': 0.92, 'cy': 0.24},
+    'Tower 19 - CY3': {'cx': 0.92, 'cy': 0.48},
+    'Tower 20 - CY3': {'cx': 0.92, 'cy': 0.72},
+    'Tower 21 - CY3': {'cx': 0.38, 'cy': 0.88},
+    'Tower 22 - CY3': {'cx': 0.52, 'cy': 0.88},
+    'Tower 23 - CY3': {'cx': 0.66, 'cy': 0.88},
+    'Tower 24 - CY3': {'cx': 0.08, 'cy': 0.24},
+    'Tower 25 - CY3': {'cx': 0.08, 'cy': 0.48},
+    'Tower 26 - CY3': {'cx': 0.08, 'cy': 0.72},
   };
 
   @override
@@ -208,34 +210,54 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
   void _initializeLayout() {
     areas = [
       ContainerYardArea(
-        id: 'CY1', label: 'CY 1',
+        id: 'CY1',
+        label: 'CY 1',
         bgColor: const Color(0xFFF5DEB3).withOpacity(0.7),
         borderColor: const Color(0xFFD2B48C),
-        left: 0.02, top: 0.04, width: 0.56, height: 0.44,
+        left: 0.02,
+        top: 0.04,
+        width: 0.56,
+        height: 0.44,
       ),
       ContainerYardArea(
-        id: 'CY2', label: 'CY 2',
+        id: 'CY2',
+        label: 'CY 2',
         bgColor: const Color(0xFFC8E6C9).withOpacity(0.7),
         borderColor: const Color(0xFF66BB6A),
-        left: 0.60, top: 0.04, width: 0.38, height: 0.44,
+        left: 0.60,
+        top: 0.04,
+        width: 0.38,
+        height: 0.44,
       ),
       ContainerYardArea(
-        id: 'PARKING', label: 'PARKING AREA',
+        id: 'PARKING',
+        label: 'PARKING AREA',
         bgColor: const Color(0xFFBBDEFB).withOpacity(0.7),
         borderColor: const Color(0xFF2196F3),
-        left: 0.60, top: 0.52, width: 0.18, height: 0.44,
+        left: 0.60,
+        top: 0.52,
+        width: 0.18,
+        height: 0.44,
       ),
       ContainerYardArea(
-        id: 'CY3', label: 'CY 3',
+        id: 'CY3',
+        label: 'CY 3',
         bgColor: const Color(0xFFF8BBBB).withOpacity(0.7),
         borderColor: const Color(0xFFE57373),
-        left: 0.02, top: 0.52, width: 0.56, height: 0.44,
+        left: 0.02,
+        top: 0.52,
+        width: 0.56,
+        height: 0.44,
       ),
       ContainerYardArea(
-        id: 'GATE', label: 'GATE IN/OUT',
+        id: 'GATE',
+        label: 'GATE IN/OUT',
         bgColor: const Color(0xFFFFF9C4).withOpacity(0.7),
         borderColor: const Color(0xFFFBC02D),
-        left: 0.80, top: 0.52, width: 0.18, height: 0.44,
+        left: 0.80,
+        top: 0.52,
+        width: 0.18,
+        height: 0.44,
       ),
     ];
   }
@@ -297,17 +319,20 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                 final areaTop = area.top * h;
                 final areaWidth = area.width * w;
                 final areaHeight = area.height * h;
-                
+
                 // Local position relative to area
-                final relX = (details.localPosition.dx / areaWidth).clamp(0.0, 1.0);
-                final relY = (details.localPosition.dy / areaHeight).clamp(0.0, 1.0);
-                
+                final relX =
+                    (details.localPosition.dx / areaWidth).clamp(0.0, 1.0);
+                final relY =
+                    (details.localPosition.dy / areaHeight).clamp(0.0, 1.0);
+
                 // Store picked position for tower update
                 _pickedCx = relX;
                 _pickedCy = relY;
-                
-                print('✓ Precise pick: Area=${area.id} RelPos=(${relX.toStringAsFixed(3)}, ${relY.toStringAsFixed(3)})');
-                
+
+                print(
+                    '✓ Precise pick: Area=${area.id} RelPos=(${relX.toStringAsFixed(3)}, ${relY.toStringAsFixed(3)})');
+
                 widget.onAreaPicked!(area.id, relX, relY);
               }
               return;
@@ -323,7 +348,9 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                   : area.bgColor,
               border: Border.all(
                 color: widget.isPickMode
-                    ? (canPickThisArea ? const Color(0xFF1976D2) : Colors.grey.shade500)
+                    ? (canPickThisArea
+                        ? const Color(0xFF1976D2)
+                        : Colors.grey.shade500)
                     : area.borderColor,
                 width: widget.isPickMode ? 3 : 2.5,
               ),
@@ -346,7 +373,9 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                   ),
                   Icon(
                     widget.isPickMode
-                        ? (canPickThisArea ? Icons.check_circle_outline : Icons.block)
+                        ? (canPickThisArea
+                            ? Icons.check_circle_outline
+                            : Icons.block)
                         : Icons.zoom_in,
                     size: 16,
                     color: Colors.black54,
@@ -362,8 +391,10 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
 
   // ─── Zoomed area ─────────────────────────────────────────────
   Widget _buildZoomedArea(double w, double h, String areaId) {
-    final area = areas.firstWhere((a) => a.id == areaId, orElse: () => areas.first);
-    final devicesInArea = widget.devices.where((d) => _findTargetArea(d).id == area.id).toList();
+    final area =
+        areas.firstWhere((a) => a.id == areaId, orElse: () => areas.first);
+    final devicesInArea =
+        widget.devices.where((d) => _findTargetArea(d).id == area.id).toList();
 
     if (kDebugMode) {
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -377,8 +408,10 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     }
 
     return Positioned(
-      left: 10, top: 10,
-      width: w - 20, height: h - 20,
+      left: 10,
+      top: 10,
+      width: w - 20,
+      height: h - 20,
       child: GestureDetector(
         onTapDown: (details) {
           if (widget.isPickMode && widget.onAreaPicked != null) {
@@ -398,15 +431,25 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
           child: Stack(
             children: [
               Positioned(
-                top: 10, left: 12,
+                top: 10,
+                left: 12,
                 child: Text(area.label,
-                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Colors.black54)),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                        color: Colors.black54)),
               ),
               Positioned(
-                top: 12, right: 12,
+                top: 12,
+                right: 12,
                 child: Text(
-                  widget.isPickMode ? 'Tap untuk pilih posisi tower' : 'Tap Area For Zoom Out',
-                  style: TextStyle(fontSize: 11, color: Colors.black.withOpacity(0.55), fontWeight: FontWeight.w600)),
+                    widget.isPickMode
+                        ? 'Tap untuk pilih posisi tower'
+                        : 'Tap Area For Zoom Out',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.black.withOpacity(0.55),
+                        fontWeight: FontWeight.w600)),
               ),
               ..._buildZoomedMasterLocationMarkers(area, w - 20, h - 20),
               ..._buildZoomedTowerMarkers(area, w - 20, h - 20),
@@ -417,14 +460,16 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
               if (kDebugMode)
                 ...() {
                   final missing = widget.towers
-                      .where((t) => _normalizeAreaId(t.containerYard) == area.id)
+                      .where(
+                          (t) => _normalizeAreaId(t.containerYard) == area.id)
                       .where((t) => !_isHiddenCy3Tower(t))
                       .where((t) => _resolveTowerPosition(t) == null)
                       .toList();
                   return missing.asMap().entries.map((e) {
                     final t = e.value;
                     return Positioned(
-                      bottom: 8.0 + (e.key * 50.0), left: 8,
+                      bottom: 8.0 + (e.key * 50.0),
+                      left: 8,
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
@@ -436,11 +481,23 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text('❌ NO POSITION', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                            Text('location: "${t.location}"',   style: const TextStyle(color: Colors.yellow, fontSize: 9)),
-                            Text('towerId:  "${t.towerId}"',    style: const TextStyle(color: Colors.yellow, fontSize: 9)),
-                            Text('number:   ${t.towerNumber}',  style: const TextStyle(color: Colors.yellow, fontSize: 9)),
-                            Text('cy:       "${t.containerYard}"', style: const TextStyle(color: Colors.yellow, fontSize: 9)),
+                            const Text('❌ NO POSITION',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold)),
+                            Text('location: "${t.location}"',
+                                style: const TextStyle(
+                                    color: Colors.yellow, fontSize: 9)),
+                            Text('towerId:  "${t.towerId}"',
+                                style: const TextStyle(
+                                    color: Colors.yellow, fontSize: 9)),
+                            Text('number:   ${t.towerNumber}',
+                                style: const TextStyle(
+                                    color: Colors.yellow, fontSize: 9)),
+                            Text('cy:       "${t.containerYard}"',
+                                style: const TextStyle(
+                                    color: Colors.yellow, fontSize: 9)),
                           ],
                         ),
                       ),
@@ -472,12 +529,15 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       final type = (location['location_type'] ?? '').toString().toUpperCase();
       if (type != 'TOWER') continue;
 
-      final code = _normalizeMatchKey((location['location_code'] ?? '').toString());
-      final name = _normalizeMatchKey((location['location_name'] ?? '').toString());
+      final code =
+          _normalizeMatchKey((location['location_code'] ?? '').toString());
+      final name =
+          _normalizeMatchKey((location['location_name'] ?? '').toString());
 
-      final isMatch =
-          (code.isNotEmpty && (towerIdKey.contains(code) || locKey.contains(code))) ||
-          (name.isNotEmpty && (towerIdKey.contains(name) || locKey.contains(name)));
+      final isMatch = (code.isNotEmpty &&
+              (towerIdKey.contains(code) || locKey.contains(code))) ||
+          (name.isNotEmpty &&
+              (towerIdKey.contains(name) || locKey.contains(name)));
 
       if (isMatch) {
         return location;
@@ -493,12 +553,15 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     final locKey = _normalizeMatchKey(tower.location);
 
     for (final location in widget.masterLocations) {
-      final code = _normalizeMatchKey((location['location_code'] ?? '').toString());
-      final name = _normalizeMatchKey((location['location_name'] ?? '').toString());
+      final code =
+          _normalizeMatchKey((location['location_code'] ?? '').toString());
+      final name =
+          _normalizeMatchKey((location['location_name'] ?? '').toString());
 
-      final isMatch =
-          (code.isNotEmpty && (towerIdKey.contains(code) || locKey.contains(code))) ||
-          (name.isNotEmpty && (towerIdKey.contains(name) || locKey.contains(name)));
+      final isMatch = (code.isNotEmpty &&
+              (towerIdKey.contains(code) || locKey.contains(code))) ||
+          (name.isNotEmpty &&
+              (towerIdKey.contains(name) || locKey.contains(name)));
 
       if (isMatch) {
         return location;
@@ -530,7 +593,8 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     }
 
     // Gunakan hanya koordinat relatif 0..1 dari input user/pick mode.
-    if (_isRelativeCoordinate(tower.latitude) && _isRelativeCoordinate(tower.longitude)) {
+    if (_isRelativeCoordinate(tower.latitude) &&
+        _isRelativeCoordinate(tower.longitude)) {
       return {
         'cx': tower.latitude!,
         'cy': tower.longitude!,
@@ -540,7 +604,10 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
   }
 
   bool _isDraggableMasterType(String locType) {
-    return locType == 'TOWER' || locType == 'RTG' || locType == 'RS' || locType == 'CC';
+    return locType == 'TOWER' ||
+        locType == 'RTG' ||
+        locType == 'RS' ||
+        locType == 'CC';
   }
 
   String _masterPreviewKey(Map<String, dynamic> location) {
@@ -561,8 +628,10 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       return Offset(preview.dx.clamp(0.0, 1.0), preview.dy.clamp(0.0, 1.0));
     }
 
-    final lat = double.tryParse((location['latitude'] ?? '0').toString()) ?? 0.0;
-    final lng = double.tryParse((location['longitude'] ?? '0').toString()) ?? 0.0;
+    final lat =
+        double.tryParse((location['latitude'] ?? '0').toString()) ?? 0.0;
+    final lng =
+        double.tryParse((location['longitude'] ?? '0').toString()) ?? 0.0;
     if (!_isRelativeCoordinate(lat) || !_isRelativeCoordinate(lng)) {
       return null;
     }
@@ -572,9 +641,15 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
   // ─── Tower label helpers ─────────────────────────────────────
   String _extractTowerCode(Tower tower) {
     if (tower.towerNumber > 0) return tower.towerNumber.toString();
-    final idMatch = RegExp(r'(\d+[A-Z]?)', caseSensitive: false).firstMatch(tower.towerId)?.group(1)?.toUpperCase();
+    final idMatch = RegExp(r'(\d+[A-Z]?)', caseSensitive: false)
+        .firstMatch(tower.towerId)
+        ?.group(1)
+        ?.toUpperCase();
     if (idMatch != null && idMatch.isNotEmpty) return idMatch;
-    final locMatch = RegExp(r'TOWER\s*(\d+[A-Z]?)', caseSensitive: false).firstMatch(tower.location)?.group(1)?.toUpperCase();
+    final locMatch = RegExp(r'TOWER\s*(\d+[A-Z]?)', caseSensitive: false)
+        .firstMatch(tower.location)
+        ?.group(1)
+        ?.toUpperCase();
     if (locMatch != null && locMatch.isNotEmpty) return locMatch;
     return '';
   }
@@ -631,8 +706,10 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
 
   List<AddedDevice> _devicesForMasterLocation(Map<String, dynamic> location) {
     final locType = (location['location_type'] ?? '').toString().toUpperCase();
-    final codeKey = _normalizeMatchKey((location['location_code'] ?? '').toString());
-    final nameKey = _normalizeMatchKey((location['location_name'] ?? '').toString());
+    final codeKey =
+        _normalizeMatchKey((location['location_code'] ?? '').toString());
+    final nameKey =
+        _normalizeMatchKey((location['location_name'] ?? '').toString());
 
     // Debug logging for RTG matching
     if (kDebugMode && locType == 'RTG') {
@@ -649,8 +726,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       for (final tower in widget.towers) {
         final towerIdKey = _normalizeMatchKey(tower.towerId);
         final towerLocKey = _normalizeMatchKey(tower.location);
-        final isRelated =
-            _isKeyRelated(towerIdKey, codeKey) ||
+        final isRelated = _isKeyRelated(towerIdKey, codeKey) ||
             _isKeyRelated(towerLocKey, codeKey) ||
             _isKeyRelated(towerIdKey, nameKey) ||
             _isKeyRelated(towerLocKey, nameKey);
@@ -673,45 +749,62 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     final matches = widget.devices.where((device) {
       final deviceLocKey = _normalizeMatchKey(device.locationName);
       final typeKey = _normalizeMatchKey(device.type);
-      
+
       // Match by exact location
       final locationMatch = _isKeyRelated(deviceLocKey, codeKey) ||
           _isKeyRelated(deviceLocKey, nameKey);
-      
+
       // Also check if device type contains the location type (e.g., CCTV at RTG02)
-      final typeMatch = typeKey.contains(locType) && 
-                        (deviceLocKey.contains(codeKey) || codeKey.contains(deviceLocKey));
-      
+      final typeMatch = typeKey.contains(locType) &&
+          (deviceLocKey.contains(codeKey) || codeKey.contains(deviceLocKey));
+
       return locationMatch || typeMatch;
     }).toList(growable: false);
-    
+
     if (kDebugMode && locType == 'RTG') {
-      debugPrint('[RTG MATCH DEBUG] Found ${matches.length} devices for $nameKey');
+      debugPrint(
+          '[RTG MATCH DEBUG] Found ${matches.length} devices for $nameKey');
     }
-    
+
     return matches;
   }
 
   // ─── Tower color ─────────────────────────────────────────────
   Color _resolveTowerColor(List<AddedDevice> devicesHere) {
     if (devicesHere.isEmpty) return const Color(0xFF78909C);
-    if (devicesHere.every((d) => d.status.toUpperCase() == 'UP')) return Colors.green;
-    if (devicesHere.every((d) => d.status.toUpperCase() == 'DOWN')) return Colors.red;
+    if (devicesHere.every((d) => d.status.toUpperCase() == 'UP')) {
+      return Colors.green;
+    }
+    if (devicesHere.every((d) => d.status.toUpperCase() == 'DOWN')) {
+      return Colors.red;
+    }
     return Colors.orange;
   }
 
   // ─── Badge ───────────────────────────────────────────────────
-  Widget _buildTowerCountBadge(int count, {required bool zoomed}) {
+  Widget _buildTowerStatusDot(List<AddedDevice> devices,
+      {required bool zoomed}) {
+    // Determine status: red if any device is down, green if all up
+    final hasDownDevice = devices.any((d) => d.status.toUpperCase() != 'UP');
+    final statusColor = hasDownDevice ? Colors.red : Colors.green;
+
+    final dotSize = zoomed ? 14.0 : 10.0;
+
     return Container(
-      padding: EdgeInsets.all(zoomed ? 3.0 : 2.0),
+      width: dotSize,
+      height: dotSize,
       decoration: BoxDecoration(
-        color: Colors.red,
+        color: statusColor,
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: zoomed ? 1.5 : 1.0),
-        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: zoomed ? 4.0 : 3.0)],
+        border: Border.all(color: Colors.white, width: zoomed ? 1.2 : 1.0),
+        boxShadow: [
+          BoxShadow(
+            color: statusColor.withOpacity(0.5),
+            blurRadius: zoomed ? 4.0 : 3.0,
+            spreadRadius: 0.5,
+          )
+        ],
       ),
-      child: Text('$count',
-        style: TextStyle(color: Colors.white, fontSize: zoomed ? 9.0 : 8.0, fontWeight: FontWeight.bold)),
     );
   }
 
@@ -722,6 +815,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     required bool zoomed,
   }) {
     final color = _resolveTowerColor(devicesHere);
+    final showDot = devicesHere.isNotEmpty;
     final size = zoomed ? 52.0 : 36.0;
     final padding = zoomed ? 7.0 : 5.0;
     final iconSize = zoomed ? 20.0 : 14.0;
@@ -742,39 +836,54 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
               alignment: Alignment.center,
               children: [
                 Container(
-                  width: size, height: size,
+                  width: size,
+                  height: size,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
-                      begin: Alignment.topLeft, end: Alignment.bottomRight,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                       colors: [color, color.withOpacity(0.8)],
                     ),
-                    border: Border.all(color: Colors.white, width: zoomed ? 2.5 : 2.0),
-                    boxShadow: [BoxShadow(color: color.withOpacity(zoomed ? 0.6 : 0.5),
-                        blurRadius: zoomed ? 10 : 6, spreadRadius: zoomed ? 2 : 1)],
+                    border: Border.all(
+                        color: Colors.white, width: zoomed ? 2.5 : 2.0),
+                    boxShadow: [
+                      BoxShadow(
+                          color: color.withOpacity(zoomed ? 0.6 : 0.5),
+                          blurRadius: zoomed ? 10 : 6,
+                          spreadRadius: zoomed ? 2 : 1)
+                    ],
                   ),
                   child: Padding(
                     padding: EdgeInsets.all(padding),
-                    child: Icon(Icons.place, size: iconSize, color: Colors.white),
+                    child: Icon(DeviceIconResolver.iconForType('TOWER'),
+                        size: iconSize, color: Colors.white),
                   ),
                 ),
-                if (devicesHere.isNotEmpty)
+               if (devicesHere.isNotEmpty)
                   Positioned(
-                    right: badgeOffset, top: badgeOffset,
-                    child: _buildTowerCountBadge(devicesHere.length, zoomed: zoomed),
+                    right: zoomed ? -3.0 : -2.0,  // ← pojok KANAN
+                    top: zoomed ? -3.0 : -2.0,    // ← pojok ATAS
+                    child: _buildTowerStatusDot(devicesHere, zoomed: zoomed),
                   ),
               ],
             ),
             SizedBox(height: zoomed ? 4 : 2),
             Container(
-              padding: EdgeInsets.symmetric(horizontal: labelPadH, vertical: labelPadV),
+              padding: EdgeInsets.symmetric(
+                  horizontal: labelPadH, vertical: labelPadV),
               decoration: BoxDecoration(
                 color: color,
                 borderRadius: BorderRadius.circular(zoomed ? 4 : 3),
               ),
-              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white, fontSize: 8,
-                    fontWeight: FontWeight.bold, height: 1)),
+              child: Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                      height: 1)),
             ),
           ],
         ),
@@ -812,10 +921,12 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                   const Color(0xFF607D8B).withOpacity(0.85),
                 ],
               ),
-              border: Border.all(color: Colors.white, width: zoomed ? 2.5 : 2.0),
+              border:
+                  Border.all(color: Colors.white, width: zoomed ? 2.5 : 2.0),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF607D8B).withOpacity(zoomed ? 0.55 : 0.45),
+                  color:
+                      const Color(0xFF607D8B).withOpacity(zoomed ? 0.55 : 0.45),
                   blurRadius: zoomed ? 10 : 6,
                   spreadRadius: zoomed ? 2 : 1,
                 )
@@ -823,12 +934,14 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
             ),
             child: Padding(
               padding: EdgeInsets.all(padding),
-              child: Icon(Icons.place, size: iconSize, color: Colors.white),
+              child: Icon(DeviceIconResolver.iconForType('TOWER'),
+                  size: iconSize, color: Colors.white),
             ),
           ),
           SizedBox(height: zoomed ? 4 : 2),
           Container(
-            padding: EdgeInsets.symmetric(horizontal: labelPadH, vertical: labelPadV),
+            padding: EdgeInsets.symmetric(
+                horizontal: labelPadH, vertical: labelPadV),
             decoration: BoxDecoration(
               color: Colors.black.withOpacity(zoomed ? 0.75 : 0.7),
               borderRadius: BorderRadius.circular(zoomed ? 4 : 3),
@@ -856,14 +969,15 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
 
     for (final tower in _uniqueTowersForRender()) {
       if (_isHiddenCy3Tower(tower)) continue;
-      
+
       // Skip tower if it matches with non-TOWER master location (RTG/RS/CC)
       final anyMaster = _findAnyMasterLocationForTower(tower);
       if (anyMaster != null) {
-        final masterType = (anyMaster['location_type'] ?? '').toString().toUpperCase();
+        final masterType =
+            (anyMaster['location_type'] ?? '').toString().toUpperCase();
         if (masterType != 'TOWER') continue;
       }
-      
+
       final pos = _resolveTowerPosition(tower);
       if (pos == null) continue;
 
@@ -871,21 +985,29 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       ContainerYardArea area;
       try {
         area = areas.firstWhere((a) => a.id == areaId);
-      } catch (_) { continue; }
+      } catch (_) {
+        continue;
+      }
 
       final devicesHere = _devicesForTower(tower);
       final x = (area.left + pos['cx']! * area.width) * w;
-      final y = (area.top  + pos['cy']! * area.height) * h;
+      final y = (area.top + pos['cy']! * area.height) * h;
 
       const markerW = 46.0, markerH = 52.0;
-      final left = (x - 23).clamp(area.left * w + 2, (area.left + area.width) * w - markerW - 2);
-      final top  = (y - 26).clamp(area.top  * h + 2, (area.top  + area.height) * h - markerH - 2);
+      final left = (x - 23)
+          .clamp(area.left * w + 2, (area.left + area.width) * w - markerW - 2);
+      final top = (y - 26)
+          .clamp(area.top * h + 2, (area.top + area.height) * h - markerH - 2);
 
       markers.add(Positioned(
-        left: left, top: top, width: markerW, height: markerH,
+        left: left,
+        top: top,
+        width: markerW,
+        height: markerH,
         child: MouseRegion(
           cursor: SystemMouseCursors.click,
-          child: _buildTowerMarkerWidget(tower: tower, devicesHere: devicesHere, zoomed: false),
+          child: _buildTowerMarkerWidget(
+              tower: tower, devicesHere: devicesHere, zoomed: false),
         ),
       ));
     }
@@ -894,20 +1016,22 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
   }
 
   // ─── Zoomed tower markers ─────────────────────────────────────
-  List<Widget> _buildZoomedTowerMarkers(ContainerYardArea area, double w, double h) {
+  List<Widget> _buildZoomedTowerMarkers(
+      ContainerYardArea area, double w, double h) {
     final markers = <Widget>[];
 
     for (final tower in _uniqueTowersForRender()) {
       if (_normalizeAreaId(tower.containerYard) != area.id) continue;
       if (_isHiddenCy3Tower(tower)) continue;
-      
+
       // Skip tower if it matches with non-TOWER master location (RTG/RS/CC)
       final anyMaster = _findAnyMasterLocationForTower(tower);
       if (anyMaster != null) {
-        final masterType = (anyMaster['location_type'] ?? '').toString().toUpperCase();
+        final masterType =
+            (anyMaster['location_type'] ?? '').toString().toUpperCase();
         if (masterType != 'TOWER') continue;
       }
-      
+
       final pos = _resolveTowerPosition(tower);
       if (pos == null) continue;
 
@@ -917,7 +1041,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
 
       const markerW = 64.0, markerH = 72.0;
       final left = (x - 32).clamp(2.0, w - markerW - 2);
-      final top  = (y - 36).clamp(2.0, h - markerH - 2);
+      final top = (y - 36).clamp(2.0, h - markerH - 2);
 
       // ═══════════════════════════════════════════════════════════
       // DRAGGABLE TOWER MARKER - Freeroam Support
@@ -930,7 +1054,8 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
           height: markerH,
           child: MouseRegion(
             cursor: SystemMouseCursors.click,
-            child: _buildTowerMarkerWidget(tower: tower, devicesHere: devicesHere, zoomed: true),
+            child: _buildTowerMarkerWidget(
+                tower: tower, devicesHere: devicesHere, zoomed: true),
           ),
         ),
       );
@@ -942,13 +1067,14 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
   // ─── Master Location markers (RTG, RS, CC, TOWER) ─────────────
   List<Widget> _buildMasterLocationMarkers(double w, double h) {
     final markers = <Widget>[];
-    
+
     if (widget.masterLocations.isEmpty) {
       return markers;
     }
-    
+
     for (final location in widget.masterLocations) {
-      final locType = (location['location_type'] ?? '').toString().toUpperCase();
+      final locType =
+          (location['location_type'] ?? '').toString().toUpperCase();
       final locCode = (location['location_code'] ?? '').toString();
       final locName = (location['location_name'] ?? '').toString();
       final containerYard = (location['container_yard'] ?? '').toString();
@@ -956,26 +1082,28 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
 
       // Marker layout ini pakai koordinat relatif 0..1.
       if (resolved == null) continue;
-      
+
       // Find which area this master location belongs to
       final area = areas.firstWhere(
         (a) => a.id == _normalizeAreaId(containerYard),
         orElse: () => areas.first,
       );
-      
+
       final markerColor = DeviceIconResolver.colorForType(locType);
-      
+
       final cx = resolved.dx;
       final cy = resolved.dy;
-      
+
       // Calculate position within the area
       final baseX = (area.left + cx * area.width) * w;
       final baseY = (area.top + cy * area.height) * h;
-      
+
       const markerW = 64.0, markerH = 64.0;
-      final left = (baseX - markerW / 2).clamp(area.left * w + 2, (area.left + area.width) * w - markerW - 2);
-      final top = (baseY - markerH / 2).clamp(area.top * h + 2, (area.top + area.height) * h - markerH - 2);
-      
+      final left = (baseX - markerW / 2)
+          .clamp(area.left * w + 2, (area.left + area.width) * w - markerW - 2);
+      final top = (baseY - markerH / 2)
+          .clamp(area.top * h + 2, (area.top + area.height) * h - markerH - 2);
+
       markers.add(Positioned(
         left: left,
         top: top,
@@ -1006,7 +1134,8 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                   _buildMasterTypeVisual(locType, size: 48),
                   const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: markerColor.withOpacity(0.9),
                       borderRadius: BorderRadius.circular(4),
@@ -1019,7 +1148,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
-                      textAlign: TextAlign.center,  
+                      textAlign: TextAlign.center,
                       maxLines: 1,
                     ),
                   ),
@@ -1030,14 +1159,16 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
         ),
       ));
     }
-    
+
     return markers;
   }
 
-  List<Widget> _buildZoomedMasterLocationMarkers(ContainerYardArea area, double w, double h) {
+  List<Widget> _buildZoomedMasterLocationMarkers(
+      ContainerYardArea area, double w, double h) {
     final markers = <Widget>[];
     for (final location in widget.masterLocations) {
-      final containerYard = _normalizeAreaId((location['container_yard'] ?? '').toString());
+      final containerYard =
+          _normalizeAreaId((location['container_yard'] ?? '').toString());
       if (containerYard != area.id) continue;
 
       final resolved = _resolveMasterPosition(location);
@@ -1050,11 +1181,13 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       final left = (x - markerW / 2).clamp(2.0, w - markerW - 2.0);
       final top = (y - markerH / 2).clamp(2.0, h - markerH - 2.0);
 
-      final locType = (location['location_type'] ?? '').toString().toUpperCase();
+      final locType =
+          (location['location_type'] ?? '').toString().toUpperCase();
       final locCode = (location['location_code'] ?? '').toString();
       final locName = (location['location_name'] ?? '').toString();
       final markerColor = DeviceIconResolver.colorForType(locType);
-      final canDrag = _isDraggableMasterType(locType) && widget.isFreeroamEditEnabled;
+      final canDrag =
+          _isDraggableMasterType(locType) && widget.isFreeroamEditEnabled;
       final key = _masterPreviewKey(location);
 
       const labelWidth = 80.0;
@@ -1066,9 +1199,12 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
         child: GestureDetector(
           onPanUpdate: canDrag
               ? (details) {
-                  final current = _masterDragPreview[key] ?? Offset(resolved.dx, resolved.dy);
-                  final newCx = (current.dx + (details.delta.dx / w)).clamp(0.0, 1.0);
-                  final newCy = (current.dy + (details.delta.dy / h)).clamp(0.0, 1.0);
+                  final current = _masterDragPreview[key] ??
+                      Offset(resolved.dx, resolved.dy);
+                  final newCx =
+                      (current.dx + (details.delta.dx / w)).clamp(0.0, 1.0);
+                  final newCy =
+                      (current.dy + (details.delta.dy / h)).clamp(0.0, 1.0);
                   setState(() {
                     _masterDragPreview[key] = Offset(newCx, newCy);
                   });
@@ -1084,7 +1220,8 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
               : null,
           onTap: () => _showMasterLocationPopup(location),
           child: MouseRegion(
-            cursor: canDrag ? SystemMouseCursors.move : SystemMouseCursors.click,
+            cursor:
+                canDrag ? SystemMouseCursors.move : SystemMouseCursors.click,
             child: SizedBox(
               width: labelWidth,
               child: Column(
@@ -1112,7 +1249,8 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                   ),
                   const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: markerColor.withOpacity(0.9),
                       borderRadius: BorderRadius.circular(4),
@@ -1141,7 +1279,10 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
   }
 
   Widget _buildMasterTypeVisual(String locType, {double size = 20}) {
-    final asset = DeviceIconResolver.assetForType(locType);
+    final normalizedType = DeviceIconResolver.normalizeType(locType);
+    final asset = normalizedType == 'TOWER'
+        ? null
+        : DeviceIconResolver.assetForType(normalizedType);
     final iconColor = DeviceIconResolver.colorForType(locType);
 
     if (asset != null) {
@@ -1188,7 +1329,8 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     final yard = (location['container_yard'] ?? '-').toString();
     final markerColor = DeviceIconResolver.colorForType(locType);
     final devicesHere = _devicesForMasterLocation(location);
-    final upCount = devicesHere.where((d) => d.status.toUpperCase() == 'UP').length;
+    final upCount =
+        devicesHere.where((d) => d.status.toUpperCase() == 'UP').length;
     final downCount = devicesHere.length - upCount;
 
     final sortedDevices = devicesHere.toList()
@@ -1211,96 +1353,111 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: markerColor,
-                    child: _buildMasterTypeVisual(locType.toUpperCase(), size: 18),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      '$locType • $locCode',
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: markerColor,
+                      child: _buildMasterTypeVisual(locType.toUpperCase(),
+                          size: 18),
                     ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close, size: 18),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text('Name: $locName', style: const TextStyle(fontSize: 12)),
-              const SizedBox(height: 2),
-              Text('Area: $yard', style: const TextStyle(fontSize: 12)),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '$locType • $locCode',
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close, size: 18),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
                 ),
-                child: Text(
-                  'Total Device: ${devicesHere.length} | UP: $upCount | DOWN: $downCount',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                ),
-              ),
-              const SizedBox(height: 8),
-              if (sortedDevices.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
+                const SizedBox(height: 8),
+                Text('Name: $locName', style: const TextStyle(fontSize: 12)),
+                const SizedBox(height: 2),
+                Text('Area: $yard', style: const TextStyle(fontSize: 12)),
+                const SizedBox(height: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   child: Text(
-                    'Belum ada device di master ini',
-                    style: TextStyle(fontSize: 12, color: Colors.black54, fontStyle: FontStyle.italic),
+                    'Total Device: ${devicesHere.length} | UP: $upCount | DOWN: $downCount',
+                    style: const TextStyle(
+                        fontSize: 11, fontWeight: FontWeight.w600),
                   ),
-                )
-              else
-                Expanded(
-                  child: ListView.separated(
-                    itemCount: sortedDevices.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 6),
-                    itemBuilder: (context, index) {
-                      final device = sortedDevices[index];
-                      final devUp = device.status.toUpperCase() == 'UP';
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: devUp ? Colors.green.shade50 : Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: devUp ? Colors.green.shade300 : Colors.red.shade300),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              DeviceIconResolver.iconForType(device.type),
-                              size: 14,
-                              color: devUp ? Colors.green : Colors.red,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                '${device.name} • ${device.type}',
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            Text(
-                              device.status.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
+                ),
+                const SizedBox(height: 8),
+                if (sortedDevices.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'Belum ada device di master ini',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                          fontStyle: FontStyle.italic),
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: sortedDevices.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 6),
+                      itemBuilder: (context, index) {
+                        final device = sortedDevices[index];
+                        final devUp = device.status.toUpperCase() == 'UP';
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: devUp
+                                ? Colors.green.shade50
+                                : Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                                color: devUp
+                                    ? Colors.green.shade300
+                                    : Colors.red.shade300),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                DeviceIconResolver.iconForType(device.type),
+                                size: 14,
                                 color: devUp ? Colors.green : Colors.red,
                               ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '${device.name} • ${device.type}',
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Text(
+                                device.status.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: devUp ? Colors.green : Colors.red,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -1312,26 +1469,28 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
   // ─── Device markers (Parent-Child Offset System) ─────────────
   List<Widget> _buildAllMarkers(double w, double h) {
     final markers = <Widget>[];
-    
+
     // Group devices by parent location (Tower/Location)
     final devicesByLocation = <String, List<AddedDevice>>{};
     for (final device in widget.devices) {
       devicesByLocation.putIfAbsent(device.locationName, () => []).add(device);
     }
-    
+
     if (kDebugMode && devicesByLocation.isNotEmpty) {
       print('\n═══ Device Grouping ═══');
       devicesByLocation.forEach((loc, devs) {
         print('📍 $loc: ${devs.length} device(s)');
       });
     }
-    
+
     // Render each group with circular offset pattern
     devicesByLocation.forEach((location, devices) {
       final parentPos = _getParentPosition(location);
       if (parentPos == null) {
         // Fallback to area center if parent not found
-        if (kDebugMode) print('⚠️ Using fallback for: $location (${devices.length} devices)');
+        if (kDebugMode) {
+          print('⚠️ Using fallback for: $location (${devices.length} devices)');
+        }
         for (final device in devices) {
           final area = _findTargetArea(device);
           final x = (area.left + area.width * 0.5) * w;
@@ -1340,89 +1499,104 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
         }
         return;
       }
-      
+
       final area = parentPos['area'] as ContainerYardArea;
       final cx = parentPos['cx'] as double;
       final cy = parentPos['cy'] as double;
-      
+
       // Base position (parent Tower coordinates)
       final baseX = (area.left + cx * area.width) * w;
       final baseY = (area.top + cy * area.height) * h;
-      
+
       // Apply trigonometric circular offset.
       // Single device is also shifted slightly so it does not sit exactly on parent icon.
       final deviceCount = devices.length;
       final radius = deviceCount == 1 ? 24.0 : 40.0;
-      
+
       for (var i = 0; i < deviceCount; i++) {
         // For a single device, pin it to a fixed angle for consistent UI.
         final angle = deviceCount == 1 ? -pi / 2 : (2 * pi * i) / deviceCount;
         final offsetX = radius * cos(angle);
         final offsetY = radius * sin(angle);
-        
+
         final x = baseX + offsetX;
         final y = baseY + offsetY;
-        
+
         markers.add(_buildDeviceMarker(devices[i], x, y, w, h, area));
       }
     });
-    
+
     return markers;
   }
-  
-  // Build device marker widget
-  Widget _buildDeviceMarker(AddedDevice device, double x, double y, double w, double h, ContainerYardArea area) {
-    const markerSize = 28.0;
-    const iconSize = 14.0;
+
+  // Build device marker widget (zoom-out): type icon + status dot outside edge.
+  Widget _buildDeviceMarker(AddedDevice device, double x, double y, double w,
+      double h, ContainerYardArea area) {
+    const markerSize = 22.0;
+    const statusDotSize = 9.0;
     const half = markerSize / 2;
+    final isUp = device.status.toUpperCase() == 'UP';
+    final statusColor = isUp ? Colors.green : Colors.red;
+    final baseColor = DeviceIconResolver.colorForType(device.type);
 
     // Clamp to area bounds
-    final clampedX = x.clamp(area.left * w + half, (area.left + area.width) * w - half);
-    final clampedY = y.clamp(area.top * h + half, (area.top + area.height) * h - half);
-    
+    final clampedX =
+        x.clamp(area.left * w + half, (area.left + area.width) * w - half);
+    final clampedY =
+        y.clamp(area.top * h + half, (area.top + area.height) * h - half);
+
     return Positioned(
-      left: clampedX - half,
-      top: clampedY - half,
+      left: clampedX - (statusDotSize / 2),
+      top: clampedY - (statusDotSize / 2),
       child: GestureDetector(
-        onTap: () { _showDeviceDetailPopup(device); widget.onDeviceTap?.call(device); },
+        onTap: () {
+          _showDeviceDetailPopup(device);
+          widget.onDeviceTap?.call(device);
+        },
         child: MouseRegion(
           cursor: SystemMouseCursors.click,
           child: Container(
-            width: markerSize, height: markerSize,
+            width: statusDotSize,
+            height: statusDotSize,
             decoration: BoxDecoration(
-              color: device.status.toUpperCase() == 'UP' ? Colors.green : Colors.red,
+              color: statusColor,
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2),
-              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+              border: Border.all(color: Colors.white, width: 1.8),
+              boxShadow: [
+                BoxShadow(
+                  color: statusColor.withOpacity(0.45),
+                  blurRadius: 6,
+                  spreadRadius: 0.8,
+                ),
+              ],
             ),
-            child: Center(child: Icon(
-              _getDeviceIconType(device.type),
-              size: iconSize, color: Colors.white)),
           ),
         ),
       ),
     );
   }
-  
+
   // Get parent position from tower coordinates
   Map<String, dynamic>? _getParentPosition(String locationName) {
     final target = locationName.toUpperCase();
     final targetKey = _normalizeMatchKey(locationName);
 
     for (final location in widget.masterLocations) {
-      final locCode = (location['location_code'] ?? '').toString().toUpperCase();
-      final locName = (location['location_name'] ?? '').toString().toUpperCase();
+      final locCode =
+          (location['location_code'] ?? '').toString().toUpperCase();
+      final locName =
+          (location['location_name'] ?? '').toString().toUpperCase();
       final locCodeKey = _normalizeMatchKey(locCode);
       final locNameKey = _normalizeMatchKey(locName);
-      final yard = _normalizeAreaId((location['container_yard'] ?? '').toString());
+      final yard =
+          _normalizeAreaId((location['container_yard'] ?? '').toString());
       final resolved = _resolveMasterPosition(location);
 
       if (resolved == null) {
         continue;
       }
 
-      final isMatch =
-          target == locName ||
+      final isMatch = target == locName ||
           target == locCode ||
           (locCode.isNotEmpty && target.contains(locCode)) ||
           (locName.isNotEmpty && target.contains(locName)) ||
@@ -1445,18 +1619,28 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     if (kDebugMode) print('⚠️ Parent NOT found for: $locationName');
     return null;
   }
-  
+
   // Find area by location name
   ContainerYardArea? _findAreaByLocation(String locationName) {
     final upper = locationName.toUpperCase();
-    if (upper.contains('CY1')) return areas.firstWhere((a) => a.id == 'CY1', orElse: () => areas[0]);
-    if (upper.contains('CY2')) return areas.firstWhere((a) => a.id == 'CY2', orElse: () => areas[1]);
-    if (upper.contains('CY3')) return areas.firstWhere((a) => a.id == 'CY3', orElse: () => areas.first);
-    if (upper.contains('GATE')) return areas.firstWhere((a) => a.id == 'GATE', orElse: () => areas.last);
-    if (upper.contains('PARK')) return areas.firstWhere((a) => a.id == 'PARKING', orElse: () => areas[2]);
+    if (upper.contains('CY1')) {
+      return areas.firstWhere((a) => a.id == 'CY1', orElse: () => areas[0]);
+    }
+    if (upper.contains('CY2')) {
+      return areas.firstWhere((a) => a.id == 'CY2', orElse: () => areas[1]);
+    }
+    if (upper.contains('CY3')) {
+      return areas.firstWhere((a) => a.id == 'CY3', orElse: () => areas.first);
+    }
+    if (upper.contains('GATE')) {
+      return areas.firstWhere((a) => a.id == 'GATE', orElse: () => areas.last);
+    }
+    if (upper.contains('PARK')) {
+      return areas.firstWhere((a) => a.id == 'PARKING', orElse: () => areas[2]);
+    }
     return areas[0];
   }
-  
+
   // Get device icon by type
   IconData _getDeviceIconType(String type) {
     return DeviceIconResolver.iconForType(type);
@@ -1482,9 +1666,9 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       if (kDebugMode) print('⚠️ No devices to render in zoom view');
       return [];
     }
-    
+
     final markers = <Widget>[];
-    
+
     // Group devices by location name
     final devicesByLocation = <String, List<AddedDevice>>{};
     for (final device in devices) {
@@ -1502,12 +1686,15 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     // Render each group
     devicesByLocation.forEach((locationName, grouped) {
       final parentPos = _getParentPosition(locationName);
-      
+
       double baseX, baseY;
-      
+
       // Case 1: Parent not found → render at center as fallback
       if (parentPos == null) {
-        if (kDebugMode) print('⚠️ Parent NOT found for "$locationName", using center (${grouped.length} devices)');
+        if (kDebugMode) {
+          print(
+              '⚠️ Parent NOT found for "$locationName", using center (${grouped.length} devices)');
+        }
         baseX = w * 0.5;
         baseY = h * 0.5;
       } else {
@@ -1516,7 +1703,10 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
         final cy = parentPos['cy'] as double;
         baseX = cx * w;
         baseY = cy * h;
-        if (kDebugMode) print('✓ Parent found for "$locationName" at ($cx, $cy) → pixel ($baseX, $baseY)');
+        if (kDebugMode) {
+          print(
+              '✓ Parent found for "$locationName" at ($cx, $cy) → pixel ($baseX, $baseY)');
+        }
       }
 
       // Render devices around base position.
@@ -1533,14 +1723,19 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       }
     });
 
-    if (kDebugMode) print('✓ Created ${markers.length} device markers for zoom view');
+    if (kDebugMode) {
+      print('✓ Created ${markers.length} device markers for zoom view');
+    }
     return markers;
   }
 
-  Widget _buildZoomedDeviceMarker(AddedDevice device, double x, double y, double w, double h) {
+  Widget _buildZoomedDeviceMarker(
+      AddedDevice device, double x, double y, double w, double h) {
     const markerSize = 28.0;
     const iconSize = 13.0;
     const half = markerSize / 2;
+    final isUp = device.status.toUpperCase() == 'UP';
+    final markerColor = isUp ? Colors.green : Colors.red;
     final clampedX = x.clamp(half, w - half);
     final clampedY = y.clamp(half + 4, h - (half + 4));
 
@@ -1558,16 +1753,32 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
             width: markerSize,
             height: markerSize,
             decoration: BoxDecoration(
-              color: device.status.toUpperCase() == 'UP' ? Colors.green : Colors.red,
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2),
-              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+              border: Border.all(color: markerColor.withOpacity(0.8), width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: markerColor.withOpacity(0.35),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                ),
+              ],
             ),
             child: Center(
-              child: Icon(
-                DeviceIconResolver.iconForType(device.type),
-                size: iconSize,
-                color: Colors.white,
+              child: Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: markerColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.8),
+                ),
+                child: Center(
+                  child: Icon(
+                    DeviceIconResolver.iconForType(device.type),
+                    size: iconSize,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
           ),
@@ -1579,9 +1790,21 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
   // ─── Normalize area ID ────────────────────────────────────────
   String _normalizeAreaId(String value) {
     final c = value.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
-    if (c == 'CY01' || c == 'CY1' || c == 'CONTAINERYARD1' || c == 'CONTAINERYARD01' || c == 'YARD1') return 'CY1';
-    if (c == 'CY02' || c == 'CY2' || c == 'CONTAINERYARD2' || c == 'CONTAINERYARD02' || c == 'YARD2') return 'CY2';
-    if (c == 'CY03' || c == 'CY3' || c == 'CONTAINERYARD3' || c == 'CONTAINERYARD03' || c == 'YARD3') return 'CY3';
+    if (c == 'CY01' ||
+        c == 'CY1' ||
+        c == 'CONTAINERYARD1' ||
+        c == 'CONTAINERYARD01' ||
+        c == 'YARD1') return 'CY1';
+    if (c == 'CY02' ||
+        c == 'CY2' ||
+        c == 'CONTAINERYARD2' ||
+        c == 'CONTAINERYARD02' ||
+        c == 'YARD2') return 'CY2';
+    if (c == 'CY03' ||
+        c == 'CY3' ||
+        c == 'CONTAINERYARD3' ||
+        c == 'CONTAINERYARD03' ||
+        c == 'YARD3') return 'CY3';
     return c;
   }
 
@@ -1600,7 +1823,8 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     }
 
     final normalizedYard = _normalizeAreaId(d.containerYard);
-    final explicitArea = areas.where((a) => a.id == normalizedYard).toList(growable: false);
+    final explicitArea =
+        areas.where((a) => a.id == normalizedYard).toList(growable: false);
     if (explicitArea.isNotEmpty) {
       return explicitArea.first;
     }
@@ -1611,7 +1835,8 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
   void _showTowerDetailPopup(Tower tower, List<AddedDevice> devicesHere) {
     final isUp = tower.status.toUpperCase() == 'UP';
     final statusColor = isUp ? Colors.green : Colors.red;
-    final upCount = devicesHere.where((d) => d.status.toUpperCase() == 'UP').length;
+    final upCount =
+        devicesHere.where((d) => d.status.toUpperCase() == 'UP').length;
     final downCount = devicesHere.length - upCount;
     final sortedDevices = devicesHere.toList()
       ..sort((a, b) {
@@ -1637,13 +1862,15 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                   children: [
                     CircleAvatar(
                       backgroundColor: statusColor,
-                      child: const Icon(Icons.router, color: Colors.white, size: 16),
+                      child: const Icon(Icons.router,
+                          color: Colors.white, size: 16),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         '${tower.towerId} • ${tower.containerYard}',
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w700),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -1656,17 +1883,20 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text('Location: ${tower.location}', style: const TextStyle(fontSize: 12)),
+                Text('Location: ${tower.location}',
+                    style: const TextStyle(fontSize: 12)),
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     'Total Device: ${devicesHere.length} | UP: $upCount | DOWN: $downCount',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                        fontSize: 11, fontWeight: FontWeight.w600),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -1675,7 +1905,10 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                     padding: EdgeInsets.symmetric(vertical: 8),
                     child: Text(
                       'Belum ada device di tower ini',
-                      style: TextStyle(fontSize: 12, color: Colors.black54, fontStyle: FontStyle.italic),
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                          fontStyle: FontStyle.italic),
                     ),
                   )
                 else
@@ -1687,11 +1920,17 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                         final device = sortedDevices[index];
                         final devUp = device.status.toUpperCase() == 'UP';
                         return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 6),
                           decoration: BoxDecoration(
-                            color: devUp ? Colors.green.shade50 : Colors.red.shade50,
+                            color: devUp
+                                ? Colors.green.shade50
+                                : Colors.red.shade50,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: devUp ? Colors.green.shade300 : Colors.red.shade300),
+                            border: Border.all(
+                                color: devUp
+                                    ? Colors.green.shade300
+                                    : Colors.red.shade300),
                           ),
                           child: Row(
                             children: [
@@ -1704,7 +1943,9 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                               Expanded(
                                 child: Text(
                                   '${device.name} • ${device.type}',
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -1772,7 +2013,8 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                           ),
                           const SizedBox(height: 2),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: statusColor,
                               borderRadius: BorderRadius.circular(4),
@@ -1800,11 +2042,14 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                 const SizedBox(height: 16),
                 const Divider(height: 1),
                 const SizedBox(height: 12),
-                _buildDeviceInfoRow(Icons.settings_input_component, 'Type', device.type),
+                _buildDeviceInfoRow(
+                    Icons.settings_input_component, 'Type', device.type),
                 const SizedBox(height: 8),
-                _buildDeviceInfoRow(Icons.location_on, 'Location', device.locationName),
+                _buildDeviceInfoRow(
+                    Icons.location_on, 'Location', device.locationName),
                 const SizedBox(height: 8),
-                _buildDeviceInfoRow(Icons.router, 'IP Address', device.ipAddress),
+                _buildDeviceInfoRow(
+                    Icons.router, 'IP Address', device.ipAddress),
               ],
             ),
           ),
@@ -1846,20 +2091,28 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
   void _debugLogTowerDistribution() {
     if (!kDebugMode) return;
     final unique = _uniqueTowersForRender();
-    final cy1 = unique.where((t) => _normalizeAreaId(t.containerYard) == 'CY1').toList();
-    final cy2 = unique.where((t) => _normalizeAreaId(t.containerYard) == 'CY2').toList();
-    final cy3 = unique.where((t) => _normalizeAreaId(t.containerYard) == 'CY3').toList();
+    final cy1 = unique
+        .where((t) => _normalizeAreaId(t.containerYard) == 'CY1')
+        .toList();
+    final cy2 = unique
+        .where((t) => _normalizeAreaId(t.containerYard) == 'CY2')
+        .toList();
+    final cy3 = unique
+        .where((t) => _normalizeAreaId(t.containerYard) == 'CY3')
+        .toList();
     debugPrint('\n========== TOWER DISTRIBUTION ==========');
     debugPrint('CY1 (${cy1.length}): ${cy1.map(_extractTowerCode).join(", ")}');
     debugPrint('CY2 (${cy2.length}): ${cy2.map(_extractTowerCode).join(", ")}');
     debugPrint('CY3 (${cy3.length}): ${cy3.map(_extractTowerCode).join(", ")}');
     debugPrint('Total: ${unique.length}');
     debugPrint('=========================================\n');
-    final missing = unique.where((t) => _resolveTowerPosition(t) == null).toList();
+    final missing =
+        unique.where((t) => _resolveTowerPosition(t) == null).toList();
     if (missing.isNotEmpty) {
       debugPrint('⚠️ MISSING POSITIONS (${missing.length}):');
       for (final t in missing) {
-        debugPrint('  loc="${t.location}" id="${t.towerId}" num=${t.towerNumber} cy="${t.containerYard}"');
+        debugPrint(
+            '  loc="${t.location}" id="${t.towerId}" num=${t.towerNumber} cy="${t.containerYard}"');
       }
     }
   }
@@ -1870,7 +2123,9 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     final statusColor = isUp ? Colors.green : Colors.red;
 
     return Positioned(
-      bottom: 12, left: 12, right: 12,
+      bottom: 12,
+      left: 12,
+      right: 12,
       child: Card(
         elevation: 6,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -1887,7 +2142,8 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                     children: [
                       CircleAvatar(
                         backgroundColor: statusColor,
-                        child: const Icon(Icons.router, color: Colors.white, size: 16),
+                        child: const Icon(Icons.router,
+                            color: Colors.white, size: 16),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -1895,74 +2151,101 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(_selectedTower!.towerId,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                              overflow: TextOverflow.ellipsis),
-                            Text('${_selectedTower!.containerYard} • ${_selectedTower!.location}',
-                              style: const TextStyle(fontSize: 11, color: Colors.black54),
-                              overflow: TextOverflow.ellipsis, maxLines: 2),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 14),
+                                overflow: TextOverflow.ellipsis),
+                            Text(
+                                '${_selectedTower!.containerYard} • ${_selectedTower!.location}',
+                                style: const TextStyle(
+                                    fontSize: 11, color: Colors.black54),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 2),
                           ],
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: statusColor.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: statusColor.withOpacity(0.5)),
+                          border:
+                              Border.all(color: statusColor.withOpacity(0.5)),
                         ),
                         child: Text(isUp ? 'UP' : 'DOWN',
-                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: statusColor)),
+                            style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: statusColor)),
                       ),
                       const SizedBox(width: 6),
                       IconButton(
                         icon: const Icon(Icons.close, size: 18),
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        constraints:
+                            const BoxConstraints(minWidth: 32, minHeight: 32),
                         onPressed: () => setState(() => _selectedTower = null),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                    decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                    decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8)),
                     child: Text('Total Device: ${_devicesAtTower.length}',
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black87)),
+                        style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87)),
                   ),
                   const SizedBox(height: 8),
                   if (_devicesAtTower.isEmpty)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 8),
                       child: Text('Belum ada device di tower ini',
-                        style: TextStyle(fontSize: 12, color: Colors.black54, fontStyle: FontStyle.italic)),
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.black54,
+                              fontStyle: FontStyle.italic)),
                     )
                   else
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxHeight: 100),
                       child: SingleChildScrollView(
                         child: Wrap(
-                          spacing: 6, runSpacing: 6,
+                          spacing: 6,
+                          runSpacing: 6,
                           children: (_devicesAtTower.toList()
-                            ..sort((a, b) {
-                              final aDown = a.status.toUpperCase() != 'UP';
-                              final bDown = b.status.toUpperCase() != 'UP';
-                              return aDown == bDown ? 0 : (aDown ? -1 : 1);
-                            }))
-                            .map((device) {
-                              final devUp = device.status.toUpperCase() == 'UP';
-                              return Chip(
-                                label: Text('${device.name} • ${device.type} • ${device.status.toUpperCase()}',
-                                  style: const TextStyle(fontSize: 9), overflow: TextOverflow.ellipsis, maxLines: 1),
-                                backgroundColor: devUp ? Colors.green.shade100 : Colors.red.shade100,
-                                side: BorderSide(color: devUp ? Colors.green : Colors.red),
-                                avatar: Icon(
-                                  DeviceIconResolver.iconForType(device.type),
-                                  size: 12,
-                                  color: devUp ? Colors.green : Colors.red,
-                                ),
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-                              );
-                            }).toList(),
+                                ..sort((a, b) {
+                                  final aDown = a.status.toUpperCase() != 'UP';
+                                  final bDown = b.status.toUpperCase() != 'UP';
+                                  return aDown == bDown ? 0 : (aDown ? -1 : 1);
+                                }))
+                              .map((device) {
+                            final devUp = device.status.toUpperCase() == 'UP';
+                            return Chip(
+                              label: Text(
+                                  '${device.name} • ${device.type} • ${device.status.toUpperCase()}',
+                                  style: const TextStyle(fontSize: 9),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1),
+                              backgroundColor: devUp
+                                  ? Colors.green.shade100
+                                  : Colors.red.shade100,
+                              side: BorderSide(
+                                  color: devUp ? Colors.green : Colors.red),
+                              avatar: Icon(
+                                DeviceIconResolver.iconForType(device.type),
+                                size: 12,
+                                color: devUp ? Colors.green : Colors.red,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 0),
+                            );
+                          }).toList(),
                         ),
                       ),
                     ),

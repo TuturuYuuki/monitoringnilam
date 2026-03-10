@@ -14,7 +14,7 @@ class MMTMonitoringCY2Page extends StatefulWidget {
 
 class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
   final ApiService _apiService = ApiService();
-  static const List<String> _areaOptions = ['CY1', 'CY2', 'CY3'];
+  static const List<String> _areaOptions = ['CY1', 'CY2', 'CY3', 'GATE', 'PARKING'];
 
   List<MMT> _mmts = [];
   bool _isLoading = true;

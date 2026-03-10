@@ -6,6 +6,7 @@ import 'main.dart';
 import 'services/api_service.dart';
 import 'utils/tower_status_override.dart';
 import 'widgets/global_header_bar.dart';
+import 'widgets/global_sidebar_nav.dart';
 
 // Fullscreen CCTV Page - All Areas
 class CCTVFullscreenPage extends StatefulWidget {
@@ -147,6 +148,14 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
     }
   }
 
+  void _goBackToCctvOverview() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      return;
+    }
+    Navigator.pushReplacementNamed(context, '/cctv');
+  }
+
   @override
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
@@ -156,15 +165,24 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
         children: [
           const GlobalHeaderBar(currentRoute: '/cctv-fullscreen'),
           Expanded(
-            child: SingleChildScrollView(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return Padding(
-                    padding: EdgeInsets.all(isMobile ? 8 : 16),
-                    child: _buildContent(context, constraints),
-                  );
-                },
-              ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const GlobalSidebarNav(currentRoute: '/cctv-fullscreen'),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Padding(
+                          padding: EdgeInsets.all(isMobile ? 8 : 16),
+                          child: _buildContent(context, constraints),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           _buildFooter(),
@@ -174,49 +192,86 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
   }
 
   Widget _buildContent(BuildContext context, BoxConstraints constraints) {
+    final isMobile = isMobileScreen(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // --- TITLE SECTION ---
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Container putih untuk icon
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1976D2),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.videocam_rounded,
-                color: Colors.white, 
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 16), // Jarak antara icon dan teks
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Row(
               children: [
-                const Text(
-                  'All CCTV Fullscreen View',
-                  style: TextStyle(
+                // Container putih untuk icon
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1976D2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.videocam_rounded,
                     color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                    size: 28,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'View All CCTV Status In All Area',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
-                    fontSize: 14,
-                  ),
+                const SizedBox(width: 16), // Jarak antara icon dan teks
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'All CCTV Fullscreen View',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'View All CCTV Status In All Area',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.7),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
+            if (!isMobile)
+              ElevatedButton.icon(
+                onPressed: _goBackToCctvOverview,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white.withOpacity(0.14),
+                  foregroundColor: Colors.white,
+                  shape: const StadiumBorder(),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                ),
+                icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                label: const Text('Back'),
+              ),
           ],
         ),
+        if (isMobile) ...[
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ElevatedButton.icon(
+              onPressed: _goBackToCctvOverview,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white.withOpacity(0.14),
+                foregroundColor: Colors.white,
+                shape: const StadiumBorder(),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              ),
+              icon: const Icon(Icons.arrow_back_rounded, size: 16),
+              label: const Text('Back'),
+            ),
+          ),
+        ],
         const SizedBox(height: 16),
 
         // --- STATS SECTION (Compact & Readable) ---
@@ -303,8 +358,8 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
     // Show loading indicator
     if (isLoading) {
       return Container(
-       padding: const EdgeInsets.symmetric(vertical: 24), // Diperkecil dari 40
-      width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 24), // Diperkecil dari 40
+        width: double.infinity,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -328,8 +383,8 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
     // Show empty state if no cameras
     if (allCameras.isEmpty) {
       return Container(
-       padding: const EdgeInsets.symmetric(vertical: 30),
-      width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 30),
+        width: double.infinity,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),

@@ -1,25 +1,23 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:animations/animations.dart';
 import 'package:http/http.dart' as http;
 import 'main.dart';
 import 'services/api_service.dart';
 import 'models/tower_model.dart';
-import 'route_proxy_page.dart';
 import 'utils/tower_status_override.dart';
 import 'widgets/expandable_fab_nav.dart';
 import 'widgets/global_header_bar.dart';
 
-// Network Page CY 2
-class NetworkCY2Page extends StatefulWidget {
-  const NetworkCY2Page({super.key});
+// Network Page PARKING
+class NetworkParkingPage extends StatefulWidget {
+  const NetworkParkingPage({super.key});
 
   @override
-  State<NetworkCY2Page> createState() => _NetworkCY2PageState();
+  State<NetworkParkingPage> createState() => _NetworkParkingPageState();
 }
 
-class _NetworkCY2PageState extends State<NetworkCY2Page> {
-  String selectedTower = 'CY 2';
+class _NetworkParkingPageState extends State<NetworkParkingPage> {
+  String selectedTower = 'PARKING';
   static const List<String> _areaOptions = [
     'CY 1',
     'CY 2',
@@ -59,30 +57,30 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
   }
 
   Future<void> _loadTowers() async {
-  try {
-    // 1. Ambil data database DULU agar tabel langsung muncul
-    final fetchedTowers = await apiService.getTowersByContainerYard('CY2');
-    
-    if (mounted) {
-      setState(() {
-        towers = _normalizeAndSortTowers(applyForcedTowerStatus(fetchedTowers));
-        isLoading = false;
-        _lastRefreshTime = DateTime.now();
-      });
+    try {
+      // 1. Ambil data database DULU agar tabel langsung muncul
+      final fetchedTowers =
+          await apiService.getTowersByContainerYard('PARKING');
+
+      if (mounted) {
+        setState(() {
+          towers = _normalizeAndSortTowers(applyForcedTowerStatus(fetchedTowers));
+          isLoading = false;
+          _lastRefreshTime = DateTime.now();
+        });
+      }
+
+      // 2. Jalankan ping di background TANPA await agar tidak memicu timeout pada tabel
+      _triggerRealtimePing();
+    } catch (e) {
+      print('Error Loading Tower PARKING: $e');
+      if (mounted) setState(() => isLoading = false);
     }
-
-    // 2. Jalankan ping di background TANPA await agar tidak memicu timeout pada tabel
-    _triggerRealtimePing(); 
-
-  } catch (e) {
-    print('Error Loading Tower CY2: $e');
-    if (mounted) setState(() => isLoading = false);
   }
-}
 
   Future<void> _triggerRealtimePing() async {
     try {
-      print('=== Starting Realtime Ping For All Towers (CY2) ===');
+      print('=== Starting Realtime Ping For All Towers (PARKING) ===');
 
       // Trigger backend realtime ping untuk semua devices
       final pingResult = await apiService.triggerRealtimePing();
@@ -92,7 +90,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
         print('IP Checked: ${pingResult['ips_checked']}');
       }
 
-      print('=== Realtime Ping Completed (CY2) ===');
+      print('=== Realtime Ping Completed (PARKING) ===');
     } catch (e) {
       print('Error Triggering Realtime Ping: $e');
     }
@@ -105,15 +103,15 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
       // Call realtime ping endpoint yang update semua towers sekaligus
       final response = await http
           .get(
-        Uri.parse('$baseUrl?endpoint=realtime&action=all'),
-      )
+            Uri.parse('$baseUrl?endpoint=realtime&action=all'),
+          )
           .timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          print('Realtime Ping Timed Out');
-          return http.Response('{"success":false}', 408);
-        },
-      );
+            const Duration(seconds: 10),
+            onTimeout: () {
+              print('Realtime Ping Timed Out');
+              return http.Response('{"success":false}', 408);
+            },
+          );
 
       if (response.statusCode == 200) {
         // Wait a moment for database to update
@@ -154,69 +152,6 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
 
     return 9999;
   }
-
-  final List<Map<String, dynamic>> towerData = [
-    {
-      'id': 'T1',
-      'location': 'Container Yard 2',
-      'ip': '192.168.20.1',
-      'device': '2 CCTV',
-      'status': 'UP',
-      'traffic': '178 Mbps',
-      'uptime': '99.5%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T2',
-      'location': 'Container Yard 2',
-      'ip': '192.168.20.2',
-      'device': '3 CCTV',
-      'status': 'UP',
-      'traffic': '205 Mbps',
-      'uptime': '98.8%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T3',
-      'location': 'Container Yard 2',
-      'ip': '192.168.20.3',
-      'device': '1 CCTV',
-      'status': 'Warning',
-      'traffic': '89 Mbps',
-      'uptime': '96.5%',
-      'statusColor': Colors.red,
-    },
-    {
-      'id': 'T4',
-      'location': 'Container Yard 2',
-      'ip': '192.168.20.4',
-      'device': '2 CCTV',
-      'status': 'UP',
-      'traffic': '192 Mbps',
-      'uptime': '99.2%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T5',
-      'location': 'Container Yard 2',
-      'ip': '192.168.20.5',
-      'device': '3 CCTV',
-      'status': 'UP',
-      'traffic': '167 Mbps',
-      'uptime': '97.8%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T6',
-      'location': 'Container Yard 2',
-      'ip': '192.168.20.6',
-      'device': '2 CCTV',
-      'status': 'UP',
-      'traffic': '215 Mbps',
-      'uptime': '99.7%',
-      'statusColor': Colors.green,
-    },
-  ];
 
   List<Tower> get paginatedData {
     int start = currentPage * itemsPerPage;
@@ -319,7 +254,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
         children: [
           Column(
             children: [
-              const GlobalHeaderBar(currentRoute: '/network-cy2'),
+              const GlobalHeaderBar(currentRoute: '/network-parking'),
               Expanded(
                 child: SingleChildScrollView(
                   child: LayoutBuilder(
@@ -335,233 +270,10 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
               _buildFooter(),
             ],
           ),
-          const ExpandableFabNav(currentRoute: '/network-cy2'),
+          const ExpandableFabNav(currentRoute: '/network-parking'),
         ],
       ),
     );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-  final isMobile = isMobileScreen(context);
-  double screenWidth = MediaQuery.of(context).size.width;
-  return Container(
-    width: screenWidth,
-    padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 12 : 24, vertical: isMobile ? 12 : 16),
-    color: const Color(0xFF1976D2),
-    child: isMobile
-        ? Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Terminal Nilam',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: isMobile ? 28 : 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: OpenContainer(
-                      transitionDuration: const Duration(milliseconds: 550),
-                      transitionType: ContainerTransitionType.fadeThrough,
-                      closedElevation: 0,
-                      closedColor: Colors.transparent,
-                      closedShape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                      openElevation: 0,
-                      openBuilder: (context, _) =>
-                          const RouteProxyPage('/profile'),
-                      closedBuilder: (context, openContainer) {
-                        return GestureDetector(
-                          onTap: openContainer,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(50),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 8,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.person,
-                              color: Color(0xFF1976D2),
-                              size: 24,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ScrollConfiguration(
-                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildHeaderOpenButton('+ Add New Device', '/add-device',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Dashboard', '/dashboard',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Access Point', '/network',
-                          isActive: true),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Alert', '/alerts',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Alert Report', '/report',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderLogoutButton(),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          )
-        : Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Terminal Nilam - TETAP FIXED
-              const Text(
-                'Terminal Nilam',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 30),
-              // Buttons - SCROLL HORIZONTAL
-              Expanded(
-                child: ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildHeaderOpenButton('Add New Device', '/add-device',
-                            isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Master Data', '/tower-management',
-                            isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Dashboard', '/dashboard',
-                            isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Access Point', '/network',
-                            isActive: true),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('MMT', '/mmt-monitoring', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Alert', '/alerts', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Alert Report', '/report',
-                            isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderLogoutButton(),
-                        const SizedBox(width: 12),
-                        // Profile Icon - SCROLL dengan buttons
-                        MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: OpenContainer(
-                            transitionDuration: const Duration(milliseconds: 550),
-                            transitionType: ContainerTransitionType.fadeThrough,
-                            closedElevation: 0,
-                            closedColor: Colors.transparent,
-                            closedShape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(50),
-                            ),
-                            openElevation: 0,
-                            openBuilder: (context, _) =>
-                                const RouteProxyPage('/profile'),
-                            closedBuilder: (context, openContainer) {
-                              return GestureDetector(
-                                onTap: openContainer,
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.9),
-                                    borderRadius: BorderRadius.circular(50),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.1),
-                                        blurRadius: 8,
-                                        spreadRadius: 1,
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Icon(
-                                    Icons.person,
-                                    color: Color(0xFF1976D2),
-                                    size: 24,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-  );
-}
-
-  Widget _buildHeaderButton(String text, VoidCallback onPressed,
-      {bool isActive = false}) {
-    return buildLiquidGlassButton(text, onPressed, isActive: isActive);
-  }
-
-  Widget _buildHeaderOpenButton(String text, String route,
-      {bool isActive = false}) {
-    return OpenContainer(
-      transitionDuration: const Duration(milliseconds: 550),
-      transitionType: ContainerTransitionType.fadeThrough,
-      closedElevation: 0,
-      closedColor: Colors.transparent,
-      closedShape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      openElevation: 0,
-      openBuilder: (context, _) => RouteProxyPage(route),
-      closedBuilder: (context, openContainer) {
-        return buildLiquidGlassButton(text, openContainer, isActive: isActive);
-      },
-    );
-  }
-
-  Widget _buildHeaderLogoutButton() {
-    return buildLiquidGlassButton('Logout', () => _showLogoutDialog(context),
-        isActive: false);
   }
 
   Widget _buildContent(BuildContext context, BoxConstraints constraints) {
@@ -578,8 +290,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                 color: const Color(0xFF1976D2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.language,
-                  size: 32, color: Colors.white),
+              child: const Icon(Icons.language, size: 32, color: Colors.white),
             ),
             const SizedBox(width: 16),
             Column(
@@ -647,8 +358,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                             _buildStatCard('UP', '$onlineTowers', Colors.green,
                                 width: cardWidth),
                             SizedBox(width: isMobile ? 8 : 16),
-                            _buildStatCard(
-                                'DOWN', '$warningTowers', Colors.blue,
+                            _buildStatCard('DOWN', '$warningTowers', Colors.blue,
                                 onTap: _showWarningList, width: cardWidth),
                           ],
                         ),
@@ -665,8 +375,8 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                     spacing: 16,
                     runSpacing: 16,
                     children: [
-                      _buildStatCard(
-                          'Total Access Point', '$totalTowers', Colors.orange,
+                      _buildStatCard('Total Access Point', '$totalTowers',
+                          Colors.orange,
                           width: cardWidth),
                       _buildStatCard('UP', '$onlineTowers', Colors.green,
                           width: cardWidth),
@@ -755,7 +465,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     );
   }
 
- Widget _buildNetworkDropdown(double width) {
+  Widget _buildNetworkDropdown(double width) {
     return Container(
       width: width,
       height: 80,
@@ -780,20 +490,23 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
           Flexible(
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
-                // --- FIX: TAMPILAN "SELECT AREA" ---
-                value: null, // Set null agar value lama tidak tampil di kotak utama
+                value: null,
                 hint: const Text(
-                  "Select Area", 
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)
+                  "Select Area",
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14),
                 ),
                 dropdownColor: const Color(0xFF4A5F7F),
                 isExpanded: true,
                 icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-                items: const ['CY 1', 'CY 2', 'CY 3']
+                items: _areaOptions
                     .map((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
-                    child: Text(value, style: const TextStyle(color: Colors.white)),
+                    child: Text(value,
+                        style: const TextStyle(color: Colors.white)),
                   );
                 }).toList(),
                 onChanged: (String? newValue) {
@@ -804,6 +517,10 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                       Navigator.pushReplacementNamed(context, '/network-cy2');
                     } else if (newValue == 'CY 3') {
                       Navigator.pushReplacementNamed(context, '/network-cy3');
+                    } else if (newValue == 'GATE') {
+                      Navigator.pushReplacementNamed(context, '/network-gate');
+                    } else if (newValue == 'PARKING') {
+                      Navigator.pushReplacementNamed(context, '/network-parking');
                     }
                   }
                 },
@@ -827,7 +544,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
       ),
       child: const Center(
         child: Text(
-          'Container\nYard 2',
+          'PARKING',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white,
@@ -891,93 +608,90 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     );
   }
 
-   Widget _buildTowerList() {
-  // Show loading indicator
-  if (isLoading) {
-    return Container(
-      // 1. Ubah padding dari .all(20) menjadi symmetric vertical agar lebih tipis
-      padding: const EdgeInsets.symmetric(vertical: 16), 
-      width: double.infinity, // Memastikan lebar penuh
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // 2. Perkecil ukuran loading spinner dengan SizedBox
-            SizedBox(
-              width: 24, 
-              height: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 3, // Garis spinner lebih tipis
-              ),
-            ),
-            // 3. Perkecil jarak antara spinner dan teks
-            SizedBox(height: 10), 
-            Text(
-              'Loading Access Point Data...',
-              style: TextStyle(
-                fontSize: 14, // Ukuran font sedikit diperkecil
-                color: Colors.black87,
-              ),
+  Widget _buildTowerList() {
+    // Show loading indicator
+    if (isLoading) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  // Show empty state if no data
-if (towers.isEmpty) {
-  return Container(
-    padding: const EdgeInsets.symmetric(vertical: 20),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(10),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.1),
-          blurRadius: 10,
-          offset: const Offset(0, 4),
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                ),
+              ),
+              SizedBox(height: 10),
+              Text(
+                'Loading Access Point Data...',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
         ),
-      ],
-    ),
-    child: const Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.signal_wifi_off,
-            size: 64,
-            color: Colors.grey,
-          ),
-          SizedBox(height: 16),
-          Text(
-            'No Data Access Point',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+      );
+    }
+
+    // Show empty state if no data
+    if (towers.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
+          ],
+        ),
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.signal_wifi_off,
+                size: 64,
+                color: Colors.grey,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'No Data Access Point',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    ),
-  );
-}
+        ),
+      );
+    }
 
     // Show data table when towers exist
     return Container(
-      clipBehavior: Clip.antiAlias, 
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -1010,8 +724,7 @@ if (towers.isEmpty) {
                   ),
                 ),
                 // Pagination Controls
-                // Pagination Controls
-                    Container(
+                Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -1029,7 +742,6 @@ if (towers.isEmpty) {
                       const SizedBox(width: 8),
 
                       // LIST ANGKA HALAMAN
-                      // Kita generate angka berdasarkan totalPages
                       ...List.generate(totalPages, (index) {
                         bool isCurrentPage = index == currentPage;
                         return GestureDetector(
@@ -1040,10 +752,12 @@ if (towers.isEmpty) {
                           },
                           child: Container(
                             margin: const EdgeInsets.symmetric(horizontal: 4),
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              // Beri warna background jika halaman sedang aktif
-                              color: isCurrentPage ? const Color(0xFF1976D2) : Colors.transparent,
+                              color: isCurrentPage
+                                  ? const Color(0xFF1976D2)
+                                  : Colors.transparent,
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -1051,8 +765,9 @@ if (towers.isEmpty) {
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
-                                // Beri warna teks putih jika aktif, biru jika tidak aktif
-                                color: isCurrentPage ? Colors.white : const Color(0xFF1976D2),
+                                color: isCurrentPage
+                                    ? Colors.white
+                                    : const Color(0xFF1976D2),
                               ),
                             ),
                           ),
@@ -1063,7 +778,9 @@ if (towers.isEmpty) {
                       // Tombol Next
                       IconButton(
                         icon: const Icon(Icons.chevron_right, size: 20),
-                        onPressed: currentPage < totalPages - 1 ? () => setState(() => currentPage++) : null,
+                        onPressed: currentPage < totalPages - 1
+                            ? () => setState(() => currentPage++)
+                            : null,
                         constraints: const BoxConstraints(),
                         padding: EdgeInsets.zero,
                       ),
@@ -1098,91 +815,61 @@ if (towers.isEmpty) {
   }
 
   Widget _buildTableRow(Tower tower) {
-  bool isWarning = isDownStatus(tower.status);
-  String statusLabel = isWarning ? 'DOWN' : tower.status;
-  Color statusTextColor = isWarning ? Colors.red : Colors.black87;
+    bool isWarning = isDownStatus(tower.status);
+    String statusLabel = isWarning ? 'DOWN' : tower.status;
+    Color statusTextColor = isWarning ? Colors.red : Colors.black87;
 
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), // Padding vertikal disesuaikan agar rapi
-    decoration: BoxDecoration(
-      color: const Color(0xFFE8D5C4),
-      border: Border(
-        left: BorderSide(color: Colors.grey[500]!, width: 1),
-        right: BorderSide(color: Colors.grey[500]!, width: 1),
-        bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8D5C4),
+        border: Border(
+          left: BorderSide(color: Colors.grey[500]!, width: 1),
+          right: BorderSide(color: Colors.grey[500]!, width: 1),
+          bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+        ),
       ),
-    ),
-    child: Row(
-      children: [
-        _tableCell(tower.towerId, flex: 1, fontWeight: FontWeight.w800),
-        _tableCell(tower.location, flex: 2, fontWeight: FontWeight.w800),
-        _tableCell(tower.ipAddress, flex: 2),
-        // Kolom Status (Hanya satu saja agar tidak double)
-        _tableCell(
-          statusLabel,
-          flex: 1,
-          fontWeight: FontWeight.w800,
-          color: statusTextColor,
-        ),
-        
-        // --- TAMBAHKAN BLOK AKSI INI ---
-        Expanded(
-          flex: 1,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
-                onPressed: () => _showEditForm(tower), // Pastikan fungsi _showEditForm sudah di-copy ke file ini
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                onPressed: () => _confirmDelete(tower), // Pastikan fungsi _confirmDelete sudah di-copy ke file ini
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            ],
+      child: Row(
+        children: [
+          _tableCell(tower.towerId, flex: 1, fontWeight: FontWeight.w800),
+          _tableCell(tower.location, flex: 2, fontWeight: FontWeight.w800),
+          _tableCell(tower.ipAddress, flex: 2),
+          _tableCell(
+            statusLabel,
+            flex: 1,
+            fontWeight: FontWeight.w800,
+            color: statusTextColor,
           ),
-        ),
-      ],
-    ),
-  );
-}
-
-  Widget _buildPagerIcon(IconData icon, VoidCallback? onPressed) {
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: Colors.black87.withOpacity(onPressed == null ? 0.2 : 0.6),
-            width: 1.2,
+          Expanded(
+            flex: 1,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
+                  onPressed: () => _showEditForm(tower),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                  onPressed: () => _confirmDelete(tower),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
           ),
-        ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: onPressed == null ? Colors.black26 : Colors.black87,
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildHeaderCell(String label, {required int flex, bool isLast = false}) {
-  return Expanded(
-    flex: flex,
-    child: Container(
-      decoration: const BoxDecoration(
-        // HAPUS DECORATION BORDER DI SINI agar tidak ada garis putih vertikal
-      ),
+  Widget _buildHeaderCell(String label,
+      {required int flex, bool isLast = false}) {
+    return Expanded(
+      flex: flex,
       child: Text(
         label,
         textAlign: TextAlign.center,
@@ -1192,9 +879,8 @@ if (towers.isEmpty) {
           fontSize: 14,
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _tableCell(String text,
       {required int flex,
@@ -1240,7 +926,6 @@ if (towers.isEmpty) {
     );
   }
 
-// --- FUNGSI UNTUK MODAL EDIT ---
   void _showEditForm(Tower tower) {
     final ipController = TextEditingController(text: tower.ipAddress);
     final locationController = TextEditingController(text: tower.location);
@@ -1274,7 +959,7 @@ if (towers.isEmpty) {
               if (response['success'] == true) {
                 if (mounted) {
                   Navigator.pop(context);
-                  _loadTowers(); // Refresh data CY2
+                  _loadTowers();
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                       content: Text('Successfully Updated'),
                       backgroundColor: Colors.green));
@@ -1288,7 +973,6 @@ if (towers.isEmpty) {
     );
   }
 
-  // --- FUNGSI UNTUK KONFIRMASI HAPUS ---
   void _confirmDelete(Tower tower) {
     showDialog(
       context: context,
@@ -1306,14 +990,15 @@ if (towers.isEmpty) {
               if (response['success'] == true) {
                 if (mounted) {
                   Navigator.pop(context);
-                  _loadTowers(); // Refresh data CY2
+                  _loadTowers();
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                       content: Text('Data Has Been Successfully Deleted'),
                       backgroundColor: Colors.red));
                 }
               }
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+            child: const Text('Delete',
+                style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -1324,13 +1009,15 @@ if (towers.isEmpty) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Logout', style: TextStyle(color: Colors.black87)),
+        title:
+            const Text('Logout', style: TextStyle(color: Colors.black87)),
         content: const Text('Are You Sure To Logout?',
             style: TextStyle(color: Colors.black87)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.black87)),
+            child: const Text('Cancel',
+                style: TextStyle(color: Colors.black87)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1346,34 +1033,6 @@ if (towers.isEmpty) {
               foregroundColor: Colors.white,
             ),
             child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showTowerDetails(Map<String, dynamic> tower) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Access Point ${tower['id']} Details'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Location: ${tower['location']}'),
-            const SizedBox(height: 8),
-            Text('Status: ${tower['status']}'),
-            const SizedBox(height: 8),
-            Text('Traffic: ${tower['traffic']}'),
-            const SizedBox(height: 8),
-            Text('Uptime: ${tower['uptime']}'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
           ),
         ],
       ),

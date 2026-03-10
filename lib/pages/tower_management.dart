@@ -3,8 +3,8 @@ import 'package:monitoring/models/tower_model.dart';
 import 'package:monitoring/services/api_service.dart';
 import '../main.dart';
 import '../utils/device_icon_resolver.dart';
-import '../widgets/expandable_fab_nav.dart';
 import '../widgets/global_header_bar.dart';
+import '../widgets/global_sidebar_nav.dart';
 
 class TowerManagementPage extends StatefulWidget {
   const TowerManagementPage({super.key});
@@ -50,7 +50,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
         _towers = towers;
         _isLoading = false;
         _lastRefreshTime = DateTime.now();
-        _currentPage = 1;  // Reset to first page when loading new data
+        _currentPage = 1; // Reset to first page when loading new data
       });
     } catch (_) {
       if (mounted) {
@@ -153,7 +153,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
       });
     }
 
-    unified.sort((a, b) => a['code'].toString().compareTo(b['code'].toString()));
+    unified
+        .sort((a, b) => a['code'].toString().compareTo(b['code'].toString()));
     return unified;
   }
 
@@ -205,7 +206,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(response['message']?.toString() ?? 'Gagal menyimpan master location.'),
+          content: Text(response['message']?.toString() ??
+              'Gagal menyimpan master location.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -229,7 +231,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(response['message']?.toString() ?? 'Gagal menghapus tower.'),
+          content:
+              Text(response['message']?.toString() ?? 'Gagal menghapus tower.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -264,7 +267,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
   Future<void> _showEditDialog(Tower tower) async {
     final idController = TextEditingController(text: tower.towerId);
     String selectedType = 'TOWER';
-    String selectedYard = tower.containerYard.isEmpty ? 'CY1' : tower.containerYard;
+    String selectedYard =
+        tower.containerYard.isEmpty ? 'CY1' : tower.containerYard;
 
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
@@ -323,7 +327,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                   ...payload,
                 });
               },
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1976D2)),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1976D2)),
               child: const Text('Save', style: TextStyle(color: Colors.white)),
             ),
           ],
@@ -340,19 +345,23 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
       'location_name': (result['tower_id'] ?? '').toString(),
       'container_yard': (result['container_yard'] ?? '').toString(),
     };
-    final response = await _apiService.updateMasterLocation(tower.id, masterPayload);
+    final response =
+        await _apiService.updateMasterLocation(tower.id, masterPayload);
     if (!mounted) return;
 
     if (response['success'] == true) {
       await _loadTowers();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tower berhasil diupdate.'), backgroundColor: Colors.green),
+        const SnackBar(
+            content: Text('Tower berhasil diupdate.'),
+            backgroundColor: Colors.green),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(response['message']?.toString() ?? 'Gagal update tower.'),
+          content:
+              Text(response['message']?.toString() ?? 'Gagal update tower.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -370,9 +379,15 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
             children: [
               const GlobalHeaderBar(currentRoute: '/tower-management'),
               Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : SingleChildScrollView(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Sidebar (Kiri)
+                    const GlobalSidebarNav(currentRoute: '/tower-management'),
+                    const SizedBox(width: 12),
+                    // Content (Kanan)
+                    Expanded(
+                      child: SingleChildScrollView(
                         padding: EdgeInsets.all(isMobile ? 10 : 24),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -394,11 +409,13 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                           ],
                         ),
                       ),
+                    ),
+                  ],
+                ),
               ),
               _buildFooter(),
             ],
           ),
-          const ExpandableFabNav(currentRoute: '/tower-management'),
         ],
       ),
     );
@@ -503,9 +520,10 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
             children: [
               Text(
                 _selectedMasterType == 'TOWER'
-                    ? 'Register New Master Tower'
+                    ? 'Register New Master Data'
                     : 'Register New Master ${_selectedMasterType.toLowerCase()}',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               if (_lastRefreshTime != null)
                 Text(
@@ -577,7 +595,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blueGrey[700],
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
                 ),
               ),
               const SizedBox(width: 10),
@@ -586,9 +605,11 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1976D2),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 18),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 34, vertical: 18),
                 ),
-                child: const Text('SAVE', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: const Text('SAVE',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -597,14 +618,16 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController ctrl, IconData icon) {
+  Widget _buildTextField(
+      String label, TextEditingController ctrl, IconData icon) {
     return TextField(
       controller: ctrl,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, size: 20),
         border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
     );
   }
@@ -616,7 +639,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
       decoration: BoxDecoration(
         color: hasPos ? Colors.green[50] : Colors.orange[50],
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: hasPos ? Colors.green[200]! : Colors.orange[200]!),
+        border: Border.all(
+            color: hasPos ? Colors.green[200]! : Colors.orange[200]!),
       ),
       child: Row(
         children: [
@@ -663,7 +687,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(response['message']?.toString() ?? 'Failed To Delete Master Location.'),
+          content: Text(response['message']?.toString() ??
+              'Failed To Delete Master Location.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -735,13 +760,17 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
               onPressed: () {
                 final payload = <String, dynamic>{
                   'location_type': selectedType,
-                  'location_code': codeController.text.trim().toUpperCase().replaceAll(' ', '_'),
+                  'location_code': codeController.text
+                      .trim()
+                      .toUpperCase()
+                      .replaceAll(' ', '_'),
                   'location_name': nameController.text.trim(),
                   'container_yard': selectedYard,
                 };
                 Navigator.pop(context, payload);
               },
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1976D2)),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1976D2)),
               child: const Text('Save', style: TextStyle(color: Colors.white)),
             ),
           ],
@@ -750,7 +779,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     );
 
     nameController.dispose();
-  codeController.dispose();
+    codeController.dispose();
 
     if (result == null) return;
 
@@ -769,7 +798,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(response['message']?.toString() ?? 'Gagal update master location.'),
+          content: Text(response['message']?.toString() ??
+              'Gagal update master location.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -782,10 +812,14 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
   }
 
   Future<void> _showMasterDetailDialog(Map<String, dynamic> item) async {
-    final type = (item['type'] ?? item['location_type'] ?? 'OTHER').toString().toUpperCase();
+    final type = (item['type'] ?? item['location_type'] ?? 'OTHER')
+        .toString()
+        .toUpperCase();
     final code = (item['code'] ?? item['location_code'] ?? '-').toString();
     final name = (item['location_name'] ?? code).toString();
-    final yard = (item['yard'] ?? item['container_yard'] ?? '-').toString().toUpperCase();
+    final yard = (item['yard'] ?? item['container_yard'] ?? '-')
+        .toString()
+        .toUpperCase();
 
     final towers = await _apiService.getAllTowers();
     final mmts = await _apiService.getAllMMTs();
@@ -803,7 +837,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     final devices = <Map<String, String>>[];
 
     for (final tower in towers) {
-      if ((type == 'TOWER' && tower.towerId.toUpperCase() == code.toUpperCase()) ||
+      if ((type == 'TOWER' &&
+              tower.towerId.toUpperCase() == code.toUpperCase()) ||
           (type != 'TOWER' && matchByLocation(tower.location))) {
         devices.add({
           'type': 'TOWER',
@@ -853,11 +888,13 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Location: $yard', style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text('Location: $yard',
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 10),
               Row(
                 children: [
-                  _buildSummaryChip('Total', devices.length.toString(), Colors.blueGrey),
+                  _buildSummaryChip(
+                      'Total', devices.length.toString(), Colors.blueGrey),
                   const SizedBox(width: 8),
                   _buildSummaryChip('UP', upCount.toString(), Colors.green),
                   const SizedBox(width: 8),
@@ -886,7 +923,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                               padding: const EdgeInsets.only(top: 2),
                               child: Icon(
                                 DeviceIconResolver.iconForType(d['type'] ?? ''),
-                                color: DeviceIconResolver.colorForType(d['type'] ?? ''),
+                                color: DeviceIconResolver.colorForType(
+                                    d['type'] ?? ''),
                                 size: 16,
                               ),
                             ),
@@ -897,19 +935,26 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                                 children: [
                                   Text(
                                     '${d['name']} (${d['type']})',
-                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700),
                                   ),
-                                  Text('IP: ${d['ip'] ?? '-'}', style: const TextStyle(fontSize: 11)),
-                                  Text('Lokasi: ${d['location'] ?? '-'}', style: const TextStyle(fontSize: 11)),
+                                  Text('IP: ${d['ip'] ?? '-'}',
+                                      style: const TextStyle(fontSize: 11)),
+                                  Text('Lokasi: ${d['location'] ?? '-'}',
+                                      style: const TextStyle(fontSize: 11)),
                                 ],
                               ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 3),
                               decoration: BoxDecoration(
-                                color: (isUp ? Colors.green : Colors.red).withOpacity(0.12),
+                                color: (isUp ? Colors.green : Colors.red)
+                                    .withOpacity(0.12),
                                 borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: isUp ? Colors.green : Colors.red),
+                                border: Border.all(
+                                    color: isUp ? Colors.green : Colors.red),
                               ),
                               child: Text(
                                 (d['status'] ?? '-').toUpperCase(),
@@ -949,206 +994,265 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
       ),
       child: Text(
         '$label: $value',
-        style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
+        style:
+            TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
       ),
     );
   }
 
   Widget _buildUnifiedMasterTable() {
-  final unified = _getUnifiedMasterList();
-  
-  final totalPages = (unified.length / itemsPerPage).ceil();
-  if (totalPages > 0 && _currentPage > totalPages) {
-    _currentPage = totalPages;
-  }
-  
-  final startIndex = (_currentPage - 1) * itemsPerPage;
-  final endIndex = (startIndex + itemsPerPage).clamp(0, unified.length);
-  final data = unified.sublist(startIndex, endIndex);
+    final unified = _getUnifiedMasterList();
 
-  return Container(
-    clipBehavior: Clip.antiAlias,
-    decoration: BoxDecoration(
-      color: Colors.white.withOpacity(0.9), // Sedikit lebih solid agar teks jelas
-      borderRadius: BorderRadius.circular(16), // Border radius lebih lembut
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.1),
-          blurRadius: 20,
-          offset: const Offset(0, 4),
-        ),
-      ],
-    ),
-    child: Column(
-      children: [
-        // HEADER TABEL
-        Container(
-          color: const Color(0xFF1976D2),
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-          child: const Row(
-            children: [
-              Expanded(flex: 2, child: Text('TYPE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1))),
-              Expanded(flex: 4, child: Text('NAME / ID', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1))),
-              Expanded(flex: 2, child: Text('LOCATION', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1))),
-              Expanded(flex: 2, child: Center(child: Text('ACTIONS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1)))),
-            ],
+    final totalPages = (unified.length / itemsPerPage).ceil();
+    if (totalPages > 0 && _currentPage > totalPages) {
+      _currentPage = totalPages;
+    }
+
+    final startIndex = (_currentPage - 1) * itemsPerPage;
+    final endIndex = (startIndex + itemsPerPage).clamp(0, unified.length);
+    final data = unified.sublist(startIndex, endIndex);
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.white
+            .withOpacity(0.9), // Sedikit lebih solid agar teks jelas
+        borderRadius: BorderRadius.circular(16), // Border radius lebih lembut
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
           ),
-        ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // HEADER TABEL
+          Container(
+            color: const Color(0xFF1976D2),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            child: const Row(
+              children: [
+                Expanded(
+                    flex: 2,
+                    child: Text('TYPE',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            letterSpacing: 1))),
+                Expanded(
+                    flex: 4,
+                    child: Text('NAME / ID',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            letterSpacing: 1))),
+                Expanded(
+                    flex: 2,
+                    child: Text('LOCATION',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            letterSpacing: 1))),
+                Expanded(
+                    flex: 2,
+                    child: Center(
+                        child: Text('ACTIONS',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                letterSpacing: 1)))),
+              ],
+            ),
+          ),
 
-        if (data.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(40),
-            child: Text('Belum ada data Master.', style: TextStyle(color: Colors.grey)),
-          )
-        else
-          // BODY TABEL
-          ...data.map((item) {
-            final bool isLast = data.last == item;
-            return Container(
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: isLast ? Colors.transparent : Colors.grey.shade200,
-                    width: 1,
+          if (data.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(40),
+              child: Text('Belum ada data Master.',
+                  style: TextStyle(color: Colors.grey)),
+            )
+          else
+            // BODY TABEL
+            ...data.map((item) {
+              final bool isLast = data.last == item;
+              return Container(
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: isLast ? Colors.transparent : Colors.grey.shade200,
+                      width: 1,
+                    ),
                   ),
                 ),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-              child: Row(
-                children: [
-                  // Kolom Type dengan Badge
-                  Expanded(
-                    flex: 2,
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _getTypeColor(item['type'].toString()).withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          item['type'].toString(),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: _getTypeColor(item['type'].toString()),
-                            fontSize: 10,
+                padding:
+                    const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                child: Row(
+                  children: [
+                    // Kolom Type dengan Badge
+                    Expanded(
+                      flex: 2,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _getTypeColor(item['type'].toString())
+                                .withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            item['type'].toString(),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: _getTypeColor(item['type'].toString()),
+                              fontSize: 10,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  
-                  // Kolom Name
-                  Expanded(
-                    flex: 4,
-                    child: Text(
-                      (item['location_name'] ?? item['code'] ?? '-').toString(),
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.black87),
-                    ),
-                  ),
 
-                  // Kolom Yard
-                  Expanded(
-                    flex: 2,
-                    child: Row(
-                      children: [
-                        const Icon(Icons.grid_view_rounded, size: 14, color: Colors.grey),
-                        const SizedBox(width: 6),
-                        Text(
-                          (item['yard'] ?? '-').toString(),
-                          style: const TextStyle(fontSize: 13, color: Colors.black54, fontWeight: FontWeight.w500),
-                        ),
-                      ],
+                    // Kolom Name
+                    Expanded(
+                      flex: 4,
+                      child: Text(
+                        (item['location_name'] ?? item['code'] ?? '-')
+                            .toString(),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: Colors.black87),
+                      ),
                     ),
-                  ),
 
-                  // Kolom Action
-                  Expanded(
-                    flex: 2,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildActionBtn(Icons.info_outline, Colors.teal, () => _showMasterDetailDialog(item)),
-                        const SizedBox(width: 8),
-                        _buildActionBtn(Icons.edit_outlined, Colors.blue, () => _showEditNonTowerDialog(item)),
-                        const SizedBox(width: 8),
-                        _buildActionBtn(Icons.delete_outline, Colors.red, () => _showDeleteNonTowerDialog(item)),
-                      ],
+                    // Kolom Yard
+                    Expanded(
+                      flex: 2,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.grid_view_rounded,
+                              size: 14, color: Colors.grey),
+                          const SizedBox(width: 6),
+                          Text(
+                            (item['yard'] ?? '-').toString(),
+                            style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.black54,
+                                fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
                     ),
+
+                    // Kolom Action
+                    Expanded(
+                      flex: 2,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildActionBtn(Icons.info_outline, Colors.teal,
+                              () => _showMasterDetailDialog(item)),
+                          const SizedBox(width: 8),
+                          _buildActionBtn(Icons.edit_outlined, Colors.blue,
+                              () => _showEditNonTowerDialog(item)),
+                          const SizedBox(width: 8),
+                          _buildActionBtn(Icons.delete_outline, Colors.red,
+                              () => _showDeleteNonTowerDialog(item)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+
+          // FOOTER / PAGINATION
+          if (unified.length > itemsPerPage)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                border: Border(top: BorderSide(color: Colors.grey.shade200)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Page $_currentPage of $totalPages  •  Total ${unified.length} items',
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blueGrey.shade700,
+                        fontWeight: FontWeight.w500),
+                  ),
+                  Row(
+                    children: [
+                      _buildPageBtn(
+                          Icons.chevron_left,
+                          _currentPage > 1
+                              ? () => setState(() => _currentPage--)
+                              : null),
+                      const SizedBox(width: 12),
+                      _buildPageBtn(
+                          Icons.chevron_right,
+                          _currentPage < totalPages
+                              ? () => setState(() => _currentPage++)
+                              : null),
+                    ],
                   ),
                 ],
               ),
-            );
-          }),
-
-        // FOOTER / PAGINATION
-        if (unified.length > itemsPerPage)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              border: Border(top: BorderSide(color: Colors.grey.shade200)),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Page $_currentPage of $totalPages  •  Total ${unified.length} items',
-                  style: TextStyle(fontSize: 12, color: Colors.blueGrey.shade700, fontWeight: FontWeight.w500),
-                ),
-                Row(
-                  children: [
-                    _buildPageBtn(Icons.chevron_left, _currentPage > 1 ? () => setState(() => _currentPage--) : null),
-                    const SizedBox(width: 12),
-                    _buildPageBtn(Icons.chevron_right, _currentPage < totalPages ? () => setState(() => _currentPage++) : null),
-                  ],
-                ),
-              ],
-            ),
-          ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
 // Helper Widget untuk Tombol Aksi agar seragam
-Widget _buildActionBtn(IconData icon, Color color, VoidCallback onTap) {
-  return MouseRegion(
-    cursor: SystemMouseCursors.click,
-    child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
+  Widget _buildActionBtn(IconData icon, Color color, VoidCallback onTap) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: color, size: 18),
         ),
-        child: Icon(icon, color: color, size: 18),
       ),
-    ),
-  );
-}
+    );
+  }
 
 // Helper Widget untuk Tombol Navigasi Halaman
-Widget _buildPageBtn(IconData icon, VoidCallback? onTap) {
-  bool isDisabled = onTap == null;
-  return MouseRegion(
-    cursor: isDisabled ? SystemMouseCursors.basic : SystemMouseCursors.click,
-    child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: isDisabled ? Colors.grey.shade200 : Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: isDisabled ? Colors.transparent : Colors.grey.shade300),
+  Widget _buildPageBtn(IconData icon, VoidCallback? onTap) {
+    bool isDisabled = onTap == null;
+    return MouseRegion(
+      cursor: isDisabled ? SystemMouseCursors.basic : SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: isDisabled ? Colors.grey.shade200 : Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+                color: isDisabled ? Colors.transparent : Colors.grey.shade300),
+          ),
+          child: Icon(icon,
+              color: isDisabled ? Colors.grey : Colors.blueAccent, size: 20),
         ),
-        child: Icon(icon, color: isDisabled ? Colors.grey : Colors.blueAccent, size: 20),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Color _getTypeColor(String type) {
     return DeviceIconResolver.colorForType(type);
@@ -1181,12 +1285,13 @@ Widget _buildPageBtn(IconData icon, VoidCallback? onTap) {
 
   Future<void> _showPositionHistory(Tower tower) async {
     final result = await _apiService.getTowerPositionHistory(tower.id);
-    
+
     if (!mounted) return;
 
     if (result['success'] == true) {
-      final history = (result['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-      
+      final history =
+          (result['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -1197,11 +1302,16 @@ Widget _buildPageBtn(IconData icon, VoidCallback? onTap) {
               itemCount: history.length,
               itemBuilder: (context, index) {
                 final entry = history[index];
-                final oldPos = entry['old_latitude'] != null && entry['old_longitude'] != null
+                final oldPos = entry['old_latitude'] != null &&
+                        entry['old_longitude'] != null
                     ? '${double.parse(entry['old_latitude'].toString()).toStringAsFixed(5)}, ${double.parse(entry['old_longitude'].toString()).toStringAsFixed(5)}'
                     : 'N/A';
-                final newPos = '${double.parse(entry['new_latitude'].toString()).toStringAsFixed(5)}, ${double.parse(entry['new_longitude'].toString()).toStringAsFixed(5)}';
-                final date = DateTime.tryParse(entry['created_at'] ?? '')?.toString().split('.')[0] ?? entry['created_at'];
+                final newPos =
+                    '${double.parse(entry['new_latitude'].toString()).toStringAsFixed(5)}, ${double.parse(entry['new_longitude'].toString()).toStringAsFixed(5)}';
+                final date = DateTime.tryParse(entry['created_at'] ?? '')
+                        ?.toString()
+                        .split('.')[0] ??
+                    entry['created_at'];
 
                 return Container(
                   margin: const EdgeInsets.symmetric(vertical: 8),
@@ -1213,12 +1323,21 @@ Widget _buildPageBtn(IconData icon, VoidCallback? onTap) {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('$date - ${entry['changed_by'] ?? 'Unknown'}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      Text('$date - ${entry['changed_by'] ?? 'Unknown'}',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 12)),
                       const SizedBox(height: 4),
-                      Text('From: $oldPos', style: const TextStyle(fontSize: 11)),
-                      Text('To: $newPos', style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.w600)),
+                      Text('From: $oldPos',
+                          style: const TextStyle(fontSize: 11)),
+                      Text('To: $newPos',
+                          style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.green,
+                              fontWeight: FontWeight.w600)),
                       if (entry['change_reason'] != null)
-                        Text('Reason: ${entry['change_reason']}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                        Text('Reason: ${entry['change_reason']}',
+                            style: const TextStyle(
+                                fontSize: 10, color: Colors.grey)),
                     ],
                   ),
                 );
@@ -1235,7 +1354,9 @@ Widget _buildPageBtn(IconData icon, VoidCallback? onTap) {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load history: ${result['message']}'),),
+        SnackBar(
+          content: Text('Failed to load history: ${result['message']}'),
+        ),
       );
     }
   }
@@ -1250,12 +1371,14 @@ Widget _buildPageBtn(IconData icon, VoidCallback? onTap) {
         children: [
           const Text(
             'Terminal Nilam',
-            style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+            style: TextStyle(
+                color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
           ),
           const SizedBox(width: 30),
           Expanded(
             child: ScrollConfiguration(
-              behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+              behavior:
+                  ScrollConfiguration.of(context).copyWith(scrollbars: false),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
@@ -1264,7 +1387,8 @@ Widget _buildPageBtn(IconData icon, VoidCallback? onTap) {
                   children: [
                     _buildHeaderOpenButton('Add New Device', '/add-device'),
                     const SizedBox(width: 12),
-                    _buildHeaderOpenButton('Master Data', '/tower-management', isActive: true),
+                    _buildHeaderOpenButton('Master Data', '/tower-management',
+                        isActive: true),
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('Dashboard', '/dashboard'),
                     const SizedBox(width: 12),
@@ -1278,7 +1402,8 @@ Widget _buildPageBtn(IconData icon, VoidCallback? onTap) {
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('Alert Report', '/report'),
                     const SizedBox(width: 12),
-                    _buildHeaderButton('Logout', () => _showLogoutDialog(context)),
+                    _buildHeaderButton(
+                        'Logout', () => _showLogoutDialog(context)),
                     const SizedBox(width: 12),
                     GestureDetector(
                       onTap: () => Navigator.pushNamed(context, '/profile'),
@@ -1297,7 +1422,8 @@ Widget _buildPageBtn(IconData icon, VoidCallback? onTap) {
                               ),
                             ],
                           ),
-                          child: const Icon(Icons.person, color: Color(0xFF1976D2), size: 24),
+                          child: const Icon(Icons.person,
+                              color: Color(0xFF1976D2), size: 24),
                         ),
                       ),
                     ),
@@ -1327,7 +1453,8 @@ Widget _buildPageBtn(IconData icon, VoidCallback? onTap) {
     );
   }
 
-  Widget _buildHeaderOpenButton(String text, String route, {bool isActive = false}) {
+  Widget _buildHeaderOpenButton(String text, String route,
+      {bool isActive = false}) {
     return buildLiquidGlassButton(
       text,
       () => Navigator.pushNamed(context, route),
@@ -1335,7 +1462,8 @@ Widget _buildPageBtn(IconData icon, VoidCallback? onTap) {
     );
   }
 
-  Widget _buildHeaderButton(String text, VoidCallback onPressed, {bool isActive = false}) {
+  Widget _buildHeaderButton(String text, VoidCallback onPressed,
+      {bool isActive = false}) {
     return buildLiquidGlassButton(text, onPressed, isActive: isActive);
   }
 

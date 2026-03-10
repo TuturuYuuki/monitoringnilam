@@ -22,14 +22,15 @@ import 'edit_profile.dart';
 import 'change_password.dart';
 import 'add_device.dart';
 import 'report_page.dart';
-import 'master_data.dart';
-import 'access_point.dart';
-import 'mmt.dart';
 import 'alert_report.dart';
 import 'pages/tower_management.dart';
 import 'pages/mmt_monitoring.dart';
 import 'mmt_monitoring_cy2.dart';
 import 'mmt_monitoring_cy3.dart';
+import 'network_gate.dart';
+import 'network_parking.dart';
+import 'pages/mmt_monitoring_gate.dart';
+import 'pages/mmt_monitoring_parking.dart';
 
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
@@ -454,6 +455,8 @@ class MyApp extends StatelessWidget {
         '/network': (context) => const NetworkPage(),
         '/network-cy2': (context) => const NetworkCY2Page(),
         '/network-cy3': (context) => const NetworkCY3Page(),
+        '/network-gate': (context) => const NetworkGatePage(),
+        '/network-parking': (context) => const NetworkParkingPage(),
         '/cctv': (context) => const CCTVPage(),
         '/cctv-cy2': (context) => const CCTVCy2Page(),
         '/cctv-cy3': (context) => const CCTVCy3Page(),
@@ -474,6 +477,8 @@ class MyApp extends StatelessWidget {
         '/mmt-monitoring': (context) => const MMTMonitoringPage(),
         '/mmt-monitoring-cy2': (context) => const MMTMonitoringCY2Page(),
         '/mmt-monitoring-cy3': (context) => const MMTMonitoringCY3Page(),
+        '/mmt-monitoring-gate': (context) => const MMTMonitoringGatePage(),
+        '/mmt-monitoring-parking': (context) => const MMTMonitoringParkingPage(),
       },
     );
   }

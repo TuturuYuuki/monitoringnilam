@@ -24,6 +24,8 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
     'CY 1',
     'CY 2',
     'CY 3',
+    'GATE',
+    'PARKING',
   ];
   int currentPage = 0;
   final int itemsPerPage = 5;

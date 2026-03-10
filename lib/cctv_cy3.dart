@@ -7,8 +7,8 @@ import 'main.dart';
 import 'route_proxy_page.dart';
 import 'services/api_service.dart';
 import 'utils/tower_status_override.dart';
-import 'widgets/expandable_fab_nav.dart';
 import 'widgets/global_header_bar.dart';
+import 'widgets/global_sidebar_nav.dart';
 
 // CCTV Page CY 3
 class CCTVCy3Page extends StatefulWidget {
@@ -41,13 +41,13 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
 
   int _resolveCamerasPerPage() {
     final isMobile = isMobileScreen(context);
-    if (isMobile) return 4;  // Mobile: 1 column layout
-    
+    if (isMobile) return 4; // Mobile: 1 column layout
+
     // Desktop layouts
     double screenWidth = MediaQuery.of(context).size.width;
-    if (screenWidth > 1400) return 8;  // 4 columns
-    if (screenWidth > 1000) return 9;  // 3 columns (3x3 = 9 full)
-    return 8;  // 2 columns (2x4 = 8)
+    if (screenWidth > 1400) return 8; // 4 columns
+    if (screenWidth > 1000) return 9; // 3 columns (3x3 = 9 full)
+    return 8; // 2 columns (2x4 = 8)
   }
 
   void _showOfflineList() {
@@ -250,225 +250,240 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
     final isMobile = isMobileScreen(context);
     return Scaffold(
       backgroundColor: const Color(0xFF2C3E50),
-      body: Stack(
+      body: Column(
         children: [
-          Column(
-            children: [
-              const GlobalHeaderBar(currentRoute: '/cctv-cy3'),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      return Padding(
-                        padding: EdgeInsets.all(isMobile ? 12 : 24),
-                        child: _buildContent(context, constraints),
-                      );
-                    },
+          const GlobalHeaderBar(currentRoute: '/cctv-cy3'),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const GlobalSidebarNav(currentRoute: '/cctv-cy3'),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Padding(
+                          padding: EdgeInsets.all(isMobile ? 12 : 24),
+                          child: _buildContent(context, constraints),
+                        );
+                      },
+                    ),
                   ),
                 ),
-              ),
-              _buildFooter(),
-            ],
+              ],
+            ),
           ),
-          const ExpandableFabNav(currentRoute: '/cctv-cy3'),
+          _buildFooter(),
         ],
       ),
     );
   }
 
- Widget _buildHeader(BuildContext context) {
-  final isMobile = isMobileScreen(context);
-  double screenWidth = MediaQuery.of(context).size.width;
-  return Container(
-    width: screenWidth,
-    padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 12 : 24, vertical: isMobile ? 12 : 16),
-    color: const Color(0xFF1976D2),
-    child: isMobile
-        ? Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Terminal Nilam',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: isMobile ? 28 : 28,
-                        fontWeight: FontWeight.bold,
+  Widget _buildHeader(BuildContext context) {
+    final isMobile = isMobileScreen(context);
+    double screenWidth = MediaQuery.of(context).size.width;
+    return Container(
+      width: screenWidth,
+      padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 12 : 24, vertical: isMobile ? 12 : 16),
+      color: const Color(0xFF1976D2),
+      child: isMobile
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Terminal Nilam',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: isMobile ? 28 : 28,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                  ),
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: OpenContainer(
-                      transitionDuration: const Duration(milliseconds: 550),
-                      transitionType: ContainerTransitionType.fadeThrough,
-                      closedElevation: 0,
-                      closedColor: Colors.transparent,
-                      closedShape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(50),
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: OpenContainer(
+                        transitionDuration: const Duration(milliseconds: 550),
+                        transitionType: ContainerTransitionType.fadeThrough,
+                        closedElevation: 0,
+                        closedColor: Colors.transparent,
+                        closedShape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(50),
+                        ),
+                        openElevation: 0,
+                        openBuilder: (context, _) =>
+                            const RouteProxyPage('/profile'),
+                        closedBuilder: (context, openContainer) {
+                          return GestureDetector(
+                            onTap: openContainer,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.9),
+                                borderRadius: BorderRadius.circular(50),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 8,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.person,
+                                color: Color(0xFF1976D2),
+                                size: 24,
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                      openElevation: 0,
-                      openBuilder: (context, _) =>
-                          const RouteProxyPage('/profile'),
-                      closedBuilder: (context, openContainer) {
-                        return GestureDetector(
-                          onTap: openContainer,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(50),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 8,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.person,
-                              color: Color(0xFF1976D2),
-                              size: 24,
-                            ),
-                          ),
-                        );
-                      },
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ScrollConfiguration(
-                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildHeaderOpenButton('+ Add New Device', '/add-device',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Dashboard', '/dashboard',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Access Point', '/network',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('CCTV', '/cctv', isActive: true),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Alert', '/alerts',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Alert Report', '/report',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderLogoutButton(),
-                    ],
-                  ),
+                  ],
                 ),
-              ),
-            ],
-          )
-        : Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Terminal Nilam - TETAP FIXED
-              const Text(
-                'Terminal Nilam',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 30),
-              // Buttons - SCROLL HORIZONTAL
-              Expanded(
-                child: ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                const SizedBox(height: 8),
+                ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context)
+                      .copyWith(scrollbars: false),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     physics: const BouncingScrollPhysics(),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildHeaderOpenButton('Add New Device', '/add-device',
+                        _buildHeaderOpenButton(
+                            '+ Add New Device', '/add-device',
                             isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Master Data', '/tower-management',
-                            isActive: false),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 4),
                         _buildHeaderOpenButton('Dashboard', '/dashboard',
                             isActive: false),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 4),
                         _buildHeaderOpenButton('Access Point', '/network',
                             isActive: false),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 4),
                         _buildHeaderOpenButton('CCTV', '/cctv', isActive: true),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('MMT', '/mmt-monitoring', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Alert', '/alerts', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Alert Report', '/report', isActive: false),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 4),
+                        _buildHeaderOpenButton('Alert', '/alerts',
+                            isActive: false),
+                        const SizedBox(width: 4),
+                        _buildHeaderOpenButton('Alert Report', '/report',
+                            isActive: false),
+                        const SizedBox(width: 4),
                         _buildHeaderLogoutButton(),
-                        const SizedBox(width: 12),
-                        // Profile Icon - SCROLL dengan buttons
-                        MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: OpenContainer(
-                            transitionDuration: const Duration(milliseconds: 550),
-                            transitionType: ContainerTransitionType.fadeThrough,
-                            closedElevation: 0,
-                            closedColor: Colors.transparent,
-                            closedShape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(50),
-                            ),
-                            openElevation: 0,
-                            openBuilder: (context, _) =>
-                                const RouteProxyPage('/profile'),
-                            closedBuilder: (context, openContainer) {
-                              return GestureDetector(
-                                onTap: openContainer,
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.9),
-                                    borderRadius: BorderRadius.circular(50),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.1),
-                                        blurRadius: 8,
-                                        spreadRadius: 1,
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Icon(
-                                    Icons.person,
-                                    color: Color(0xFF1976D2),
-                                    size: 24,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
                       ],
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-  );
-}
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Terminal Nilam - TETAP FIXED
+                const Text(
+                  'Terminal Nilam',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 30),
+                // Buttons - SCROLL HORIZONTAL
+                Expanded(
+                  child: ScrollConfiguration(
+                    behavior: ScrollConfiguration.of(context)
+                        .copyWith(scrollbars: false),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildHeaderOpenButton(
+                              'Add New Device', '/add-device',
+                              isActive: false),
+                          const SizedBox(width: 12),
+                          _buildHeaderOpenButton(
+                              'Master Data', '/tower-management',
+                              isActive: false),
+                          const SizedBox(width: 12),
+                          _buildHeaderOpenButton('Dashboard', '/dashboard',
+                              isActive: false),
+                          const SizedBox(width: 12),
+                          _buildHeaderOpenButton('Access Point', '/network',
+                              isActive: false),
+                          const SizedBox(width: 12),
+                          _buildHeaderOpenButton('CCTV', '/cctv',
+                              isActive: true),
+                          const SizedBox(width: 12),
+                          _buildHeaderOpenButton('MMT', '/mmt-monitoring',
+                              isActive: false),
+                          const SizedBox(width: 12),
+                          _buildHeaderOpenButton('Alert', '/alerts',
+                              isActive: false),
+                          const SizedBox(width: 12),
+                          _buildHeaderOpenButton('Alert Report', '/report',
+                              isActive: false),
+                          const SizedBox(width: 12),
+                          _buildHeaderLogoutButton(),
+                          const SizedBox(width: 12),
+                          // Profile Icon - SCROLL dengan buttons
+                          MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: OpenContainer(
+                              transitionDuration:
+                                  const Duration(milliseconds: 550),
+                              transitionType:
+                                  ContainerTransitionType.fadeThrough,
+                              closedElevation: 0,
+                              closedColor: Colors.transparent,
+                              closedShape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(50),
+                              ),
+                              openElevation: 0,
+                              openBuilder: (context, _) =>
+                                  const RouteProxyPage('/profile'),
+                              closedBuilder: (context, openContainer) {
+                                return GestureDetector(
+                                  onTap: openContainer,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.9),
+                                      borderRadius: BorderRadius.circular(50),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.1),
+                                          blurRadius: 8,
+                                          spreadRadius: 1,
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Icon(
+                                      Icons.person,
+                                      color: Color(0xFF1976D2),
+                                      size: 24,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
 
   Widget _buildHeaderButton(String text, VoidCallback onPressed,
       {bool isActive = false}) {
@@ -637,10 +652,14 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: [
-                            _buildStatCard('Total Camera', '${allCameras.length}',
-                                Colors.orange, cardWidth),
+                            _buildStatCard(
+                                'Total Camera',
+                                '${allCameras.length}',
+                                Colors.orange,
+                                cardWidth),
                             const SizedBox(width: 8),
-                            _buildStatCard('UP', '$upCameras', Colors.green, cardWidth),
+                            _buildStatCard(
+                                'UP', '$upCameras', Colors.green, cardWidth),
                             const SizedBox(width: 8),
                             GestureDetector(
                               onTap: _showOfflineList,
@@ -664,10 +683,12 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                     children: [
                       _buildStatCard('Total Camera', '${allCameras.length}',
                           Colors.orange, cardWidth),
-                      _buildStatCard('UP', '$upCameras', Colors.green, cardWidth),
+                      _buildStatCard(
+                          'UP', '$upCameras', Colors.green, cardWidth),
                       GestureDetector(
                         onTap: _showOfflineList,
-                        child: _buildStatCard('DOWN', '$downCameras', Colors.red, cardWidth),
+                        child: _buildStatCard(
+                            'DOWN', '$downCameras', Colors.red, cardWidth),
                       ),
                       _buildCCTVDropdown(cardWidth),
                       _buildContainerYardButton(cardWidth),
@@ -770,19 +791,22 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 // --- FIX: TAMPILAN "SELECT AREA" ---
-                value: null, // Set null agar value lama tidak tampil di kotak utama
-                hint: const Text(
-                  "Select Area", 
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)
-                ),
+                value:
+                    null, // Set null agar value lama tidak tampil di kotak utama
+                hint: const Text("Select Area",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14)),
                 dropdownColor: const Color(0xFF4A5F7F),
                 isExpanded: true,
                 icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-                items: const ['CY 1', 'CY 2', 'CY 3', 'Parking', 'Gate']
+                items: const ['CY 1', 'CY 2', 'CY 3', 'GATE', 'PARKING']
                     .map((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
-                    child: Text(value, style: const TextStyle(color: Colors.white)),
+                    child: Text(value,
+                        style: const TextStyle(color: Colors.white)),
                   );
                 }).toList(),
                 onChanged: (String? newValue) {
@@ -793,10 +817,14 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                     });
                     if (newValue == 'CY 1') {
                       Navigator.pushReplacementNamed(context, '/cctv');
-                    } else if (newValue == 'CY 2') Navigator.pushReplacementNamed(context, '/cctv-cy2');
-                    else if (newValue == 'CY 3') Navigator.pushReplacementNamed(context, '/cctv-cy3');
-                    else if (newValue == 'Parking') Navigator.pushReplacementNamed(context, '/cctv-parking');
-                    else if (newValue == 'Gate') Navigator.pushReplacementNamed(context, '/cctv-gate');
+                    } else if (newValue == 'CY 2')
+                      Navigator.pushReplacementNamed(context, '/cctv-cy2');
+                    else if (newValue == 'CY 3')
+                      Navigator.pushReplacementNamed(context, '/cctv-cy3');
+                    else if (newValue == 'Parking')
+                      Navigator.pushReplacementNamed(context, '/cctv-parking');
+                    else if (newValue == 'Gate')
+                      Navigator.pushReplacementNamed(context, '/cctv-gate');
                   }
                 },
               ),
@@ -806,7 +834,6 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
       ),
     );
   }
-
 
   Widget _buildContainerYardButton(double width) {
     return Container(
@@ -960,27 +987,28 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
     return SizedBox(
       width: double.infinity,
       child: GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: spacing,
-        mainAxisSpacing: spacing,
-        childAspectRatio: childAspectRatio,
-      ),
-      itemCount: paginatedCameras.length,
-      itemBuilder: (context, index) {
-        return _buildCameraCard(paginatedCameras[index]);
-      },
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          crossAxisSpacing: spacing,
+          mainAxisSpacing: spacing,
+          childAspectRatio: childAspectRatio,
+        ),
+        itemCount: paginatedCameras.length,
+        itemBuilder: (context, index) {
+          return _buildCameraCard(paginatedCameras[index]);
+        },
       ),
     );
   }
 
-   Widget _buildCameraCard(Map<String, dynamic> camera) {
+  Widget _buildCameraCard(Map<String, dynamic> camera) {
     bool isUp = camera['status'] == 'UP';
     Color statusColor = isUp ? Colors.green : Colors.red;
 
-    return Stack( // 1. Tambahkan Stack agar tombol bisa melayang di atas kartu
+    return Stack(
+      // 1. Tambahkan Stack agar tombol bisa melayang di atas kartu
       children: [
         Container(
           decoration: BoxDecoration(
@@ -1042,18 +1070,20 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
             ],
           ),
         ),
-        
+
         // 2. Tambahkan tombol aksi melayang di pojok kanan atas
         Positioned(
           top: 8,
           right: 8,
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.8), // Background putih transparan
+              color:
+                  Colors.white.withOpacity(0.8), // Background putih transparan
               shape: BoxShape.circle,
             ),
             child: PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, size: 20, color: Colors.black54),
+              icon:
+                  const Icon(Icons.more_vert, size: 20, color: Colors.black54),
               onSelected: (value) {
                 if (value == 'edit') {
                   _showEditCameraForm(camera);
@@ -1107,80 +1137,80 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
           ],
         ),
         child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Showing ${(currentPage * camerasPerPage) + 1}-${(currentPage * camerasPerPage) + paginatedCameras.length} Of ${allCameras.length} Camera',
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.chevron_left),
-                onPressed: currentPage > 0
-                    ? () {
-                        setState(() {
-                          currentPage--;
-                        });
-                      }
-                    : null,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Showing ${(currentPage * camerasPerPage) + 1}-${(currentPage * camerasPerPage) + paginatedCameras.length} Of ${allCameras.length} Camera',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
               ),
-              ...List.generate(totalPages, (index) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        currentPage = index;
-                      });
-                    },
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: currentPage == index
-                            ? const Color(0xFF1976D2)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
+            ),
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.chevron_left),
+                  onPressed: currentPage > 0
+                      ? () {
+                          setState(() {
+                            currentPage--;
+                          });
+                        }
+                      : null,
+                ),
+                ...List.generate(totalPages, (index) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          currentPage = index;
+                        });
+                      },
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
                           color: currentPage == index
                               ? const Color(0xFF1976D2)
-                              : Colors.grey,
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '${index + 1}',
-                          style: TextStyle(
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
                             color: currentPage == index
-                                ? Colors.white
-                                : Colors.black,
-                            fontWeight: FontWeight.bold,
+                                ? const Color(0xFF1976D2)
+                                : Colors.grey,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${index + 1}',
+                            style: TextStyle(
+                              color: currentPage == index
+                                  ? Colors.white
+                                  : Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                );
-              }),
-              IconButton(
-                icon: const Icon(Icons.chevron_right),
-                onPressed: currentPage < totalPages - 1
-                    ? () {
-                        setState(() {
-                          currentPage++;
-                        });
-                      }
-                    : null,
-              ),
-            ],
-          ),
-        ],
-      ),
+                  );
+                }),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right),
+                  onPressed: currentPage < totalPages - 1
+                      ? () {
+                          setState(() {
+                            currentPage++;
+                          });
+                        }
+                      : null,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1202,8 +1232,10 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
 
   void _showEditCameraForm(Map<String, dynamic> camera) {
     // Controller otomatis terisi data lama (Initial Value)
-    final ipController = TextEditingController(text: camera['ip_address'] ?? '');
-    final locationController = TextEditingController(text: camera['location'] ?? '');
+    final ipController =
+        TextEditingController(text: camera['ip_address'] ?? '');
+    final locationController =
+        TextEditingController(text: camera['location'] ?? '');
 
     showDialog(
       context: context,
@@ -1222,7 +1254,8 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
               enabled: false,
               decoration: const InputDecoration(
                 labelText: 'Location (Locked)',
-                helperText: 'Pindah lokasi wajib delete camera lalu add ulang di lokasi tujuan.',
+                helperText:
+                    'Pindah lokasi wajib delete camera lalu add ulang di lokasi tujuan.',
               ),
             ),
           ],
@@ -1240,7 +1273,8 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
               // PERBAIKAN: Kirim 2 argumen (ID dan Map Data)
               final response = await ApiService().updateCamera(
                 camera['id'], // Argumen 1: ID Kamera
-                {              // Argumen 2: Map Data yang diubah
+                {
+                  // Argumen 2: Map Data yang diubah
                   'ip_address': ipController.text,
                 },
               );
@@ -1249,12 +1283,9 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                 if (mounted) {
                   Navigator.pop(context); // Menutup dialog
                   _loadCameras(); // Refresh data
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Updated Successfully'), 
-                      backgroundColor: Colors.green
-                    )
-                  );
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Updated Successfully'),
+                      backgroundColor: Colors.green));
                 }
               }
             },
@@ -1282,14 +1313,14 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
               final response = await ApiService().deleteCamera(camera['id']);
-              
+
               if (response['success'] == true) {
                 if (mounted) {
                   Navigator.pop(context); // Menutup dialog
                   _loadCameras(); // Refresh data
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Deleted Successfully'), backgroundColor: Colors.red)
-                  );
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Deleted Successfully'),
+                      backgroundColor: Colors.red));
                 }
               }
             },
@@ -1310,7 +1341,8 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.black87)),
+            child:
+                const Text('Cancel', style: TextStyle(color: Colors.black87)),
           ),
           ElevatedButton(
             onPressed: () {

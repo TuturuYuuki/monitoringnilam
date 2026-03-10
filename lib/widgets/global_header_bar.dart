@@ -71,10 +71,11 @@ class _GlobalHeaderBarState extends State<GlobalHeaderBar> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 900;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      // Hilangkan batasan kliping agar menu melayang bisa keluar dari box biru
       clipBehavior: Clip.none,
       decoration: const BoxDecoration(
         color: Color(0xFF1976D2),
@@ -84,95 +85,55 @@ class _GlobalHeaderBarState extends State<GlobalHeaderBar> {
       ),
       child: SafeArea(
         bottom: false,
-        // Wrap Row dengan Stack jika menu masih terpotong konten di bawah header
-        child: Stack(
-          clipBehavior: Clip.none,
+        child: Row(
           children: [
-            Row(
+            const Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // Home Button - Back to Dashboard
-                MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: Tooltip(
-                    message: 'Dashboard',
-                    child: InkWell(
-                      onTap: () {
-                        if (widget.currentRoute != '/dashboard') {
-                          Navigator.pushReplacementNamed(context, '/dashboard');
-                        }
-                      },
-                      borderRadius: BorderRadius.circular(25),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: widget.currentRoute == '/dashboard'
-                              ? Colors.white.withOpacity(0.2)
-                              : Colors.transparent,
-                        ),
-                        child: const Icon(
-                          Icons.home,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
-                    ),
+                Icon(
+                  Icons.warehouse,
+                  color: Colors.white,
+                  size: 30,
+                ),
+                SizedBox(width: 12),
+                Text(
+                  'TPK Nilam',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
                   ),
-                ),
-                const SizedBox(width: 12),
-                // Logo + TPK Nilam
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.warehouse,
-                      color: Colors.white,
-                      size: 30,
-                    ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'TPK Nilam',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-
-                // Area Profile
-                InkWell(
-                  onTap: _openProfile,
-                  borderRadius: BorderRadius.circular(30),
-                  child: Row(
-                    children: [
-                      Text(
-                        _name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const CircleAvatar(
-                        radius: 18,
-                        backgroundColor: Colors.white24,
-                        child:
-                            Icon(Icons.person, color: Colors.white, size: 20),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: _logout,
-                  icon: const Icon(Icons.logout, color: Colors.white, size: 22),
                 ),
               ],
+            ),
+            const Spacer(),
+            InkWell(
+              onTap: _openProfile,
+              borderRadius: BorderRadius.circular(30),
+              child: Row(
+                children: [
+                  Text(
+                    _name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Colors.white24,
+                    child: Icon(Icons.person, color: Colors.white, size: 20),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: _logout,
+              icon: const Icon(Icons.logout, color: Colors.white, size: 22),
             ),
           ],
         ),

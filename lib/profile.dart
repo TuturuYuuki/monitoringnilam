@@ -4,8 +4,8 @@ import 'main.dart';
 import 'utils/auth_helper.dart';
 import 'route_proxy_page.dart';
 import 'services/api_service.dart';
-import 'widgets/expandable_fab_nav.dart';
 import 'widgets/global_header_bar.dart';
+import 'widgets/global_sidebar_nav.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -81,188 +81,220 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               const GlobalHeaderBar(currentRoute: '/profile'),
               Expanded(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: EdgeInsets.all(isMobile ? 8 : 24.0),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                            maxWidth: isMobile ? double.infinity : 800),
-                        child: _buildContent(context),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Sidebar (Kiri)
+                    const GlobalSidebarNav(currentRoute: '/profile'),
+                    const SizedBox(width: 12),
+                    // Content (Kanan)
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: EdgeInsets.all(isMobile ? 8 : 24.0),
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                  maxWidth: isMobile ? double.infinity : 800),
+                              child: _buildContent(context),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
               _buildFooter(),
             ],
           ),
-          const ExpandableFabNav(currentRoute: '/profile'),
         ],
       ),
     );
   }
 
   Widget _buildHeader(BuildContext context) {
-  double screenWidth = MediaQuery.of(context).size.width;
-  final isMobile = isMobileScreen(context);
+    double screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = isMobileScreen(context);
 
-  return Container(
-    width: screenWidth,
-    padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 12 : 24, vertical: isMobile ? 12 : 16),
-    color: const Color(0xFF1976D2),
-    child: isMobile
-        ? Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Terminal Nilam',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      onTap: () {},
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(50),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 8,
-                              spreadRadius: 1,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.person,
-                          color: Color(0xFF1976D2),
-                          size: 24,
+    return Container(
+      width: screenWidth,
+      padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 12 : 24, vertical: isMobile ? 12 : 16),
+      color: const Color(0xFF1976D2),
+      child: isMobile
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Terminal Nilam',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              ScrollConfiguration(
-                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildHeaderOpenButton('Add New Device', '/add-device', isActive: false),
-                      const SizedBox(width: 8),
-                      _buildHeaderOpenButton('Dashboard', '/dashboard', isActive: false),
-                      const SizedBox(width: 8),
-                      _buildHeaderOpenButton('Access Point', '/network', isActive: false),
-                      const SizedBox(width: 8),
-                      _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
-                      const SizedBox(width: 8),
-                      _buildHeaderOpenButton('MMT Monitoring', '/mmt-monitoring', isActive: false),
-                      const SizedBox(width: 8),
-                      _buildHeaderOpenButton('Alert', '/alerts', isActive: false),
-                      const SizedBox(width: 8),
-                      _buildHeaderOpenButton('Alert Report', '/report', isActive: false),
-                      const SizedBox(width: 8),
-                      _buildHeaderOpenButton('Master Tower', '/tower-management', isActive: false),
-                      const SizedBox(width: 8),
-                      _buildHeaderLogoutButton(),
-                    ],
-                  ),
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () {},
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.9),
+                            borderRadius: BorderRadius.circular(50),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            color: Color(0xFF1976D2),
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          )
-        : Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Terminal Nilam - FIXED
-              const Text(
-                'Terminal Nilam',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 30),
-              // Buttons + Profile - SCROLL HORIZONTAL
-              Expanded(
-                child: ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                const SizedBox(height: 10),
+                ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context)
+                      .copyWith(scrollbars: false),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     physics: const BouncingScrollPhysics(),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildHeaderOpenButton('Add New Device', '/add-device', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Master Data', '/tower-management', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Dashboard', '/dashboard', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Access Point', '/network', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('MMT', '/mmt-monitoring', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Alert', '/alerts', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Alert Report', '/report', isActive: false),
-                        const SizedBox(width: 12),
+                        _buildHeaderOpenButton('Add New Device', '/add-device',
+                            isActive: false),
+                        const SizedBox(width: 8),
+                        _buildHeaderOpenButton('Dashboard', '/dashboard',
+                            isActive: false),
+                        const SizedBox(width: 8),
+                        _buildHeaderOpenButton('Access Point', '/network',
+                            isActive: false),
+                        const SizedBox(width: 8),
+                        _buildHeaderOpenButton('CCTV', '/cctv',
+                            isActive: false),
+                        const SizedBox(width: 8),
+                        _buildHeaderOpenButton(
+                            'MMT Monitoring', '/mmt-monitoring',
+                            isActive: false),
+                        const SizedBox(width: 8),
+                        _buildHeaderOpenButton('Alert', '/alerts',
+                            isActive: false),
+                        const SizedBox(width: 8),
+                        _buildHeaderOpenButton('Alert Report', '/report',
+                            isActive: false),
+                        const SizedBox(width: 8),
+                        _buildHeaderOpenButton(
+                            'Master Tower', '/tower-management',
+                            isActive: false),
+                        const SizedBox(width: 8),
                         _buildHeaderLogoutButton(),
-                        const SizedBox(width: 12),
-                        MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: GestureDetector(
-                            onTap: () {},
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.9),
-                                borderRadius: BorderRadius.circular(50),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 8,
-                                    spreadRadius: 1,
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.person,
-                                color: Color(0xFF1976D2),
-                                size: 24,
-                              ),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-  );
-}
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Terminal Nilam - FIXED
+                const Text(
+                  'Terminal Nilam',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 30),
+                // Buttons + Profile - SCROLL HORIZONTAL
+                Expanded(
+                  child: ScrollConfiguration(
+                    behavior: ScrollConfiguration.of(context)
+                        .copyWith(scrollbars: false),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildHeaderOpenButton(
+                              'Add New Device', '/add-device',
+                              isActive: false),
+                          const SizedBox(width: 12),
+                          _buildHeaderOpenButton(
+                              'Master Data', '/tower-management',
+                              isActive: false),
+                          const SizedBox(width: 12),
+                          _buildHeaderOpenButton('Dashboard', '/dashboard',
+                              isActive: false),
+                          const SizedBox(width: 12),
+                          _buildHeaderOpenButton('Access Point', '/network',
+                              isActive: false),
+                          const SizedBox(width: 12),
+                          _buildHeaderOpenButton('CCTV', '/cctv',
+                              isActive: false),
+                          const SizedBox(width: 12),
+                          _buildHeaderOpenButton('MMT', '/mmt-monitoring',
+                              isActive: false),
+                          const SizedBox(width: 12),
+                          _buildHeaderOpenButton('Alert', '/alerts',
+                              isActive: false),
+                          const SizedBox(width: 12),
+                          _buildHeaderOpenButton('Alert Report', '/report',
+                              isActive: false),
+                          const SizedBox(width: 12),
+                          _buildHeaderLogoutButton(),
+                          const SizedBox(width: 12),
+                          MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: GestureDetector(
+                              onTap: () {},
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.9),
+                                  borderRadius: BorderRadius.circular(50),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 8,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.person,
+                                  color: Color(0xFF1976D2),
+                                  size: 24,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
 
   Widget _buildHeaderButton(String text, VoidCallback onPressed) {
     return buildLiquidGlassButton(text, onPressed, isActive: false);
@@ -301,7 +333,8 @@ class _ProfilePageState extends State<ProfilePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.black87)),
+            child:
+                const Text('Cancel', style: TextStyle(color: Colors.black87)),
           ),
           ElevatedButton(
             onPressed: () {

@@ -23,6 +23,7 @@ import 'utils/layout_mapper.dart';
 import 'utils/device_icon_resolver.dart';
 import 'widgets/terminal_layout_static.dart';
 import 'widgets/global_header_bar.dart';
+import 'widgets/global_sidebar_nav.dart';
 import 'report_page.dart';
 import 'pages/tower_management.dart';
 import 'pages/mmt_monitoring.dart';
@@ -829,6 +830,15 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
 
       devices.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
+      // 3. FILTER ALERTS - Hanya tampilkan yang masih aktif (device masih DOWN)
+      // Do this before setState since it's async
+      final activeAlerts = await apiService.filterActiveAlerts(
+        fetchedAlerts,
+        towers,
+        effectiveCameras,
+        devices,
+      );
+
       if (mounted) {
         setState(() {
           // 1. Simpan Data Master ke List (Peta & Detail menggunakan ini)
@@ -837,25 +847,24 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           masterLocations = fetchedMasterLocations;
 
           // 2. HITUNG ULANG STATISTIK DARI LIST RIIL (Agar sinkron dengan warna peta)
-          // Access Point
+          // Access Point - Gunakan isDownStatus untuk konsistensi
           totalTowers = towers.length;
           totalOnlineTowers =
               towers.where((t) => !isDownStatus(t.status)).length;
           totalDownTowers = (totalTowers - totalOnlineTowers).clamp(0, 999);
 
-          // CCTV
+          // CCTV - Konsisten menggunakan isDownStatus
           int allCamerasCount = cameras.length;
           totalUpCameras = cameras.where((c) => !isDownStatus(c.status)).length;
           totalDownCameras = (allCamerasCount - totalUpCameras).clamp(0, 999);
 
-          // 3. ALERT: Gabungkan data DB dengan alert yang baru saja terdeteksi (DOWN baru)
-          alerts = [...fetchedAlerts, ...generatedAlerts];
-          // Hitung total dari gabungan alert tersebut
+          // 4. Gabungkan dengan alert yang baru terdeteksi (DOWN baru)
+          alerts = [...activeAlerts, ...generatedAlerts];
           totalWarnings = alerts
               .where((a) => a.severity == 'critical' || a.severity == 'warning')
               .length;
 
-          // 4. Update UI lainnya
+          // 5. Update UI lainnya
           addedDevices = devices;
           _syncAddedDevices(ipStatus);
           _updateBlinkingLocations();
@@ -1132,59 +1141,74 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       final index = seen[key] ?? 0;
       seen[key] = index + 1;
       final total = totals[key] ?? 1;
-      final offset =
-          _offsetPoint(device.latitude, device.longitude, index, total);
+      final offset = _offsetPoint(device.latitude, device.longitude, index, total);
 
-      final locationKey = '${device.latitude}_${device.longitude}';
-      final isBlinkingLocation =
-          _locationKeysWithDownDevices.contains(locationKey);
-
-      Color iconColor;
-      Color backgroundColor;
-
-      if (isBlinkingLocation && !_isBlinkVisible) {
-        iconColor = Colors.red;
-        backgroundColor = Colors.red;
-      } else {
-        iconColor = device.status == 'UP' ? Colors.green : Colors.red;
-        backgroundColor = device.status == 'UP' ? Colors.green : Colors.red;
-      }
+      // Logika Warna Status
+      final bool isDown = isDownStatus(device.status);
+      final Color badgeColor = isDown ? Colors.red : Colors.green;
+      
+      // Warna Icon Statis berdasarkan Tipe
+      final Color iconBaseColor = DeviceIconResolver.colorForType(device.type);
 
       return Marker(
         point: offset,
         width: 60,
-        height: 70,
+        height: 85, // Tinggi ditambah agar tidak terpotong
         child: GestureDetector(
-          onTap: () {
-            print(
-                'DEBUG: Tapped added device at ${device.latitude}, ${device.longitude}');
-            _showDevicesAtLocation(context, device.latitude, device.longitude);
-          },
-          behavior: HitTestBehavior.opaque,
+          onTap: () => _showDevicesAtLocation(context, device.latitude, device.longitude),
           child: MouseRegion(
             cursor: SystemMouseCursors.click,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  _getDeviceIcon(device.type),
-                  color: iconColor,
-                  size: 40,
+                // --- BAGIAN STACK UNTUK ICON + DOT ---
+                SizedBox(
+                  width: 45,
+                  height: 45,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Icon Utama
+                      Icon(
+                        _getDeviceIcon(device.type),
+                        color: iconBaseColor,
+                        size: 40,
+                      ),
+                      // Dot Status Melayang di Pojok (TOP RIGHT)
+                      Positioned(
+                        top: -2,
+                        right: -2,
+                        child: Container(
+                          width: 16, // Ukuran dot diperbesar
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: badgeColor,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2.5),
+                            boxShadow: [
+                              BoxShadow(
+                                color: badgeColor.withOpacity(0.5),
+                                blurRadius: 6,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
+                // Label Perangkat
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: backgroundColor,
-                    borderRadius: BorderRadius.circular(4),
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     device.name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 8,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -1211,13 +1235,17 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       final lng =
           double.tryParse((location['longitude'] ?? '0').toString()) ?? 0.0;
 
+      // Static icon color based on location type
       final markerColor = DeviceIconResolver.colorForType(locType);
       final markerIcon = DeviceIconResolver.iconForType(locType);
+
+      // For master locations, assume always UP (green badge)
+      final badgeColor = Colors.green;
 
       return Marker(
         point: LatLng(lat, lng),
         width: 60,
-        height: 70,
+        height: 80,
         child: GestureDetector(
           onTap: () {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -1234,23 +1262,60 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                Icon(
-                  markerIcon,
-                  color: markerColor,
-                  size: 35,
+                // Icon with Status Badge
+                SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Main Icon (static color based on type)
+                      Icon(
+                        markerIcon,
+                        color: markerColor,
+                        size: 38,
+                      ),
+                      // Status Badge (top-right corner)
+                      Positioned(
+                        top: -2,
+                        right: -2,
+                        child: Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: badgeColor,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 2.0,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: badgeColor.withOpacity(0.6),
+                                blurRadius: 4,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
+                // Label with rounded background
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: markerColor,
-                    borderRadius: BorderRadius.circular(4),
+                    color: Colors.black.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white24, width: 0.5),
                   ),
                   child: Text(
                     locCode,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 8,
+                      fontSize: 9,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1582,7 +1647,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           newLatitude,
           newLongitude,
           changedBy: 'freeroam_drag_master',
-          changeReason: 'Master tower position updated via freeroam',
+          changeReason: 'Master Tower Position Updated Via Freeroam',
         );
       }
     }
@@ -1616,30 +1681,15 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF2C3E50),
-      body: Stack(
+      body: Column(
         children: [
-          // LAYER 1: ISI HALAMAN (Paling Belakang)
-          Positioned.fill(
-            child: Column(
-              children: [
-                const SizedBox(height: 50), // Jarak agar tidak tertutup header
-                Expanded(
-                  child: _buildContent(context),
-                ),
-                _buildFooter(),
-              ],
-            ),
+          const GlobalHeaderBar(
+            currentRoute: '/dashboard',
           ),
-
-          // LAYER 2: HEADER (Paling Depan)
-          const Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: GlobalHeaderBar(
-              currentRoute: '/dashboard',
-            ),
+          Expanded(
+            child: _buildContent(context),
           ),
+          _buildFooter(),
         ],
       ),
     );
@@ -1654,9 +1704,6 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           padding: const EdgeInsets.all(8.0),
           child: Column(
             children: [
-              // Mobile: Badges at top
-              _buildNavigationBadges(context, isMobile: true),
-              const SizedBox(height: 16),
               _buildNetworkStatusCard(context),
               const SizedBox(height: 20),
               _buildCCTVMonitoringCard(context),
@@ -1675,15 +1722,15 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       );
     }
 
-    // Desktop layout with sidebar badges
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Navigation Sidebar (Fixed badges)
-        _buildNavigationBadges(context, isMobile: false),
+        // Sidebar Navigation (Kiri)
+        const GlobalSidebarNav(currentRoute: '/dashboard'),
         const SizedBox(width: 12),
-        // Left Panel - Info Cards
+        // Status Cards (Tengah)
         SizedBox(
-          width: 340,
+          width: 380,
           child: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -1701,8 +1748,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
             ),
           ),
         ),
-        const SizedBox(width: 12),
-        // Right Panel - Map
+        const SizedBox(width: 20),
+        // Live Terminal Map (Kanan)
         Expanded(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -1710,158 +1757,6 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           ),
         ),
       ],
-    );
-  }
-
-  // Build Navigation Badges Sidebar
-  Widget _buildNavigationBadges(BuildContext context,
-      {required bool isMobile}) {
-    final badges = [
-      _BadgeItem(
-        icon: Icons.dashboard,
-        label: 'Dashboard',
-        route: '/dashboard',
-        color: const Color(0xFF1976D2),
-      ),
-      _BadgeItem(
-        icon: Icons.storage,
-        label: 'Tower Mgmt',
-        route: '/tower-management',
-        color: const Color(0xFF607D8B),
-      ),
-      _BadgeItem(
-        icon: Icons.add_circle,
-        label: 'Add Device',
-        route: '/add-device',
-        color: const Color(0xFFFB8C00),
-      ),
-      _BadgeItem(
-        icon: Icons.router,
-        label: 'Network',
-        route: '/network',
-        color: const Color(0xFF546E7A),
-      ),
-      _BadgeItem(
-        icon: Icons.videocam,
-        label: 'CCTV',
-        route: '/cctv',
-        color: const Color(0xFF00897B),
-      ),
-      _BadgeItem(
-        icon: Icons.monitor,
-        label: 'MMT',
-        route: '/mmt-monitoring',
-        color: const Color(0xFF43A047),
-      ),
-      _BadgeItem(
-        icon: Icons.warning,
-        label: 'Alerts',
-        route: '/alerts',
-        color: const Color(0xFFE53935),
-      ),
-      _BadgeItem(
-        icon: Icons.assessment,
-        label: 'Alert Report',
-        route: '/alert-report',
-        color: const Color(0xFF8E24AA),
-      ),
-      _BadgeItem(
-        icon: Icons.settings,
-        label: 'Settings',
-        route: '/profile',
-        color: const Color(0xFF607D8B),
-      ),
-    ];
-
-    if (isMobile) {
-      // Mobile: Horizontal scrollable badges
-      return SizedBox(
-        height: 70,
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          itemCount: badges.length,
-          itemBuilder: (context, index) {
-            final badge = badges[index];
-            final isActive = badge.route == '/dashboard';
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: _buildBadgeButton(badge, isActive),
-            );
-          },
-        ),
-      );
-    }
-
-    // Desktop: Vertical sidebar
-    return Container(
-      width: 180,
-      margin: const EdgeInsets.only(left: 16, top: 16, bottom: 16),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: badges.map((badge) {
-            final isActive = badge.route == '/dashboard';
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _buildBadgeButton(badge, isActive),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBadgeButton(_BadgeItem badge, bool isActive) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: () {
-          if (badge.route != '/dashboard') {
-            Navigator.pushReplacementNamed(context, badge.route);
-          }
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: isActive ? badge.color : const Color(0xFF0F172A),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isActive ? Colors.white38 : const Color(0xFF334155),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                badge.icon,
-                color: Colors.white,
-                size: 20,
-              ),
-              const SizedBox(width: 10),
-              Flexible(
-                child: Text(
-                  badge.label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -3142,19 +3037,4 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       ),
     );
   }
-}
-
-// Helper class for navigation badge items
-class _BadgeItem {
-  final IconData icon;
-  final String label;
-  final String route;
-  final Color color;
-
-  _BadgeItem({
-    required this.icon,
-    required this.label,
-    required this.route,
-    required this.color,
-  });
 }
