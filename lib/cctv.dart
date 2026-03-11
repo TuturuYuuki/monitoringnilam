@@ -841,9 +841,9 @@ class _CCTVPageState extends State<CCTVPage> {
                       Navigator.pushReplacementNamed(context, '/cctv-cy2');
                     else if (newValue == 'CY 3')
                       Navigator.pushReplacementNamed(context, '/cctv-cy3');
-                    else if (newValue == 'Parking')
+                    else if (newValue == 'PARKING')
                       Navigator.pushReplacementNamed(context, '/cctv-parking');
-                    else if (newValue == 'Gate')
+                    else if (newValue == 'GATE')
                       Navigator.pushReplacementNamed(context, '/cctv-gate');
                   }
                 },
@@ -938,7 +938,7 @@ class _CCTVPageState extends State<CCTVPage> {
         padding: const EdgeInsets.all(40),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(10),
         ),
         child: const Center(
           child: Column(
@@ -994,12 +994,12 @@ class _CCTVPageState extends State<CCTVPage> {
     // Show camera grid when data exists
     final isMobile = isMobileScreen(context);
     int crossAxisCount = isMobile
-        ? 1
+        ? 3
         : constraints.maxWidth > 1400
-            ? 4
+            ? 8
             : constraints.maxWidth > 1000
-                ? 3
-                : 2;
+                ? 6
+                : 4;
 
     final resolvedPerPage = _resolveCamerasPerPage(
       crossAxisCount: crossAxisCount,
@@ -1018,7 +1018,7 @@ class _CCTVPageState extends State<CCTVPage> {
       });
     }
 
-    double childAspectRatio = isMobile ? 1.0 : 1.2;
+    double childAspectRatio = isMobile ? 1.0 : 1.0;
     double spacing = isMobile ? 8 : 20;
 
     return GridView.builder(
@@ -1069,14 +1069,14 @@ class _CCTVPageState extends State<CCTVPage> {
                   ),
                   child: Center(
                     child: Container(
-                      width: 60,
-                      height: 60,
+                      width: 34,
+                      height: 34,
                       decoration: BoxDecoration(
                         color: statusColor,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.videocam,
-                          color: Colors.white, size: 32),
+                          child: const Icon(Icons.videocam,
+                            color: Colors.white, size: 18),
                     ),
                   ),
                 ),

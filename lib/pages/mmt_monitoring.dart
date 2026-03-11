@@ -336,7 +336,9 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
 
   Widget _buildContainerYardButton(double width) {
     const Color buttonColor = Color(0xFF4A5F7F);
-    final String yardNumber = selectedCY.replaceAll('CY', ''); // Extract number from "CY1" -> "1"
+    final bool isYard = selectedCY.startsWith('CY');
+    final String yardNumber = selectedCY.replaceAll('CY', '');
+    final String areaLabel = isYard ? 'Container\nYard $yardNumber' : selectedCY;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
@@ -357,7 +359,7 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
       ),
       child: Center(
         child: Text(
-          'Container\nYard $yardNumber',
+          areaLabel,
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: Colors.white,

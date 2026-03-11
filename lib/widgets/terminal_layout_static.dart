@@ -413,15 +413,24 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       width: w - 20,
       height: h - 20,
       child: GestureDetector(
-        onTapDown: (details) {
-          if (widget.isPickMode && widget.onAreaPicked != null) {
-            final relX = (details.localPosition.dx / (w - 20)).clamp(0.0, 1.0);
-            final relY = (details.localPosition.dy / (h - 20)).clamp(0.0, 1.0);
-            widget.onAreaPicked!(area.id, relX, relY);
-            return;
-          }
-          setState(() => _zoomedAreaId = null);
-        },
+        behavior: HitTestBehavior.deferToChild,
+        onTapDown: widget.isPickMode
+            ? (details) {
+                if (widget.onAreaPicked != null) {
+                  final relX =
+                      (details.localPosition.dx / (w - 20)).clamp(0.0, 1.0);
+                  final relY =
+                      (details.localPosition.dy / (h - 20)).clamp(0.0, 1.0);
+                  widget.onAreaPicked!(area.id, relX, relY);
+                }
+              }
+            : null,
+        onTap: widget.isPickMode
+            ? null
+            : () {
+                // Use onTap (not onTapDown) so drag gestures on markers can win.
+                setState(() => _zoomedAreaId = null);
+              },
         child: Container(
           decoration: BoxDecoration(
             color: area.bgColor,
@@ -998,16 +1007,44 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
           .clamp(area.left * w + 2, (area.left + area.width) * w - markerW - 2);
       final top = (y - 26)
           .clamp(area.top * h + 2, (area.top + area.height) * h - markerH - 2);
+      final canDrag = widget.isFreeroamEditEnabled;
 
       markers.add(Positioned(
         left: left,
         top: top,
         width: markerW,
         height: markerH,
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: _buildTowerMarkerWidget(
-              tower: tower, devicesHere: devicesHere, zoomed: false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onPanUpdate: canDrag
+              ? (details) {
+                  final current = _dragPreview[tower.towerId] ??
+                      Offset(pos['cx']!, pos['cy']!);
+                  final newCx =
+                      (current.dx + (details.delta.dx / (area.width * w)))
+                          .clamp(0.0, 1.0);
+                  final newCy =
+                      (current.dy + (details.delta.dy / (area.height * h)))
+                          .clamp(0.0, 1.0);
+                  setState(() {
+                    _dragPreview[tower.towerId] = Offset(newCx, newCy);
+                  });
+                }
+              : null,
+          onPanEnd: canDrag
+              ? (_) {
+                  final preview = _dragPreview[tower.towerId];
+                  if (preview != null && widget.onTowerMoved != null) {
+                    widget.onTowerMoved!(tower.towerId, preview.dx, preview.dy);
+                  }
+                }
+              : null,
+          child: MouseRegion(
+            cursor:
+                canDrag ? SystemMouseCursors.move : SystemMouseCursors.click,
+            child: _buildTowerMarkerWidget(
+                tower: tower, devicesHere: devicesHere, zoomed: false),
+          ),
         ),
       ));
     }
@@ -1042,6 +1079,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       const markerW = 64.0, markerH = 72.0;
       final left = (x - 32).clamp(2.0, w - markerW - 2);
       final top = (y - 36).clamp(2.0, h - markerH - 2);
+      final canDrag = widget.isFreeroamEditEnabled;
 
       // ═══════════════════════════════════════════════════════════
       // DRAGGABLE TOWER MARKER - Freeroam Support
@@ -1052,10 +1090,36 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
           top: top,
           width: markerW,
           height: markerH,
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: _buildTowerMarkerWidget(
-                tower: tower, devicesHere: devicesHere, zoomed: true),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onPanUpdate: canDrag
+                ? (details) {
+                    final current = _dragPreview[tower.towerId] ??
+                        Offset(pos['cx']!, pos['cy']!);
+                    final newCx =
+                        (current.dx + (details.delta.dx / w)).clamp(0.0, 1.0);
+                    final newCy =
+                        (current.dy + (details.delta.dy / h)).clamp(0.0, 1.0);
+                    setState(() {
+                      _dragPreview[tower.towerId] = Offset(newCx, newCy);
+                    });
+                  }
+                : null,
+            onPanEnd: canDrag
+                ? (_) {
+                    final preview = _dragPreview[tower.towerId];
+                    if (preview != null && widget.onTowerMoved != null) {
+                      widget.onTowerMoved!(
+                          tower.towerId, preview.dx, preview.dy);
+                    }
+                  }
+                : null,
+            child: MouseRegion(
+              cursor:
+                  canDrag ? SystemMouseCursors.move : SystemMouseCursors.click,
+              child: _buildTowerMarkerWidget(
+                  tower: tower, devicesHere: devicesHere, zoomed: true),
+            ),
           ),
         ),
       );
@@ -1103,14 +1167,41 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
           .clamp(area.left * w + 2, (area.left + area.width) * w - markerW - 2);
       final top = (baseY - markerH / 2)
           .clamp(area.top * h + 2, (area.top + area.height) * h - markerH - 2);
+      final canDrag =
+          _isDraggableMasterType(locType) && widget.isFreeroamEditEnabled;
+      final key = _masterPreviewKey(location);
 
       markers.add(Positioned(
         left: left,
         top: top,
         child: GestureDetector(
-          onTap: () => _showMasterLocationPopup(location),
+          behavior: HitTestBehavior.opaque,
+          onPanUpdate: canDrag
+              ? (details) {
+                  final current = _masterDragPreview[key] ?? Offset(cx, cy);
+                  final newCx =
+                      (current.dx + (details.delta.dx / (area.width * w)))
+                          .clamp(0.0, 1.0);
+                  final newCy =
+                      (current.dy + (details.delta.dy / (area.height * h)))
+                          .clamp(0.0, 1.0);
+                  setState(() {
+                    _masterDragPreview[key] = Offset(newCx, newCy);
+                  });
+                }
+              : null,
+          onPanEnd: canDrag
+              ? (_) {
+                  final preview = _masterDragPreview[key];
+                  if (preview != null && widget.onMasterMoved != null) {
+                    widget.onMasterMoved!(location, preview.dx, preview.dy);
+                  }
+                }
+              : null,
+          onTap: canDrag ? null : () => _showMasterLocationPopup(location),
           child: MouseRegion(
-            cursor: SystemMouseCursors.click,
+            cursor:
+                canDrag ? SystemMouseCursors.move : SystemMouseCursors.click,
             child: Container(
               decoration: BoxDecoration(
                 boxShadow: [

@@ -1251,7 +1251,7 @@ class ApiService {
   Future<Map<String, dynamic>> getAllAlerts({
     int limit = 100,
     int offset = 0,
-    String source = 'DEVICES',
+    String source = 'ALL',
   }) async {
     try {
       final response = await http.get(

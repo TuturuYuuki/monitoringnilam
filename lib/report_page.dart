@@ -34,7 +34,7 @@ class _ReportPageState extends State<ReportPage> {
     end: DateTime.now(),
   );
   String _statusFilter = 'ALL';
-  String _selectedDeviceType = 'All'; // Filter: All, AP, CCTV, MMT
+  String _selectedDeviceType = 'ALL'; // Filter: ALL, AP, CCTV, MMT
 
   @override
   void initState() {
@@ -81,78 +81,127 @@ class _ReportPageState extends State<ReportPage> {
         });
 
       final filteredAlerts = _filterByDeviceType(sortedAlerts);
-      final downAlerts =
-          filteredAlerts.where((a) => _isDownAlert(a)).toList(growable: false);
-      final upAlerts =
-          filteredAlerts.where((a) => !_isDownAlert(a)).toList(growable: false);
+      final upAlerts = filteredAlerts.where((a) => !_isDownAlert(a)).toList();
+      final downAlerts = filteredAlerts.where((a) => _isDownAlert(a)).toList();
+      final upCount = upAlerts.length;
+      final downCount = downAlerts.length;
 
-      List<List<String>> buildRows(List<Alert> data, String status) {
-        return data.asMap().entries.map((entry) {
-          final index = entry.key + 1;
-          final a = entry.value;
-          return [
-            index.toString(),
-            _cleanDeviceName(a.title),
-            status,
-            a.lokasi ?? '-',
-            '${a.tanggal ?? '-'} ${a.waktu ?? '-'}'
-          ];
-        }).toList();
-      }
+      List<List<String>> buildRows(List<Alert> list) =>
+          list.asMap().entries.map((entry) {
+            final a = entry.value;
+            return [
+              (entry.key + 1).toString(),
+              _cleanDeviceName(a.title),
+              _isDownAlert(a) ? 'DOWN' : 'UP',
+              _extractIpFromDescription(a.description),
+              a.lokasi ?? '-',
+              '${a.tanggal ?? '-'} ${a.waktu ?? '-'}',
+            ];
+          }).toList(growable: false);
 
-      final upRows = buildRows(upAlerts, 'UP');
-      final downRows = buildRows(downAlerts, 'DOWN');
+      const tableHeaders = [
+        'No', 'Device', 'Status', 'IP', 'Location', 'Timestamp'
+      ];
 
+      pw.Widget pageHeader(String sectionTitle, PdfColor titleBg) =>
+          pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.center,
+            children: [
+              pw.Container(
+                width: double.infinity,
+                padding: const pw.EdgeInsets.symmetric(vertical: 6),
+                child: pw.Text(
+                  'ALERT MONITORING REPORT',
+                  style: pw.TextStyle(
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                  textAlign: pw.TextAlign.center,
+                ),
+              ),
+              pw.Container(
+                width: double.infinity,
+                padding: const pw.EdgeInsets.symmetric(vertical: 8),
+                decoration: pw.BoxDecoration(color: titleBg),
+                child: pw.Text(
+                  sectionTitle,
+                  style: pw.TextStyle(
+                    fontSize: 22,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                  textAlign: pw.TextAlign.center,
+                ),
+              ),
+              pw.SizedBox(height: 4),
+              pw.Text(
+                'Filter Device Type: $_selectedDeviceType',
+                style: const pw.TextStyle(fontSize: 10),
+                textAlign: pw.TextAlign.center,
+              ),
+              pw.Divider(),
+            ],
+          );
+
+      // ── Section 1: Device UP ──────────────────────────────────
       pdf.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(32),
-          build: (pw.Context context) => [
-            pw.Header(
-                level: 0,
-                child: pw.Text("ALERT MONITORING REPORT",
-                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
-            pw.Text(
-              'Filter Device Type: $_selectedDeviceType',
-              style: const pw.TextStyle(fontSize: 10),
-            ),
-            pw.SizedBox(height: 20),
-            pw.Text('Device UP (${upRows.length})',
-                style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-            pw.SizedBox(height: 6),
-            pw.TableHelper.fromTextArray(
-              headers: const [
-                'No',
-                'Device',
-                'Status',
-                'Location',
-                'Timestamp'
-              ],
-              data: upRows,
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-              headerDecoration:
-                  const pw.BoxDecoration(color: PdfColors.grey300),
-              cellAlignment: pw.Alignment.center,
-            ),
-            pw.SizedBox(height: 16),
-            pw.Text('Device DOWN (${downRows.length})',
-                style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-            pw.SizedBox(height: 6),
-            pw.TableHelper.fromTextArray(
-              headers: const [
-                'No',
-                'Device',
-                'Status',
-                'Location',
-                'Timestamp'
-              ],
-              data: downRows,
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-              headerDecoration:
-                  const pw.BoxDecoration(color: PdfColors.grey300),
-              cellAlignment: pw.Alignment.center,
-            ),
-          ],
+          header: (_) => pageHeader('Device UP ($upCount)', PdfColors.green100),
+          build: (_) => upAlerts.isEmpty
+              ? [
+                  pw.Center(
+                    child: pw.Padding(
+                      padding: const pw.EdgeInsets.only(top: 24),
+                      child: pw.Text('No UP devices found',
+                          style: const pw.TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                ]
+              : [
+                  pw.TableHelper.fromTextArray(
+                    headers: tableHeaders,
+                    data: buildRows(upAlerts),
+                    headerStyle:
+                        pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                    headerDecoration:
+                        const pw.BoxDecoration(color: PdfColors.green200),
+                    cellAlignment: pw.Alignment.center,
+                    cellStyle: const pw.TextStyle(fontSize: 9),
+                  ),
+                ],
+        ),
+      );
+
+      // ── Section 2: Device DOWN ────────────────────────────────
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          header: (_) =>
+              pageHeader('Device DOWN ($downCount)', PdfColors.red100),
+          build: (_) => downAlerts.isEmpty
+              ? [
+                  pw.Center(
+                    child: pw.Padding(
+                      padding: const pw.EdgeInsets.only(top: 24),
+                      child: pw.Text('No DOWN devices found',
+                          style: const pw.TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                ]
+              : [
+                  pw.TableHelper.fromTextArray(
+                    headers: tableHeaders,
+                    data: buildRows(downAlerts),
+                    headerStyle:
+                        pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                    headerDecoration:
+                        const pw.BoxDecoration(color: PdfColors.red200),
+                    cellAlignment: pw.Alignment.center,
+                    cellStyle: const pw.TextStyle(fontSize: 9),
+                  ),
+                ],
         ),
       );
 
@@ -174,6 +223,13 @@ class _ReportPageState extends State<ReportPage> {
     cleaned = cleaned.replaceAll(
         RegExp(r'\s+is\s+(up|down)\b', caseSensitive: false), '');
     return cleaned.trim();
+  }
+
+  String _extractIpFromDescription(String description) {
+    // Description format: "DeviceId, IP, Location, Date, Time"
+    final parts = description.split(',');
+    if (parts.length >= 2) return parts[1].trim();
+    return '-';
   }
 
   bool _isDownAlert(Alert alert) {
@@ -209,7 +265,7 @@ class _ReportPageState extends State<ReportPage> {
   }
 
   List<Alert> _filterByDeviceType(List<Alert> alertsList) {
-    if (_selectedDeviceType == 'All') return alertsList;
+    if (_selectedDeviceType == 'ALL') return alertsList;
     return alertsList
         .where((a) => _extractDeviceType(a) == _selectedDeviceType)
         .toList();
@@ -341,7 +397,7 @@ class _ReportPageState extends State<ReportPage> {
   }
 
   Widget _buildDeviceTypeFilter() {
-    final filterOptions = ['All', 'AP', 'CCTV', 'MMT'];
+    final filterOptions = ['ALL', 'AP', 'CCTV', 'MMT'];
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -535,51 +591,80 @@ class _ReportPageState extends State<ReportPage> {
         return bTime.compareTo(aTime); // Descending (newest first)
       });
 
-    // Filter by device type, then split into UP/DOWN
     final filteredAlerts = _filterByDeviceType(sortedAlerts);
-    final downAlerts =
-        filteredAlerts.where((a) => _isDownAlert(a)).toList(growable: false);
-    final upAlerts =
-        filteredAlerts.where((a) => !_isDownAlert(a)).toList(growable: false);
-
+    final upCount = filteredAlerts.where((a) => !_isDownAlert(a)).length;
+    final downCount = filteredAlerts.length - upCount;
     final isMobile = isMobileScreen(context);
-    if (isMobile) {
-      return Column(
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blueGrey.withOpacity(0.2)),
+      ),
+      child: Column(
         children: [
-          _buildReportStatusTable(
-            title: 'Device UP',
-            data: upAlerts,
-            isDownTable: false,
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: const BoxDecoration(
+              color: Color(0xFFE6EEF8),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+            ),
+            child: Text(
+              'Unified Device Report  |  UP: $upCount  DOWN: $downCount',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
           ),
-          const SizedBox(height: 12),
-          _buildReportStatusTable(
-            title: 'Device DOWN',
-            data: downAlerts,
-            isDownTable: true,
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: isMobile ? 900 : 1180),
+              child: DataTable(
+                columnSpacing: 16,
+                columns: const [
+                  DataColumn(label: Text('No')),
+                  DataColumn(label: Text('Device')),
+                  DataColumn(label: Text('Status')),
+                  DataColumn(label: Text('IP')),
+                  DataColumn(label: Text('Location')),
+                  DataColumn(label: Text('Timestamp')),
+                ],
+                rows: filteredAlerts.asMap().entries.map((entry) {
+                  final index = entry.key + 1;
+                  final a = entry.value;
+                  final isDown = _isDownAlert(a);
+                  final statusText = isDown ? 'DOWN' : 'UP';
+                  final statusColor = isDown ? Colors.red : Colors.green;
+                  return DataRow(cells: [
+                    DataCell(Text(index.toString())),
+                    DataCell(Text(_cleanDeviceName(a.title))),
+                    DataCell(Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: statusColor),
+                      ),
+                      child: Text(
+                        statusText,
+                        style: TextStyle(
+                          color: statusColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    )),
+                    DataCell(Text(_extractIpFromDescription(a.description))),
+                    DataCell(Text(a.lokasi ?? '-')),
+                    DataCell(Text('${a.tanggal ?? '-'} ${a.waktu ?? '-'}')),
+                  ]);
+                }).toList(growable: false),
+              ),
+            ),
           ),
         ],
-      );
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: _buildReportStatusTable(
-            title: 'Device UP',
-            data: upAlerts,
-            isDownTable: false,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildReportStatusTable(
-            title: 'Device DOWN',
-            data: downAlerts,
-            isDownTable: true,
-          ),
-        ),
-      ],
+      ),
     );
   }
 
