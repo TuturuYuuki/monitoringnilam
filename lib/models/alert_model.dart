@@ -1,3 +1,5 @@
+import '../utils/location_label_utils.dart';
+
 class Alert {
   final int id; // Ubah dynamic menjadi int agar pasti angka
   final String alertKey;
@@ -15,6 +17,13 @@ class Alert {
   final String? waktu;
   final String? lokasi;
 
+  // Lifecycle fields
+  final String alertStatus;     // open | acknowledged | resolved
+  final String? resolvedAt;
+  final String? acknowledgedAt;
+  final String? deviceId;
+  final String? deviceType;
+
   Alert({
     required this.id,
     required this.alertKey,
@@ -30,6 +39,11 @@ class Alert {
     this.tanggal,
     this.waktu,
     this.lokasi,
+    this.alertStatus = 'open',
+    this.resolvedAt,
+    this.acknowledgedAt,
+    this.deviceId,
+    this.deviceType,
   });
 
   factory Alert.fromJson(Map<String, dynamic> json) {
@@ -44,13 +58,21 @@ class Alert {
     alertKey: (json['alert_key'] ?? fallbackKey).toString(),
     title: json['title'] ?? '',
     description: json['description'] ?? '',
-    lokasi: json['lokasi'], // Pastikan nama kolom di DB 'lokasi'
-    tanggal: json['tanggal'], // Pastikan nama kolom di DB 'tanggal'
-    waktu: json['waktu'], // Pastikan nama kolom di DB 'waktu'
+    lokasi: normalizeLocationLabel((json['lokasi'] ?? '').toString()),
+    tanggal: json['tanggal'],
+    waktu: json['waktu'],
     severity: json['severity'] ?? 'critical',
     timestamp: json['timestamp'] ?? '',
     route: json['route'] ?? '/alerts',
+    isRead: ((json['is_read'] ?? 0).toString() == '1'),
+    createdAt: (json['created_at'] ?? '').toString(),
+    category: (json['category'] ?? 'Other').toString(),
     source: source,
+    alertStatus: (json['status'] ?? 'open').toString(),
+    resolvedAt: json['resolved_at']?.toString(),
+    acknowledgedAt: json['acknowledged_at']?.toString(),
+    deviceId: json['device_id']?.toString(),
+    deviceType: json['device_type']?.toString(),
   );
 }
 
@@ -70,6 +92,11 @@ class Alert {
       'tanggal': tanggal,
       'waktu': waktu,
       'lokasi': lokasi,
+      'status': alertStatus,
+      'resolved_at': resolvedAt,
+      'acknowledged_at': acknowledgedAt,
+      'device_id': deviceId,
+      'device_type': deviceType,
     };
   }
 }

@@ -168,8 +168,9 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const GlobalSidebarNav(currentRoute: '/cctv-fullscreen'),
-                const SizedBox(width: 12),
+                if (!isMobile)
+                  const GlobalSidebarNav(currentRoute: '/cctv-fullscreen'),
+                if (!isMobile) const SizedBox(width: 12),
                 Expanded(
                   child: SingleChildScrollView(
                     child: LayoutBuilder(
@@ -410,9 +411,6 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
     }
 
     // Show camera grid when data exists
-    // Perbesarkan kotak: 120px untuk tampilan lebih besar dan jelas
-    int crossAxisCount =
-        (constraints.maxWidth / 120).floor().clamp(4, 12).toInt();
     double spacing = 10;
 
     return Container(
@@ -431,8 +429,8 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
+        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 140,
           crossAxisSpacing: spacing,
           mainAxisSpacing: spacing,
           childAspectRatio: 1.0,

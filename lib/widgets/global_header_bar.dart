@@ -71,7 +71,6 @@ class _GlobalHeaderBarState extends State<GlobalHeaderBar> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 900;
 
     return Container(
       width: double.infinity,

@@ -85,8 +85,9 @@ class _ProfilePageState extends State<ProfilePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Sidebar (Kiri)
-                    const GlobalSidebarNav(currentRoute: '/profile'),
-                    const SizedBox(width: 12),
+                    if (!isMobile)
+                      const GlobalSidebarNav(currentRoute: '/profile'),
+                    if (!isMobile) const SizedBox(width: 12),
                     // Content (Kanan)
                     Expanded(
                       child: SingleChildScrollView(
@@ -600,8 +601,11 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildActionButtons(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    final isMobile = isMobileScreen(context);
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 16,
+      runSpacing: 12,
       children: [
         ElevatedButton.icon(
           onPressed: () async {
@@ -617,13 +621,13 @@ class _ProfilePageState extends State<ProfilePage> {
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF1976D2),
             foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            padding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 20 : 32, vertical: 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
           ),
         ),
-        const SizedBox(width: 16),
         ElevatedButton.icon(
           onPressed: () {
             Navigator.pushNamed(context, '/change-password');
@@ -633,7 +637,8 @@ class _ProfilePageState extends State<ProfilePage> {
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF27AE60),
             foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            padding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 20 : 32, vertical: 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),

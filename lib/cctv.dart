@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'main.dart';
 import 'route_proxy_page.dart';
 import 'services/api_service.dart';
+import 'utils/location_label_utils.dart';
 import 'utils/tower_status_override.dart';
 import 'widgets/global_header_bar.dart';
 import 'widgets/global_sidebar_nav.dart';
@@ -20,7 +21,7 @@ class CCTVPage extends StatefulWidget {
 class _CCTVPageState extends State<CCTVPage> {
   String selectedYard = 'CY 1';
   int currentPage = 0;
-  int camerasPerPage = 8;
+  int camerasPerPage = 6;
   bool isLoading = true;
   final List<Map<String, dynamic>> allCameras = [];
   DateTime? lastUpdated;
@@ -30,15 +31,7 @@ class _CCTVPageState extends State<CCTVPage> {
     required int crossAxisCount,
     required bool isMobile,
   }) {
-    if (isMobile) {
-      return 4;
-    }
-
-    if (crossAxisCount == 3) {
-      return 9;
-    }
-
-    return 8;
+    return 6;
   }
 
   List<Map<String, dynamic>> get paginatedCameras {
@@ -183,6 +176,7 @@ class _CCTVPageState extends State<CCTVPage> {
                     'status': c.status,
                     'type': c.type,
                     'ip_address': c.ipAddress,
+                    'container_yard': c.containerYard,
                   })
               .toList());
           isLoading = false;
@@ -250,8 +244,8 @@ class _CCTVPageState extends State<CCTVPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Sidebar (Kiri)
-                    const GlobalSidebarNav(currentRoute: '/cctv'),
-                    const SizedBox(width: 12),
+                    if (!isMobile) const GlobalSidebarNav(currentRoute: '/cctv'),
+                    if (!isMobile) const SizedBox(width: 12),
                     // Content (Kanan)
                     Expanded(
                       child: SingleChildScrollView(
@@ -996,7 +990,7 @@ class _CCTVPageState extends State<CCTVPage> {
     int crossAxisCount = isMobile
         ? 3
         : constraints.maxWidth > 1400
-            ? 8
+            ? 10
             : constraints.maxWidth > 1000
                 ? 6
                 : 4;
@@ -1024,8 +1018,8 @@ class _CCTVPageState extends State<CCTVPage> {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
+      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: isMobile ? 180 : 240,
         crossAxisSpacing: spacing,
         mainAxisSpacing: spacing,
         childAspectRatio: childAspectRatio,
@@ -1262,68 +1256,102 @@ class _CCTVPageState extends State<CCTVPage> {
   }
 
 // --- FUNGSI EDIT KAMERA ---
-  void _showEditCameraForm(Map<String, dynamic> camera) {
+  Future<void> _showEditCameraForm(Map<String, dynamic> camera) async {
     // Controller otomatis terisi data lama (Initial Value)
     final ipController =
         TextEditingController(text: camera['ip_address'] ?? '');
-    final locationController =
-        TextEditingController(text: camera['location'] ?? '');
+    var locationOptions = buildMasterLocationOptions(
+      await ApiService().getAllMasterLocations(),
+    );
+    if (locationOptions.isEmpty) {
+      locationOptions = [
+        {
+          'label': normalizeLocationLabel((camera['location'] ?? '').toString()),
+          'container_yard': (camera['container_yard'] ?? '').toString(),
+          'location_type': 'CCTV',
+          'location_code': (camera['id'] ?? '').toString(),
+          'location_name': (camera['location'] ?? '').toString(),
+        }
+      ];
+    }
+    final matchedOption = matchMasterLocationOption(
+      locationOptions,
+      (camera['location'] ?? '').toString(),
+      currentContainerYard: (camera['container_yard'] ?? '').toString(),
+    );
+    var selectedLocation = matchedOption?['label'] ??
+        normalizeLocationLabel((camera['location'] ?? '').toString());
+    var selectedYard = matchedOption?['container_yard'] ??
+        (camera['container_yard'] ?? '').toString();
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Edit ${camera['id']}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: ipController,
-              decoration: const InputDecoration(labelText: 'IP Address'),
-            ),
-            TextField(
-              controller: locationController,
-              readOnly: true,
-              enabled: false,
-              decoration: const InputDecoration(
-                labelText: 'Location (Locked)',
-                helperText:
-                    'Pindah lokasi wajib delete camera lalu add ulang di lokasi tujuan.',
+      builder: (context) => StatefulBuilder(
+        builder: (context, setLocalState) => AlertDialog(
+          title: Text('Edit ${camera['id']}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: ipController,
+                decoration: const InputDecoration(labelText: 'IP Address'),
               ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: selectedLocation,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Location'),
+                items: locationOptions
+                    .map((option) => DropdownMenuItem<String>(
+                          value: option['label'],
+                          child: Text(option['label'] ?? ''),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  final option = locationOptions.firstWhere(
+                    (item) => item['label'] == value,
+                    orElse: () => locationOptions.first,
+                  );
+                  setLocalState(() {
+                    selectedLocation = value;
+                    selectedYard = option['container_yard'] ?? selectedYard;
+                  });
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () async {
+                final response = await ApiService().updateCamera(
+                  camera['id'],
+                  {
+                    'ip_address': ipController.text,
+                    'location': selectedLocation,
+                    'container_yard': selectedYard,
+                  },
+                );
+
+                if (response['success'] == true) {
+                  if (mounted) {
+                    Navigator.pop(context);
+                    _loadCameras();
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Updated Successfully'),
+                        backgroundColor: Colors.green));
+                  }
+                }
+              },
+              child: const Text('Save', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
-        actions: [
-          // Tombol Cancel
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          // Tombol Save
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () async {
-              // PERBAIKAN: Kirim 2 argumen (ID dan Map Data)
-              final response = await ApiService().updateCamera(
-                camera['id'], // Argumen 1: ID Kamera
-                {
-                  // Argumen 2: Map Data yang diubah
-                  'ip_address': ipController.text,
-                },
-              );
-
-              if (response['success'] == true) {
-                if (mounted) {
-                  Navigator.pop(context); // Menutup dialog
-                  _loadCameras(); // Refresh data
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Updated Successfully'),
-                      backgroundColor: Colors.green));
-                }
-              }
-            },
-            child: const Text('Save', style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
     );
   }

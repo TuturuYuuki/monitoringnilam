@@ -36,28 +36,29 @@ class DeviceIconResolver {
   }
 
   static IconData iconForType(String rawType) {
-    switch (normalizeType(rawType)) {
-      case 'TOWER':
-      case 'ACCESS_POINT':
-        return Icons.router;
-      case 'CCTV':
-        return Icons.videocam;
-      case 'MMT':
-        return Icons.tablet_mac;
-      case 'RTG':
-        return Icons.local_shipping;
-      case 'RS':
-        return Icons.engineering;
-      case 'CC':
-        return Icons.construction;
-      case 'GATE':
-        return Icons.directions_walk;
-      case 'PARKING':
-        return Icons.local_parking;
-      default:
-        return Icons.device_unknown;
-    }
+  switch (normalizeType(rawType)) {
+    case 'TOWER':
+      return Icons.cell_tower;
+    case 'ACCESS_POINT':
+      return Icons.router;          // ← ganti sesuai keinginan
+    case 'CCTV':
+      return Icons.videocam;        // ← ganti sesuai keinginan
+    case 'MMT':
+      return Icons.tablet_mac; // ← sudah kita sepakati tadi
+    case 'RTG':
+      return Icons.precision_manufacturing;
+    case 'RS':
+      return Icons.precision_manufacturing;
+    case 'CC':
+      return Icons.precision_manufacturing;
+    case 'GATE':
+      return Icons.directions_walk;
+    case 'PARKING':
+      return Icons.local_parking;
+    default:
+      return Icons.device_unknown;
   }
+}
 
   static Color colorForType(String rawType) {
     switch (normalizeType(rawType)) {

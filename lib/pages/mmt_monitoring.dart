@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:monitoring/models/mmt_model.dart';
 import 'package:monitoring/services/api_service.dart';
 import 'dart:async';
+import '../utils/location_label_utils.dart';
 import '../main.dart';
 import '../widgets/global_header_bar.dart';
 import '../widgets/global_sidebar_nav.dart';
@@ -97,8 +98,9 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Sidebar (Kiri)
-                const GlobalSidebarNav(currentRoute: '/mmt-monitoring'),
-                const SizedBox(width: 12),
+                if (!isMobile)
+                  const GlobalSidebarNav(currentRoute: '/mmt-monitoring'),
+                if (!isMobile) const SizedBox(width: 12),
                 // Content (Kanan)
                 Expanded(
                   child: SingleChildScrollView(
@@ -271,7 +273,7 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
         const SizedBox(height: 16),
 
         // MMT List
-        _buildMMTList(),
+        _buildMMTList(context),
       ],
     );
   }
@@ -510,7 +512,8 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
     );
   }
 
-  Widget _buildMMTList() {
+  Widget _buildMMTList(BuildContext context) {
+    final isMobile = isMobileScreen(context);
     if (_isLoading) {
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -684,21 +687,36 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            width: double.infinity,
-            color: const Color(0xFFC6B430),
-            child: Row(
+          Builder(builder: (context) {
+            const double minTableWidth = 560;
+            final tableContent = Column(
               children: [
-                _buildHeaderCell('MMT ID', flex: 2),
-                _buildHeaderCell('Location', flex: 3),
-                _buildHeaderCell('IP Address', flex: 2),
-                _buildHeaderCell('Status', flex: 1),
-                _buildHeaderCell('Action', flex: 2, isLast: true),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 14),
+                  width: double.infinity,
+                  color: const Color(0xFFC6B430),
+                  child: Row(
+                    children: [
+                      _buildHeaderCell('MMT ID', flex: 2),
+                      _buildHeaderCell('Location', flex: 3),
+                      _buildHeaderCell('IP Address', flex: 2),
+                      _buildHeaderCell('Status', flex: 1),
+                      _buildHeaderCell('Action', flex: 2, isLast: true),
+                    ],
+                  ),
+                ),
+                ...paginatedData.map((mmt) => _buildMMTTableRow(mmt)),
               ],
-            ),
-          ),
-          ...paginatedData.map((mmt) => _buildMMTTableRow(mmt)),
+            );
+            if (isMobile) {
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(width: minTableWidth, child: tableContent),
+              );
+            }
+            return tableContent;
+          }),
         ],
       ),
     );
@@ -797,63 +815,101 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
 
   Future<void> _editMMT(MMT mmt) async {
     final ipController = TextEditingController(text: mmt.ipAddress);
-    final locationController = TextEditingController(text: mmt.location);
+    var locationOptions = buildMasterLocationOptions(
+      await _apiService.getAllMasterLocations(),
+    );
+    if (locationOptions.isEmpty) {
+      locationOptions = [
+        {
+          'label': normalizeLocationLabel(mmt.location),
+          'container_yard': mmt.containerYard,
+          'location_type': 'MMT',
+          'location_code': mmt.mmtId,
+          'location_name': mmt.location,
+        }
+      ];
+    }
+    final matchedOption = matchMasterLocationOption(
+      locationOptions,
+      mmt.location,
+      currentContainerYard: mmt.containerYard,
+    );
+    var selectedLocation =
+        matchedOption?['label'] ?? normalizeLocationLabel(mmt.location);
+    var selectedYard = matchedOption?['container_yard'] ?? mmt.containerYard;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Edit ${mmt.mmtId}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-                controller: ipController,
-                decoration: const InputDecoration(labelText: 'IP Address')),
-            TextField(
-              controller: locationController,
-              readOnly: true,
-              enabled: false,
-              decoration: const InputDecoration(
-                labelText: 'Location (Locked)',
-                helperText:
-                    'Pindah lokasi wajib delete MMT lalu tambah lagi di lokasi tujuan.',
+      builder: (context) => StatefulBuilder(
+        builder: (context, setLocalState) => AlertDialog(
+          title: Text('Edit ${mmt.mmtId}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                  controller: ipController,
+                  decoration: const InputDecoration(labelText: 'IP Address')),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: selectedLocation,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Location'),
+                items: locationOptions
+                    .map((option) => DropdownMenuItem<String>(
+                          value: option['label'],
+                          child: Text(option['label'] ?? ''),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  final option = locationOptions.firstWhere(
+                    (item) => item['label'] == value,
+                    orElse: () => locationOptions.first,
+                  );
+                  setLocalState(() {
+                    selectedLocation = value;
+                    selectedYard = option['container_yard'] ?? mmt.containerYard;
+                  });
+                },
               ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                final response = await _apiService.updateMMT(mmt.id, {
+                  'ip_address': ipController.text,
+                  'location': selectedLocation,
+                  'container_yard': selectedYard,
+                });
+
+                if (response['success'] == true) {
+                  if (mounted) {
+                    Navigator.pop(context);
+                    await _loadMMTs();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('Successfully Updated'),
+                          backgroundColor: Colors.green));
+                    }
+                  }
+                } else {
+                  if (mounted) {
+                    Navigator.pop(context);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('Failed to update'),
+                          backgroundColor: Colors.red));
+                    }
+                  }
+                }
+              },
+              child: const Text('Save'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              final response = await _apiService.updateMMT(mmt.id, {
-                'ip_address': ipController.text,
-              });
-
-              if (response['success'] == true) {
-                if (mounted) {
-                  Navigator.pop(context); // Tutup dialog
-                  await _loadMMTs(); // REFRESH DATA DARI DATABASE
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Successfully Updated'),
-                        backgroundColor: Colors.green));
-                  }
-                }
-              } else {
-                if (mounted) {
-                  Navigator.pop(context);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Failed to update'),
-                        backgroundColor: Colors.red));
-                  }
-                }
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
       ),
     );
   }

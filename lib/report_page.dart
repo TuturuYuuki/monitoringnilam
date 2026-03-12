@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import 'package:intl/intl.dart';
 import 'services/api_service.dart';
 import 'models/alert_model.dart';
@@ -55,6 +56,7 @@ class _ReportPageState extends State<ReportPage> {
         isLoading = false;
       });
     } catch (e) {
+      print("Fetch Report Error: $e");
       setState(() => isLoading = false);
     }
   }
@@ -81,8 +83,17 @@ class _ReportPageState extends State<ReportPage> {
         });
 
       final filteredAlerts = _filterByDeviceType(sortedAlerts);
-      final upAlerts = filteredAlerts.where((a) => !_isDownAlert(a)).toList();
-      final downAlerts = filteredAlerts.where((a) => _isDownAlert(a)).toList();
+      
+      final uniqueDevices = <String, Alert>{};
+      for (final a in filteredAlerts) {
+        final devName = _cleanDeviceName(a.title);
+        if (!uniqueDevices.containsKey(devName)) {
+          uniqueDevices[devName] = a;
+        }
+      }
+
+      final upAlerts = uniqueDevices.values.where((a) => !_isDownAlert(a)).toList();
+      final downAlerts = uniqueDevices.values.where((a) => _isDownAlert(a)).toList();
       final upCount = upAlerts.length;
       final downCount = downAlerts.length;
 
@@ -232,6 +243,30 @@ class _ReportPageState extends State<ReportPage> {
     return '-';
   }
 
+  String _extractDeviceType(Alert alert) {
+    if (alert.deviceType != null && alert.deviceType!.isNotEmpty) {
+       final dt = alert.deviceType!.toLowerCase();
+       if (dt.contains('tower') || dt.contains('ap')) return 'AP';
+       if (dt.contains('camera') || dt.contains('cctv')) return 'CCTV';
+       if (dt.contains('mmt')) return 'MMT';
+    }
+
+    final src =
+        '${alert.title} ${alert.description} ${alert.lokasi ?? ''}'
+            .toUpperCase();
+    if (RegExp(r'\b(AP|TOWER)\b').hasMatch(src)) return 'AP';
+    if (RegExp(r'\b(CAM|CCTV)\b').hasMatch(src)) return 'CCTV';
+    if (RegExp(r'\bMMT\b').hasMatch(src)) return 'MMT';
+    return 'Other';
+  }
+
+  List<Alert> _filterByDeviceType(List<Alert> list) {
+    if (_selectedDeviceType == 'ALL') return list;
+    return list
+        .where((a) => _extractDeviceType(a) == _selectedDeviceType)
+        .toList();
+  }
+
   bool _isDownAlert(Alert alert) {
     final titleLower = alert.title.toLowerCase();
     final descLower = alert.description.toLowerCase();
@@ -255,24 +290,9 @@ class _ReportPageState extends State<ReportPage> {
     return false;
   }
 
-  String _extractDeviceType(Alert alert) {
-    final source = '${alert.title} ${alert.description} ${alert.lokasi ?? ''}'
-        .toUpperCase();
-    if (RegExp(r'\bAP\b').hasMatch(source)) return 'AP';
-    if (RegExp(r'\b(CAM|CCTV)\b').hasMatch(source)) return 'CCTV';
-    if (RegExp(r'\bMMT\b').hasMatch(source)) return 'MMT';
-    return 'Other';
-  }
-
-  List<Alert> _filterByDeviceType(List<Alert> alertsList) {
-    if (_selectedDeviceType == 'ALL') return alertsList;
-    return alertsList
-        .where((a) => _extractDeviceType(a) == _selectedDeviceType)
-        .toList();
-  }
-
   @override
   Widget build(BuildContext context) {
+    final isMobile = isMobileScreen(context);
     return Scaffold(
       backgroundColor: const Color(0xFF2C3E50),
       body: Column(
@@ -282,11 +302,11 @@ class _ReportPageState extends State<ReportPage> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const GlobalSidebarNav(currentRoute: '/report'),
-                const SizedBox(width: 12),
+                if (!isMobile) const GlobalSidebarNav(currentRoute: '/report'),
+                if (!isMobile) const SizedBox(width: 12),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
+                    padding: EdgeInsets.all(isMobile ? 12 : 24),
                     child: Column(
                       children: [
                         _buildDeviceTypeFilter(),
@@ -431,102 +451,206 @@ class _ReportPageState extends State<ReportPage> {
   }
 
   Widget _buildFilterBar() {
+    final isMobile = isMobileScreen(context);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.9),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: IntrinsicHeight(
-        // Tambahkan ini agar semua anak Row tingginya sama
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment
-              .stretch, // Paksa anak Row untuk mengisi tinggi maksimal
-          children: [
-            // 1. Kalender (Range Tanggal)
-            Expanded(
-              flex: 2,
-              child: InkWell(
-                onTap: _pickDateRange,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12), // Sesuaikan padding
+      child: isMobile
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _pickDateRange,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: Colors.grey.shade400),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.calendar_month,
+                            size: 16, color: Colors.blue),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            "${DateFormat('dd/MM').format(_selectedRange.start)} - ${DateFormat('dd/MM').format(_selectedRange.end)}",
+                            style: const TextStyle(fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
+                    color: Colors.white,
                     border: Border.all(color: Colors.grey.shade400),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Row(
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _statusFilter,
+                      isExpanded: true,
+                      style: const TextStyle(fontSize: 12, color: Colors.black),
+                      items: ['ALL', 'UP', 'DOWN']
+                          .map((s) => DropdownMenuItem(
+                                value: s,
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: Text(s),
+                                ),
+                              ))
+                          .toList(),
+                      onChanged: (val) {
+                        setState(() => _statusFilter = val!);
+                        _fetchReportData();
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: _generateReportPdf,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade700,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.calendar_month,
-                          size: 16, color: Colors.blue),
-                      const SizedBox(width: 8),
-                      Text(
-                        "${DateFormat('dd/MM').format(_selectedRange.start)} - ${DateFormat('dd/MM').format(_selectedRange.end)}",
-                        style: const TextStyle(fontSize: 12),
-                      ),
+                      Icon(Icons.picture_as_pdf, size: 18, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text("Export PDF",
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12)),
                     ],
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 8),
-
-            // 2. Dropdown Status
-            Expanded(
-              flex: 1,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12), // Padding horizontal saja
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade400),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _statusFilter,
-                    isExpanded: true, // Pastikan memenuhi ruang
-                    style: const TextStyle(fontSize: 12, color: Colors.black),
-                    items: ['ALL', 'UP', 'DOWN']
-                        .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                        .toList(),
-                    onChanged: (val) {
-                      setState(() => _statusFilter = val!);
-                      _fetchReportData();
-                    },
+              ],
+            )
+          : Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: SizedBox(
+                    height: 44,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          print("DEBUG: Date range clicked!");
+                          _pickDateRange();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border: Border.all(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.calendar_month,
+                                  size: 16, color: Colors.blue),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  "${DateFormat('dd/MM').format(_selectedRange.start)} - ${DateFormat('dd/MM').format(_selectedRange.end)}",
+                                  style: const TextStyle(fontSize: 12),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 8),
-
-            // 3. Tombol PDF
-            ElevatedButton(
-              onPressed: _generateReportPdf,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red.shade700,
-                padding: const EdgeInsets.symmetric(
-                    horizontal:
-                        16), // Hapus padding vertikal agar diatur IntrinsicHeight
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 1,
+                  child: SizedBox(
+                    height: 44,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(color: Colors.grey.shade400),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _statusFilter,
+                          isExpanded: true,
+                          style:
+                              const TextStyle(fontSize: 12, color: Colors.black),
+                          items: ['ALL', 'UP', 'DOWN']
+                              .map((s) => DropdownMenuItem(
+                                    value: s,
+                                    child: SizedBox(
+                                      width: double.infinity,
+                                      child: Text(s),
+                                    ),
+                                  ))
+                              .toList(),
+                          onChanged: (val) {
+                            print("DEBUG: Dropdown changed to $val");
+                            if (val != null) {
+                              setState(() => _statusFilter = val);
+                              _fetchReportData();
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.picture_as_pdf, size: 18, color: Colors.white),
-                  SizedBox(width: 8),
-                  Text("Export PDF",
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12)),
-                ],
-              ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  height: 44,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      print("DEBUG: Export PDF clicked!");
+                      _generateReportPdf();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade700,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.picture_as_pdf, size: 18, color: Colors.white),
+                        SizedBox(width: 8),
+                        Text("Export PDF",
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -592,78 +716,202 @@ class _ReportPageState extends State<ReportPage> {
       });
 
     final filteredAlerts = _filterByDeviceType(sortedAlerts);
-    final upCount = filteredAlerts.where((a) => !_isDownAlert(a)).length;
-    final downCount = filteredAlerts.length - upCount;
+    
+    // Deduplicate to count unique UP/DOWN devices to match Dashboard
+    final uniqueDevices = <String, Alert>{};
+    for (final a in filteredAlerts) {
+      final devName = _cleanDeviceName(a.title);
+      if (!uniqueDevices.containsKey(devName)) {
+        uniqueDevices[devName] = a;
+      }
+    }
+
+    final upCount = uniqueDevices.values.where((a) => !_isDownAlert(a)).length;
+    final downCount = uniqueDevices.values.where((a) => _isDownAlert(a)).length;
     final isMobile = isMobileScreen(context);
 
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blueGrey.withOpacity(0.2)),
+        color: Colors.white.withOpacity(0.94),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             decoration: const BoxDecoration(
-              color: Color(0xFFE6EEF8),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+              color: Color(0xFF1976D2),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
             ),
-            child: Text(
-              'Unified Device Report  |  UP: $upCount  DOWN: $downCount',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 10,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                const Text(
+                  'Unified Device Report',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                _buildReportSummaryChip('TOTAL', uniqueDevices.length, Colors.white),
+                _buildReportSummaryChip('UP', upCount, const Color(0xFF2E7D32)),
+                _buildReportSummaryChip('DOWN', downCount, const Color(0xFFC62828)),
+              ],
             ),
           ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minWidth: isMobile ? 900 : 1180),
-              child: DataTable(
-                columnSpacing: 16,
-                columns: const [
-                  DataColumn(label: Text('No')),
-                  DataColumn(label: Text('Device')),
-                  DataColumn(label: Text('Status')),
-                  DataColumn(label: Text('IP')),
-                  DataColumn(label: Text('Location')),
-                  DataColumn(label: Text('Timestamp')),
-                ],
-                rows: filteredAlerts.asMap().entries.map((entry) {
-                  final index = entry.key + 1;
-                  final a = entry.value;
-                  final isDown = _isDownAlert(a);
-                  final statusText = isDown ? 'DOWN' : 'UP';
-                  final statusColor = isDown ? Colors.red : Colors.green;
-                  return DataRow(cells: [
-                    DataCell(Text(index.toString())),
-                    DataCell(Text(_cleanDeviceName(a.title))),
-                    DataCell(Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final minW = isMobile ? 920.0 : 1120.0;
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minWidth: minW,
+                    maxWidth: math.max(constraints.maxWidth, minW),
+                  ),
+                  child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                    width: double.infinity,
+                    color: const Color(0xFFC6B430),
+                    child: const Row(
+                      children: [
+                        Expanded(flex: 1, child: _ReportHeaderText('NO')),
+                        Expanded(flex: 3, child: _ReportHeaderText('DEVICE')),
+                        Expanded(flex: 2, child: _ReportHeaderText('STATUS')),
+                        Expanded(flex: 3, child: _ReportHeaderText('IP ADDRESS')),
+                        Expanded(flex: 4, child: _ReportHeaderText('LOCATION')),
+                        Expanded(flex: 3, child: _ReportHeaderText('TIMESTAMP')),
+                      ],
+                    ),
+                  ),
+                  ...filteredAlerts.asMap().entries.map((entry) {
+                    final index = entry.key + 1;
+                    final a = entry.value;
+                    final isDown = _isDownAlert(a);
+                    final statusText = isDown ? 'DOWN' : 'UP';
+                    final statusColor = isDown ? Colors.red : Colors.green;
+
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                       decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: statusColor),
-                      ),
-                      child: Text(
-                        statusText,
-                        style: TextStyle(
-                          color: statusColor,
-                          fontWeight: FontWeight.bold,
+                        color: const Color(0xFFE8D5C4),
+                        border: Border(
+                          bottom: BorderSide(color: Colors.grey[300]!, width: 1),
                         ),
                       ),
-                    )),
-                    DataCell(Text(_extractIpFromDescription(a.description))),
-                    DataCell(Text(a.lokasi ?? '-')),
-                    DataCell(Text('${a.tanggal ?? '-'} ${a.waktu ?? '-'}')),
-                  ]);
-                }).toList(growable: false),
+                      child: Row(
+                        children: [
+                          _buildReportValueCell(index.toString(), flex: 1),
+                          _buildReportValueCell(
+                            _cleanDeviceName(a.title),
+                            flex: 3,
+                            fontWeight: FontWeight.w800,
+                            align: TextAlign.center,
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Center(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: statusColor.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(color: statusColor.withOpacity(0.7)),
+                                ),
+                                child: Text(
+                                  statusText,
+                                  style: TextStyle(
+                                    color: statusColor,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          _buildReportValueCell(
+                            _extractIpFromDescription(a.description),
+                            flex: 3,
+                          ),
+                          _buildReportValueCell(
+                            a.lokasi?.isNotEmpty == true ? a.lokasi! : '-',
+                            flex: 4,
+                            fontWeight: FontWeight.w700,
+                            align: TextAlign.center,
+                          ),
+                          _buildReportValueCell(
+                            '${a.tanggal ?? '-'} ${a.waktu ?? '-'}',
+                            flex: 3,
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
               ),
             ),
+          );
+            },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildReportSummaryChip(String label, int value, Color accent) {
+    final isWhite = accent == Colors.white;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isWhite ? Colors.white.withOpacity(0.18) : accent.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: isWhite ? Colors.white.withOpacity(0.45) : accent.withOpacity(0.5),
+        ),
+      ),
+      child: Text(
+        '$label: $value',
+        style: TextStyle(
+          color: isWhite ? Colors.white : accent,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReportValueCell(
+    String text, {
+    required int flex,
+    FontWeight fontWeight = FontWeight.w600,
+    Color color = Colors.black87,
+    TextAlign align = TextAlign.center,
+  }) {
+    return Expanded(
+      flex: flex,
+      child: Text(
+        text,
+        textAlign: align,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: color,
+          fontWeight: fontWeight,
+          fontSize: 13,
+        ),
       ),
     );
   }
@@ -763,6 +1011,25 @@ class _ReportPageState extends State<ReportPage> {
           '©2026 TPK Nilam Monitoring System',
           style: TextStyle(color: Colors.white, fontSize: 12),
         ),
+      ),
+    );
+  }
+}
+
+class _ReportHeaderText extends StatelessWidget {
+  final String text;
+
+  const _ReportHeaderText(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      textAlign: TextAlign.center,
+      style: const TextStyle(
+        color: Colors.black,
+        fontWeight: FontWeight.bold,
+        fontSize: 13,
       ),
     );
   }

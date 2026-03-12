@@ -1,3 +1,5 @@
+import '../utils/location_label_utils.dart';
+
 class Camera {
   final int id;
   final String cameraId;
@@ -31,7 +33,7 @@ class Camera {
     return Camera(
       id: int.tryParse(json['id'].toString()) ?? 0,
       cameraId: json['camera_id']?.toString() ?? '',
-      location: json['location']?.toString() ?? '',
+      location: normalizeLocationLabel(json['location']?.toString() ?? ''),
       ipAddress: json['ip_address']?.toString() ?? '',
       status: json['status']?.toString() ?? 'Unknown',
       type: json['type']?.toString() ?? 'Fixed',

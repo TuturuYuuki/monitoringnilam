@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
+import 'main.dart';
 import 'models/camera_model.dart';
 import 'models/device_model.dart';
 import 'models/mmt_model.dart';
@@ -8,6 +9,7 @@ import 'services/api_service.dart';
 import 'services/device_storage_service.dart';
 import 'utils/navigation_helper.dart';
 import 'utils/device_icon_resolver.dart';
+import 'utils/location_label_utils.dart';
 import 'widgets/global_header_bar.dart';
 import 'widgets/global_sidebar_nav.dart';
 
@@ -72,15 +74,12 @@ class _AddDevicePageState extends State<AddDevicePage> {
         final containerYard = (loc['container_yard'] ?? '').toString();
         final locationName = (loc['location_name'] ?? '').toString();
 
-        final codeOrName = locationCode.isNotEmpty
-            ? locationCode
-            : (locationName.isNotEmpty ? locationName : 'UNKNOWN');
-        final displayName =
-            locationName.isNotEmpty && locationName != codeOrName
-                ? ' ($locationName)'
-                : '';
-        final label =
-            '$locationType - $codeOrName$displayName - $containerYard';
+        final label = buildMasterLocationLabel(
+          locationType: locationType,
+          locationCode: locationCode,
+          locationName: locationName,
+          containerYard: containerYard,
+        );
 
         map[label] = {
           'lat': double.tryParse((loc['latitude'] ?? 0).toString()) ?? 0.0,
@@ -400,6 +399,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
       final latitude = locationInfo?['lat'] ?? 0.0;
       final longitude = locationInfo?['lng'] ?? 0.0;
       final containerYard = locationInfo?['cy'] ?? '';
+      final savedLocationName = normalizeLocationLabel(_selectedLocation);
 
       // Auto-fill fields sesuai template
       String deviceId = _nameController.text;
@@ -432,7 +432,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
         type: _selectedDeviceType,
         name: deviceId,
         ipAddress: _ipAddressController.text,
-        locationName: _selectedLocation,
+        locationName: savedLocationName,
         latitude: latitude,
         longitude: longitude,
         containerYard: containerYard,
@@ -452,7 +452,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
       print('Device Type: $_selectedDeviceType');
       print('Device ID: $deviceId');
       print('IP Address From Input: $deviceIpAddress');
-      print('Location: $_selectedLocation');
+      print('Location: $savedLocationName');
       print('Container Yard: $containerYard');
 
       // Execute API call (non-blocking) - don't await for dialog
@@ -461,7 +461,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
             '\nG??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??');
         print('=??? Creating Access Point (Tower)');
         print('Device ID: $deviceId');
-        print('Location: $_selectedLocation');
+        print('Location: $savedLocationName');
         print('IP: $deviceIpAddress');
         print('Container Yard: $containerYard');
         print(
@@ -469,7 +469,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
 
         createFuture = apiService.createTower(
           towerId: deviceId,
-          location: _selectedLocation,
+          location: savedLocationName,
           ipAddress: deviceIpAddress,
           containerYard: containerYard,
           latitude: latitude,
@@ -512,14 +512,14 @@ class _AddDevicePageState extends State<AddDevicePage> {
             '\nG??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??');
         print('=?? Creating CCTV (Camera)');
         print('Camera ID: $deviceId');
-        print('Location: $_selectedLocation');
+        print('Location: $savedLocationName');
         print('IP: $deviceIpAddress');
         print(
             'G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??\n');
 
         createFuture = apiService.createCamera(
           cameraId: deviceId,
-          location: _selectedLocation,
+          location: savedLocationName,
           ipAddress: deviceIpAddress,
           containerYard: containerYard,
           latitude: latitude,
@@ -561,14 +561,14 @@ class _AddDevicePageState extends State<AddDevicePage> {
             '\nG??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??');
         print('=??? Creating MMT');
         print('MMT ID: $deviceId');
-        print('Location: $_selectedLocation');
+        print('Location: $savedLocationName');
         print('IP: $deviceIpAddress');
         print(
             'G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??\n');
 
         createFuture = apiService.createMMT(
           mmtId: deviceId,
-          location: _selectedLocation,
+          location: savedLocationName,
           ipAddress: deviceIpAddress,
           containerYard: containerYard,
           status: status,
@@ -944,6 +944,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = isMobileScreen(context);
     return Scaffold(
       backgroundColor: const Color(0xFF2C3E50),
       body: Stack(
@@ -956,12 +957,13 @@ class _AddDevicePageState extends State<AddDevicePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Sidebar (Kiri)
-                    const GlobalSidebarNav(currentRoute: '/add-device'),
-                    const SizedBox(width: 12),
+                    if (!isMobile)
+                      const GlobalSidebarNav(currentRoute: '/add-device'),
+                    if (!isMobile) const SizedBox(width: 12),
                     // Content (Kanan)
                     Expanded(
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(32),
+                        padding: EdgeInsets.all(isMobile ? 12 : 32),
                         child: Center(
                           child: Container(
                             constraints: const BoxConstraints(maxWidth: 600),

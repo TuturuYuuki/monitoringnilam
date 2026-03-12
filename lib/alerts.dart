@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'dart:async';
 import 'main.dart';
 import 'services/api_service.dart';
@@ -15,18 +15,18 @@ class AlertsPage extends StatefulWidget {
 
 class _AlertsPageState extends State<AlertsPage> {
   late ApiService apiService;
-  List<Alert> alerts = [];
-  bool isLoading = true;
+  List<Alert> _alerts = [];
+  bool _isLoading = true;
   Timer? _timer;
   DateTime? _lastRefreshTime = DateTime.now();
-  String _selectedDeviceType = 'ALL'; // Filter: ALL, AP, CCTV, MMT
+  String _selectedDeviceType = 'ALL';
 
   @override
   void initState() {
     super.initState();
     apiService = ApiService();
     _loadAlerts();
-    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (mounted) _loadAlerts(showLoading: false);
     });
   }
@@ -38,145 +38,34 @@ class _AlertsPageState extends State<AlertsPage> {
   }
 
   Future<void> _loadAlerts({bool showLoading = true}) async {
-    if (showLoading) setState(() => isLoading = true);
+    if (showLoading && mounted) setState(() => _isLoading = true);
     try {
-      final results = await apiService.getAllAlerts();
+      final results = await apiService.getAllAlerts(source: 'HISTORY', limit: 200);
       if (mounted) {
-        // Handle paginated response format (getAllAlerts always returns Map<String, dynamic>)
-        List<Alert> loadedAlerts = [];
-
-        // Extract alerts list from response map using explicit loop
         final alertListRaw = results['alerts'] as List? ?? [];
+        final List<Alert> loaded = [];
         for (var data in alertListRaw) {
           if (data is Alert) {
-            loadedAlerts.add(data);
+            loaded.add(data);
           } else {
-            loadedAlerts.add(Alert.fromJson(data as Map<String, dynamic>));
+            loaded.add(Alert.fromJson(data as Map<String, dynamic>));
           }
         }
-
         setState(() {
-          alerts = loadedAlerts;
-          isLoading = false;
+          _alerts = loaded;
+          _isLoading = false;
           _lastRefreshTime = DateTime.now();
         });
       }
     } catch (e) {
-      if (mounted) setState(() => isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  Future<void> _deleteAlert(Alert alert) async {
-    final bool isCurrentStatusOnly = alert.source == 'current' || alert.id <= 0;
-
-    if (isCurrentStatusOnly) {
-      final success = await apiService.dismissCurrentAlert(alert.alertKey);
-
-      if (!success) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Failed to delete alert"),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-        return;
-      }
-
-      if (mounted) {
-        setState(() {
-          final idx = alerts
-              .indexWhere((element) => element.alertKey == alert.alertKey);
-          if (idx >= 0) {
-            alerts.removeAt(idx);
-          }
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Alert Deleted"),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-      return;
-    }
-
-    final success = await apiService.deleteAlert(alert.id);
-
-    if (success && mounted) {
-      setState(() {
-        final idx =
-            alerts.indexWhere((element) => element.alertKey == alert.alertKey);
-
-        if (idx >= 0) {
-          alerts.removeAt(idx);
-        } else {
-          final fallbackIdx = alerts.indexOf(alert);
-          if (fallbackIdx >= 0) {
-            alerts.removeAt(fallbackIdx);
-          }
-        }
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Alert deleted"),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Failed to delete alert"),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  // ==================== DIALOGS ====================
-
-  void _showDeleteConfirmation(Alert alert) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Notification',
-            style: TextStyle(color: Colors.black87)),
-        content: const Text('Are You Sure Want To Delete This Alert?',
-            style: TextStyle(color: Colors.black87)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel',
-                style: TextStyle(color: Colors.black87, fontSize: 16)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _deleteAlert(alert);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              shape: const StadiumBorder(),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
   }
 
   // ==================== HELPERS ====================
 
   bool _isDownAlert(Alert alert) {
-    final combined =
-        '${alert.title} ${alert.description}'.toLowerCase();
+    final combined = '${alert.title} ${alert.description}'.toLowerCase();
     if (combined.contains(' down') ||
         combined.contains('is down') ||
         combined.contains('offline') ||
@@ -201,10 +90,17 @@ class _AlertsPageState extends State<AlertsPage> {
   }
 
   String _extractDeviceType(Alert alert) {
+    if (alert.deviceType != null && alert.deviceType!.isNotEmpty) {
+       final dt = alert.deviceType!.toLowerCase();
+       if (dt.contains('tower') || dt.contains('ap')) return 'AP';
+       if (dt.contains('camera') || dt.contains('cctv')) return 'CCTV';
+       if (dt.contains('mmt')) return 'MMT';
+    }
+
     final src =
         '${alert.title} ${alert.description} ${alert.lokasi ?? ''}'
             .toUpperCase();
-    if (RegExp(r'\bAP\b').hasMatch(src)) return 'AP';
+    if (RegExp(r'\b(AP|TOWER)\b').hasMatch(src)) return 'AP';
     if (RegExp(r'\b(CAM|CCTV)\b').hasMatch(src)) return 'CCTV';
     if (RegExp(r'\bMMT\b').hasMatch(src)) return 'MMT';
     return 'Other';
@@ -218,7 +114,6 @@ class _AlertsPageState extends State<AlertsPage> {
   }
 
   String _extractIpFromDescription(String description) {
-    // Format: "DeviceId, IP, Location, Date, Time"
     final parts = description.split(',');
     if (parts.length >= 2) return parts[1].trim();
     return '-';
@@ -238,13 +133,10 @@ class _AlertsPageState extends State<AlertsPage> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const GlobalSidebarNav(currentRoute: '/alerts'),
-                const SizedBox(width: 12),
+                if (!isMobile) const GlobalSidebarNav(currentRoute: '/alerts'),
+                if (!isMobile) const SizedBox(width: 12),
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.all(isMobile ? 12 : 24.0),
-                    child: _buildContent(context),
-                  ),
+                  child: _buildContent(isMobile),
                 ),
               ],
             ),
@@ -255,27 +147,45 @@ class _AlertsPageState extends State<AlertsPage> {
     );
   }
 
-  Widget _buildContent(BuildContext context) {
-    final isMobile = isMobileScreen(context);
-    final sorted = alerts.toList()
-      ..sort((a, b) {
-        final at = DateTime.tryParse(a.timestamp);
-        final bt = DateTime.tryParse(b.timestamp);
-        if (at == null && bt == null) return 0;
-        if (at == null) return 1;
-        if (bt == null) return -1;
-        return bt.compareTo(at);
-      });
-    final filtered = _filterByDeviceType(sorted);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildTitleSection(isMobile),
-        const SizedBox(height: 20),
-        _buildDeviceTypeFilter(),
-        const SizedBox(height: 16),
-        _buildNotificationList(alertsData: filtered, isMobile: isMobile),
-      ],
+  Widget _buildContent(bool isMobile) {
+    if (_alerts.isEmpty && !_isLoading) {
+      return const Center(
+        child: Text(
+          'Tidak Ada Alert.',
+          style: TextStyle(color: Colors.white, fontSize: 16),
+        ),
+      );
+    }
+
+    final filtered = _filterByDeviceType(_alerts);
+    
+    // To match dashboard's UP/DOWN device counts exactly, we deduplicate by device name.
+    // The alerts are already ordered by newest first, so the first seen is the latest status.
+    final uniqueDevices = <String, Alert>{};
+    for (final a in filtered) {
+      final devName = _cleanDeviceName(a.title);
+      if (!uniqueDevices.containsKey(devName)) {
+        uniqueDevices[devName] = a;
+      }
+    }
+    final downCount = uniqueDevices.values.where((a) => _isDownAlert(a)).length;
+    final upCount = uniqueDevices.values.where((a) => !_isDownAlert(a)).length;
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+          isMobile ? 12 : 24, isMobile ? 12 : 24, isMobile ? 12 : 24, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildTitleSection(isMobile),
+          const SizedBox(height: 16),
+          _buildDeviceTypeFilter(),
+          const SizedBox(height: 12),
+          _buildSummaryBar(downCount, upCount),
+          const SizedBox(height: 12),
+          _buildAlertList(filtered),
+        ],
+      ),
     );
   }
 
@@ -297,20 +207,57 @@ class _AlertsPageState extends State<AlertsPage> {
           backgroundColor: Colors.white.withOpacity(0.7),
           labelStyle: TextStyle(
             color: isSelected ? const Color(0xFF1976D2) : Colors.black87,
-            fontWeight:
-                isSelected ? FontWeight.bold : FontWeight.normal,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         );
       }).toList(),
     );
   }
 
-  // ==================== NOTIFICATION LIST ====================
+  // ==================== SUMMARY BAR ====================
 
-  Widget _buildNotificationList({
-    required List<Alert> alertsData,
-    required bool isMobile,
-  }) {
+  Widget _buildSummaryBar(int downCount, int upCount) {
+    final timeStr = _lastRefreshTime != null
+        ? '${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}'
+        : '-';
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _summaryChip(Icons.arrow_downward_rounded, '$downCount DOWN',
+            Colors.red.shade700),
+        _summaryChip(Icons.arrow_upward_rounded, '$upCount UP',
+            Colors.green.shade700),
+      ],
+    );
+  }
+
+  Widget _summaryChip(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.13),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(label,
+              style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  // ==================== ALERT LIST ====================
+
+  Widget _buildAlertList(List<Alert> filtered) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -326,32 +273,34 @@ class _AlertsPageState extends State<AlertsPage> {
               const Icon(Icons.notifications_active,
                   size: 18, color: Color(0xFF1976D2)),
               const SizedBox(width: 6),
-              const Text(
-                'Device Notifications',
-                style: TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              const Text('Live Alert Feed',
+                  style: TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold)),
               const Spacer(),
-              Text(
-                '${alertsData.length} alert',
-                style: const TextStyle(
-                    color: Colors.black54, fontSize: 13),
-              ),
+              Text('${filtered.length} event(s)',
+                  style: const TextStyle(
+                      color: Colors.black54, fontSize: 13)),
             ],
           ),
           const SizedBox(height: 12),
-          if (isLoading)
+          if (_isLoading)
             const SizedBox(
-              height: 220,
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (alertsData.isEmpty)
+                height: 200,
+                child: Center(child: CircularProgressIndicator()))
+          else if (filtered.isEmpty)
             const SizedBox(
-              height: 220,
+              height: 200,
               child: Center(
-                child: Text(
-                  'No alerts found for selected filter',
-                  style: TextStyle(color: Colors.black54),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.check_circle_outline,
+                        color: Colors.green, size: 48),
+                    SizedBox(height: 12),
+                    Text('No alert events',
+                        style: TextStyle(
+                            color: Colors.black54, fontSize: 16)),
+                  ],
                 ),
               ),
             )
@@ -359,30 +308,31 @@ class _AlertsPageState extends State<AlertsPage> {
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: alertsData.length,
+              itemCount: filtered.length,
               separatorBuilder: (_, __) => const SizedBox(height: 6),
               itemBuilder: (context, index) =>
-                  _buildNotificationCard(alertsData[index]),
+                  _buildAlertCard(filtered[index]),
             ),
         ],
       ),
     );
   }
 
-  Widget _buildNotificationCard(Alert alert) {
+  // ==================== ALERT CARD ====================
+
+  Widget _buildAlertCard(Alert alert) {
     final isDown = _isDownAlert(alert);
     final statusColor =
         isDown ? const Color(0xFFC62828) : const Color(0xFF2E7D32);
     final bgColor =
         isDown ? const Color(0xFFFFEBEE) : const Color(0xFFE8F5E9);
-    final statusText = isDown ? 'DOWN' : 'UP';
     final deviceName = _cleanDeviceName(alert.title);
     final ip = _extractIpFromDescription(alert.description);
-    final timestamp = '${alert.tanggal ?? '-'}  ${alert.waktu ?? '-'}';
+    final date = alert.tanggal ?? '-';
+    final time = alert.waktu ?? '-';
 
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(10),
@@ -391,57 +341,58 @@ class _AlertsPageState extends State<AlertsPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(
-            isDown
-                ? Icons.cloud_off_rounded
-                : Icons.cloud_done_rounded,
-            color: statusColor,
-            size: 28,
+          // Status indicator (icon, not text)
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isDown
+                  ? Icons.arrow_downward_rounded
+                  : Icons.arrow_upward_rounded,
+              color: statusColor,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        deviceName,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 14),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: statusColor,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        statusText,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
+                Text(deviceName,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 14),
+                    overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 4),
                 Wrap(
                   spacing: 16,
                   runSpacing: 2,
                   children: [
-                    _notifInfoRow(Icons.lan_outlined, 'IP: $ip'),
-                    _notifInfoRow(Icons.location_on_outlined,
-                        alert.lokasi ?? '-'),
-                    _notifInfoRow(
-                        Icons.access_time_outlined, timestamp),
+                    _infoRow(
+                        Icons.location_on_outlined, alert.lokasi ?? '-'),
+                    _infoRow(Icons.lan_outlined, 'IP: $ip'),
+                    _infoRow(Icons.calendar_today_outlined, date),
+                    _infoRow(Icons.access_time_outlined, time),
                   ],
+                ),
+              ],
+            ),
+          ),
+          // Status dot indicator
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              color: statusColor,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: statusColor.withOpacity(0.4),
+                  blurRadius: 4,
+                  spreadRadius: 1,
                 ),
               ],
             ),
@@ -451,15 +402,14 @@ class _AlertsPageState extends State<AlertsPage> {
     );
   }
 
-  Widget _notifInfoRow(IconData icon, String text) {
+  Widget _infoRow(IconData icon, String text) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 13, color: Colors.black54),
         const SizedBox(width: 4),
         Text(text,
-            style:
-                const TextStyle(fontSize: 12, color: Colors.black54)),
+            style: const TextStyle(fontSize: 12, color: Colors.black54)),
       ],
     );
   }
@@ -482,34 +432,16 @@ class _AlertsPageState extends State<AlertsPage> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Alert List',
+            'Alert Monitoring',
             style: TextStyle(
               color: Colors.white,
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
-          Row(
-            children: [
-              const Text(
-                'Monitoring Real Time',
-                style: TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-              if (_lastRefreshTime != null) ...[
-                const SizedBox(width: 8),
-                const Text('€¢',
-                    style: TextStyle(color: Colors.white70)),
-                const SizedBox(width: 8),
-                Text(
-                  'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}',
-                  style: const TextStyle(
-                    color: Colors.greenAccent,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ],
+          const Text(
+            'Real Time Device Status Monitoring',
+            style: TextStyle(color: Colors.white70, fontSize: 12),
           ),
         ],
       );
@@ -541,14 +473,12 @@ class _AlertsPageState extends State<AlertsPage> {
             Row(
               children: [
                 const Text(
-                  'Real Time Device Status Monitoring and Alert History',
-                  style:
-                      TextStyle(color: Colors.white70, fontSize: 14),
+                  'Real Time Device Status Monitoring',
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
                 ),
                 if (_lastRefreshTime != null) ...[
                   const SizedBox(width: 8),
-                  const Text('€¢',
-                      style: TextStyle(color: Colors.white70)),
+                  const Text('•', style: TextStyle(color: Colors.white70)),
                   const SizedBox(width: 8),
                   Text(
                     'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}',

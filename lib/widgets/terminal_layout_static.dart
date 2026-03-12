@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import '../models/device_model.dart';
 import '../models/tower_model.dart';
 import '../utils/device_icon_resolver.dart';
+import '../utils/location_label_utils.dart';
 
 class TowerCoordinateFallback {
   static const Map<int, Map<String, double>> byTowerNumber = {
@@ -702,6 +703,14 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     return a == b || a.contains(b) || b.contains(a);
   }
 
+  double _deviceOrbitRadius(int count) {
+    if (count <= 1) return 28.0;
+    if (count == 2) return 32.0;
+    if (count <= 4) return 36.0;
+    if (count <= 6) return 40.0;
+    return 44.0;
+  }
+
   List<AddedDevice> _devicesForTower(Tower tower) {
     final towerIdKey = _normalizeMatchKey(tower.towerId);
     final towerLocKey = _normalizeMatchKey(tower.location);
@@ -818,6 +827,21 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
   }
 
   // ─── Tower marker builder (shared) ───────────────────────────
+  Widget _buildTowerIcon({required double size, Color? fallbackColor}) {
+    const towerAsset = 'assets/images/Tower.png';
+    return Image.asset(
+      towerAsset,
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) => Icon(
+        Icons.settings_input_antenna,
+        size: size,
+        color: fallbackColor ?? Colors.white,
+      ),
+    );
+  }
+
   Widget _buildTowerMarkerWidget({
     required Tower tower,
     required List<AddedDevice> devicesHere,
@@ -825,14 +849,13 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
   }) {
     final color = _resolveTowerColor(devicesHere);
     final showDot = devicesHere.isNotEmpty;
+
     final size = zoomed ? 52.0 : 36.0;
     final padding = zoomed ? 7.0 : 5.0;
     final iconSize = zoomed ? 20.0 : 14.0;
-    final label = zoomed ? _towerLongLabel(tower) : _towerShortLabel(tower);
-    final labelFontSize = zoomed ? 9.0 : 7.0;
+    final label = _towerLongLabel(tower);
     final labelPadH = zoomed ? 6.0 : 4.0;
     final labelPadV = zoomed ? 2.0 : 1.0;
-    final badgeOffset = zoomed ? -4.0 : -3.0;
 
     return GestureDetector(
       onTap: () => _showTowerDetailPopup(tower, devicesHere),
@@ -858,32 +881,34 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                         color: Colors.white, width: zoomed ? 2.5 : 2.0),
                     boxShadow: [
                       BoxShadow(
-                          color: color.withOpacity(zoomed ? 0.6 : 0.5),
+                          color: color.withOpacity(0.6),
                           blurRadius: zoomed ? 10 : 6,
                           spreadRadius: zoomed ? 2 : 1)
                     ],
                   ),
                   child: Padding(
                     padding: EdgeInsets.all(padding),
-                    child: Icon(DeviceIconResolver.iconForType('TOWER'),
-                        size: iconSize, color: Colors.white),
+                    child: _buildTowerIcon(
+                      size: iconSize,
+                      fallbackColor: Colors.white,
+                    ),
                   ),
                 ),
                if (devicesHere.isNotEmpty)
                   Positioned(
-                    right: zoomed ? -3.0 : -2.0,  // ← pojok KANAN
-                    top: zoomed ? -3.0 : -2.0,    // ← pojok ATAS
+                    right: -3.0,
+                    top: -3.0,
                     child: _buildTowerStatusDot(devicesHere, zoomed: zoomed),
                   ),
               ],
             ),
-            SizedBox(height: zoomed ? 4 : 2),
+            const SizedBox(height: 4),
             Container(
               padding: EdgeInsets.symmetric(
                   horizontal: labelPadH, vertical: labelPadV),
               decoration: BoxDecoration(
                 color: color,
-                borderRadius: BorderRadius.circular(zoomed ? 4 : 3),
+                borderRadius: BorderRadius.circular(4),
               ),
               child: Text(label,
                   maxLines: 1,
@@ -908,9 +933,6 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     final size = zoomed ? 52.0 : 36.0;
     final padding = zoomed ? 7.0 : 5.0;
     final iconSize = zoomed ? 20.0 : 14.0;
-    final labelFontSize = zoomed ? 9.0 : 7.0;
-    final labelPadH = zoomed ? 6.0 : 4.0;
-    final labelPadV = zoomed ? 2.0 : 1.0;
 
     return MouseRegion(
       cursor: SystemMouseCursors.basic,
@@ -930,12 +952,10 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                   const Color(0xFF607D8B).withOpacity(0.85),
                 ],
               ),
-              border:
-                  Border.all(color: Colors.white, width: zoomed ? 2.5 : 2.0),
+              border: Border.all(color: Colors.white, width: zoomed ? 2.5 : 2.0),
               boxShadow: [
                 BoxShadow(
-                  color:
-                      const Color(0xFF607D8B).withOpacity(zoomed ? 0.55 : 0.45),
+                  color: const Color(0xFF607D8B).withOpacity(0.55),
                   blurRadius: zoomed ? 10 : 6,
                   spreadRadius: zoomed ? 2 : 1,
                 )
@@ -943,25 +963,26 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
             ),
             child: Padding(
               padding: EdgeInsets.all(padding),
-              child: Icon(DeviceIconResolver.iconForType('TOWER'),
-                  size: iconSize, color: Colors.white),
+              child: _buildTowerIcon(
+                size: iconSize,
+                fallbackColor: Colors.white,
+              ),
             ),
           ),
-          SizedBox(height: zoomed ? 4 : 2),
+          const SizedBox(height: 4),
           Container(
-            padding: EdgeInsets.symmetric(
-                horizontal: labelPadH, vertical: labelPadV),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(zoomed ? 0.75 : 0.7),
-              borderRadius: BorderRadius.circular(zoomed ? 4 : 3),
+              color: Colors.black.withOpacity(0.75),
+              borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
-              zoomed ? 'Tower $code' : 'T$code',
+              'Tower $code',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.white,
-                fontSize: labelFontSize,
+                fontSize: 9,
                 fontWeight: FontWeight.w700,
                 height: 1,
               ),
@@ -1002,10 +1023,11 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       final x = (area.left + pos['cx']! * area.width) * w;
       final y = (area.top + pos['cy']! * area.height) * h;
 
+      // Zoom-out tower: smaller icon (36px)
       const markerW = 46.0, markerH = 52.0;
-      final left = (x - 23)
+      final left = (x - markerW / 2)
           .clamp(area.left * w + 2, (area.left + area.width) * w - markerW - 2);
-      final top = (y - 26)
+      final top = (y - markerH / 2)
           .clamp(area.top * h + 2, (area.top + area.height) * h - markerH - 2);
       final canDrag = widget.isFreeroamEditEnabled;
 
@@ -1162,7 +1184,9 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       final baseX = (area.left + cx * area.width) * w;
       final baseY = (area.top + cy * area.height) * h;
 
-      const markerW = 64.0, markerH = 64.0;
+      // Zoom-out: smaller icon (36px) with label
+      const markerW = 52.0;
+      const markerH = 58.0;
       final left = (baseX - markerW / 2)
           .clamp(area.left * w + 2, (area.left + area.width) * w - markerW - 2);
       final top = (baseY - markerH / 2)
@@ -1202,44 +1226,43 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
           child: MouseRegion(
             cursor:
                 canDrag ? SystemMouseCursors.move : SystemMouseCursors.click,
-            child: Container(
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.18),
-                    blurRadius: 8,
-                    spreadRadius: 1,
-                    offset: const Offset(0, 2),
-                  ),
-                  BoxShadow(
-                    color: Colors.white.withOpacity(0.45),
-                    blurRadius: 6,
-                    spreadRadius: -1,
-                    offset: const Offset(0, -1),
-                  ),
-                ],
-              ),
+            child: SizedBox(
+              width: markerW,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  _buildMasterTypeVisual(locType, size: 48),
-                  const SizedBox(height: 4),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: markerColor.withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: Colors.white, width: 1),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.12),
+                          blurRadius: 4,
+                          spreadRadius: 0.5,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: _buildMasterTypeVisual(locType, size: 32),
+                  ),
+                  const SizedBox(height: 2),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: markerColor.withOpacity(0.85),
+                      borderRadius: BorderRadius.circular(3),
+                      border: Border.all(color: Colors.white, width: 0.8),
                     ),
                     child: Text(
                       locCode.isNotEmpty ? locCode : locName,
                       style: const TextStyle(
+                        fontSize: 7,
                         color: Colors.white,
-                        fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
                   ),
@@ -1371,9 +1394,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
 
   Widget _buildMasterTypeVisual(String locType, {double size = 20}) {
     final normalizedType = DeviceIconResolver.normalizeType(locType);
-    final asset = normalizedType == 'TOWER'
-        ? null
-        : DeviceIconResolver.assetForType(normalizedType);
+    final asset = DeviceIconResolver.assetForType(normalizedType);
     final iconColor = DeviceIconResolver.colorForType(locType);
 
     if (asset != null) {
@@ -1454,7 +1475,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        '$locType • $locCode',
+                        '$locType • ${locName.isNotEmpty ? locName : locCode}',
                         style: const TextStyle(
                             fontSize: 14, fontWeight: FontWeight.w700),
                       ),
@@ -1564,7 +1585,8 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     // Group devices by parent location (Tower/Location)
     final devicesByLocation = <String, List<AddedDevice>>{};
     for (final device in widget.devices) {
-      devicesByLocation.putIfAbsent(device.locationName, () => []).add(device);
+      final locationKey = normalizeLocationLabel(device.locationName);
+      devicesByLocation.putIfAbsent(locationKey, () => []).add(device);
     }
 
     if (kDebugMode && devicesByLocation.isNotEmpty) {
@@ -1599,20 +1621,31 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       final baseX = (area.left + cx * area.width) * w;
       final baseY = (area.top + cy * area.height) * h;
 
-      // Apply trigonometric circular offset.
-      // Single device is also shifted slightly so it does not sit exactly on parent icon.
+      // Offset rows surrounding the type marker (honeycomb centered on parent)
       final deviceCount = devices.length;
-      final radius = deviceCount == 1 ? 24.0 : 40.0;
+      final gridSize = deviceCount + 1; // +1 for center (type marker position)
+      final cols = gridSize <= 2 ? gridSize : (sqrt(gridSize.toDouble())).ceil();
+      final rows = (gridSize / cols).ceil();
+      final spacingX = 13.0;
+      final spacingY = 11.0;
 
-      for (var i = 0; i < deviceCount; i++) {
-        // For a single device, pin it to a fixed angle for consistent UI.
-        final angle = deviceCount == 1 ? -pi / 2 : (2 * pi * i) / deviceCount;
-        final offsetX = radius * cos(angle);
-        final offsetY = radius * sin(angle);
+      // Generate all offset grid positions centered on parent
+      final positions = <List<double>>[];
+      for (var r = 0; r < rows; r++) {
+        final rowShift = (r % 2 == 1) ? spacingX * 0.5 : 0.0;
+        for (var c = 0; c < cols; c++) {
+          final ox = (c - (cols - 1) / 2) * spacingX + rowShift;
+          final oy = (r - (rows - 1) / 2) * spacingY;
+          positions.add([ox, oy]);
+        }
+      }
+      // Sort by distance from center, remove closest (where type marker sits)
+      positions.sort((a, b) => (a[0] * a[0] + a[1] * a[1]).compareTo(b[0] * b[0] + b[1] * b[1]));
+      if (positions.isNotEmpty) positions.removeAt(0);
 
-        final x = baseX + offsetX;
-        final y = baseY + offsetY;
-
+      for (var i = 0; i < deviceCount && i < positions.length; i++) {
+        final x = baseX + positions[i][0];
+        final y = baseY + positions[i][1];
         markers.add(_buildDeviceMarker(devices[i], x, y, w, h, area));
       }
     });
@@ -1669,8 +1702,9 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
 
   // Get parent position from tower coordinates
   Map<String, dynamic>? _getParentPosition(String locationName) {
-    final target = locationName.toUpperCase();
-    final targetKey = _normalizeMatchKey(locationName);
+    final normalizedLocation = normalizeLocationLabel(locationName);
+    final target = normalizedLocation.toUpperCase();
+    final targetKey = _normalizeMatchKey(normalizedLocation);
 
     for (final location in widget.masterLocations) {
       final locCode =
@@ -1763,7 +1797,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     // Group devices by location name
     final devicesByLocation = <String, List<AddedDevice>>{};
     for (final device in devices) {
-      final key = device.locationName.trim();
+      final key = normalizeLocationLabel(device.locationName);
       devicesByLocation.putIfAbsent(key, () => []).add(device);
     }
 
@@ -1800,15 +1834,31 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
         }
       }
 
-      // Render devices around base position.
-      // Keep behavior consistent with non-zoom mode.
+      // Offset rows surrounding the type marker (honeycomb centered on parent)
       final count = grouped.length;
-      final radius = count == 1 ? 24.0 : 40.0;
+      final gridSize = count + 1; // +1 for center (type marker position)
+      final cols = gridSize <= 2 ? gridSize : (sqrt(gridSize.toDouble())).ceil();
+      final rows = (gridSize / cols).ceil();
+      final spacingX = 30.0;
+      final spacingY = 26.0;
 
-      for (var i = 0; i < count; i++) {
-        final angle = count == 1 ? -pi / 2 : (2 * pi * i) / count;
-        final x = baseX + radius * cos(angle);
-        final y = baseY + radius * sin(angle);
+      // Generate all offset grid positions centered on parent
+      final positions = <List<double>>[];
+      for (var r = 0; r < rows; r++) {
+        final rowShift = (r % 2 == 1) ? spacingX * 0.5 : 0.0;
+        for (var c = 0; c < cols; c++) {
+          final ox = (c - (cols - 1) / 2) * spacingX + rowShift;
+          final oy = (r - (rows - 1) / 2) * spacingY;
+          positions.add([ox, oy]);
+        }
+      }
+      // Sort by distance from center, remove closest (where type marker sits)
+      positions.sort((a, b) => (a[0] * a[0] + a[1] * a[1]).compareTo(b[0] * b[0] + b[1] * b[1]));
+      if (positions.isNotEmpty) positions.removeAt(0);
+
+      for (var i = 0; i < count && i < positions.length; i++) {
+        final x = baseX + positions[i][0];
+        final y = baseY + positions[i][1];
         if (kDebugMode) print('  → Rendering ${grouped[i].name} at ($x, $y)');
         markers.add(_buildZoomedDeviceMarker(grouped[i], x, y, w, h));
       }
@@ -1953,8 +2003,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                   children: [
                     CircleAvatar(
                       backgroundColor: statusColor,
-                      child: const Icon(Icons.router,
-                          color: Colors.white, size: 16),
+                      child: _buildTowerIcon(size: 16, fallbackColor: Colors.white),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -2233,8 +2282,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                     children: [
                       CircleAvatar(
                         backgroundColor: statusColor,
-                        child: const Icon(Icons.router,
-                            color: Colors.white, size: 16),
+                        child: _buildTowerIcon(size: 16, fallbackColor: Colors.white),
                       ),
                       const SizedBox(width: 12),
                       Expanded(

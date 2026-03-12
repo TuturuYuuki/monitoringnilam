@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'main.dart';
 import 'route_proxy_page.dart';
 import 'services/api_service.dart';
+import 'utils/location_label_utils.dart';
 import 'utils/tower_status_override.dart';
 import 'widgets/global_header_bar.dart';
 import 'widgets/global_sidebar_nav.dart';
@@ -21,7 +22,7 @@ class ParkingCCTVPage extends StatefulWidget {
 class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
   String selectedArea = 'Parking';
   int currentPage = 0;
-  int camerasPerPage = 8;
+  int camerasPerPage = 6;
   bool isLoading = true;
   final List<Map<String, dynamic>> allCameras = [];
   DateTime? lastUpdated;
@@ -40,14 +41,7 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
   int get downCameras => allCameras.where((c) => c['status'] == 'DOWN').length;
 
   int _resolveCamerasPerPage() {
-    final isMobile = isMobileScreen(context);
-    if (isMobile) return 4; // Mobile: 1 column layout
-
-    // Desktop layouts
-    double screenWidth = MediaQuery.of(context).size.width;
-    if (screenWidth > 1400) return 8; // 4 columns
-    if (screenWidth > 1000) return 9; // 3 columns (3x3 = 9 full)
-    return 8; // 2 columns (2x4 = 8)
+    return 6;
   }
 
   void _showOfflineList() {
@@ -189,8 +183,8 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
 
           // 2. Filter logic yang lebih aman (handle null safety)
           final filteredCameras = updatedCameras.where((c) {
-            final areaType = (c.areaType ?? '').toLowerCase();
-            final location = (c.location ?? '').toLowerCase();
+            final areaType = c.areaType.toLowerCase();
+            final location = c.location.toLowerCase();
 
             return areaType.contains('lot') ||
                 areaType.contains('parking') ||
@@ -208,6 +202,7 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                     'type': c.type,
                     'ip_address':
                         c.ipAddress, // <--- WAJIB ADA AGAR IP MUNCUL SAAT EDIT
+                    'container_yard': c.containerYard,
                     'area_type': c.areaType,
                   })
               .toList();
@@ -283,8 +278,9 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const GlobalSidebarNav(currentRoute: '/cctv-parking'),
-                const SizedBox(width: 12),
+                if (!isMobile)
+                  const GlobalSidebarNav(currentRoute: '/cctv-parking'),
+                if (!isMobile) const SizedBox(width: 12),
                 Expanded(
                   child: SingleChildScrollView(
                     child: LayoutBuilder(
@@ -614,7 +610,7 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                   Row(
                     children: [
                       const Text(
-                        'PARKING',
+                        'Live Camera Feeds And Surveillance System Status',
                         style: TextStyle(
                           color: Colors.white70,
                           fontSize: 14,
@@ -853,10 +849,12 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
   Widget _buildAreaButton(double width) {
     return Container(
       width: width,
-      padding: const EdgeInsets.all(20),
+      height: 80,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF5D6D7E),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white24, width: 1.0),
       ),
       child: const Center(
         child: Text(
@@ -986,14 +984,6 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
 
     // Show camera grid when data exists
     final isMobile = isMobileScreen(context);
-    int crossAxisCount = isMobile
-      ? 1
-      : constraints.maxWidth > 1400
-        ? 5
-        : constraints.maxWidth > 1000
-          ? 4
-          : 3;
-
     double childAspectRatio = isMobile ? 2.4 : 2.4;
     double spacing = isMobile ? 12 : 20;
 
@@ -1002,8 +992,8 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
+        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: isMobile ? 300 : 360,
           crossAxisSpacing: spacing,
           mainAxisSpacing: spacing,
           childAspectRatio: childAspectRatio,
@@ -1243,16 +1233,38 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
     );
   }
 
-  void _showEditCameraForm(Map<String, dynamic> camera) {
+  Future<void> _showEditCameraForm(Map<String, dynamic> camera) async {
     // Controller otomatis terisi data lama (Initial Value)
     final ipController =
         TextEditingController(text: camera['ip_address'] ?? '');
-    final locationController =
-        TextEditingController(text: camera['location'] ?? '');
+    var locationOptions = buildMasterLocationOptions(
+      await ApiService().getAllMasterLocations(),
+    );
+    if (locationOptions.isEmpty) {
+      locationOptions = [
+        {
+          'label': normalizeLocationLabel((camera['location'] ?? '').toString()),
+          'container_yard': (camera['container_yard'] ?? '').toString(),
+          'location_type': 'CCTV',
+          'location_code': (camera['id'] ?? '').toString(),
+          'location_name': (camera['location'] ?? '').toString(),
+        }
+      ];
+    }
+    final matchedOption = matchMasterLocationOption(
+      locationOptions,
+      (camera['location'] ?? '').toString(),
+      currentContainerYard: (camera['container_yard'] ?? '').toString(),
+    );
+    var selectedLocation = matchedOption?['label'] ??
+        normalizeLocationLabel((camera['location'] ?? '').toString());
+    var selectedYard = matchedOption?['container_yard'] ??
+        (camera['container_yard'] ?? '').toString();
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setLocalState) => AlertDialog(
         title: Text('Edit ${camera['id']}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1261,15 +1273,28 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
               controller: ipController,
               decoration: const InputDecoration(labelText: 'IP Address'),
             ),
-            TextField(
-              controller: locationController,
-              readOnly: true,
-              enabled: false,
-              decoration: const InputDecoration(
-                labelText: 'Location (Locked)',
-                helperText:
-                    'Pindah lokasi wajib delete camera lalu add ulang di lokasi tujuan.',
-              ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: selectedLocation,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Location'),
+              items: locationOptions
+                  .map((option) => DropdownMenuItem<String>(
+                        value: option['label'],
+                        child: Text(option['label'] ?? ''),
+                      ))
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                final option = locationOptions.firstWhere(
+                  (item) => item['label'] == value,
+                  orElse: () => locationOptions.first,
+                );
+                setLocalState(() {
+                  selectedLocation = value;
+                  selectedYard = option['container_yard'] ?? selectedYard;
+                });
+              },
             ),
           ],
         ),
@@ -1289,6 +1314,8 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                 {
                   // Argumen 2: Map Data yang diubah
                   'ip_address': ipController.text,
+                  'location': selectedLocation,
+                  'container_yard': selectedYard,
                 },
               );
 
@@ -1305,6 +1332,7 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
             child: const Text('Save', style: TextStyle(color: Colors.white)),
           ),
         ],
+      ),
       ),
     );
   }

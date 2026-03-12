@@ -6,6 +6,7 @@ import '../models/camera_model.dart';
 import '../models/mmt_model.dart';
 import '../models/alert_model.dart';
 import '../models/device_model.dart';
+import 'device_storage_service.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 
@@ -683,11 +684,43 @@ class ApiService {
 
 // Delete Access Point
   Future<Map<String, dynamic>> deleteTower(int id) async {
+    String towerId = '';
+    String ipAddress = '';
+
+    try {
+      final towers = await getAllTowers();
+      final matched = towers.where((t) => t.id == id).toList(growable: false);
+      if (matched.isNotEmpty) {
+        towerId = matched.first.towerId;
+        ipAddress = matched.first.ipAddress;
+      }
+    } catch (_) {}
+
     try {
       final response = await http.get(
         Uri.parse('$baseUrl?endpoint=network&action=delete&id=$id'),
       );
-      return jsonDecode(response.body);
+      final result = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (result['success'] == true) {
+        await DeviceStorageService.removeByTypeAndNameOrIp(
+          type: 'Access Point',
+          name: towerId,
+          ipAddress: ipAddress,
+        );
+        await DeviceStorageService.removeByTypeAndNameOrIp(
+          type: 'Tower',
+          name: towerId,
+          ipAddress: ipAddress,
+        );
+        await _deleteAlertsByDevice(
+          deviceType: 'ACCESS_POINT',
+          deviceId: towerId,
+          ipAddress: ipAddress,
+        );
+      }
+
+      return result;
     } catch (e) {
       return {'success': false, 'message': 'Koneksi Gagal: $e'};
     }
@@ -1040,11 +1073,38 @@ class ApiService {
 
   // Fungsi untuk menghapus kamera
   Future<Map<String, dynamic>> deleteCamera(String cameraId) async {
+    String ipAddress = '';
+
+    try {
+      final cameras = await getAllCameras();
+      final matched = cameras
+          .where((c) => c.cameraId.toLowerCase() == cameraId.toLowerCase())
+          .toList(growable: false);
+      if (matched.isNotEmpty) {
+        ipAddress = matched.first.ipAddress;
+      }
+    } catch (_) {}
+
     try {
       final response = await http.get(
         Uri.parse('$baseUrl?endpoint=cctv&action=delete&camera_id=$cameraId'),
       );
-      return jsonDecode(response.body);
+      final result = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (result['success'] == true) {
+        await DeviceStorageService.removeByTypeAndNameOrIp(
+          type: 'CCTV',
+          name: cameraId,
+          ipAddress: ipAddress,
+        );
+        await _deleteAlertsByDevice(
+          deviceType: 'CCTV',
+          deviceId: cameraId,
+          ipAddress: ipAddress,
+        );
+      }
+
+      return result;
     } catch (e) {
       return {'success': false, 'message': e.toString()};
     }
@@ -1252,13 +1312,16 @@ class ApiService {
     int limit = 100,
     int offset = 0,
     String source = 'ALL',
+    String status = 'ALL',
   }) async {
     try {
-      final response = await http.get(
-        Uri.parse(
-          '$baseUrl?endpoint=alerts&source=${Uri.encodeQueryComponent(source)}&limit=$limit&offset=$offset',
-        ),
+      final uri = Uri.parse(
+        '$baseUrl?endpoint=alerts'
+        '&source=${Uri.encodeQueryComponent(source)}'
+        '&status=${Uri.encodeQueryComponent(status)}'
+        '&limit=$limit&offset=$offset',
       );
+      final response = await http.get(uri);
       if (response.statusCode == 200) {
         dynamic jsonResponse = json.decode(response.body);
 
@@ -1319,30 +1382,66 @@ class ApiService {
 
     if (response.statusCode == 200) {
       final dynamic jsonResponse = json.decode(response.body);
+      
+      List<dynamic> targetList = [];
       if (jsonResponse is List) {
-        return jsonResponse
-            .whereType<Map>()
-            .map((data) => Alert.fromJson(
-                  data.map((key, value) => MapEntry(key.toString(), value)),
-                ))
-            .toList();
+        targetList = jsonResponse;
+      } else if (jsonResponse is Map && jsonResponse['data'] is List) {
+        targetList = jsonResponse['data'] as List;
       }
 
-      if (jsonResponse is Map<String, dynamic>) {
-        final rows = jsonResponse['data'];
-        if (rows is List) {
-          return rows
-              .whereType<Map>()
-              .map((data) => Alert.fromJson(
-                    data.map((key, value) => MapEntry(key.toString(), value)),
-                  ))
-              .toList();
+      print('DEBUG: getAlertsReport retrieved ${targetList.length} items');
+
+      List<Alert> parsedAlerts = [];
+      for (var item in targetList) {
+        try {
+          if (item is Map) {
+            Map<String, dynamic> safeMap = {};
+            item.forEach((key, value) {
+              safeMap[key.toString()] = value;
+            });
+            parsedAlerts.add(Alert.fromJson(safeMap));
+          }
+        } catch (e) {
+          print('DEBUG: Error parsing individual alert: $e');
         }
       }
-
-      return <Alert>[];
+      return parsedAlerts;
     } else {
       throw Exception('Failed To Load Report');
+    }
+  }
+
+  /// Acknowledge a single alert by its DB id.
+  Future<bool> acknowledgeAlert(int id) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$alertsUrl?action=acknowledge&id=$id'),
+      ).timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200) {
+        return json.decode(response.body)['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('acknowledgeAlert error: $e');
+      return false;
+    }
+  }
+
+  /// Acknowledge all open alerts for a given device_id.
+  Future<bool> acknowledgeAlertByDevice(String deviceId) async {
+    try {
+      final encoded = Uri.encodeQueryComponent(deviceId);
+      final response = await http.get(
+        Uri.parse('$alertsUrl?action=acknowledge_by_device&device_id=$encoded'),
+      ).timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200) {
+        return json.decode(response.body)['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('acknowledgeAlertByDevice error: $e');
+      return false;
     }
   }
 
@@ -1600,16 +1699,74 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> deleteMMT(int id) async {
+    String mmtId = '';
+    String ipAddress = '';
+
+    try {
+      final mmts = await getAllMMTs();
+      final matched = mmts.where((m) => m.id == id).toList(growable: false);
+      if (matched.isNotEmpty) {
+        mmtId = matched.first.mmtId;
+        ipAddress = matched.first.ipAddress;
+      }
+    } catch (_) {}
+
     try {
       final response = await http.post(
         Uri.parse('$baseUrl?endpoint=mmt&action=delete'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'id': id}),
       );
-      return jsonDecode(response.body);
+      final result = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (result['success'] == true) {
+        await DeviceStorageService.removeByTypeAndNameOrIp(
+          type: 'MMT',
+          name: mmtId,
+          ipAddress: ipAddress,
+        );
+        await _deleteAlertsByDevice(
+          deviceType: 'MMT',
+          deviceId: mmtId,
+          ipAddress: ipAddress,
+        );
+      }
+
+      return result;
     } catch (e) {
       return {'success': false, 'message': 'Koneksi Gagal: $e'};
     }
+  }
+
+  Future<int> _deleteAlertsByDevice({
+    required String deviceType,
+    required String deviceId,
+    required String ipAddress,
+  }) async {
+    try {
+      final query = StringBuffer('action=delete_by_device');
+      if (deviceType.trim().isNotEmpty) {
+        query.write('&device_type=${Uri.encodeQueryComponent(deviceType)}');
+      }
+      if (deviceId.trim().isNotEmpty) {
+        query.write('&device_id=${Uri.encodeQueryComponent(deviceId)}');
+      }
+      if (ipAddress.trim().isNotEmpty) {
+        query.write('&ip_address=${Uri.encodeQueryComponent(ipAddress)}');
+      }
+
+      final response = await http.get(Uri.parse('$alertsUrl?$query'));
+      if (response.statusCode != 200) {
+        return 0;
+      }
+
+      final data = jsonDecode(response.body);
+      if (data is Map<String, dynamic> && data['success'] == true) {
+        return (data['deleted_rows'] as num?)?.toInt() ?? 0;
+      }
+    } catch (_) {}
+
+    return 0;
   }
 
   // Trigger realtime ping untuk semua devices

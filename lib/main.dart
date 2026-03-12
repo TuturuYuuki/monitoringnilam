@@ -22,7 +22,6 @@ import 'edit_profile.dart';
 import 'change_password.dart';
 import 'add_device.dart';
 import 'report_page.dart';
-import 'alert_report.dart';
 import 'pages/tower_management.dart';
 import 'pages/mmt_monitoring.dart';
 import 'mmt_monitoring_cy2.dart';
@@ -218,21 +217,36 @@ bool isMobileScreen(BuildContext context) {
   return MediaQuery.of(context).size.width < 600;
 }
 
+bool isTabletScreen(BuildContext context) {
+  final width = MediaQuery.of(context).size.width;
+  return width >= 600 && width <= 1024;
+}
+
+bool isDesktopScreen(BuildContext context) {
+  return MediaQuery.of(context).size.width > 1024;
+}
+
 double getResponsivePadding(BuildContext context) {
-  final isMobile = isMobileScreen(context);
-  return isMobile ? 8.0 : 16.0;
+  if (isMobileScreen(context)) return 8.0;
+  if (isTabletScreen(context)) return 14.0;
+  return 20.0;
 }
 
 double getResponsiveFontSize(
     BuildContext context, double mobileSize, double desktopSize) {
-  final isMobile = isMobileScreen(context);
-  return isMobile ? mobileSize : desktopSize;
+  if (isMobileScreen(context)) return mobileSize;
+  if (isTabletScreen(context)) return (mobileSize + desktopSize) / 2;
+  return desktopSize;
 }
 
 int getResponsiveGridColumns(BuildContext context,
     {int mobileColumns = 1, int desktopColumns = 3}) {
-  final isMobile = isMobileScreen(context);
-  return isMobile ? mobileColumns : desktopColumns;
+  if (isMobileScreen(context)) return mobileColumns;
+  if (isTabletScreen(context)) {
+    final tabletColumns = ((mobileColumns + desktopColumns) / 2).round();
+    return tabletColumns < 1 ? 1 : tabletColumns;
+  }
+  return desktopColumns;
 }
 
 double getResponsiveChildAspectRatio(BuildContext context,
@@ -464,7 +478,7 @@ class MyApp extends StatelessWidget {
         '/cctv-parking': (context) => const ParkingCCTVPage(),
         '/cctv-fullscreen': (context) => const CCTVFullscreenPage(),
         '/alerts': (context) => const AlertsPage(),
-        '/alert-report': (context) => const AlertReportPage(),
+        '/alert-report': (context) => const ReportPage(),
         '/report': (context) => const ReportPage(),
         '/profile': (context) => const ProfilePage(),
         '/edit-profile': (context) => const EditProfilePage(),

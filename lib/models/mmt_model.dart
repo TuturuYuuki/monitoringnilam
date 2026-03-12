@@ -1,3 +1,5 @@
+import '../utils/location_label_utils.dart';
+
 class MMT {
   final int id;
   final String mmtId;
@@ -25,7 +27,7 @@ class MMT {
     return MMT(
       id: int.tryParse(json['id'].toString()) ?? 0,
       mmtId: json['mmt_id']?.toString() ?? '',
-      location: json['location']?.toString() ?? '',
+      location: normalizeLocationLabel(json['location']?.toString() ?? ''),
       ipAddress: json['ip_address']?.toString() ?? '',
       status: json['status']?.toString() ?? 'Unknown',
       type: json['type']?.toString() ?? 'Standard',

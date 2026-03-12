@@ -7,6 +7,7 @@ import 'services/api_service.dart';
 import 'models/tower_model.dart';
 import 'route_proxy_page.dart';
 import 'utils/tower_status_override.dart';
+import 'utils/location_label_utils.dart';
 import 'widgets/expandable_fab_nav.dart';
 import 'widgets/global_header_bar.dart';
 
@@ -1292,49 +1293,93 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
   }
 
 // --- FUNGSI KHUSUS CY3 ---
-  void _showEditForm(Tower tower) {
+  Future<void> _showEditForm(Tower tower) async {
     final ipController = TextEditingController(text: tower.ipAddress);
-    final locationController = TextEditingController(text: tower.location);
+    var locationOptions = buildMasterLocationOptions(
+      await apiService.getAllMasterLocations(),
+    );
+    if (locationOptions.isEmpty) {
+      locationOptions = [
+        {
+          'label': normalizeLocationLabel(tower.location),
+          'container_yard': tower.containerYard,
+          'location_type': 'TOWER',
+          'location_code': tower.towerId,
+          'location_name': tower.location,
+        }
+      ];
+    }
+    final matchedOption = matchMasterLocationOption(
+      locationOptions,
+      tower.location,
+      currentContainerYard: tower.containerYard,
+    );
+    var selectedLocation =
+        matchedOption?['label'] ?? normalizeLocationLabel(tower.location);
+    var selectedYard = matchedOption?['container_yard'] ?? tower.containerYard;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Edit ${tower.towerId}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-                controller: ipController,
-                decoration: const InputDecoration(labelText: 'IP Address')),
-            TextField(
-                controller: locationController,
-                decoration: const InputDecoration(labelText: 'Location')),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setLocalState) => AlertDialog(
+          title: Text('Edit ${tower.towerId}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                  controller: ipController,
+                  decoration: const InputDecoration(labelText: 'IP Address')),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: selectedLocation,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Location'),
+                items: locationOptions
+                    .map((option) => DropdownMenuItem<String>(
+                          value: option['label'],
+                          child: Text(option['label'] ?? ''),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  final option = locationOptions.firstWhere(
+                    (item) => item['label'] == value,
+                    orElse: () => locationOptions.first,
+                  );
+                  setLocalState(() {
+                    selectedLocation = value;
+                    selectedYard = option['container_yard'] ?? tower.containerYard;
+                  });
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                final response = await apiService.updateTower(tower.id, {
+                  'ip_address': ipController.text,
+                  'location': selectedLocation,
+                  'container_yard': selectedYard,
+                });
+
+                if (response['success'] == true) {
+                  if (mounted) {
+                    Navigator.pop(context);
+                    _loadTowers();
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('CY3 Updated Successfully'),
+                        backgroundColor: Colors.green));
+                  }
+                }
+              },
+              child: const Text('Save'),
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              final response = await apiService.updateTower(tower.id, {
-                'ip_address': ipController.text,
-                'location': locationController.text,
-              });
-
-              if (response['success'] == true) {
-                if (mounted) {
-                  Navigator.pop(context);
-                  _loadTowers(); // Refresh data khusus CY3
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('CY3 Updated Successfully'),
-                      backgroundColor: Colors.green));
-                }
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
       ),
     );
   }

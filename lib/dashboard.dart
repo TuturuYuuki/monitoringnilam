@@ -21,6 +21,7 @@ import 'services/device_storage_service.dart';
 import 'utils/tower_status_override.dart';
 import 'utils/layout_mapper.dart';
 import 'utils/device_icon_resolver.dart';
+import 'utils/location_label_utils.dart';
 import 'widgets/terminal_layout_static.dart';
 import 'widgets/global_header_bar.dart';
 import 'widgets/global_sidebar_nav.dart';
@@ -777,19 +778,78 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
         }
       }
 
-      List<AddedDevice> devices = [];
-      try {
-        devices = await DeviceStorageService.getDevices().timeout(
-          const Duration(seconds: 5),
-          onTimeout: () {
-            print('Warning: Get devices from storage timed out');
-            return addedDevices;
-          },
-        );
-      } catch (e) {
-        print('Error loading devices from storage: $e');
-        devices = addedDevices;
+      final mmts = await apiService.getAllMMTs();
+      for (final mmt in mmts) {
+        // Find realtime status (downCount from realtime ping overrides static DB row if available)
+        final status = deviceStatuses[mmt.mmtId] ?? mmt.status;
+        if (isDownStatus(status)) {
+          final route = '/mmt'; // Placeholder route if no MMT page explicitly mapped
+          final timestamp = mmt.updatedAt.isNotEmpty
+              ? mmt.updatedAt
+              : (mmt.createdAt.isNotEmpty
+                  ? mmt.createdAt
+                  : DateTime.now().toString());
+
+          generatedAlerts.add(Alert(
+            id: (int.tryParse(mmt.id.toString()) ?? 0) + 2000, // ID unik
+            alertKey:
+                'generated:${mmt.id + 2000}:${mmt.mmtId}:MMT_DOWN',
+            title: 'MMT DOWN - ${mmt.mmtId}',
+            description:
+                '${mmt.location} MMT offline (${mmt.mmtId})',
+            severity: 'critical',
+            timestamp: timestamp,
+            route: route,
+            category: 'MMT',
+          ));
+        }
       }
+
+      // Always fetch device list from backend (towers, cameras, mmts)
+      List<AddedDevice> devices = [];
+      for (final tower in effectiveTowers) {
+        devices.add(AddedDevice(
+          id: tower.id.toString(),
+          name: tower.towerId,
+          type: 'Tower',
+          ipAddress: tower.ipAddress,
+          locationName: tower.location,
+          latitude: tower.latitude ?? 0.0,
+          longitude: tower.longitude ?? 0.0,
+          containerYard: tower.containerYard,
+          createdAt: DateTime.tryParse(tower.createdAt) ?? DateTime.now(),
+          status: tower.status,
+        ));
+      }
+      for (final camera in effectiveCameras) {
+        devices.add(AddedDevice(
+          id: camera.id.toString(),
+          name: camera.cameraId,
+          type: 'CCTV',
+          ipAddress: camera.ipAddress,
+          locationName: camera.location,
+          latitude: camera.latitude ?? 0.0,
+          longitude: camera.longitude ?? 0.0,
+          containerYard: camera.containerYard,
+          createdAt: DateTime.tryParse(camera.createdAt) ?? DateTime.now(),
+          status: camera.status,
+        ));
+      }
+      for (final mmt in mmts) {
+        devices.add(AddedDevice(
+          id: mmt.id.toString(),
+          name: mmt.mmtId,
+          type: 'MMT',
+          ipAddress: mmt.ipAddress,
+          locationName: mmt.location,
+          latitude: 0.0,
+          longitude: 0.0,
+          containerYard: mmt.containerYard,
+          createdAt: DateTime.tryParse(mmt.createdAt) ?? DateTime.now(),
+          status: deviceStatuses[mmt.mmtId] ?? mmt.status, // use realtime logic if cached early
+        ));
+      }
+      devices.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       for (var device in devices) {
         if (device.type == 'MMT') {
@@ -859,15 +919,39 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           totalUpCameras = cameras.where((c) => !isDownStatus(c.status)).length;
           totalDownCameras = (allCamerasCount - totalUpCameras).clamp(0, 999);
 
-          // 4. Gabungkan dengan alert yang baru terdeteksi (DOWN baru)
-          alerts = [...activeAlerts, ...generatedAlerts];
+          // 4. Gabungkan dengan alert yang baru terdeteksi (DOWN baru) dan hilangkan duplikat history
+          final combined = [...activeAlerts, ...generatedAlerts];
+          final uniqueAlerts = <String, Alert>{};
+
+          for (final a in combined) {
+            String devName = a.title;
+            // Extract the core device id safely by splitting known substrings
+            if (devName.contains(' - ')) {
+              devName = devName.split(' - ').last.trim();
+            } else if (devName.toLowerCase().contains(' is ')) {
+              devName = devName.split(RegExp(r'\s+is\s+', caseSensitive: false)).first.trim();
+            }
+            devName = devName.replaceAll(RegExp(r'(Access\sPoint|CCTV|MMT)\s+DOWN\s+-\s+', caseSensitive: false), '');
+            devName = devName.trim();
+
+            // Store the newest (first seen or last seen based on history ordering)
+            // But if one has 'critical' and another doesn't, favor 'critical'
+            if (!uniqueAlerts.containsKey(devName)) {
+              uniqueAlerts[devName] = a;
+            } else if (a.severity == 'critical' && uniqueAlerts[devName]!.severity != 'critical') {
+              uniqueAlerts[devName] = a;
+            }
+          }
+
+          alerts = uniqueAlerts.values.toList()
+            ..sort((a, b) => b.timestamp.compareTo(a.timestamp)); // Newest first
+
           totalWarnings = alerts
               .where((a) => a.severity == 'critical' || a.severity == 'warning')
               .length;
 
           // 5. Update UI lainnya
           addedDevices = devices;
-          _syncAddedDevices(ipStatus);
           _updateBlinkingLocations();
         });
       }
@@ -884,27 +968,6 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       }
     } finally {
       _isLoadingDashboard = false;
-    }
-  }
-
-  Future<void> _syncAddedDevices(Map<String, String> ipStatus) async {
-    try {
-      List<AddedDevice> storageDevices =
-          await DeviceStorageService.getDevices();
-      for (var device in storageDevices) {
-        final ipKey = device.ipAddress.trim();
-        if (ipStatus.containsKey(ipKey)) {
-          device.status = ipStatus[ipKey]!;
-        }
-      }
-      if (mounted) {
-        setState(() {
-          addedDevices = storageDevices;
-          addedDevices.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        });
-      }
-    } catch (e) {
-      debugPrint("Error syncing storage devices: $e");
     }
   }
 
@@ -951,10 +1014,19 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
 
           // Update device statuses from database
             _latestMmtRows = mmtList
-              .whereType<Map>()
-              .map((row) =>
-                row.map((key, value) => MapEntry(key.toString(), value)))
-              .toList(growable: false);
+                .whereType<Map>()
+                .map((row) {
+                  final mapped = row.map(
+                    (key, value) => MapEntry(key.toString(), value),
+                  );
+                  return {
+                    ...mapped,
+                    'location': normalizeLocationLabel(
+                      (mapped['location'] ?? '').toString(),
+                    ),
+                  };
+                })
+                .toList(growable: false);
 
             for (var mmt in mmtList) {
             final mmtId = mmt['mmt_id']?.toString() ?? '';
@@ -1130,8 +1202,9 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       return LatLng(lat, lng);
     }
 
-    const radius = 0.0000225; // ~2,5m - minimal offset to prevent overlap only
-    final angle = (2 * math.pi * index) / total;
+    final radius = 0.000025 * (1 + (total ~/ 4) * 0.5);
+
+    final angle = (2 * math.pi * index / total) - (math.pi / 2);
 
     return LatLng(
         lat + (radius * math.cos(angle)), lng + (radius * math.sin(angle)));
@@ -1399,6 +1472,64 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   }
 
   int get totalCameras => totalUpCameras + totalDownCameras;
+
+  Future<List<AddedDevice>> _pruneStaleLocalDevices(
+    List<AddedDevice> localDevices, {
+    required List<Tower> towersFromDb,
+    required List<Camera> camerasFromDb,
+    required List<Map<String, dynamic>> latestMmtRows,
+  }) async {
+    final towerNames = towersFromDb
+        .map((t) => t.towerId.trim().toLowerCase())
+        .where((v) => v.isNotEmpty)
+        .toSet();
+    final towerIps = towersFromDb
+        .map((t) => t.ipAddress.trim())
+        .where((v) => v.isNotEmpty)
+        .toSet();
+
+    final cameraNames = camerasFromDb
+        .map((c) => c.cameraId.trim().toLowerCase())
+        .where((v) => v.isNotEmpty)
+        .toSet();
+    final cameraIps = camerasFromDb
+        .map((c) => c.ipAddress.trim())
+        .where((v) => v.isNotEmpty)
+        .toSet();
+
+    final mmtNames = latestMmtRows
+        .map((m) => (m['mmt_id'] ?? '').toString().trim().toLowerCase())
+        .where((v) => v.isNotEmpty)
+        .toSet();
+    final mmtIps = latestMmtRows
+        .map((m) => (m['ip_address'] ?? '').toString().trim())
+        .where((v) => v.isNotEmpty)
+        .toSet();
+
+    final filtered = localDevices.where((d) {
+      final type = d.type.trim().toUpperCase();
+      final name = d.name.trim().toLowerCase();
+      final ip = d.ipAddress.trim();
+
+      if (type == 'ACCESS POINT' || type == 'TOWER') {
+        return towerNames.contains(name) || towerIps.contains(ip);
+      }
+      if (type == 'CCTV') {
+        return cameraNames.contains(name) || cameraIps.contains(ip);
+      }
+      if (type == 'MMT') {
+        return mmtNames.contains(name) || mmtIps.contains(ip);
+      }
+
+      return true;
+    }).toList(growable: false);
+
+    if (filtered.length != localDevices.length) {
+      await DeviceStorageService.overwriteDevices(filtered);
+    }
+
+    return filtered;
+  }
 
   List<AddedDevice> _buildLayoutDevices() {
     final merged = <AddedDevice>[...addedDevices];
@@ -1764,25 +1895,23 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
             padding: const EdgeInsets.all(16.0),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final mapHeight = constraints.maxWidth > 1400 ? 440.0 : 390.0;
+                final mapHeight = constraints.maxWidth > 1400 ? 580.0 : 490.0;
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      height: mapHeight,
-                      child: _buildLiveTerminalMap(context),
-                    ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: _buildDashboardStatsBottom(
-                          context,
-                          isMobile: false,
-                        ),
+                return SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        height: mapHeight,
+                        child: _buildLiveTerminalMap(context),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      _buildDashboardStatsBottom(
+                        context,
+                        isMobile: false,
+                      ),
+                    ],
+                  ),
                 );
               },
             ),
@@ -2379,6 +2508,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           MaterialPageRoute(builder: (context) => const NetworkPage()),
         ),
         child: Container(
+          constraints: const BoxConstraints(minHeight: 260),
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.75),
@@ -2403,7 +2533,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                       color: const Color(0xFF1976D2),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.language,
+                    child: const Icon(Icons.router,
                         color: Colors.white, size: 28),
                   ),
                   const SizedBox(width: 12),
@@ -2430,7 +2560,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                       count: totalOnlineTowers,
                       label: 'UP',
                       color: Colors.green,
-                      icon: Icons.wifi,
+                      icon: Icons.router,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -2439,7 +2569,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                       count: totalDownTowers,
                       label: 'DOWN',
                       color: Colors.red,
-                      icon: Icons.wifi_off,
+                      icon: Icons.router,
                     ),
                   ),
                 ],
@@ -2523,8 +2653,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                       color: const Color(0xFF1976D2),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child:
-                        const Icon(Icons.router, color: Colors.white, size: 28),
+                    child: const Icon(Icons.tablet_mac, color: Colors.white, size: 28),
                   ),
                   const SizedBox(width: 12),
                   const Expanded(
@@ -2548,7 +2677,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                       count: totalUpMMT,
                       label: 'UP',
                       color: Colors.green,
-                      icon: Icons.wifi,
+                      icon: Icons.tablet_mac,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -2557,7 +2686,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                       count: totalDownMMT,
                       label: 'DOWN',
                       color: Colors.red,
-                      icon: Icons.wifi_off,
+                      icon: Icons.tablet_mac,
                     ),
                   ),
                 ],
@@ -2590,213 +2719,159 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   }
 
   Widget _buildCCTVMonitoringCard(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const CCTVPage()),
+  return MouseRegion(
+    cursor: SystemMouseCursors.click,
+    child: GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const CCTVPage()),
+      ),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 260),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.75),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 260),
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.75),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1976D2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.videocam,
-                        color: Colors.white, size: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1976D2),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'CCTV Monitoring',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  child: const Icon(Icons.videocam, color: Colors.white, size: 28),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'CCTV Monitoring',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Expanded(
-                    child:
-                        _buildCCTVStatus('$totalUpCameras', 'UP', Colors.green),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Expanded(
+                  child: _buildTowerStatusTile(
+                    count: totalUpCameras,
+                    label: 'UP',
+                    color: Colors.green,
+                    icon: Icons.videocam,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildCCTVStatus(
-                        '$totalDownCameras', 'DOWN', Colors.red),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildTowerStatusTile(
+                    count: totalDownCameras,
+                    label: 'DOWN',
+                    color: Colors.red,
+                    icon: Icons.videocam_off,
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
-  Widget _buildCCTVStatus(String count, String label, Color color) {
-    return Column(
-      children: [
-        Container(
-          width: 58,
-          height: 58,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(Icons.videocam, color: Colors.white, size: 26),
+ Widget _buildActiveAlertsCard(BuildContext context) {
+  return MouseRegion(
+    cursor: SystemMouseCursors.click,
+    child: GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const AlertsPage()),
+      ),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 260),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.75),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
-        Text(
-          count,
-          style: const TextStyle(
-            color: Colors.black,
-            fontSize: 30,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.black54,
-            fontSize: 14,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActiveAlertsCard(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const AlertsPage()),
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.75),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              // Header Kartu
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1976D2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.warning_amber_rounded,
-                        color: Colors.white, size: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1976D2),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'Alerts',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  child: const Icon(Icons.warning_amber_rounded,
+                      color: Colors.white, size: 28),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Alerts',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              // Layout Counter Versi Warning (Seperti CCTV)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildAlertStatus(totalWarnings),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Expanded(
+                  child: _buildTowerStatusTile(
+                    count: totalWarnings,
+                    label: 'DOWN',
+                    color: Colors.red,
+                    icon: Icons.report_problem,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
-  // Update fungsi agar menerima data jumlah
-  Widget _buildAlertStatus(int count) {
-    return Column(
-      children: [
-        Container(
-          width: 58,
-          height: 58,
-          decoration: BoxDecoration(
-            color: Colors.red, // Background icon orange
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child:
-              const Icon(Icons.report_problem, color: Colors.white, size: 26),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '$count', // Menampilkan angka dari database
-          style: const TextStyle(
-            color: Colors.black,
-            fontSize: 30,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const Text(
-          'DOWN', // Label untuk counter
-          style: TextStyle(
-            color: Colors.black54,
-            fontSize: 14,
-            letterSpacing: 1.2,
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// ===== Helper Function: Build Device Markers for PNG Layout Map =====
-  /// Converts towers and cameras data to DeviceMarker objects
-  /// for the NilamLayoutMap widget
-  /// Uses coordinates from database if available
   List<DeviceMarker> _buildDeviceMarkersForLayoutMap() {
     List<DeviceMarker> markers = [];
 

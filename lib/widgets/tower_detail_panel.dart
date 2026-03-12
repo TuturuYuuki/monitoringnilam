@@ -298,7 +298,7 @@ class _TowerDetailPanelState extends State<TowerDetailPanel> {
                                 final isUp = _deviceStatus[tower.ipAddress] ?? false;
                                 return _buildDeviceRow(
                                   tower.name,
-                                  tower.ipAddress ?? 'N/A',
+                                  tower.ipAddress,
                                   isUp,
                                   DeviceIconResolver.iconForType('TOWER'),
                                 );
@@ -308,7 +308,7 @@ class _TowerDetailPanelState extends State<TowerDetailPanel> {
                                 final isUp = _deviceStatus[device.ipAddress] ?? false;
                                 return _buildDeviceRow(
                                   device.name,
-                                  device.ipAddress ?? 'N/A',
+                                  device.ipAddress,
                                   isUp,
                                   DeviceIconResolver.iconForType(device.type),
                                 );

@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'main.dart';
 import 'route_proxy_page.dart';
 import 'services/api_service.dart';
+import 'utils/location_label_utils.dart';
 import 'utils/tower_status_override.dart';
 import 'widgets/global_header_bar.dart';
 import 'widgets/global_sidebar_nav.dart';
@@ -21,7 +22,7 @@ class CCTVCy3Page extends StatefulWidget {
 class _CCTVCy3PageState extends State<CCTVCy3Page> {
   String selectedYard = 'CY 3';
   int currentPage = 0;
-  int camerasPerPage = 8;
+  int camerasPerPage = 6;
   bool isLoading = true;
   final List<Map<String, dynamic>> allCameras = [];
   DateTime? lastUpdated;
@@ -40,14 +41,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
   int get downCameras => allCameras.where((c) => c['status'] == 'DOWN').length;
 
   int _resolveCamerasPerPage() {
-    final isMobile = isMobileScreen(context);
-    if (isMobile) return 4; // Mobile: 1 column layout
-
-    // Desktop layouts
-    double screenWidth = MediaQuery.of(context).size.width;
-    if (screenWidth > 1400) return 8; // 4 columns
-    if (screenWidth > 1000) return 9; // 3 columns (3x3 = 9 full)
-    return 8; // 2 columns (2x4 = 8)
+    return 6;
   }
 
   void _showOfflineList() {
@@ -192,6 +186,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                     'status': c.status,
                     'type': c.type,
                     'ip_address': c.ipAddress,
+                    'container_yard': c.containerYard,
                   })
               .toList();
           camerasMap
@@ -257,8 +252,9 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const GlobalSidebarNav(currentRoute: '/cctv-cy3'),
-                const SizedBox(width: 12),
+                if (!isMobile)
+                  const GlobalSidebarNav(currentRoute: '/cctv-cy3'),
+                if (!isMobile) const SizedBox(width: 12),
                 Expanded(
                   child: SingleChildScrollView(
                     child: LayoutBuilder(
@@ -973,14 +969,6 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
 
     // Show camera grid when data exists
     final isMobile = isMobileScreen(context);
-    int crossAxisCount = isMobile
-        ? 1
-        : constraints.maxWidth > 1400
-            ? 4
-            : constraints.maxWidth > 1000
-                ? 3
-                : 2;
-
     double childAspectRatio = isMobile ? 2.4 : 2.4;
     double spacing = isMobile ? 12 : 20;
 
@@ -989,8 +977,8 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
+        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: isMobile ? 320 : 420,
           crossAxisSpacing: spacing,
           mainAxisSpacing: spacing,
           childAspectRatio: childAspectRatio,
@@ -1230,16 +1218,38 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
     );
   }
 
-  void _showEditCameraForm(Map<String, dynamic> camera) {
+  Future<void> _showEditCameraForm(Map<String, dynamic> camera) async {
     // Controller otomatis terisi data lama (Initial Value)
     final ipController =
         TextEditingController(text: camera['ip_address'] ?? '');
-    final locationController =
-        TextEditingController(text: camera['location'] ?? '');
+    var locationOptions = buildMasterLocationOptions(
+      await ApiService().getAllMasterLocations(),
+    );
+    if (locationOptions.isEmpty) {
+      locationOptions = [
+        {
+          'label': normalizeLocationLabel((camera['location'] ?? '').toString()),
+          'container_yard': (camera['container_yard'] ?? '').toString(),
+          'location_type': 'CCTV',
+          'location_code': (camera['id'] ?? '').toString(),
+          'location_name': (camera['location'] ?? '').toString(),
+        }
+      ];
+    }
+    final matchedOption = matchMasterLocationOption(
+      locationOptions,
+      (camera['location'] ?? '').toString(),
+      currentContainerYard: (camera['container_yard'] ?? '').toString(),
+    );
+    var selectedLocation = matchedOption?['label'] ??
+        normalizeLocationLabel((camera['location'] ?? '').toString());
+    var selectedYard = matchedOption?['container_yard'] ??
+        (camera['container_yard'] ?? '').toString();
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setLocalState) => AlertDialog(
         title: Text('Edit ${camera['id']}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1248,15 +1258,28 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
               controller: ipController,
               decoration: const InputDecoration(labelText: 'IP Address'),
             ),
-            TextField(
-              controller: locationController,
-              readOnly: true,
-              enabled: false,
-              decoration: const InputDecoration(
-                labelText: 'Location (Locked)',
-                helperText:
-                    'Pindah lokasi wajib delete camera lalu add ulang di lokasi tujuan.',
-              ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: selectedLocation,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Location'),
+              items: locationOptions
+                  .map((option) => DropdownMenuItem<String>(
+                        value: option['label'],
+                        child: Text(option['label'] ?? ''),
+                      ))
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                final option = locationOptions.firstWhere(
+                  (item) => item['label'] == value,
+                  orElse: () => locationOptions.first,
+                );
+                setLocalState(() {
+                  selectedLocation = value;
+                  selectedYard = option['container_yard'] ?? selectedYard;
+                });
+              },
             ),
           ],
         ),
@@ -1276,6 +1299,8 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                 {
                   // Argumen 2: Map Data yang diubah
                   'ip_address': ipController.text,
+                  'location': selectedLocation,
+                  'container_yard': selectedYard,
                 },
               );
 
@@ -1292,6 +1317,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
             child: const Text('Save', style: TextStyle(color: Colors.white)),
           ),
         ],
+      ),
       ),
     );
   }

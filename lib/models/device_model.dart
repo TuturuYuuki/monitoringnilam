@@ -1,4 +1,5 @@
 import 'package:latlong2/latlong.dart';
+import '../utils/location_label_utils.dart';
 
 class AddedDevice {
   final String id;
@@ -59,7 +60,9 @@ class AddedDevice {
       type: (json['type'] ?? '').toString(),
       name: (json['name'] ?? '').toString(),
       ipAddress: (json['ipAddress'] ?? '').toString(),
-      locationName: (json['locationName'] ?? '').toString(),
+      locationName: normalizeLocationLabel(
+        (json['locationName'] ?? '').toString(),
+      ),
       latitude: _toDouble(json['latitude']),
       longitude: _toDouble(json['longitude']),
       containerYard: (json['containerYard'] ?? '').toString(),

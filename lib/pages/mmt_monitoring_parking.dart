@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:monitoring/models/mmt_model.dart';
 import 'package:monitoring/services/api_service.dart';
 import 'dart:async';
+import '../utils/location_label_utils.dart';
 import '../main.dart';
 import '../widgets/global_header_bar.dart';
 import '../widgets/global_sidebar_nav.dart';
@@ -658,10 +659,32 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
 
   Future<void> _editMMT(MMT mmt) async {
     final ipController = TextEditingController(text: mmt.ipAddress);
-    final locationController = TextEditingController(text: mmt.location);
+    var locationOptions = buildMasterLocationOptions(
+      await _apiService.getAllMasterLocations(),
+    );
+    if (locationOptions.isEmpty) {
+      locationOptions = [
+        {
+          'label': normalizeLocationLabel(mmt.location),
+          'container_yard': mmt.containerYard,
+          'location_type': 'MMT',
+          'location_code': mmt.mmtId,
+          'location_name': mmt.location,
+        }
+      ];
+    }
+    final matchedOption = matchMasterLocationOption(
+      locationOptions,
+      mmt.location,
+      currentContainerYard: mmt.containerYard,
+    );
+    var selectedLocation =
+        matchedOption?['label'] ?? normalizeLocationLabel(mmt.location);
+    var selectedYard = matchedOption?['container_yard'] ?? mmt.containerYard;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setLocalState) => AlertDialog(
         title: Text('Edit ${mmt.mmtId}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -669,14 +692,28 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
             TextField(
                 controller: ipController,
                 decoration: const InputDecoration(labelText: 'IP Address')),
-            TextField(
-              controller: locationController,
-              readOnly: true,
-              enabled: false,
-              decoration: const InputDecoration(
-                labelText: 'Location (Locked)',
-                helperText: 'Pindah lokasi wajib delete MMT lalu tambah lagi di lokasi tujuan.',
-              ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: selectedLocation,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Location'),
+              items: locationOptions
+                  .map((option) => DropdownMenuItem<String>(
+                        value: option['label'],
+                        child: Text(option['label'] ?? ''),
+                      ))
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                final option = locationOptions.firstWhere(
+                  (item) => item['label'] == value,
+                  orElse: () => locationOptions.first,
+                );
+                setLocalState(() {
+                  selectedLocation = value;
+                  selectedYard = option['container_yard'] ?? mmt.containerYard;
+                });
+              },
             ),
           ],
         ),
@@ -684,7 +721,11 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () async {
-              final response = await _apiService.updateMMT(mmt.id, {'ip_address': ipController.text});
+              final response = await _apiService.updateMMT(mmt.id, {
+                'ip_address': ipController.text,
+                'location': selectedLocation,
+                'container_yard': selectedYard,
+              });
               if (response['success'] == true) {
                 if (mounted) {
                   Navigator.pop(context);
@@ -707,6 +748,7 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
             child: const Text('Save'),
           ),
         ],
+      ),
       ),
     );
   }

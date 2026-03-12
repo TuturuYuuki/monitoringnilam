@@ -373,49 +373,46 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     final isMobile = isMobileScreen(context);
     return Scaffold(
       backgroundColor: const Color(0xFF2C3E50),
-      body: Stack(
+      body: Column(
         children: [
-          Column(
-            children: [
-              const GlobalHeaderBar(currentRoute: '/tower-management'),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Sidebar (Kiri)
-                    const GlobalSidebarNav(currentRoute: '/tower-management'),
-                    const SizedBox(width: 12),
-                    // Content (Kanan)
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: EdgeInsets.all(isMobile ? 10 : 24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildInventoryStats(),
-                            const SizedBox(height: 24),
-                            _buildAddTowerForm(),
-                            const SizedBox(height: 28),
-                            const Text(
-                              'All Master Location',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            _buildUnifiedMasterTable(),
-                          ],
+          const GlobalHeaderBar(currentRoute: '/tower-management'),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Sidebar (Kiri) — hidden on mobile
+                if (!isMobile)
+                  const GlobalSidebarNav(currentRoute: '/tower-management'),
+                if (!isMobile) const SizedBox(width: 12),
+                // Content (Kanan)
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(isMobile ? 10 : 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildInventoryStats(),
+                        const SizedBox(height: 24),
+                        _buildAddTowerForm(),
+                        const SizedBox(height: 28),
+                        const Text(
+                          'All Master Location',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 14),
+                        _buildUnifiedMasterTable(),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-              _buildFooter(),
-            ],
+              ],
+            ),
           ),
+          _buildFooter(),
         ],
       ),
     );
@@ -423,78 +420,71 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
 
   Widget _buildInventoryStats() {
     final counts = _countMastersByLocation();
-    return Row(
-      children: [
-        _statBox(
-          'Container Yard 1',
-          '${counts['CY1'] ?? 0}',
-          const Color(0xFF1976D2),
-        ),
-        const SizedBox(width: 16),
-        _statBox(
-          'Container Yard 2',
-          '${counts['CY2'] ?? 0}',
-          Colors.orange,
-        ),
-        const SizedBox(width: 16),
-        _statBox(
-          'Container Yard 3',
-          '${counts['CY3'] ?? 0}',
-          Colors.teal,
-        ),
-        const SizedBox(width: 16),
-        _statBox(
-          'Gate',
-          '${counts['GATE'] ?? 0}',
-          Colors.purple,
-        ),
-        const SizedBox(width: 16),
-        _statBox(
-          'Parking',
-          '${counts['PARKING'] ?? 0}',
-          Colors.pink,
-        ),
-      ],
+    final items = [
+      {'label': 'Container Yard 1', 'value': '${counts['CY1'] ?? 0}', 'color': const Color(0xFF1976D2)},
+      {'label': 'Container Yard 2', 'value': '${counts['CY2'] ?? 0}', 'color': Colors.orange},
+      {'label': 'Container Yard 3', 'value': '${counts['CY3'] ?? 0}', 'color': Colors.teal},
+      {'label': 'Gate',             'value': '${counts['GATE'] ?? 0}', 'color': Colors.purple},
+      {'label': 'Parking',          'value': '${counts['PARKING'] ?? 0}', 'color': Colors.pink},
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final perRow = w < 400 ? 2 : w < 780 ? 3 : 5;
+        const spacing = 16.0;
+        final boxWidth = (w - spacing * (perRow - 1)) / perRow;
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: items.map((item) => SizedBox(
+            width: boxWidth,
+            child: _statBox(
+              item['label'] as String,
+              item['value'] as String,
+              item['color'] as Color,
+            ),
+          )).toList(),
+        );
+      },
     );
   }
 
   Widget _statBox(String title, String value, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.82),
-          borderRadius: BorderRadius.circular(12),
-          border: Border(left: BorderSide(color: color, width: 6)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 10,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.82),
+        borderRadius: BorderRadius.circular(12),
+        border: Border(left: BorderSide(color: color, width: 6)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.black54,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.black54,
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-              ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
             ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
