@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'main.dart';
 import 'services/api_service.dart';
@@ -128,27 +129,20 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
 
-          // Overlay untuk membuat teks lebih terbaca
+          // Overlay Gelap Ringan
           Container(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withOpacity(0.4),
           ),
 
           // Logo Danantara Indonesia - Kiri Atas
           Positioned(
             left: isMobile ? 10 : 20,
             top: isMobile ? 10 : 20,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Image.asset(
-                'assets/images/logo_danantara.png',
-                width: 180,
-                height: 70,
-                fit: BoxFit.contain,
-              ),
+            child: Image.asset(
+              'assets/images/logo_danantara.png',
+              width: isMobile ? 140 : 180,
+              height: isMobile ? 50 : 70,
+              fit: BoxFit.contain,
             ),
           ),
 
@@ -156,91 +150,102 @@ class _LoginPageState extends State<LoginPage> {
           Positioned(
             right: 20,
             top: 20,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Image.asset(
-                'assets/images/logo_pelindo.png',
-                width: 180,
-                height: 70,
-                fit: BoxFit.contain,
-              ),
+            child: Image.asset(
+              'assets/images/logo_pelindo.png',
+              width: isMobile ? 140 : 180,
+              height: isMobile ? 50 : 70,
+              fit: BoxFit.contain,
             ),
           ),
 
-          // Content
+          // Formulir Konten Utama
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
                 child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Login Form
-                      Container(
-                        constraints: const BoxConstraints(maxWidth: 700),
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24), // Sudut tidak terlalu bulat
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15), // Efek Glassmorphism nyata
+                      child: Container(
+                        constraints: const BoxConstraints(maxWidth: 450), // Dipersempit agar elegan
                         padding: const EdgeInsets.all(40),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.4),
-                          borderRadius: BorderRadius.circular(50),
+                          color: Colors.white.withOpacity(0.15), // Transparansi kaca
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.3),
+                            width: 1.5,
+                          ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 30,
                             ),
                           ],
                         ),
                         child: Form(
                           key: _formKey,
                           child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              // Title
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                  vertical: 16,
+                              // Ikon Gembok sebagai aksen modern
+                              const Icon(
+                                Icons.lock_person_rounded,
+                                size: 50,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(height: 16),
+                              
+                              // Judul "Welcome Back"
+                              const Text(
+                                'Welcome Back',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  letterSpacing: 1.2,
+                                  shadows: [
+                                    Shadow(color: Colors.black38, blurRadius: 4, offset: Offset(0, 2)),
+                                  ],
                                 ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF1976D2),
-                                  borderRadius: BorderRadius.circular(50),
-                                ),
-                                child: const Text(
-                                  'Login Page',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Sign in to access your dashboard',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
 
-                              const SizedBox(height: 40),
+                              const SizedBox(height: 48),
 
                               // Username Field
                               TextFormField(
                                 controller: _usernameController,
                                 keyboardType: TextInputType.text,
+                                style: const TextStyle(color: Colors.white, fontSize: 16),
                                 decoration: InputDecoration(
                                   hintText: 'Username',
-                                  errorStyle: const TextStyle(
-                                      color: Colors.redAccent, fontSize: 16),
+                                  hintStyle: const TextStyle(color: Colors.white60),
+                                  prefixIcon: const Icon(Icons.person_outline, color: Colors.white70),
+                                  errorStyle: const TextStyle(color: Color(0xFFFF8A80), fontSize: 13),
                                   filled: true,
-                                  fillColor: Colors.grey[100],
+                                  fillColor: Colors.black.withOpacity(0.2), // Input semi-transparent
                                   border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(50),
+                                    borderRadius: BorderRadius.circular(16),
                                     borderSide: BorderSide.none,
                                   ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 20,
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide(color: Colors.blue.shade300, width: 2),
                                   ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
@@ -256,26 +261,27 @@ class _LoginPageState extends State<LoginPage> {
                               TextFormField(
                                 controller: _passwordController,
                                 obscureText: _obscurePassword,
+                                style: const TextStyle(color: Colors.white, fontSize: 16),
                                 decoration: InputDecoration(
                                   hintText: 'Password',
-                                  errorStyle: const TextStyle(
-                                      color: Colors.redAccent, fontSize: 16),
+                                  hintStyle: const TextStyle(color: Colors.white60),
+                                  prefixIcon: const Icon(Icons.lock_outline, color: Colors.white70),
+                                  errorStyle: const TextStyle(color: Color(0xFFFF8A80), fontSize: 13),
                                   filled: true,
-                                  fillColor: Colors.grey[100],
+                                  fillColor: Colors.black.withOpacity(0.2),
                                   border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(50),
+                                    borderRadius: BorderRadius.circular(16),
                                     borderSide: BorderSide.none,
                                   ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 20,
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide(color: Colors.blue.shade300, width: 2),
                                   ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                                   suffixIcon: IconButton(
                                     icon: Icon(
-                                      _obscurePassword
-                                          ? Icons.visibility_off
-                                          : Icons.visibility,
-                                      color: Colors.grey,
+                                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                      color: Colors.white70,
                                     ),
                                     onPressed: () {
                                       setState(() {
@@ -295,97 +301,105 @@ class _LoginPageState extends State<LoginPage> {
                                 },
                               ),
 
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 12),
 
                               // Forgot Password Link
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: TextButton(
                                   onPressed: () {
-                                    Navigator.pushNamed(
-                                        context, '/forgot-password');
+                                    Navigator.pushNamed(context, '/forgot-password');
                                   },
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.white, // Efek ripple / teks modern
+                                  ),
                                   child: const Text(
                                     'Forgot Password?',
                                     style: TextStyle(
                                       fontSize: 14,
                                       color: Colors.white,
                                       fontWeight: FontWeight.w600,
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: Colors.white70,
                                     ),
                                   ),
                                 ),
                               ),
 
-                              const SizedBox(height: 24),
+                              const SizedBox(height: 32),
 
                               // Login Button
-                              SizedBox(
-                                width: double.infinity,
-                                height: 55,
+                              Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF1976D2), Color(0xFF0D47A1)],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF1976D2).withOpacity(0.5),
+                                      blurRadius: 15,
+                                      offset: const Offset(0, 5),
+                                    ),
+                                  ],
+                                ),
                                 child: ElevatedButton(
                                   onPressed: _isLoading ? null : _handleLogin,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF1976D2),
+                                    backgroundColor: Colors.transparent, // Uses container gradient
+                                    shadowColor: Colors.transparent,
+                                    padding: const EdgeInsets.symmetric(vertical: 18),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(50),
+                                      borderRadius: BorderRadius.circular(16),
                                     ),
-                                    elevation: 5,
                                   ),
                                   child: _isLoading
                                       ? const SizedBox(
-                                          height: 20,
-                                          width: 20,
+                                          height: 24,
+                                          width: 24,
                                           child: CircularProgressIndicator(
-                                            strokeWidth: 2,
+                                            strokeWidth: 2.5,
                                             color: Colors.white,
                                           ),
                                         )
                                       : const Text(
-                                          'Login',
+                                          'Sign In',
                                           style: TextStyle(
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,
                                             color: Colors.white,
+                                            letterSpacing: 1,
                                           ),
                                         ),
                                 ),
                               ),
 
-                              const SizedBox(height: 24),
+                              const SizedBox(height: 32),
 
-                              // Sign Up Section
-                              Column(
+                              // Sign Up Section (Text Link instead of giant button)
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   const Text(
-                                    'No Account?',
+                                    "Don't have an account?",
                                     style: TextStyle(
-                                      fontSize: 20,
-                                      color: Color.fromARGB(255, 255, 255, 255),
-                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                      color: Colors.white70,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
-                                  const SizedBox(height: 12),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    height: 55,
-                                    child: ElevatedButton(
-                                      onPressed: _handleSignUp,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor:
-                                            const Color(0xFF1976D2),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(50),
-                                        ),
-                                        elevation: 5,
-                                      ),
-                                      child: const Text(
-                                        'Sign Up',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
+                                  const SizedBox(width: 8),
+                                  InkWell(
+                                    onTap: _handleSignUp,
+                                    child: const Text(
+                                      'Sign Up',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                        decoration: TextDecoration.underline,
                                       ),
                                     ),
                                   ),
@@ -395,7 +409,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),

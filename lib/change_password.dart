@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'main.dart';
 import 'services/api_service.dart';
 import 'utils/auth_helper.dart';
+import 'widgets/global_header_bar.dart';
+import 'widgets/global_sidebar_nav.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -336,52 +338,40 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF2C3E50),
+      backgroundColor: const Color(0xFF0F172A),
       body: Column(
         children: [
-          // Header
-          _buildHeader(context),
-          // Content
+          const GlobalHeaderBar(currentRoute: '/change-password'),
           Expanded(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: EdgeInsets.all(isMobile ? 8 : 24.0),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                        maxWidth: isMobile ? double.infinity : 600),
-                    child: _buildContent(),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (!isMobile)
+                  const GlobalSidebarNav(currentRoute: '/change-password'),
+                if (!isMobile) const SizedBox(width: 12),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: EdgeInsets.all(isMobile ? 8 : 24.0),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                              maxWidth: isMobile ? double.infinity : 600),
+                          child: _buildContent(),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
-          // Footer
           _buildFooter(),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      color: const Color(0xFF1976D2),
-      child: const Row(
-        children: [
-          Text(
-            'Terminal Nilam',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Spacer(),
-        ],
-      ),
-    );
-  }
 
   Widget _buildContent() {
     return Column(
@@ -405,15 +395,14 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           ),
         ),
         const SizedBox(height: 32),
-        // Form
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: const Color(0xFF34495E),
-            borderRadius: BorderRadius.circular(16),
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: const Color(0xFF1976D2).withOpacity(0.3),
-              width: 2,
+              color: Colors.white.withOpacity(0.1),
+              width: 1,
             ),
           ),
           child: Form(
@@ -489,10 +478,10 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2C3E50).withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(10),
+                    color: Colors.white.withOpacity(0.03),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: Colors.orange.withOpacity(0.3),
+                      color: Colors.orange.withOpacity(0.2),
                       width: 1,
                     ),
                   ),

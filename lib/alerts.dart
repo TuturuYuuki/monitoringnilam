@@ -41,6 +41,7 @@ class _AlertsPageState extends State<AlertsPage> {
     if (showLoading && mounted) setState(() => _isLoading = true);
     try {
       final results = await apiService.getAllAlerts(source: 'HISTORY', limit: 200);
+      
       if (mounted) {
         final alertListRaw = results['alerts'] as List? ?? [];
         final List<Alert> loaded = [];
@@ -51,6 +52,7 @@ class _AlertsPageState extends State<AlertsPage> {
             loaded.add(Alert.fromJson(data as Map<String, dynamic>));
           }
         }
+
         setState(() {
           _alerts = loaded;
           _isLoading = false;
@@ -60,6 +62,11 @@ class _AlertsPageState extends State<AlertsPage> {
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  bool _isDeviceDown(String status) {
+    final s = status.toUpperCase().trim();
+    return s == 'DOWN' || s == 'OFFLINE' || s == 'UNREACHABLE' || s == 'WARNING';
   }
 
   // ==================== HELPERS ====================
@@ -159,18 +166,6 @@ class _AlertsPageState extends State<AlertsPage> {
 
     final filtered = _filterByDeviceType(_alerts);
     
-    // To match dashboard's UP/DOWN device counts exactly, we deduplicate by device name.
-    // The alerts are already ordered by newest first, so the first seen is the latest status.
-    final uniqueDevices = <String, Alert>{};
-    for (final a in filtered) {
-      final devName = _cleanDeviceName(a.title);
-      if (!uniqueDevices.containsKey(devName)) {
-        uniqueDevices[devName] = a;
-      }
-    }
-    final downCount = uniqueDevices.values.where((a) => _isDownAlert(a)).length;
-    final upCount = uniqueDevices.values.where((a) => !_isDownAlert(a)).length;
-
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
           isMobile ? 12 : 24, isMobile ? 12 : 24, isMobile ? 12 : 24, 24),
@@ -181,7 +176,7 @@ class _AlertsPageState extends State<AlertsPage> {
           const SizedBox(height: 16),
           _buildDeviceTypeFilter(),
           const SizedBox(height: 12),
-          _buildSummaryBar(downCount, upCount),
+          _buildSummaryBar(filtered),
           const SizedBox(height: 12),
           _buildAlertList(filtered),
         ],
@@ -216,17 +211,18 @@ class _AlertsPageState extends State<AlertsPage> {
 
   // ==================== SUMMARY BAR ====================
 
-  Widget _buildSummaryBar(int downCount, int upCount) {
-    final timeStr = _lastRefreshTime != null
-        ? '${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}'
-        : '-';
+  Widget _buildSummaryBar(List<Alert> filtered) {
+    // Current Feed Summary (Synchronized with visible list)
+    final feedDown = filtered.where((a) => _isDownAlert(a)).length;
+    final feedUp = filtered.where((a) => !_isDownAlert(a)).length;
+
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
-        _summaryChip(Icons.arrow_downward_rounded, '$downCount DOWN',
+        _summaryChip(Icons.arrow_downward_rounded, '$feedDown DOWN',
             Colors.red.shade700),
-        _summaryChip(Icons.arrow_upward_rounded, '$upCount UP',
+        _summaryChip(Icons.arrow_upward_rounded, '$feedUp UP',
             Colors.green.shade700),
       ],
     );

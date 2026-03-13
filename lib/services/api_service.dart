@@ -1055,6 +1055,7 @@ class ApiService {
           'camera_id': cameraId,
           'ip_address': data['ip_address'],
           'location': data['location'],
+          'container_yard': data['container_yard'],
         }),
       );
 

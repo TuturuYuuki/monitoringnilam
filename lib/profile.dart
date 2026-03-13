@@ -74,7 +74,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF2C3E50),
+      backgroundColor: const Color(0xFF0F172A), // Darker Navy
       body: Stack(
         children: [
           Column(
@@ -381,17 +381,17 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        color: const Color(0xFF34495E),
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFF1976D2).withOpacity(0.3),
-          width: 2,
+          color: Colors.white.withOpacity(0.2),
+          width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.2),
-            blurRadius: 12,
-            spreadRadius: 2,
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -458,11 +458,11 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF34495E),
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFF1976D2).withOpacity(0.3),
-          width: 2,
+          color: Colors.white.withOpacity(0.1),
+          width: 1,
         ),
       ),
       child: Column(
@@ -491,11 +491,11 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF34495E),
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFF1976D2).withOpacity(0.3),
-          width: 2,
+          color: Colors.white.withOpacity(0.1),
+          width: 1,
         ),
       ),
       child: Column(

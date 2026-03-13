@@ -131,6 +131,11 @@ class GlobalSidebarNav extends StatelessWidget {
           current == '/mmt-cy2' ||
           current == '/mmt-cy3';
     }
+    if (target == '/profile') {
+      return current == '/profile' ||
+          current == '/edit-profile' ||
+          current == '/change-password';
+    }
     return false;
   }
 

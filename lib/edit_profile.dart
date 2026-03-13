@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'main.dart';
 import 'utils/auth_helper.dart';
 import 'services/api_service.dart';
+import 'widgets/global_header_bar.dart';
+import 'widgets/global_sidebar_nav.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -720,52 +722,40 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF2C3E50),
+      backgroundColor: const Color(0xFF0F172A),
       body: Column(
         children: [
-          // Header
-          _buildHeader(context),
-          // Content
+          const GlobalHeaderBar(currentRoute: '/edit-profile'),
           Expanded(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: EdgeInsets.all(isMobile ? 8 : 24.0),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                        maxWidth: isMobile ? double.infinity : 600),
-                    child: _buildContent(),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (!isMobile)
+                  const GlobalSidebarNav(currentRoute: '/edit-profile'),
+                if (!isMobile) const SizedBox(width: 12),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: EdgeInsets.all(isMobile ? 8 : 24.0),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                              maxWidth: isMobile ? double.infinity : 600),
+                          child: _buildContent(),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
-          // Footer
           _buildFooter(),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      color: const Color(0xFF1976D2),
-      child: const Row(
-        children: [
-          Text(
-            'Terminal Nilam',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Spacer(),
-        ],
-      ),
-    );
-  }
 
   Widget _buildContent() {
     return Column(
@@ -793,11 +783,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: const Color(0xFF34495E),
-            borderRadius: BorderRadius.circular(16),
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: const Color(0xFF1976D2).withOpacity(0.3),
-              width: 2,
+              color: Colors.white.withOpacity(0.1),
+              width: 1,
             ),
           ),
           child: Form(

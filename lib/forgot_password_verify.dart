@@ -1,5 +1,7 @@
+import 'dart:ui';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'main.dart';
 import 'services/api_service.dart';
 
@@ -105,7 +107,7 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
 
       try {
         final response =
-            await apiService.verifyResetPasswordOtp(email, _otpController.text);
+            await apiService.verifyResetPasswordOtp(email, _otpController.text.trim());
 
         setState(() {
           _isLoading = false;
@@ -248,27 +250,20 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
             ),
           ),
 
-          // Overlay
+          // Dark Overlay
           Container(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withOpacity(0.4),
           ),
 
           // Logo Danantara Indonesia - Kiri Atas
           Positioned(
             left: isMobile ? 10 : 20,
             top: isMobile ? 10 : 20,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Image.asset(
-                'assets/images/logo_danantara.png',
-                width: 180,
-                height: 70,
-                fit: BoxFit.contain,
-              ),
+            child: Image.asset(
+              'assets/images/logo_danantara.png',
+              width: isMobile ? 140 : 180,
+              height: isMobile ? 50 : 70,
+              fit: BoxFit.contain,
             ),
           ),
 
@@ -276,18 +271,11 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
           Positioned(
             right: 20,
             top: 20,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Image.asset(
-                'assets/images/logo_pelindo.png',
-                width: 180,
-                height: 70,
-                fit: BoxFit.contain,
-              ),
+            child: Image.asset(
+              'assets/images/logo_pelindo.png',
+              width: isMobile ? 140 : 180,
+              height: isMobile ? 50 : 70,
+              fit: BoxFit.contain,
             ),
           ),
 
@@ -296,103 +284,100 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
             child: Center(
               child: SingleChildScrollView(
                 child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Form
-                      Container(
-                        constraints: const BoxConstraints(maxWidth: 700),
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                      child: Container(
+                        constraints: const BoxConstraints(maxWidth: 500),
                         padding: const EdgeInsets.all(40),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.4),
-                          borderRadius: BorderRadius.circular(50),
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.3),
+                            width: 1.5,
+                          ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 30,
                             ),
                           ],
                         ),
                         child: Form(
                           key: _formKey,
                           child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              // Back Button
-                              Align(
+                              // Back Button & Icon
+                               Align(
                                 alignment: Alignment.centerLeft,
                                 child: IconButton(
-                                  icon: const Icon(Icons.arrow_back,
-                                      color: Colors.white, size: 28),
+                                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 24),
                                   onPressed: () => Navigator.pop(context),
                                 ),
                               ),
-
                               const SizedBox(height: 10),
-
-                              // Title
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                  vertical: 16,
+                              const Icon(
+                                Icons.mark_email_read_rounded,
+                                size: 50,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(height: 16),
+                              const Text(
+                                'Verification',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  shadows: [
+                                    Shadow(color: Colors.black38, blurRadius: 4, offset: Offset(0, 2)),
+                                  ],
                                 ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF1976D2),
-                                  borderRadius: BorderRadius.circular(50),
-                                ),
-                                child: const Text(
-                                  'Verification OTP',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'The OTP Code Has Been Sent To\n$email',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.white70,
+                                  height: 1.5,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
 
                               const SizedBox(height: 24),
 
-                              // Info Text
-                              Text(
-                                'The OTP Code Has Been Sent To\n$email',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Color.fromARGB(255, 0, 0, 0),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-
-                              const SizedBox(height: 16),
-
                               // Timer
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 20, vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: remainingSeconds < 60
-                                      ? const Color.fromARGB(255, 176, 42, 32).withOpacity(0.7)
-                                      : Colors.blue.withOpacity(0.7),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.timer,
-                                        color: Colors.white, size: 20),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      _formatTime(remainingSeconds),
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
+                              Center(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: remainingSeconds < 60
+                                        ? Colors.redAccent.withOpacity(0.5)
+                                        : Colors.white.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.white24),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.timer_outlined, color: Colors.white, size: 18),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        _formatTime(remainingSeconds),
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
 
@@ -403,28 +388,25 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                                 controller: _otpController,
                                 keyboardType: TextInputType.number,
                                 maxLength: 6,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(color: Colors.white, fontSize: 24, letterSpacing: 8, fontWeight: FontWeight.bold),
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
                                 decoration: InputDecoration(
-                                  hintText: 'Enter 6 Digit OTP',
+                                  hintText: 'Enter OTP',
+                                  hintStyle: const TextStyle(color: Colors.white60, fontSize: 16, letterSpacing: 0),
                                   filled: true,
-                                  fillColor: Colors.grey[100],
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(50),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 20,
-                                  ),
-                                  prefixIcon: const Icon(Icons.lock_outline),
+                                  fillColor: Colors.black.withOpacity(0.2),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Colors.blue, width: 1.5)),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                                   counterText: '',
                                 ),
                                 validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please Enter OTP';
-                                  }
-                                  if (value.length != 6) {
-                                    return 'OTP Must Be 6 Digits';
-                                  }
+                                  final cleanText = value?.trim() ?? '';
+                                  if (cleanText.isEmpty) return 'Please Enter OTP';
+                                  if (cleanText.length != 6) return 'OTP Must Be Exactly 6 Digits';
                                   return null;
                                 },
                               ),
@@ -432,54 +414,57 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                               const SizedBox(height: 40),
 
                               // Verify Button
-                              SizedBox(
-                                width: double.infinity,
-                                height: 55,
-                                child: ElevatedButton(
-                                  onPressed:
-                                      _isLoading ? null : _handleVerifyOtp,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF1976D2),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(50),
+                              Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF1976D2), Color(0xFF0D47A1)],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF1976D2).withOpacity(0.5),
+                                      blurRadius: 15,
+                                      offset: const Offset(0, 5),
                                     ),
-                                    elevation: 5,
+                                  ],
+                                ),
+                                child: ElevatedButton(
+                                  onPressed: _isLoading ? null : _handleVerifyOtp,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.transparent,
+                                    shadowColor: Colors.transparent,
+                                    padding: const EdgeInsets.symmetric(vertical: 18),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                   ),
                                   child: _isLoading
                                       ? const SizedBox(
-                                          height: 20,
-                                          width: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
-                                          ),
+                                          height: 24, width: 24,
+                                          child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
                                         )
                                       : const Text(
-                                          'Verification OTP',
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
+                                          'Verify OTP Code',
+                                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                                         ),
                                 ),
                               ),
 
-                              const SizedBox(height: 20),
+                              const SizedBox(height: 24),
 
-                              // Resend OTP Button
+                              // Resend Logic
                               TextButton(
-                onPressed: _isLoading || remainingSeconds > 0 ? null : _handleResendOtp,
-                child: Text(
-                  remainingSeconds > 0
-                      ? 'Resend OTP (${_formatTime(remainingSeconds)})'
-                      : 'Resend OTP',
+                                onPressed: _isLoading || remainingSeconds > 0 ? null : _handleResendOtp,
+                                child: Text(
+                                  remainingSeconds > 0
+                                      ? 'Resend OTP available in ${_formatTime(remainingSeconds)}'
+                                      : 'Resend OTP code',
+                                  textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    fontSize: 16,
-                    color: remainingSeconds > 0
-                        ? Colors.grey[400]
-                        : const Color.fromARGB(255, 0, 0, 0),
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    color: remainingSeconds > 0 ? Colors.white54 : Colors.white,
+                                    fontWeight: remainingSeconds > 0 ? FontWeight.normal : FontWeight.bold,
+                                    decoration: remainingSeconds > 0 ? null : TextDecoration.underline,
                                   ),
                                 ),
                               ),
@@ -487,7 +472,7 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                           ),
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),

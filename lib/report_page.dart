@@ -31,7 +31,7 @@ class _ReportPageState extends State<ReportPage> {
   bool isLoading = false;
 
   DateTimeRange _selectedRange = DateTimeRange(
-    start: DateTime.now().subtract(const Duration(days: 7)),
+    start: DateTime.now().subtract(const Duration(days: 30)),
     end: DateTime.now(),
   );
   String _statusFilter = 'ALL';
@@ -726,8 +726,9 @@ class _ReportPageState extends State<ReportPage> {
       }
     }
 
-    final upCount = uniqueDevices.values.where((a) => !_isDownAlert(a)).length;
-    final downCount = uniqueDevices.values.where((a) => _isDownAlert(a)).length;
+    final upCount = filteredAlerts.where((a) => !_isDownAlert(a)).length;
+    final downCount = filteredAlerts.where((a) => _isDownAlert(a)).length;
+    final totalCount = filteredAlerts.length;
     final isMobile = isMobileScreen(context);
 
     return Container(
@@ -765,9 +766,9 @@ class _ReportPageState extends State<ReportPage> {
                     fontSize: 16,
                   ),
                 ),
-                _buildReportSummaryChip('TOTAL', uniqueDevices.length, Colors.white),
-                _buildReportSummaryChip('UP', upCount, const Color(0xFF2E7D32)),
-                _buildReportSummaryChip('DOWN', downCount, const Color(0xFFC62828)),
+                _buildReportSummaryChip('TOTAL EVENTS', totalCount, Colors.white),
+                _buildReportSummaryChip('UP EVENTS', upCount, const Color(0xFF2E7D32)),
+                _buildReportSummaryChip('DOWN EVENTS', downCount, const Color(0xFFC62828)),
               ],
             ),
           ),
