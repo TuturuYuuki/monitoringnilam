@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:animations/animations.dart';
-import 'package:http/http.dart' as http;
+import 'package:monitoring/models/tower_model.dart';
+import 'package:monitoring/services/api_service.dart';
+import 'dart:ui';
 import 'main.dart';
-import 'services/api_service.dart';
-import 'models/tower_model.dart';
-import 'route_proxy_page.dart';
 import 'utils/tower_status_override.dart';
 import 'utils/location_label_utils.dart';
 import 'widgets/global_header_bar.dart';
@@ -20,7 +18,7 @@ class NetworkPage extends StatefulWidget {
 }
 
 class _NetworkPageState extends State<NetworkPage> {
-  String selectedTower = 'CY 1';
+  String selectedArea = 'CY 1';
   static const List<String> _areaOptions = [
     'CY 1',
     'CY 2',
@@ -35,11 +33,14 @@ class _NetworkPageState extends State<NetworkPage> {
   bool isLoading = true;
   Timer? _refreshTimer;
   DateTime? _lastRefreshTime;
+  bool _isAutoRefreshEnabled = true;
+  bool _isConnected = true;
 
   @override
   void initState() {
     super.initState();
     apiService = ApiService();
+    _checkConnection();
     _loadTowers();
     _startAutoRefresh();
   }
@@ -50,17 +51,28 @@ class _NetworkPageState extends State<NetworkPage> {
     super.dispose();
   }
 
+  Future<void> _checkConnection() async {
+    final result = await apiService.testConnection();
+    if (mounted) {
+      setState(() {
+        _isConnected = result['success'] == true;
+      });
+    }
+  }
+
   void _startAutoRefresh() {
+    _refreshTimer?.cancel();
     // Refresh setiap 2 detik untuk monitoring realtime
     _refreshTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (mounted) {
+      if (mounted && _isAutoRefreshEnabled) {
+        _checkConnection();
         _loadTowers();
       }
     });
   }
 
   String _selectedAreaId() {
-    final normalized = selectedTower.toUpperCase().replaceAll(' ', '');
+    final normalized = selectedArea.toUpperCase().replaceAll(' ', '');
     if (normalized == 'CY1') return 'CY1';
     if (normalized == 'CY2') return 'CY2';
     if (normalized == 'CY3') return 'CY3';
@@ -111,134 +123,9 @@ class _NetworkPageState extends State<NetworkPage> {
   }
 
   Future<void> _triggerPingCheck() async {
-    try {
-      const baseUrl = 'http://localhost/monitoring_api/index.php';
-
-      // Call realtime ping endpoint yang update semua towers sekaligus
-      final response = await http
-          .get(
-        Uri.parse('$baseUrl?endpoint=realtime&action=all'),
-      )
-          .timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          print('Realtime Ping Timed Out');
-          return http.Response('{"success":false}', 408);
-        },
-      );
-
-      if (response.statusCode == 200) {
-        // Wait a moment for database to update
-        await Future.delayed(const Duration(milliseconds: 500));
-        print('Realtime Ping Check Completed');
-      }
-    } catch (e) {
-      print('Error Triggering Realtime Ping Check (Ignored): $e');
-    }
+    // This method is used by the refresh button manually
+    await _triggerRealtimePing();
   }
-
-  final List<Map<String, dynamic>> towerData = [
-    {
-      'id': 'T7',
-      'location': 'Container Yard 1',
-      'ip': '192.168.10.1',
-      'device': '3 CCTV',
-      'status': 'UP',
-      'traffic': '156 Mbps',
-      'uptime': '99.8%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T8',
-      'location': 'Container Yard 1',
-      'ip': '192.168.10.2',
-      'device': '1 CCTV',
-      'status': 'UP',
-      'traffic': '231 Mbps',
-      'uptime': '99.9%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T9',
-      'location': 'Container Yard 1',
-      'ip': '192.168.10.3',
-      'device': '2 CCTV',
-      'status': 'UP',
-      'traffic': '187 Mbps',
-      'uptime': '97.2%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T10',
-      'location': 'Container Yard 1',
-      'ip': '192.168.10.4',
-      'device': '2 CCTV',
-      'status': 'Warning',
-      'traffic': '98 Mbps',
-      'uptime': '99.5%',
-      'statusColor': Colors.red,
-    },
-    {
-      'id': 'T11',
-      'location': 'Container Yard 1',
-      'ip': '192.168.10.5',
-      'device': '3 CCTV',
-      'status': 'UP',
-      'traffic': '180 Mbps',
-      'uptime': '80%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T12',
-      'location': 'Container Yard 1',
-      'ip': '192.168.10.6',
-      'device': '2 CCTV',
-      'status': 'UP',
-      'traffic': '145 Mbps',
-      'uptime': '98.5%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T12A',
-      'location': 'Container Yard 1',
-      'ip': '192.168.10.7',
-      'device': '2 CCTV',
-      'status': 'UP',
-      'traffic': '165 Mbps',
-      'uptime': '99.2%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T13',
-      'location': 'Container Yard 1',
-      'ip': '192.168.10.8',
-      'device': '1 CCTV',
-      'status': 'Warning',
-      'traffic': '67 Mbps',
-      'uptime': '95.2%',
-      'statusColor': Colors.red,
-    },
-    {
-      'id': 'T14',
-      'location': 'Container Yard 1',
-      'ip': '192.168.10.9',
-      'device': '2 CCTV',
-      'status': 'UP',
-      'traffic': '203 Mbps',
-      'uptime': '99.1%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T15',
-      'location': 'Container Yard 1',
-      'ip': '192.168.10.10',
-      'device': '3 CCTV',
-      'status': 'UP',
-      'traffic': '189 Mbps',
-      'uptime': '98.8%',
-      'statusColor': Colors.green,
-    },
-  ];
 
   int get totalTowers => towers.length;
   int get onlineTowers => towers.where((t) => !isDownStatus(t.status)).length;
@@ -404,248 +291,6 @@ class _NetworkPageState extends State<NetworkPage> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    final isMobile = isMobileScreen(context);
-    double screenWidth = MediaQuery.of(context).size.width;
-    return Container(
-      width: screenWidth,
-      padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 12 : 24, vertical: isMobile ? 12 : 16),
-      color: const Color(0xFF1976D2),
-      child: isMobile
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Terminal Nilam',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: isMobile ? 28 : 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: OpenContainer(
-                        transitionDuration: const Duration(milliseconds: 550),
-                        transitionType: ContainerTransitionType.fadeThrough,
-                        closedElevation: 0,
-                        closedColor: Colors.transparent,
-                        closedShape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(50),
-                        ),
-                        openElevation: 0,
-                        openBuilder: (context, _) =>
-                            const RouteProxyPage('/profile'),
-                        closedBuilder: (context, openContainer) {
-                          return GestureDetector(
-                            onTap: openContainer,
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.9),
-                                borderRadius: BorderRadius.circular(50),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 8,
-                                    spreadRadius: 1,
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.person,
-                                color: Color(0xFF1976D2),
-                                size: 24,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(context)
-                      .copyWith(scrollbars: false),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildHeaderOpenButton(
-                            '+ Add New Device', '/add-device',
-                            isActive: false),
-                        const SizedBox(width: 4),
-                        _buildHeaderOpenButton('Dashboard', '/dashboard',
-                            isActive: false),
-                        const SizedBox(width: 4),
-                        _buildHeaderOpenButton('Access Point', '/network',
-                            isActive: true),
-                        const SizedBox(width: 4),
-                        _buildHeaderOpenButton('CCTV', '/cctv',
-                            isActive: false),
-                        const SizedBox(width: 4),
-                        _buildHeaderOpenButton(
-                            'MMT Monitoring', '/mmt-monitoring',
-                            isActive: false),
-                        const SizedBox(width: 4),
-                        _buildHeaderOpenButton('Alert', '/alerts',
-                            isActive: false),
-                        const SizedBox(width: 4),
-                        _buildHeaderOpenButton('Alert Report', '/report',
-                            isActive: false),
-                        const SizedBox(width: 4),
-                        _buildHeaderOpenButton(
-                            'Master Tower', '/tower-management',
-                            isActive: false),
-                        const SizedBox(width: 4),
-                        _buildHeaderLogoutButton(),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            )
-          : Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Terminal Nilam - TETAP FIXED
-                const Text(
-                  'Terminal Nilam',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(width: 30),
-                // Buttons - SCROLL HORIZONTAL
-                Expanded(
-                  child: ScrollConfiguration(
-                    behavior: ScrollConfiguration.of(context)
-                        .copyWith(scrollbars: false),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildHeaderOpenButton(
-                              'Add New Device', '/add-device',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderOpenButton(
-                              'Master Data', '/tower-management',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderOpenButton('Dashboard', '/dashboard',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderOpenButton('Access Point', '/network',
-                              isActive: true),
-                          const SizedBox(width: 12),
-                          _buildHeaderOpenButton('CCTV', '/cctv',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderOpenButton('MMT', '/mmt-monitoring',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderOpenButton('Alert', '/alerts',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderOpenButton('Alert Report', '/report',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderLogoutButton(),
-                          const SizedBox(width: 12),
-                          // Profile Icon - SCROLL dengan buttons
-                          MouseRegion(
-                            cursor: SystemMouseCursors.click,
-                            child: OpenContainer(
-                              transitionDuration:
-                                  const Duration(milliseconds: 550),
-                              transitionType:
-                                  ContainerTransitionType.fadeThrough,
-                              closedElevation: 0,
-                              closedColor: Colors.transparent,
-                              closedShape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(50),
-                              ),
-                              openElevation: 0,
-                              openBuilder: (context, _) =>
-                                  const RouteProxyPage('/profile'),
-                              closedBuilder: (context, openContainer) {
-                                return GestureDetector(
-                                  onTap: openContainer,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.9),
-                                      borderRadius: BorderRadius.circular(50),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.1),
-                                          blurRadius: 8,
-                                          spreadRadius: 1,
-                                        ),
-                                      ],
-                                    ),
-                                    child: const Icon(
-                                      Icons.person,
-                                      color: Color(0xFF1976D2),
-                                      size: 24,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-    );
-  }
-
-  Widget _buildHeaderButton(String text, VoidCallback onPressed,
-      {bool isActive = false}) {
-    return buildLiquidGlassButton(text, onPressed, isActive: isActive);
-  }
-
-  Widget _buildHeaderOpenButton(String text, String route,
-      {bool isActive = false}) {
-    return OpenContainer(
-      transitionDuration: const Duration(milliseconds: 550),
-      transitionType: ContainerTransitionType.fadeThrough,
-      closedElevation: 0,
-      closedColor: Colors.transparent,
-      closedShape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      openElevation: 0,
-      openBuilder: (context, _) => RouteProxyPage(route),
-      closedBuilder: (context, openContainer) {
-        return buildLiquidGlassButton(text, openContainer, isActive: isActive);
-      },
-    );
-  }
-
-  Widget _buildHeaderLogoutButton() {
-    return buildLiquidGlassButton('Logout', () => _showLogoutDialog(context),
-        isActive: false);
-  }
-
   Widget _buildContent(BuildContext context, BoxConstraints constraints) {
     final isMobile = isMobileScreen(context);
     return Column(
@@ -666,21 +311,45 @@ class _NetworkPageState extends State<NetworkPage> {
                     size: 24, color: Color(0xFF1976D2)),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Access Point',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Access Point',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  _buildAutoRefreshToggle(),
+                ],
               ),
-              const Text(
-                'Monitoring Real Time',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
+              Row(
+                children: [
+                  const Text(
+                    'Monitoring Real Time',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                  if (_lastRefreshTime != null) ...[
+                    const SizedBox(width: 8),
+                    const Text('•', style: TextStyle(color: Colors.white70)),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
+                      style: const TextStyle(
+                        color: Colors.greenAccent,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ],
               ),
+              const SizedBox(height: 8),
             ],
           )
         else
@@ -719,11 +388,10 @@ class _NetworkPageState extends State<NetworkPage> {
                       ),
                       if (_lastRefreshTime != null) ...[
                         const SizedBox(width: 8),
-                        const Text('•',
-                            style: TextStyle(color: Colors.white70)),
+                        const Text('•', style: TextStyle(color: Colors.white70)),
                         const SizedBox(width: 8),
                         Text(
-                          'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}',
+                          'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
                           style: const TextStyle(
                             color: Colors.greenAccent,
                             fontSize: 12,
@@ -771,7 +439,7 @@ class _NetworkPageState extends State<NetworkPage> {
                       const SizedBox(height: 12),
                       _buildNetworkDropdown(constraints.maxWidth),
                       const SizedBox(height: 12),
-                      _buildContainerYardButton(constraints.maxWidth),
+                      _buildAreaButton(constraints.maxWidth),
                       const SizedBox(height: 12),
                       _buildCheckStatusButton(constraints.maxWidth),
                     ],
@@ -788,7 +456,7 @@ class _NetworkPageState extends State<NetworkPage> {
                       _buildStatCard('DOWN', '$warningTowers', Colors.red,
                           onTap: _showWarningList, width: cardWidth),
                       _buildNetworkDropdown(cardWidth),
-                      _buildContainerYardButton(cardWidth),
+                      _buildAreaButton(cardWidth),
                       _buildCheckStatusButton(cardWidth),
                     ],
                   );
@@ -804,158 +472,274 @@ class _NetworkPageState extends State<NetworkPage> {
 
   Widget _buildStatCard(String title, String value, Color indicatorColor,
       {VoidCallback? onTap, double? width}) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isMobile = isMobileScreen(context);
-        final card = Container(
-          width: width,
-          padding: EdgeInsets.all(isMobile ? 12 : 20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: isMobile ? 12 : 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Container(
-                    width: isMobile ? 10 : 12,
-                    height: isMobile ? 10 : 12,
-                    decoration: BoxDecoration(
-                      color: indicatorColor,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            width: width,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.15),
+                  Colors.white.withOpacity(0.05),
                 ],
               ),
-              SizedBox(height: isMobile ? 8 : 12),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: isMobile ? 20 : 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 1.5,
               ),
-            ],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+                BoxShadow(
+                  color: Colors.white.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(-5, -5),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white.withOpacity(0.8),
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: indicatorColor,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: indicatorColor.withOpacity(0.6),
+                            blurRadius: 12,
+                            spreadRadius: 2,
+                          ),
+                          BoxShadow(
+                            color: Colors.white.withOpacity(0.4),
+                            blurRadius: 4,
+                            spreadRadius: 0.5,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: -1,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  height: 2,
+                  width: 40,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [indicatorColor, indicatorColor.withOpacity(0)],
+                    ),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ],
+            ),
           ),
-        );
-
-        if (onTap == null) return card;
-
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: onTap,
-            child: card,
-          ),
-        );
-      },
+        ),
+      ),
     );
   }
 
   Widget _buildNetworkDropdown(double width) {
-    return Container(
-      width: width,
-      height: 80,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF4A5F7F),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white24, width: 1.0),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'AREA',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          width: width,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(0.12),
+                Colors.white.withOpacity(0.02),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.25),
+              width: 1.5,
             ),
           ),
-          const SizedBox(height: 4),
-          Flexible(
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                // --- FIX: TAMPILAN "SELECT AREA" ---
-                value:
-                    null, // Set null agar value lama tidak tampil di kotak utama
-                hint: const Text("Select Area",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14)),
-                dropdownColor: const Color(0xFF4A5F7F),
-                isExpanded: true,
-                icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-                items: _areaOptions.map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value,
-                        style: const TextStyle(color: Colors.white)),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  if (newValue != null) {
-                    setState(() {
-                      selectedTower = newValue;
-                      currentPage = 0;
-                      isLoading = true;
-                    });
-                    _loadTowers();
-                  }
-                },
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 20),
               ),
-            ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'AREA',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.6),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: null,
+                        hint: const Text(
+                          "SELECT AREA",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        dropdownColor: const Color(0xFF0F172A),
+                        isExpanded: true,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 20),
+                        items: _areaOptions.map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(
+                              value,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          if (newValue == null) return;
+                          
+                          if (newValue == 'CY 1') {
+                            Navigator.pushReplacementNamed(context, '/network');
+                          } else if (newValue == 'CY 2') {
+                            Navigator.pushReplacementNamed(context, '/network-cy2');
+                          } else if (newValue == 'CY 3') {
+                            Navigator.pushReplacementNamed(context, '/network-cy3');
+                          } else if (newValue == 'GATE') {
+                            Navigator.pushReplacementNamed(context, '/network-gate');
+                          } else if (newValue == 'PARKING') {
+                            Navigator.pushReplacementNamed(context, '/network-parking');
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildContainerYardButton(double width) {
-    return Container(
-      width: width,
-      height: 80,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF5D6D7E),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white24, width: 1.0),
-      ),
-      child: Center(
-        child: Text(
-          selectedTower == 'GATE' || selectedTower == 'PARKING'
-              ? selectedTower
-              : 'Container\nYard ${selectedTower.replaceAll('CY ', '')}',
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+  Widget _buildAreaButton(double width) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          width: width,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFF1976D2).withOpacity(0.12),
+                const Color(0xFF1976D2).withOpacity(0.02),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: const Color(0xFF1976D2).withOpacity(0.25),
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1976D2).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.location_on_rounded,
+                    color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'AREA',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.6),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      selectedArea,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -978,36 +762,76 @@ class _NetworkPageState extends State<NetworkPage> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('✓ Status Updated!'),
+                content: Text('✓ Status updated!'),
                 backgroundColor: Colors.green,
                 duration: Duration(seconds: 2),
               ),
             );
           }
         },
-        child: Container(
-          width: width,
-          height: 80,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF4CAF50),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white24, width: 1.0),
-          ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.refresh, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Check Status',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              width: width,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFF4CAF50).withOpacity(0.12),
+                    const Color(0xFF4CAF50).withOpacity(0.02),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: const Color(0xFF4CAF50).withOpacity(0.25),
+                  width: 1.5,
                 ),
               ),
-            ],
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'ACTION',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.6),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 2.0,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'CHECK STATUS',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 15,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -1017,43 +841,53 @@ class _NetworkPageState extends State<NetworkPage> {
   Widget _buildTowerList() {
     // Show loading indicator
     if (isLoading) {
-      return Container(
-        // 1. Ubah padding dari .all(20) menjadi symmetric vertical agar lebih tipis
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        width: double.infinity, // Memastikan lebar penuh
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 40),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.12),
+                  Colors.white.withOpacity(0.02),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 1.5,
+              ),
             ),
-          ],
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 2. Perkecil ukuran loading spinner dengan SizedBox
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3, // Garis spinner lebih tipis
-                ),
+            child: const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Loading Access Point Data...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
               ),
-              // 3. Perkecil jarak antara spinner dan teks
-              SizedBox(height: 10),
-              Text(
-                'Loading Access Point Data...',
-                style: TextStyle(
-                  fontSize: 14, // Ukuran font sedikit diperkecil
-                  color: Colors.black87,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       );
@@ -1061,170 +895,194 @@ class _NetworkPageState extends State<NetworkPage> {
 
     // Show empty state if no data
     if (towers.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 60),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.12),
+                  Colors.white.withOpacity(0.02),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 1.5,
+              ),
             ),
-          ],
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.signal_wifi_off,
-                size: 64,
-                color: Colors.grey,
+            child: const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.signal_wifi_off_rounded,
+                    size: 64,
+                    color: Colors.white38,
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'NO DATA ACCESS POINT',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(height: 16),
-              Text(
-                'No Data Access Point',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       );
     }
 
-    return Container(
-      // 1. ClipAntiAlias akan memotong header biru/kuning agar otomatis bulat mengikuti radius 20
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(0.12),
+                Colors.white.withOpacity(0.02),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.2),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 30,
+                offset: const Offset(0, 15),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // 2. HEADER BIRU (Access Point List)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            width: double.infinity,
-            color: const Color(0xFF1976D2),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Access Point List',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                // Pagination Controls
-                // Pagination Controls
-                // Pagination Controls
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      // Tombol Previous
-                      IconButton(
-                        icon: const Icon(Icons.chevron_left, size: 20),
-                        onPressed: currentPage > 0
-                            ? () => setState(() => currentPage--)
-                            : null,
-                        constraints: const BoxConstraints(),
-                        padding: EdgeInsets.zero,
-                      ),
-                      const SizedBox(width: 8),
-
-                      // LIST ANGKA HALAMAN
-                      // Kita generate angka berdasarkan totalPages
-                      ...List.generate(totalPages, (index) {
-                        bool isCurrentPage = index == currentPage;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              currentPage = index;
-                            });
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              // Beri warna background jika halaman sedang aktif
-                              color: isCurrentPage
-                                  ? const Color(0xFF1976D2)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                // Beri warna teks putih jika aktif, biru jika tidak aktif
-                                color: isCurrentPage
-                                    ? Colors.white
-                                    : const Color(0xFF1976D2),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-
-                      const SizedBox(width: 8),
-                      // Tombol Next
-                      IconButton(
-                        icon: const Icon(Icons.chevron_right, size: 20),
-                        onPressed: currentPage < totalPages - 1
-                            ? () => setState(() => currentPage++)
-                            : null,
-                        constraints: const BoxConstraints(),
-                        padding: EdgeInsets.zero,
-                      ),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF1976D2).withOpacity(0.8),
+                      const Color(0xFF1976D2).withOpacity(0.4),
                     ],
                   ),
                 ),
-              ],
-            ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Access Point List',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withOpacity(0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.chevron_left_rounded, size: 22, color: Colors.white),
+                            onPressed: currentPage > 0
+                                ? () => setState(() => currentPage--)
+                                : null,
+                            constraints: const BoxConstraints(),
+                            padding: EdgeInsets.zero,
+                          ),
+                          const SizedBox(width: 8),
+                          ...List.generate(totalPages, (index) {
+                            bool isCurrentPage = index == currentPage;
+                            return GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  currentPage = index;
+                                });
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: isCurrentPage
+                                      ? Colors.white
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '${index + 1}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 14,
+                                    color: isCurrentPage
+                                        ? const Color(0xFF1976D2)
+                                        : Colors.white,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.chevron_right_rounded, size: 22, color: Colors.white),
+                            onPressed: currentPage < totalPages - 1
+                                ? () => setState(() => currentPage++)
+                                : null,
+                            constraints: const BoxConstraints(),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFFC6B430).withOpacity(0.8), 
+                      const Color(0xFFC6B430).withOpacity(0.4), 
+                    ],
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    _buildHeaderCell('Access Point ID', flex: 1),
+                    _buildHeaderCell('Location', flex: 2),
+                    _buildHeaderCell('IP Address', flex: 2),
+                    _buildHeaderCell('Status', flex: 1),
+                    _buildHeaderCell('Action', flex: 1, isLast: true),
+                  ],
+                ),
+              ),
+              ...paginatedData.map((tower) => _buildTableRow(tower)),
+            ],
           ),
-
-          // 3. HEADER KUNING (ID, Lokasi, dll)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            width: double.infinity,
-            color: const Color(0xFFC6B430),
-            child: Row(
-              children: [
-                _buildHeaderCell('Access Point ID', flex: 1),
-                _buildHeaderCell('Location', flex: 2),
-                _buildHeaderCell('IP Address', flex: 2),
-                _buildHeaderCell('Status', flex: 1),
-                _buildHeaderCell('Action', flex: 1, isLast: true),
-              ],
-            ),
-          ),
-
-          // 4. DATA ROWS (Daftar Tower)
-          ...paginatedData.map((tower) => _buildTableRow(tower)),
-        ],
+        ),
       ),
     );
   }
@@ -1232,41 +1090,38 @@ class _NetworkPageState extends State<NetworkPage> {
   Widget _buildTableRow(Tower tower) {
     bool isWarning = isDownStatus(tower.status);
     String statusLabel = isWarning ? 'DOWN' : tower.status;
-    Color statusTextColor = isWarning ? Colors.red : Colors.black87;
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-          horizontal: 20, vertical: 10), // Padding vertikal dikecilkan
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFE8D5C4),
+        color: Colors.white.withOpacity(0.05),
         border: Border(
-          bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+          bottom: BorderSide(color: Colors.white.withOpacity(0.05), width: 1),
         ),
       ),
       child: Row(
         children: [
-          _tableCell(tower.towerId, flex: 1, fontWeight: FontWeight.w800),
-          _tableCell(tower.location, flex: 2, fontWeight: FontWeight.w800),
-          _tableCell(tower.ipAddress, flex: 2),
+          _tableCell(tower.towerId, flex: 1, fontWeight: FontWeight.w800, color: Colors.white),
+          _tableCell(tower.location, flex: 2, fontWeight: FontWeight.w800, color: Colors.white.withOpacity(0.9)),
+          _tableCell(tower.ipAddress, flex: 2, color: Colors.white.withOpacity(0.7)),
           _tableCell(statusLabel,
-              flex: 1, fontWeight: FontWeight.w800, color: statusTextColor),
+              flex: 1, fontWeight: FontWeight.w800, color: isWarning ? Colors.redAccent : Colors.greenAccent),
 
-          // --- TAMBAHKAN KOLOM AKSI DI SINI ---
           Expanded(
             flex: 1,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
-                  onPressed: () => _showEditForm(tower), // Langsung klik edit
+                  icon: const Icon(Icons.edit, color: Colors.blueAccent, size: 20),
+                  onPressed: () => _showEditForm(tower),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                  onPressed: () => _confirmDelete(tower), // Langsung klik hapus
+                  icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
+                  onPressed: () => _confirmDelete(tower),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
@@ -1274,30 +1129,6 @@ class _NetworkPageState extends State<NetworkPage> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildPagerIcon(IconData icon, VoidCallback? onPressed) {
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: Colors.black87.withOpacity(onPressed == null ? 0.2 : 0.6),
-            width: 1.2,
-          ),
-        ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: onPressed == null ? Colors.black26 : Colors.black87,
-        ),
       ),
     );
   }
@@ -1336,7 +1167,7 @@ class _NetworkPageState extends State<NetworkPage> {
           border: Border(
             right: isLast
                 ? BorderSide.none
-                : BorderSide(color: Colors.grey[500]!, width: 0.8),
+                : BorderSide(color: Colors.white.withOpacity(0.05), width: 1),
           ),
         ),
         child: Text(
@@ -1487,61 +1318,87 @@ class _NetworkPageState extends State<NetworkPage> {
     );
   }
 
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout', style: TextStyle(color: Colors.black87)),
-        content: const Text('Are You Sure To Logout?',
-            style: TextStyle(color: Colors.black87)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child:
-                const Text('Cancel', style: TextStyle(color: Colors.black87)),
+  Widget _buildAutoRefreshToggle() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.sync, color: Colors.white70, size: 16),
+          const SizedBox(width: 8),
+          const Text(
+            'Auto Refresh',
+            style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                '/login',
-                (route) => false,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+          const SizedBox(width: 4),
+          Transform.scale(
+            scale: 0.8,
+            child: Switch(
+              value: _isAutoRefreshEnabled,
+              onChanged: (value) {
+                setState(() {
+                  _isAutoRefreshEnabled = value;
+                  if (_isAutoRefreshEnabled) {
+                    _startAutoRefresh();
+                  } else {
+                    _refreshTimer?.cancel();
+                  }
+                });
+              },
+              activeColor: Colors.blueAccent,
+              activeTrackColor: Colors.blueAccent.withOpacity(0.3),
+              inactiveThumbColor: Colors.white54,
+              inactiveTrackColor: Colors.white12,
             ),
-            child: const Text('Logout'),
           ),
         ],
       ),
     );
   }
 
-  void _showTowerDetails(Map<String, dynamic> tower) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Access Point ${tower['id']} Details'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Location: ${tower['location']}'),
-            const SizedBox(height: 8),
-            Text('Status: ${tower['status']}'),
-            const SizedBox(height: 8),
-            Text('Traffic: ${tower['traffic']}'),
-            const SizedBox(height: 8),
-            Text('Uptime: ${tower['uptime']}'),
-          ],
+  Widget _buildConnectionStatusBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: _isConnected ? Colors.greenAccent.withOpacity(0.1) : Colors.redAccent.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _isConnected ? Colors.greenAccent.withOpacity(0.3) : Colors.redAccent.withOpacity(0.3),
+          width: 1,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: _isConnected ? Colors.greenAccent : Colors.redAccent,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: _isConnected ? Colors.greenAccent : Colors.redAccent,
+                  blurRadius: 4,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            _isConnected ? 'BACKEND CONNECTED' : 'CONNECTION LOST',
+            style: TextStyle(
+              color: _isConnected ? Colors.greenAccent : Colors.redAccent,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.5,
+            ),
           ),
         ],
       ),

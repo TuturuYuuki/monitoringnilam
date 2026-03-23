@@ -312,7 +312,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                         decoration: BoxDecoration(
                                           color: Colors.white,
                                           borderRadius: BorderRadius.circular(16),
-                                          boxShadow: [BoxShadow(color: Colors.black45, blurRadius: 15, offset: const Offset(0, 5))],
+                                          boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 15, offset: Offset(0, 5))],
                                           border: Border.all(color: Colors.blue.withOpacity(0.5), width: 1.5),
                                         ),
                                         child: Column(

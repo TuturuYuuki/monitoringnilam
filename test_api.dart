@@ -6,9 +6,9 @@ void main() async {
   print("Starting API test...");
   
   // The same endpoint called by getAlertsReport
-  final start = '2024-01-01';
-  final end = '2030-01-01';
-  final status = 'ALL';
+  const start = '2024-01-01';
+  const end = '2030-01-01';
+  const status = 'ALL';
   final url = Uri.parse('http://localhost/monitoring_api/index.php?endpoint=alerts&action=report&start=$start&end=$end&status=$status');
   
   try {

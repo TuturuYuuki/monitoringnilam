@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:animations/animations.dart';
@@ -20,7 +21,7 @@ class CCTVCy3Page extends StatefulWidget {
 }
 
 class _CCTVCy3PageState extends State<CCTVCy3Page> {
-  String selectedYard = 'CY 3';
+  String selectedArea = 'CY 3';
   int currentPage = 0;
   int camerasPerPage = 6;
   bool isLoading = true;
@@ -592,7 +593,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                             style: TextStyle(color: Colors.white70)),
                         const SizedBox(width: 8),
                         Text(
-                          'Updated: ${lastUpdated!.hour.toString().padLeft(2, '0')}:${lastUpdated!.minute.toString().padLeft(2, '0')}',
+                          'Updated: ${lastUpdated!.hour.toString().padLeft(2, '0')}:${lastUpdated!.minute.toString().padLeft(2, '0')}:${lastUpdated!.second.toString().padLeft(2, '0')}',
                           style: const TextStyle(
                             color: Colors.greenAccent,
                             fontSize: 12,
@@ -668,7 +669,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                       const SizedBox(height: 12),
                       _buildCCTVDropdown(constraints.maxWidth),
                       const SizedBox(height: 12),
-                      _buildContainerYardButton(constraints.maxWidth),
+                      _buildAreaButton(constraints.maxWidth),
                       const SizedBox(height: 12),
                       _buildCheckStatusButton(constraints.maxWidth),
                     ],
@@ -687,7 +688,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                             'DOWN', '$downCameras', Colors.red, cardWidth),
                       ),
                       _buildCCTVDropdown(cardWidth),
-                      _buildContainerYardButton(cardWidth),
+                      _buildAreaButton(cardWidth),
                       _buildCheckStatusButton(cardWidth),
                     ],
                   );
@@ -707,148 +708,263 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
 
   Widget _buildStatCard(
       String title, String value, Color indicatorColor, double width) {
-    return Container(
+    return SizedBox(
       width: width,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  title,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.2),
+                  Colors.white.withOpacity(0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withOpacity(0.9),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: indicatorColor,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: indicatorColor.withOpacity(0.5),
+                            blurRadius: 8,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  value,
                   style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: -0.5,
                   ),
                 ),
-              ),
-              Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: indicatorColor,
-                  shape: BoxShape.circle,
+                const SizedBox(height: 4),
+                Container(
+                  height: 2,
+                  width: 40,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [indicatorColor, indicatorColor.withOpacity(0)],
+                    ),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildCCTVDropdown(double width) {
-    return Container(
-      width: width,
-      height: 80,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF4A5F7F),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white24, width: 1.0),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'AREA',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+    final List<String> areaOptions = ['CY 1', 'CY 2', 'CY 3', 'GATE', 'PARKING'];
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          width: width,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(0.12),
+                Colors.white.withOpacity(0.02),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.25),
+              width: 1.5,
             ),
           ),
-          const SizedBox(height: 4),
-          Flexible(
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                // --- FIX: TAMPILAN "SELECT AREA" ---
-                value:
-                    null, // Set null agar value lama tidak tampil di kotak utama
-                hint: const Text("Select Area",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14)),
-                dropdownColor: const Color(0xFF4A5F7F),
-                isExpanded: true,
-                icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-                items: const ['CY 1', 'CY 2', 'CY 3', 'GATE', 'PARKING']
-                    .map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value,
-                        style: const TextStyle(color: Colors.white)),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  if (newValue != null) {
-                    setState(() {
-                      selectedYard = newValue;
-                      isLoading = true;
-                    });
-                    if (newValue == 'CY 1') {
-                      Navigator.pushReplacementNamed(context, '/cctv');
-                    } else if (newValue == 'CY 2')
-                      Navigator.pushReplacementNamed(context, '/cctv-cy2');
-                    else if (newValue == 'CY 3')
-                      Navigator.pushReplacementNamed(context, '/cctv-cy3');
-                    else if (newValue == 'PARKING')
-                      Navigator.pushReplacementNamed(context, '/cctv-parking');
-                    else if (newValue == 'GATE')
-                      Navigator.pushReplacementNamed(context, '/cctv-gate');
-                  }
-                },
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 20),
               ),
-            ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'AREA',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.6),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                     DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: null,
+                        hint: const Text(
+                          "SELECT AREA",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        dropdownColor: const Color(0xFF0F172A),
+                        isExpanded: true,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 20),
+                        items: areaOptions.map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(
+                              value,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          if (newValue == null) return;
+                          
+                          if (newValue == 'CY 1') {
+                            Navigator.pushReplacementNamed(context, '/cctv');
+                          } else if (newValue == 'CY 2') {
+                            Navigator.pushReplacementNamed(context, '/cctv-cy2');
+                          } else if (newValue == 'CY 3') {
+                            Navigator.pushReplacementNamed(context, '/cctv-cy3');
+                          } else if (newValue == 'GATE') {
+                            Navigator.pushReplacementNamed(context, '/cctv-gate');
+                          } else if (newValue == 'PARKING') {
+                            Navigator.pushReplacementNamed(context, '/cctv-parking');
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildContainerYardButton(double width) {
-    return Container(
-      width: width,
-      height: 80,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF5D6D7E),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white24, width: 1.0),
-      ),
-      child: const Center(
-        child: Text(
-          'Container\nYard 3',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+  Widget _buildAreaButton(double width) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          width: width,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFF1976D2).withOpacity(0.12),
+                const Color(0xFF1976D2).withOpacity(0.02),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: const Color(0xFF1976D2).withOpacity(0.25),
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1976D2).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.business_rounded, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'YARD',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.6),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      selectedArea,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -871,36 +987,76 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('✓ Status Updated!'),
+                content: Text('✓ Status updated!'),
                 backgroundColor: Colors.green,
                 duration: Duration(seconds: 2),
               ),
             );
           }
         },
-        child: Container(
-          width: width,
-          height: 80,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF4CAF50),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white24, width: 1.0),
-          ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.refresh, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Check Status',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              width: width,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFF4CAF50).withOpacity(0.12),
+                    const Color(0xFF4CAF50).withOpacity(0.02),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: const Color(0xFF4CAF50).withOpacity(0.25),
+                  width: 1.5,
                 ),
               ),
-            ],
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'ACTION',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.6),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 2.0,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'CHECK STATUS',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 15,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -910,26 +1066,45 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
   Widget _buildCameraGrid(BoxConstraints constraints) {
     // Show loading indicator
     if (isLoading) {
-      return Container(
-        padding: const EdgeInsets.all(40),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text(
-                'Loading Camera Data...',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.black87,
-                ),
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.all(40),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.12),
+                  Colors.white.withOpacity(0.02),
+                ],
               ),
-            ],
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 1.5,
+              ),
+            ),
+            child: const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                  SizedBox(height: 20),
+                  Text(
+                    'LOADING CAMERA DATA...',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2.0,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       );
@@ -937,31 +1112,49 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
 
     // Show empty state if no cameras
     if (allCameras.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(40),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.videocam_off,
-                size: 64,
-                color: Colors.grey,
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.all(40),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.12),
+                  Colors.white.withOpacity(0.02),
+                ],
               ),
-              SizedBox(height: 16),
-              Text(
-                'No Data Camera',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 1.5,
               ),
-            ],
+            ),
+            child: const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.videocam_off_rounded,
+                    size: 80,
+                    color: Colors.white54,
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'NO DATA CAMERA',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       );
@@ -1109,95 +1302,94 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
   }
 
   Widget _buildPagination() {
-    return SizedBox(
-      width: double.infinity,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.2),
+              width: 1.5,
             ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Showing ${(currentPage * camerasPerPage) + 1}-${(currentPage * camerasPerPage) + paginatedCameras.length} Of ${allCameras.length} Camera',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_left),
-                  onPressed: currentPage > 0
-                      ? () {
-                          setState(() {
-                            currentPage--;
-                          });
-                        }
-                      : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Showing ${(currentPage * camerasPerPage) + 1}-${(currentPage * camerasPerPage) + paginatedCameras.length} Of ${allCameras.length} Camera',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withOpacity(0.7),
                 ),
-                ...List.generate(totalPages, (index) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          currentPage = index;
-                        });
-                      },
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: currentPage == index
-                              ? const Color(0xFF1976D2)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: currentPage == index
-                                ? const Color(0xFF1976D2)
-                                : Colors.grey,
+              ),
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left, color: Colors.white),
+                    onPressed: currentPage > 0
+                        ? () {
+                            setState(() {
+                              currentPage--;
+                            });
+                          }
+                        : null,
+                  ),
+                  ...List.generate(totalPages, (index) {
+                    final isCurrent = currentPage == index;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            currentPage = index;
+                          });
+                        },
+                        child: Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: isCurrent
+                                ? const Color(0xFF1976D2).withOpacity(0.8)
+                                : Colors.white.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isCurrent
+                                  ? Colors.white.withOpacity(0.5)
+                                  : Colors.white.withOpacity(0.2),
+                            ),
                           ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${index + 1}',
-                            style: TextStyle(
-                              color: currentPage == index
-                                  ? Colors.white
-                                  : Colors.black,
-                              fontWeight: FontWeight.bold,
+                          child: Center(
+                            child: Text(
+                              '${index + 1}',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right),
-                  onPressed: currentPage < totalPages - 1
-                      ? () {
-                          setState(() {
-                            currentPage++;
-                          });
-                        }
-                      : null,
-                ),
-              ],
-            ),
-          ],
+                    );
+                  }),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_right, color: Colors.white),
+                    onPressed: currentPage < totalPages - 1
+                        ? () {
+                            setState(() {
+                              currentPage++;
+                            });
+                          }
+                        : null,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1243,7 +1435,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
     );
     var selectedLocation = matchedOption?['label'] ??
         normalizeLocationLabel((camera['location'] ?? '').toString());
-    var selectedYard = matchedOption?['container_yard'] ??
+    var selectedArea = matchedOption?['container_yard'] ??
         (camera['container_yard'] ?? '').toString();
 
     showDialog(
@@ -1277,7 +1469,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                 );
                 setLocalState(() {
                   selectedLocation = value;
-                  selectedYard = option['container_yard'] ?? selectedYard;
+                  selectedArea = option['container_yard'] ?? selectedArea;
                 });
               },
             ),
@@ -1300,7 +1492,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                   // Argumen 2: Map Data yang diubah
                   'ip_address': ipController.text,
                   'location': selectedLocation,
-                  'container_yard': selectedYard,
+                  'container_yard': selectedArea,
                 },
               );
 

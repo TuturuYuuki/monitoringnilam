@@ -6,6 +6,7 @@ import '../utils/location_label_utils.dart';
 import '../main.dart';
 import '../widgets/global_header_bar.dart';
 import '../widgets/global_sidebar_nav.dart';
+import 'dart:ui';
 
 class MMTMonitoringPage extends StatefulWidget {
   const MMTMonitoringPage({super.key});
@@ -20,15 +21,18 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
 
   List<MMT> _mmts = [];
   bool _isLoading = true;
-  String selectedCY = 'CY1';
+  String selectedArea = 'CY1';
   int currentPage = 0;
   final int itemsPerPage = 5;
   Timer? _refreshTimer;
   DateTime? _lastRefreshTime;
+  bool _isAutoRefreshEnabled = true;
+  bool _isConnected = true;
 
   @override
   void initState() {
     super.initState();
+    _checkConnection();
     _loadMMTs();
     _startAutoRefresh();
   }
@@ -39,12 +43,35 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
     super.dispose();
   }
 
+  Future<void> _checkConnection() async {
+    final result = await _apiService.testConnection();
+    if (mounted) {
+      setState(() {
+        _isConnected = result['success'] == true;
+      });
+    }
+  }
+
   void _startAutoRefresh() {
+    _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (mounted) {
+      if (mounted && _isAutoRefreshEnabled) {
+        _checkConnection();
         _loadMMTs();
       }
     });
+  }
+
+  Future<void> _triggerPingCheck() async {
+    try {
+      await _apiService.triggerRealtimePing();
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        await _loadMMTs();
+      }
+    } catch (e) {
+      // Silent error
+    }
   }
 
   Future<void> _loadMMTs() async {
@@ -68,7 +95,7 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
   }
 
   List<MMT> get _filteredMMTs {
-    return _mmts.where((mmt) => mmt.containerYard == selectedCY).toList();
+    return _mmts.where((mmt) => mmt.containerYard == selectedArea).toList();
   }
 
   int get totalMMTs => _filteredMMTs.length;
@@ -144,20 +171,43 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
                     size: 24, color: Color(0xFF1976D2)),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'MMT Monitoring',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'MMT Monitoring',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  _buildConnectionStatusBadge(),
+                ],
               ),
-              const Text(
-                'Monitoring Real Time',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
+              Row(
+                children: [
+                  const Text(
+                    'Monitoring Real Time',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                  if (_lastRefreshTime != null) ...[
+                    const SizedBox(width: 8),
+                    const Text('•', style: TextStyle(color: Colors.white70)),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
+                      style: const TextStyle(
+                        color: Colors.greenAccent,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ],
           )
@@ -201,7 +251,7 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
                             style: TextStyle(color: Colors.white70)),
                         const SizedBox(width: 8),
                         Text(
-                          'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}',
+                          'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
                           style: const TextStyle(
                             color: Colors.greenAccent,
                             fontSize: 12,
@@ -213,6 +263,7 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
                   ),
                 ],
               ),
+              const Spacer(),
             ],
           ),
         const SizedBox(height: 16),
@@ -246,9 +297,9 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      _buildMMTDropdown(constraints.maxWidth),
+                      _buildNetworkDropdown(constraints.maxWidth),
                       const SizedBox(height: 12),
-                      _buildContainerYardButton(constraints.maxWidth),
+                      _buildAreaButton(constraints.maxWidth),
                       const SizedBox(height: 12),
                       _buildCheckStatusButton(constraints.maxWidth),
                     ],
@@ -263,8 +314,8 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
                           width: cardWidth),
                       _buildStatCard('DOWN', '$downMMTs', Colors.red,
                           width: cardWidth),
-                      _buildMMTDropdown(cardWidth),
-                      _buildContainerYardButton(cardWidth),
+                      _buildNetworkDropdown(cardWidth),
+                      _buildAreaButton(cardWidth),
                       _buildCheckStatusButton(cardWidth),
                     ],
                   );
@@ -282,154 +333,263 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
       {VoidCallback? onTap, double? width}) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: width,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[300]!, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              spreadRadius: 1,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            width: width,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.12),
+                  Colors.white.withOpacity(0.02),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.25),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 15,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white.withOpacity(0.6),
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: indicatorColor,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: indicatorColor.withOpacity(0.5),
+                            blurRadius: 6,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
                 Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
+                  value,
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: -0.5,
                   ),
                 ),
+                const SizedBox(height: 4),
                 Container(
-                  width: 8,
-                  height: 8,
+                  height: 2,
+                  width: 40,
                   decoration: BoxDecoration(
-                    color: indicatorColor,
-                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [indicatorColor, indicatorColor.withOpacity(0)],
+                    ),
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAreaButton(double width) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          width: width,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFF1976D2).withOpacity(0.12),
+                const Color(0xFF1976D2).withOpacity(0.02),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: const Color(0xFF1976D2).withOpacity(0.25),
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1976D2).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.location_on_rounded,
+                    color: Colors.white, size: 20),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContainerYardButton(double width) {
-    const Color buttonColor = Color(0xFF4A5F7F);
-    final bool isYard = selectedCY.startsWith('CY');
-    final String yardNumber = selectedCY.replaceAll('CY', '');
-    final String areaLabel = isYard ? 'Container\nYard $yardNumber' : selectedCY;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      width: width,
-      height: 80,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: buttonColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white24, width: 1.0),
-        boxShadow: [
-          BoxShadow(
-            color: buttonColor.withOpacity(0.3),
-            blurRadius: 8,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: Center(
-        child: Text(
-          areaLabel,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMMTDropdown(double width) {
-    return Container(
-      width: width,
-      height: 80,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF4A5F7F),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white24, width: 1.0),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'AREA',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Flexible(
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                // --- FIX: TAMPILAN "SELECT AREA" ---
-                value:
-                    null, // Set null agar value lama tidak tampil di kotak utama
-                hint: const Text("Select Area",
-                    style: TextStyle(
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'AREA',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.6),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      selectedArea,
+                      style: const TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14)),
-                dropdownColor: const Color(0xFF4A5F7F),
-                isExpanded: true,
-                icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-                items: _areaOptions.map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value,
-                        style: const TextStyle(color: Colors.white)),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  if (newValue != null) {
-                    setState(() {
-                      selectedCY = newValue;
-                      currentPage = 0;
-                      _isLoading = true;
-                    });
-                    _loadMMTs();
-                  }
-                },
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNetworkDropdown(double width) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          width: width,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(0.12),
+                Colors.white.withOpacity(0.02),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.25),
+              width: 1.5,
             ),
           ),
-        ],
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'AREA',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.6),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: null,
+                        hint: const Text(
+                          "SELECT AREA",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        dropdownColor: const Color(0xFF0F172A),
+                        isExpanded: true,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 20),
+                        items: _areaOptions.map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(
+                              value,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          if (newValue == null) return;
+                          
+                          if (newValue == 'CY1') {
+                            Navigator.pushReplacementNamed(context, '/mmt-monitoring');
+                          } else if (newValue == 'CY2') {
+                            Navigator.pushReplacementNamed(context, '/mmt-monitoring-cy2');
+                          } else if (newValue == 'CY3') {
+                            Navigator.pushReplacementNamed(context, '/mmt-monitoring-cy3');
+                          } else if (newValue == 'GATE') {
+                            Navigator.pushReplacementNamed(context, '/mmt-monitoring-gate');
+                          } else if (newValue == 'PARKING') {
+                            Navigator.pushReplacementNamed(context, '/mmt-monitoring-parking');
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -438,42 +598,86 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: () {
+        onTap: () async {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Checking Status...')),
+            const SnackBar(
+              content: Text('Checking Status...'),
+              duration: Duration(seconds: 2),
+            ),
           );
-          _loadMMTs();
-        },
-        child: Container(
-          width: width,
-          height: 80,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.green[400],
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.green.withOpacity(0.2),
-                blurRadius: 8,
-                spreadRadius: 1,
+          await _triggerPingCheck();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✓ Status updated!'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
               ),
-            ],
-          ),
-          child: const Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.refresh, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text(
-                  'Check Status',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+            );
+          }
+        },
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              width: width,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFF4CAF50).withOpacity(0.12),
+                    const Color(0xFF4CAF50).withOpacity(0.02),
+                  ],
                 ),
-              ],
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: const Color(0xFF4CAF50).withOpacity(0.25),
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'ACTION',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.6),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 2.0,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'CHECK STATUS',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 15,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -515,212 +719,265 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
   Widget _buildMMTList(BuildContext context) {
     final isMobile = isMobileScreen(context);
     if (_isLoading) {
-      return Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 40),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.12),
+                  Colors.white.withOpacity(0.02),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 1.5,
+              ),
             ),
-          ],
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                ),
+            child: const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Loading MMT Data...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(height: 10),
-              Text(
-                'Loading MMT Data...',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       );
     }
 
     if (_filteredMMTs.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 60),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.12),
+                  Colors.white.withOpacity(0.02),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 1.5,
+              ),
             ),
-          ],
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.router,
-                size: 64,
-                color: Colors.grey,
+            child: const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.router,
+                    size: 64,
+                    color: Colors.white38,
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'NO DATA MMT',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(height: 16),
-              Text(
-                'No Data MMT',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       );
     }
 
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            width: double.infinity,
-            color: const Color(0xFF1976D2),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'MMT List',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.chevron_left, size: 20),
-                        onPressed: currentPage > 0
-                            ? () => setState(() => currentPage--)
-                            : null,
-                        constraints: const BoxConstraints(),
-                        padding: EdgeInsets.zero,
-                      ),
-                      const SizedBox(width: 8),
-                      ...List.generate(totalPages, (index) {
-                        final isCurrentPage = index == currentPage;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              currentPage = index;
-                            });
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: isCurrentPage
-                                  ? const Color(0xFF1976D2)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                color: isCurrentPage
-                                    ? Colors.white
-                                    : const Color(0xFF1976D2),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.chevron_right, size: 20),
-                        onPressed: currentPage < totalPages - 1
-                            ? () => setState(() => currentPage++)
-                            : null,
-                        constraints: const BoxConstraints(),
-                        padding: EdgeInsets.zero,
-                      ),
-                    ],
-                  ),
-                ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(0.12),
+                Colors.white.withOpacity(0.02),
               ],
             ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.2),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
-          Builder(builder: (context) {
-            const double minTableWidth = 560;
-            final tableContent = Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 14),
-                  width: double.infinity,
-                  color: const Color(0xFFC6B430),
-                  child: Row(
-                    children: [
-                      _buildHeaderCell('MMT ID', flex: 2),
-                      _buildHeaderCell('Location', flex: 3),
-                      _buildHeaderCell('IP Address', flex: 2),
-                      _buildHeaderCell('Status', flex: 1),
-                      _buildHeaderCell('Action', flex: 2, isLast: true),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF1976D2).withOpacity(0.8),
+                      const Color(0xFF1976D2).withOpacity(0.4),
                     ],
                   ),
                 ),
-                ...paginatedData.map((mmt) => _buildMMTTableRow(mmt)),
-              ],
-            );
-            if (isMobile) {
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(width: minTableWidth, child: tableContent),
-              );
-            }
-            return tableContent;
-          }),
-        ],
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'MMT List',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withOpacity(0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.chevron_left_rounded, size: 20, color: Colors.white),
+                            onPressed: currentPage > 0
+                                ? () => setState(() => currentPage--)
+                                : null,
+                            constraints: const BoxConstraints(),
+                            padding: EdgeInsets.zero,
+                          ),
+                          const SizedBox(width: 8),
+                          ...List.generate(totalPages, (index) {
+                            final isCurrentPage = index == currentPage;
+                            return GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  currentPage = index;
+                                });
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: isCurrentPage
+                                      ? Colors.white
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '${index + 1}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 13,
+                                    color: isCurrentPage
+                                        ? const Color(0xFF1976D2)
+                                        : Colors.white,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.chevron_right_rounded, size: 20, color: Colors.white),
+                            onPressed: currentPage < totalPages - 1
+                                ? () => setState(() => currentPage++)
+                                : null,
+                            constraints: const BoxConstraints(),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Builder(builder: (context) {
+                const double minTableWidth = 560;
+                final tableContent = Column(
+                  children: [
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFFC6B430).withOpacity(0.8),
+                            const Color(0xFFC6B430).withOpacity(0.4),
+                          ],
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          _buildHeaderCell('MMT ID', flex: 2),
+                          _buildHeaderCell('Location', flex: 3),
+                          _buildHeaderCell('IP Address', flex: 2),
+                          _buildHeaderCell('Status', flex: 1),
+                          _buildHeaderCell('Action', flex: 2, isLast: true),
+                        ],
+                      ),
+                    ),
+                    ...paginatedData.map((mmt) => _buildMMTTableRow(mmt)),
+                  ],
+                );
+                if (isMobile) {
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(width: minTableWidth, child: tableContent),
+                  );
+                }
+                return tableContent;
+              }),
+            ],
+          ),
+        ),
       ),
     );
-  }
+}
 
   Widget _buildHeaderCell(String label,
       {required int flex, bool isLast = false}) {
@@ -740,24 +997,23 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
 
   Widget _buildMMTTableRow(MMT mmt) {
     final isDown = mmt.status != 'UP';
-    final statusColor = isDown ? Colors.red : Colors.black87;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFE8D5C4),
+        color: Colors.white.withOpacity(0.05),
         border: Border(
-          bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+          bottom: BorderSide(color: Colors.white.withOpacity(0.05), width: 1),
         ),
       ),
       child: Row(
         children: [
-          _buildTableCell(mmt.mmtId, flex: 2, fontWeight: FontWeight.w800),
-          _buildTableCell(mmt.location, flex: 3, fontWeight: FontWeight.w800),
-          _buildTableCell(mmt.ipAddress, flex: 2),
+          _buildTableCell(mmt.mmtId, flex: 2, fontWeight: FontWeight.w800, color: Colors.white),
+          _buildTableCell(mmt.location, flex: 3, fontWeight: FontWeight.w800, color: Colors.white.withOpacity(0.9)),
+          _buildTableCell(mmt.ipAddress, flex: 2, color: Colors.white.withOpacity(0.7)),
           _buildTableCell(
             isDown ? 'DOWN' : mmt.status,
             flex: 1,
-            color: statusColor,
+            color: isDown ? Colors.redAccent : Colors.greenAccent,
             fontWeight: FontWeight.w800,
           ),
           Expanded(
@@ -766,14 +1022,16 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
+                  icon: const Icon(Icons.edit, color: Colors.blueAccent, size: 20),
                   onPressed: () => _editMMT(mmt),
+                  padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                  icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
                   onPressed: () => _confirmDeleteMMT(mmt),
+                  padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
               ],
@@ -1019,26 +1277,87 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
     );
   }
 
-  void _confirmDelete(MMT mmt) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete MMT?'),
-        content: Text('Are you sure you want to delete ${mmt.mmtId}?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+  Widget _buildAutoRefreshToggle() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.sync, color: Colors.white70, size: 16),
+          const SizedBox(width: 8),
+          const Text(
+            'Auto Refresh',
+            style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${mmt.mmtId} deleted')),
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          const SizedBox(width: 4),
+          Transform.scale(
+            scale: 0.8,
+            child: Switch(
+              value: _isAutoRefreshEnabled,
+              onChanged: (value) {
+                setState(() {
+                  _isAutoRefreshEnabled = value;
+                  if (_isAutoRefreshEnabled) {
+                    _startAutoRefresh();
+                  } else {
+                    _refreshTimer?.cancel();
+                  }
+                });
+              },
+              activeColor: Colors.blueAccent,
+              activeTrackColor: Colors.blueAccent.withOpacity(0.3),
+              inactiveThumbColor: Colors.white54,
+              inactiveTrackColor: Colors.white12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConnectionStatusBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: _isConnected ? Colors.greenAccent.withOpacity(0.1) : Colors.redAccent.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _isConnected ? Colors.greenAccent.withOpacity(0.3) : Colors.redAccent.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: _isConnected ? Colors.greenAccent : Colors.redAccent,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: _isConnected ? Colors.greenAccent : Colors.redAccent,
+                  blurRadius: 4,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            _isConnected ? 'BACKEND CONNECTED' : 'CONNECTION LOST',
+            style: TextStyle(
+              color: _isConnected ? Colors.greenAccent : Colors.redAccent,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.5,
+            ),
           ),
         ],
       ),

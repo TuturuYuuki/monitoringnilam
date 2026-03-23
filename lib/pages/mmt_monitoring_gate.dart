@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:monitoring/models/mmt_model.dart';
 import 'package:monitoring/services/api_service.dart';
 import 'dart:async';
+import 'dart:ui';
 import '../utils/location_label_utils.dart';
 import '../main.dart';
 import '../widgets/global_header_bar.dart';
@@ -20,7 +21,7 @@ class _MMTMonitoringGatePageState extends State<MMTMonitoringGatePage> {
 
   List<MMT> _mmts = [];
   bool _isLoading = true;
-  String selectedCY = 'GATE';
+  String selectedArea = 'GATE';
   int currentPage = 0;
   final int itemsPerPage = 5;
   Timer? _refreshTimer;
@@ -63,10 +64,22 @@ class _MMTMonitoringGatePageState extends State<MMTMonitoringGatePage> {
     }
   }
 
+  Future<void> _triggerPingCheck() async {
+    try {
+      await _apiService.triggerRealtimePing();
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        await _loadMMTs();
+      }
+    } catch (e) {
+      // Silent error
+    }
+  }
+
   Future<void> _loadMMTs() async {
     try {
       // Fetch MMTs spesifik untuk area yang dipilih
-      final containerYardValue = _getContainerYardValue(selectedCY);
+      final containerYardValue = _getContainerYardValue(selectedArea);
       final mmts = await _apiService.getMMTsByContainerYard(containerYardValue);
       
       if (mounted) {
@@ -162,9 +175,26 @@ class _MMTMonitoringGatePageState extends State<MMTMonitoringGatePage> {
                 'MMT Monitoring',
                 style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
               ),
-              const Text(
-                'Monitoring Real Time',
-                style: TextStyle(color: Colors.white70, fontSize: 12),
+              Row(
+                children: [
+                  const Text(
+                    'Monitoring Real Time',
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                  if (_lastRefreshTime != null) ...[
+                    const SizedBox(width: 8),
+                    const Text('•', style: TextStyle(color: Colors.white70)),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
+                      style: const TextStyle(
+                        color: Colors.greenAccent,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ],
           )
@@ -199,7 +229,7 @@ class _MMTMonitoringGatePageState extends State<MMTMonitoringGatePage> {
                         const Text('•', style: TextStyle(color: Colors.white70)),
                         const SizedBox(width: 8),
                         Text(
-                          'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}',
+                          'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
                           style: const TextStyle(
                             color: Colors.greenAccent,
                             fontSize: 12,
@@ -240,9 +270,9 @@ class _MMTMonitoringGatePageState extends State<MMTMonitoringGatePage> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      _buildMMTDropdown(constraints.maxWidth),
+                      _buildNetworkDropdown(constraints.maxWidth),
                       const SizedBox(height: 12),
-                      _buildContainerYardButton(constraints.maxWidth),
+                      _buildAreaButton(constraints.maxWidth),
                       const SizedBox(height: 12),
                       _buildCheckStatusButton(constraints.maxWidth),
                     ],
@@ -254,8 +284,8 @@ class _MMTMonitoringGatePageState extends State<MMTMonitoringGatePage> {
                       _buildStatCard('Total MMT', '$totalMMTs', Colors.orange, width: cardWidth),
                       _buildStatCard('UP', '$onlineMMTs', Colors.green, width: cardWidth),
                       _buildStatCard('DOWN', '$downMMTs', Colors.red, width: cardWidth),
-                      _buildMMTDropdown(cardWidth),
-                      _buildContainerYardButton(cardWidth),
+                      _buildNetworkDropdown(cardWidth),
+                      _buildAreaButton(cardWidth),
                       _buildCheckStatusButton(cardWidth),
                     ],
                   );
@@ -272,123 +302,263 @@ class _MMTMonitoringGatePageState extends State<MMTMonitoringGatePage> {
       {VoidCallback? onTap, double? width}) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: width,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[300]!, width: 1),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, spreadRadius: 1),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(title,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500)),
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(color: indicatorColor, shape: BoxShape.circle),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            width: width,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.12),
+                  Colors.white.withOpacity(0.02),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.25),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 15,
+                  spreadRadius: 2,
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(value,
-                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black87)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Tombol label area aktif menampilkan nama area saja.
-  Widget _buildContainerYardButton(double width) {
-    const Color buttonColor = Color(0xFF4A5F7F);
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      width: width,
-      height: 80,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: buttonColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white24, width: 1.0),
-        boxShadow: [
-          BoxShadow(color: buttonColor.withOpacity(0.3), blurRadius: 8, spreadRadius: 2),
-        ],
-      ),
-      child: const Center(
-        child: Text(
-          'GATE',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMMTDropdown(double width) {
-    return Container(
-      width: width,
-      height: 80,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF4A5F7F),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white24, width: 1.0),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('AREA',
-              style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
-          Flexible(
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: null,
-                hint: const Text('Select Area',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                dropdownColor: const Color(0xFF4A5F7F),
-                isExpanded: true,
-                icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-                items: _areaOptions
-                    .map((v) => DropdownMenuItem<String>(
-                          value: v,
-                          child: Text(v, style: const TextStyle(color: Colors.white)),
-                        ))
-                    .toList(),
-                onChanged: (String? newValue) {
-                  if (newValue != null) {
-                    setState(() {
-                      selectedCY = newValue;
-                      currentPage = 0;
-                      _isLoading = true;
-                    });
-                    _loadMMTs();
-                    if (newValue == 'CY1') {
-                      Navigator.pushReplacementNamed(context, '/mmt-monitoring');
-                    } else if (newValue == 'CY2') {
-                      Navigator.pushReplacementNamed(context, '/mmt-monitoring-cy2');
-                    } else if (newValue == 'CY3') {
-                      Navigator.pushReplacementNamed(context, '/mmt-monitoring-cy3');
-                    } else if (newValue == 'GATE') {
-                      Navigator.pushReplacementNamed(context, '/mmt-monitoring-gate');
-                    } else if (newValue == 'PARKING') {
-                      Navigator.pushReplacementNamed(context, '/mmt-monitoring-parking');
-                    }
-                  }
-                },
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white.withOpacity(0.6),
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: indicatorColor,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: indicatorColor.withOpacity(0.5),
+                            blurRadius: 6,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  height: 2,
+                  width: 40,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [indicatorColor, indicatorColor.withOpacity(0)],
+                    ),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAreaButton(double width) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          width: width,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFF1976D2).withOpacity(0.12),
+                const Color(0xFF1976D2).withOpacity(0.02),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: const Color(0xFF1976D2).withOpacity(0.25),
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1976D2).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.location_on_rounded,
+                    color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'AREA',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.6),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      selectedArea,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNetworkDropdown(double width) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          width: width,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(0.12),
+                Colors.white.withOpacity(0.02),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.25),
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'AREA',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.6),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: null,
+                        hint: const Text(
+                          "SELECT AREA",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        dropdownColor: const Color(0xFF0F172A),
+                        isExpanded: true,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 20),
+                        items: _areaOptions.map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(
+                              value,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          if (newValue == null) return;
+                          
+                          if (newValue == 'CY1') {
+                            Navigator.pushReplacementNamed(context, '/mmt-monitoring');
+                          } else if (newValue == 'CY2') {
+                            Navigator.pushReplacementNamed(context, '/mmt-monitoring-cy2');
+                          } else if (newValue == 'CY3') {
+                            Navigator.pushReplacementNamed(context, '/mmt-monitoring-cy3');
+                          } else if (newValue == 'GATE') {
+                            Navigator.pushReplacementNamed(context, '/mmt-monitoring-gate');
+                          } else if (newValue == 'PARKING') {
+                            Navigator.pushReplacementNamed(context, '/mmt-monitoring-parking');
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -397,31 +567,86 @@ class _MMTMonitoringGatePageState extends State<MMTMonitoringGatePage> {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: () {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(const SnackBar(content: Text('Checking Status...')));
-          _loadMMTs();
+        onTap: () async {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Checking Status...'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          await _triggerPingCheck();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✓ Status updated!'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
         },
-        child: Container(
-          width: width,
-          height: 80,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.green[400],
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(color: Colors.green.withOpacity(0.2), blurRadius: 8, spreadRadius: 1),
-            ],
-          ),
-          child: const Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.refresh, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text('Check Status',
-                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-              ],
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              width: width,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFF4CAF50).withOpacity(0.12),
+                    const Color(0xFF4CAF50).withOpacity(0.02),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: const Color(0xFF4CAF50).withOpacity(0.25),
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'ACTION',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.6),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 2.0,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'CHECK STATUS',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 15,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -450,45 +675,102 @@ class _MMTMonitoringGatePageState extends State<MMTMonitoringGatePage> {
 
   Widget _buildMMTList() {
     if (_isLoading) {
-      return Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3)),
-              SizedBox(height: 10),
-              Text('Loading MMT Data...', style: TextStyle(fontSize: 14, color: Colors.black87)),
-            ],
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 40),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.12),
+                  Colors.white.withOpacity(0.02),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 1.5,
+              ),
+            ),
+            child: const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Loading MMT Data...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       );
     }
 
     if (_filteredMMTs.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.router, size: 64, color: Colors.grey),
-              SizedBox(height: 16),
-              Text('No Data MMT',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
-            ],
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 60),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.12),
+                  Colors.white.withOpacity(0.02),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 1.5,
+              ),
+            ),
+            child: const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.router,
+                    size: 64,
+                    color: Colors.white38,
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'NO DATA MMT',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       );

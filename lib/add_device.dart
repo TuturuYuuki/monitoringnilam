@@ -970,14 +970,15 @@ class _AddDevicePageState extends State<AddDevicePage> {
                             padding: const EdgeInsets.all(32),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
+                                  color: Colors.black.withOpacity(0.06),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 4),
                                 ),
                               ],
+                              border: Border.all(color: Colors.grey.withOpacity(0.1)),
                             ),
                             child: Form(
                               key: _formKey,
@@ -985,91 +986,71 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
-                                    'Add New Device',
-                                    style: TextStyle(
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
-                                    ),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 5,
+                                        height: 28,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF1976D2),
+                                          borderRadius: BorderRadius.circular(2),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 14),
+                                      const Text(
+                                        'Add New Device',
+                                        style: TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF2C3E50),
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                   const SizedBox(height: 32),
 
                                   // ===== TIPE DEVICE =====
-                                  const Text(
-                                    'Device Type',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black87,
+                                  DropdownButtonFormField<String>(
+                                    value: _selectedDeviceType,
+                                    decoration: InputDecoration(
+                                      labelText: 'Device Type',
+                                      prefixIcon: Icon(_getDeviceIcon(_selectedDeviceType), color: const Color(0xFF1976D2)),
+                                      border: const OutlineInputBorder(),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                                     ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12),
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                        color: Colors.grey[300]!,
-                                        width: 1,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8),
-                                      color: Colors.grey[50],
-                                    ),
-                                    child: DropdownButton<String>(
-                                      value: _selectedDeviceType,
-                                      isExpanded: true,
-                                      underline: const SizedBox(),
-                                      onChanged: (String? newValue) {
-                                        if (newValue != null) {
-                                          setState(() {
-                                            _selectedDeviceType = newValue;
-                                            _nameController.clear();
-                                            _nameError = null;
-                                            _isCheckingName = false;
-                                          });
-                                          _loadUsedNamesForType();
-                                        }
-                                      },
-                                      items: deviceTypes
-                                          .map<DropdownMenuItem<String>>(
-                                              (String value) {
-                                        return DropdownMenuItem<String>(
-                                          value: value,
-                                          child: Row(
-                                            children: [
-                                              Icon(
-                                                _getDeviceIcon(value),
-                                                color: const Color(0xFF1976D2),
-                                                size: 20,
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Text(value),
-                                            ],
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
+                                    onChanged: (String? newValue) {
+                                      if (newValue != null) {
+                                        setState(() {
+                                          _selectedDeviceType = newValue;
+                                          _nameController.clear();
+                                          _nameError = null;
+                                          _isCheckingName = false;
+                                        });
+                                        _loadUsedNamesForType();
+                                      }
+                                    },
+                                    items: deviceTypes
+                                        .map<DropdownMenuItem<String>>(
+                                            (String value) {
+                                      return DropdownMenuItem<String>(
+                                        value: value,
+                                        child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                      );
+                                    }).toList(),
                                   ),
                                   const SizedBox(height: 24),
 
                                   // ===== NAMA DEVICE =====
-                                  const Text(
-                                    'Device Name',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
                                   TextFormField(
                                     controller: _nameController,
                                     onChanged: _onNameChanged,
                                     decoration: InputDecoration(
+                                      labelText: 'Device Name',
                                       hintText: 'Enter Device Name',
                                       helperText:
                                           'Example: ${_getDeviceNameExample(_selectedDeviceType)}',
+                                      prefixIcon: const Icon(Icons.label_outline, color: Color(0xFF1976D2)),
                                       suffixIcon: _isCheckingName
                                           ? const Padding(
                                               padding: EdgeInsets.all(12),
@@ -1088,30 +1069,14 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                                   Icons.check_circle,
                                                   color: Colors.green,
                                                 )
-                                              : null,
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide(
-                                            color: Colors.grey[300]!),
-                                      ),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide(
-                                            color: Colors.grey[300]!),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: const BorderSide(
-                                          color: Color(0xFF1976D2),
-                                          width: 2,
-                                        ),
-                                      ),
-                                      filled: true,
-                                      fillColor: Colors.grey[50],
+                                              : (_nameError != null)
+                                                  ? const Icon(Icons.error_outline, color: Colors.red)
+                                                  : null,
+                                      border: const OutlineInputBorder(),
                                       contentPadding:
                                           const EdgeInsets.symmetric(
                                         horizontal: 16,
-                                        vertical: 12,
+                                        vertical: 16,
                                       ),
                                     ),
                                     validator: (value) {
@@ -1150,43 +1115,55 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          'Used Name For $_selectedDeviceType:',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.black54,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Wrap(
-                                          spacing: 6,
-                                          runSpacing: 6,
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: [
-                                            ..._usedNamesForType
-                                                .take(10)
-                                                .map((name) => Chip(
-                                                      label: Text(
-                                                        name,
-                                                        style: const TextStyle(
-                                                            fontSize: 11),
-                                                      ),
-                                                      backgroundColor:
-                                                          const Color(
-                                                              0xFFF1F3F4),
-                                                    )),
-                                            if (_usedNamesForType.length > 10)
-                                              ActionChip(
-                                                label: Text(
-                                                  '+${_usedNamesForType.length - 10} Other',
-                                                  style: const TextStyle(
-                                                      fontSize: 11),
-                                                ),
-                                                backgroundColor:
-                                                    const Color(0xFFE0E0E0),
-                                                onPressed: _showAllUsedNames,
+                                            Text(
+                                              'Used Names For This Type (${_usedNamesForType.length})',
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.blueGrey,
                                               ),
+                                            ),
+                                            TextButton(
+                                              onPressed: _showAllUsedNames,
+                                              style: TextButton.styleFrom(
+                                                visualDensity: VisualDensity.compact,
+                                                padding: EdgeInsets.zero,
+                                              ),
+                                              child: const Text('View All', style: TextStyle(fontSize: 11)),
+                                            ),
                                           ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        SizedBox(
+                                          height: 32,
+                                          child: ListView.separated(
+                                            scrollDirection: Axis.horizontal,
+                                            itemCount: _usedNamesForType.length,
+                                            separatorBuilder: (_, __) => const SizedBox(width: 8),
+                                            itemBuilder: (context, index) {
+                                              return Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.blue.withOpacity(0.08),
+                                                  borderRadius: BorderRadius.circular(20),
+                                                  border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                                                ),
+                                                child: Center(
+                                                  child: Text(
+                                                    _usedNamesForType[index],
+                                                    style: const TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: Colors.blue,
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
                                         ),
                                       ],
                                     )
@@ -1201,45 +1178,19 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                   const SizedBox(height: 24),
 
                                   // ===== IP ADDRESS =====
-                                  const Text(
-                                    'IP Address',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
                                   TextFormField(
                                     controller: _ipAddressController,
-                                    decoration: InputDecoration(
+                                    decoration: const InputDecoration(
+                                      labelText: 'IP Address',
                                       hintText: 'Entry An IP Address',
                                       helperText:
                                           'Format: xxx.xxx.xxx.xxx (Example: 10.2.71.60)',
-                                      prefixIcon: const Icon(Icons.router),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide(
-                                            color: Colors.grey[300]!),
-                                      ),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide(
-                                            color: Colors.grey[300]!),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: const BorderSide(
-                                          color: Color(0xFF1976D2),
-                                          width: 2,
-                                        ),
-                                      ),
-                                      filled: true,
-                                      fillColor: Colors.grey[50],
+                                      prefixIcon: Icon(Icons.router, color: Color(0xFF1976D2)),
+                                      border: OutlineInputBorder(),
                                       contentPadding:
-                                          const EdgeInsets.symmetric(
+                                          EdgeInsets.symmetric(
                                         horizontal: 16,
-                                        vertical: 12,
+                                        vertical: 16,
                                       ),
                                     ),
                                     validator: (value) {
@@ -1256,75 +1207,45 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                   ),
                                   const SizedBox(height: 24),
 
-                                  // ===== LOKASI (DROPDOWN dari Tower Coordinates) =====
-                                  const Text(
-                                    'Location',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black87,
+                                  // ===== LOKASI =====
+                                  DropdownButtonFormField<String>(
+                                    value: _locationData.containsKey(_selectedLocation)
+                                        ? _selectedLocation
+                                        : null,
+                                    decoration: InputDecoration(
+                                      labelText: 'Location',
+                                      prefixIcon: Icon(_getLocationIcon(_selectedLocation.isEmpty ? '?' : _selectedLocation), color: const Color(0xFF1976D2)),
+                                      border: const OutlineInputBorder(),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                      hintText: 'Select location from master tower',
                                     ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12),
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                        color: Colors.grey[300]!,
-                                        width: 1,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8),
-                                      color: Colors.grey[50],
-                                    ),
-                                    child: DropdownButton<String>(
-                                      value: _locationData
-                                              .containsKey(_selectedLocation)
-                                          ? _selectedLocation
-                                          : null,
-                                      isExpanded: true,
-                                      underline: const SizedBox(),
-                                      hint: const Text(
-                                          'Select location from master tower'),
-                                      onChanged: (String? newValue) {
-                                        if (newValue != null) {
-                                          setState(() {
-                                            _selectedLocation = newValue;
-                                          });
-                                        }
-                                      },
-                                      items: _locationData.keys
-                                          .map<DropdownMenuItem<String>>(
-                                              (String value) {
-                                        return DropdownMenuItem<String>(
-                                          value: value,
-                                          child: Row(
-                                            children: [
-                                              Icon(
-                                                _getLocationIcon(value),
-                                                color: const Color(0xFF1976D2),
-                                                size: 20,
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Expanded(child: Text(value)),
-                                            ],
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
+                                    onChanged: (String? newValue) {
+                                      if (newValue != null) {
+                                        setState(() {
+                                          _selectedLocation = newValue;
+                                        });
+                                      }
+                                    },
+                                    items: _locationData.keys
+                                        .map<DropdownMenuItem<String>>(
+                                            (String value) {
+                                      return DropdownMenuItem<String>(
+                                        value: value,
+                                        child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                      );
+                                    }).toList(),
                                   ),
                                   if (_isLoadingLocations)
                                     const Padding(
                                       padding: EdgeInsets.only(top: 8),
                                       child: Text(
-                                        'Loading locations from unified master data...',
+                                        'Loading Locations From Unified Master Data...',
                                         style: TextStyle(
                                             fontSize: 12,
                                             color: Colors.black54),
                                       ),
                                     ),
                                   const SizedBox(height: 40),
-
                                   // ===== SUBMIT BUTTON =====
                                   SizedBox(
                                     width: double.infinity,
@@ -1368,10 +1289,33 @@ class _AddDevicePageState extends State<AddDevicePage> {
                   ],
                 ),
               ),
+              _buildFooter(),
             ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFooter() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      color: Colors.black.withOpacity(0.8),
+      child: const Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          '©2026 TPK Nilam Monitoring System',
+          style: TextStyle(color: Colors.white, fontSize: 12),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFooterLink(String text) {
+    return Text(
+      text,
+      style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13, fontWeight: FontWeight.w500),
     );
   }
 }

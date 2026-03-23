@@ -182,7 +182,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             right: 20,
             top: 20,
             child: Image.asset(
-              'assets/images/logo_pelindo.png',
+              'assets/images/logo_nilam.png',
               width: isMobile ? 140 : 180,
               height: isMobile ? 50 : 70,
               fit: BoxFit.contain,

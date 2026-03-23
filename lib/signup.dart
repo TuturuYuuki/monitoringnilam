@@ -555,7 +555,7 @@ class _SignUpPageState extends State<SignUpPage> {
             right: 20,
             top: 20,
             child: Image.asset(
-              'assets/images/logo_pelindo.png',
+              'assets/images/logo_nilam.png',
               width: isMobile ? 140 : 180,
               height: isMobile ? 50 : 70,
               fit: BoxFit.contain,
@@ -812,7 +812,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: Colors.black45, blurRadius: 20)],
+                  boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 20)],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,

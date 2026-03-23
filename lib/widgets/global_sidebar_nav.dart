@@ -189,8 +189,8 @@ class GlobalSidebarNav extends StatelessWidget {
       color: Color(0xFF8E24AA),
     ),
     const _SidebarNavItem(
-      icon: Icons.settings,
-      label: 'Settings',
+      icon: Icons.person,
+      label: 'Profile',
       route: '/profile',
       color: Color(0xFF607D8B),
     ),

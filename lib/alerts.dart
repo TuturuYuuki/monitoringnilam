@@ -155,15 +155,7 @@ class _AlertsPageState extends State<AlertsPage> {
   }
 
   Widget _buildContent(bool isMobile) {
-    if (_alerts.isEmpty && !_isLoading) {
-      return const Center(
-        child: Text(
-          'Tidak Ada Alert.',
-          style: TextStyle(color: Colors.white, fontSize: 16),
-        ),
-      );
-    }
-
+    // We remove the early return for empty alerts so the layout always shows.
     final filtered = _filterByDeviceType(_alerts);
     
     return SingleChildScrollView(
@@ -255,27 +247,55 @@ class _AlertsPageState extends State<AlertsPage> {
 
   Widget _buildAlertList(List<Alert> filtered) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.94),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white30),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.withOpacity(0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.notifications_active,
-                  size: 18, color: Color(0xFF1976D2)),
-              const SizedBox(width: 6),
-              const Text('Live Alert Feed',
-                  style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
+              Container(
+                width: 4,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1976D2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Live Alert Feed',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF2C3E50),
+                ),
+              ),
               const Spacer(),
-              Text('${filtered.length} event(s)',
-                  style: const TextStyle(
-                      color: Colors.black54, fontSize: 13)),
+              _isLoading
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : Text(
+                      '${filtered.length} Alerts Detected',
+                      style: const TextStyle(
+                        color: Colors.blueGrey,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
             ],
           ),
           const SizedBox(height: 12),
@@ -293,7 +313,7 @@ class _AlertsPageState extends State<AlertsPage> {
                     Icon(Icons.check_circle_outline,
                         color: Colors.green, size: 48),
                     SizedBox(height: 12),
-                    Text('No alert events',
+                    Text('No Alert',
                         style: TextStyle(
                             color: Colors.black54, fontSize: 16)),
                   ],

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -783,7 +784,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
         // Find realtime status (downCount from realtime ping overrides static DB row if available)
         final status = deviceStatuses[mmt.mmtId] ?? mmt.status;
         if (isDownStatus(status)) {
-          final route = '/mmt'; // Placeholder route if no MMT page explicitly mapped
+          const route = '/mmt'; // Placeholder route if no MMT page explicitly mapped
           final timestamp = mmt.updatedAt.isNotEmpty
               ? mmt.updatedAt
               : (mmt.createdAt.isNotEmpty
@@ -902,30 +903,31 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
 
       if (mounted) {
         setState(() {
-          // 1. Simpan Data Master ke List (Peta & Detail menggunakan ini)
+          // 1. Simpan Data Master
           cameras = effectiveCameras;
           towers = effectiveTowers;
           masterLocations = fetchedMasterLocations;
 
-          // 2. HITUNG ULANG STATISTIK DARI LIST RIIL (Agar sinkron dengan warna peta)
-          // Access Point - Gunakan isDownStatus untuk konsistensi
+          // 2. Gabungkan SEMUA perangkat ke dalam addedDevices agar muncul di METER/MAP
+          // Kita bersihkan dulu agar tidak duplikat saat refresh
+          addedDevices = []; 
+          addedDevices.addAll(devices); // 'devices' adalah list yang sudah Anda buat di baris 440-490
+
+          // 3. Hitung Statistik (Tetap seperti kode Anda)
           totalTowers = towers.length;
-          totalOnlineTowers =
-              towers.where((t) => !isDownStatus(t.status)).length;
+          totalOnlineTowers = towers.where((t) => !isDownStatus(t.status)).length;
           totalDownTowers = (totalTowers - totalOnlineTowers).clamp(0, 999);
 
-          // CCTV - Konsisten menggunakan isDownStatus
           int allCamerasCount = cameras.length;
           totalUpCameras = cameras.where((c) => !isDownStatus(c.status)).length;
           totalDownCameras = (allCamerasCount - totalUpCameras).clamp(0, 999);
 
-          // 4. Gabungkan dengan alert yang baru terdeteksi (DOWN baru) dan hilangkan duplikat history
+          // 4. Update Alerts (Tetap seperti kode Anda)
           final combined = [...activeAlerts, ...generatedAlerts];
           final uniqueAlerts = <String, Alert>{};
-
           for (final a in combined) {
             String devName = a.title;
-            // Extract the core device id safely by splitting known substrings
+            
             if (devName.contains(' - ')) {
               devName = devName.split(' - ').last.trim();
             } else if (devName.toLowerCase().contains(' is ')) {
@@ -933,25 +935,19 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
             }
             devName = devName.replaceAll(RegExp(r'(Access\sPoint|CCTV|MMT)\s+DOWN\s+-\s+', caseSensitive: false), '');
             devName = devName.trim();
-
-            // Store the newest (first seen or last seen based on history ordering)
-            // But if one has 'critical' and another doesn't, favor 'critical'
+            
             if (!uniqueAlerts.containsKey(devName)) {
               uniqueAlerts[devName] = a;
             } else if (a.severity == 'critical' && uniqueAlerts[devName]!.severity != 'critical') {
               uniqueAlerts[devName] = a;
             }
           }
-
           alerts = uniqueAlerts.values.toList()
-            ..sort((a, b) => b.timestamp.compareTo(a.timestamp)); // Newest first
+            ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-          totalWarnings = alerts
-              .where((a) => a.severity == 'critical' || a.severity == 'warning')
-              .length;
+          totalWarnings = alerts.length;
 
-          // 5. Update UI lainnya
-          addedDevices = devices;
+          // 5. Trigger Blinking
           _updateBlinkingLocations();
         });
       }
@@ -2434,24 +2430,27 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
         cursor: SystemMouseCursors.click,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(25),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            decoration: BoxDecoration(
-              color: isActive
-                  ? Colors.white.withOpacity(0.9)
-                  : Colors.white.withOpacity(0.4),
-              borderRadius: BorderRadius.circular(25),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.2),
-                width: 1.5,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? Colors.white.withOpacity(0.8)
+                    : Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(25),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.3),
+                  width: 1.5,
+                ),
               ),
-            ),
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
-                color: Colors.black,
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
+                  color: isActive ? Colors.black : Colors.white.withOpacity(0.9),
+                ),
               ),
             ),
           ),
@@ -2473,24 +2472,27 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
         cursor: SystemMouseCursors.click,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(25),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            decoration: BoxDecoration(
-              color: isActive
-                  ? Colors.white.withOpacity(0.9)
-                  : Colors.white.withOpacity(0.4),
-              borderRadius: BorderRadius.circular(25),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.2),
-                width: 1.5,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? Colors.white.withOpacity(0.8)
+                    : Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(25),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.3),
+                  width: 1.5,
+                ),
               ),
-            ),
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
-                color: Colors.black,
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
+                  color: isActive ? Colors.black : Colors.white.withOpacity(0.9),
+                ),
               ),
             ),
           ),
@@ -2507,74 +2509,85 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           context,
           MaterialPageRoute(builder: (context) => const NetworkPage()),
         ),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 260),
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.75),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1976D2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.router,
-                        color: Colors.white, size: 28),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 260),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
                   ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'Access Point Monitoring',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1976D2).withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(Icons.router,
+                            color: Colors.white, size: 28),
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Access Point Monitoring',
+                          style: TextStyle(
+                            color: Colors.white, // Changed to white
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Expanded(
+                        child: _buildTowerStatusTile(
+                          count: totalOnlineTowers,
+                          label: 'UP',
+                          color: Colors.green,
+                          icon: Icons.router,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildTowerStatusTile(
+                          count: totalDownTowers,
+                          label: 'DOWN',
+                          color: Colors.red,
+                          icon: Icons.router,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Expanded(
-                    child: _buildTowerStatusTile(
-                      count: totalOnlineTowers,
-                      label: 'UP',
-                      color: Colors.green,
-                      icon: Icons.router,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildTowerStatusTile(
-                      count: totalDownTowers,
-                      label: 'DOWN',
-                      color: Colors.red,
-                      icon: Icons.router,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -2590,29 +2603,37 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
     return Column(
       children: [
         Container(
-          width: 64,
-          height: 64,
+          width: 60,
+          height: 60,
           decoration: BoxDecoration(
-            color: color,
+            color: color.withOpacity(0.85),
             borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.3),
+                blurRadius: 8,
+                spreadRadius: 1,
+              ),
+            ],
           ),
-          child: Icon(icon, color: Colors.white, size: 32),
+          child: Icon(icon, color: Colors.white, size: 30),
         ),
         const SizedBox(height: 12),
         Text(
           '$count',
           style: const TextStyle(
-            color: Colors.black,
-            fontSize: 32,
+            color: Colors.white, // Changed to white
+            fontSize: 28,
             fontWeight: FontWeight.bold,
           ),
         ),
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.black54,
-            fontSize: 14,
-            letterSpacing: 1,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.7), // Changed to white70
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.2,
           ),
         ),
       ],
@@ -2627,71 +2648,83 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           context,
           MaterialPageRoute(builder: (context) => const MMTMonitoringPage()),
         ),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 260),
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.75),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1976D2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.tablet_mac, color: Colors.white, size: 28),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 260),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
                   ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'MMT Monitoring',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1976D2).withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(Icons.tablet_mac,
+                            color: Colors.white, size: 28),
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'MMT Monitoring',
+                          style: TextStyle(
+                            color: Colors.white, // Changed to white
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Expanded(
+                        child: _buildTowerStatusTile(
+                          count: totalUpMMT,
+                          label: 'UP',
+                          color: Colors.green,
+                          icon: Icons.tablet_mac,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildTowerStatusTile(
+                          count: totalDownMMT,
+                          label: 'DOWN',
+                          color: Colors.red,
+                          icon: Icons.tablet_mac,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Expanded(
-                    child: _buildTowerStatusTile(
-                      count: totalUpMMT,
-                      label: 'UP',
-                      color: Colors.green,
-                      icon: Icons.tablet_mac,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildTowerStatusTile(
-                      count: totalDownMMT,
-                      label: 'DOWN',
-                      color: Colors.red,
-                      icon: Icons.tablet_mac,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -2719,158 +2752,181 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   }
 
   Widget _buildCCTVMonitoringCard(BuildContext context) {
-  return MouseRegion(
-    cursor: SystemMouseCursors.click,
-    child: GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const CCTVPage()),
-      ),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 260),
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.75),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const CCTVPage()),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1976D2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.videocam, color: Colors.white, size: 28),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 260),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1.5,
                 ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'CCTV Monitoring',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
                   ),
-                ),
-              ],
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1976D2).withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(Icons.videocam,
+                            color: Colors.white, size: 28),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'CCTV Monitoring',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white, // Changed to white
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Expanded(
+                        child: _buildTowerStatusTile(
+                          count: totalUpCameras,
+                          label: 'UP',
+                          color: Colors.green,
+                          icon: Icons.videocam,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildTowerStatusTile(
+                          count: totalDownCameras,
+                          label: 'DOWN',
+                          color: Colors.red,
+                          icon: Icons.videocam_off,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Expanded(
-                  child: _buildTowerStatusTile(
-                    count: totalUpCameras,
-                    label: 'UP',
-                    color: Colors.green,
-                    icon: Icons.videocam,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildTowerStatusTile(
-                    count: totalDownCameras,
-                    label: 'DOWN',
-                    color: Colors.red,
-                    icon: Icons.videocam_off,
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
- Widget _buildActiveAlertsCard(BuildContext context) {
-  return MouseRegion(
-    cursor: SystemMouseCursors.click,
-    child: GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const AlertsPage()),
-      ),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 260),
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.75),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+  Widget _buildActiveAlertsCard(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const AlertsPage()),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1976D2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.warning_amber_rounded,
-                      color: Colors.white, size: 28),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 260),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1.5,
                 ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Alerts',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
                   ),
-                ),
-              ],
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1976D2).withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(Icons.warning_amber_rounded,
+                            color: Colors.white, size: 28),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Alert Monitoring', // Slightly adjusted for clarity
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white, // Changed to white
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Expanded(
+                        child: _buildTowerStatusTile(
+                          count: totalWarnings, // Actually critical/warning alerts
+                          label: 'DOWN', // Adjusted label
+                          color: Colors.red,
+                          icon: Icons.report_problem,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Expanded(
-                  child: _buildTowerStatusTile(
-                    count: totalWarnings,
-                    label: 'DOWN',
-                    color: Colors.red,
-                    icon: Icons.report_problem,
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   List<DeviceMarker> _buildDeviceMarkersForLayoutMap() {
     List<DeviceMarker> markers = [];
@@ -2921,248 +2977,277 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   }
 
   Widget _buildLiveTerminalMap(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.2),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
+          child: Column(
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1976D2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.map, color: Colors.white, size: 28),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1976D2).withOpacity(0.8),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(Icons.map, color: Colors.white, size: 28),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Live Terminal Map',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (_isPickTowerMode)
+                    Container(
+                      margin: const EdgeInsets.only(right: 12),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange.withOpacity(0.5)),
+                      ),
+                      child: Text(
+                        'Pick Mode: ${_pickTowerYard ?? 'Pilih area CY'}',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12),
+                      ),
+                    ),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _isFreeroamEditMode = !_isFreeroamEditMode;
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            _isFreeroamEditMode
+                                ? 'Edit Freeroam ON'
+                                : 'Edit Freeroam OFF',
+                          ),
+                          backgroundColor: _isFreeroamEditMode
+                              ? Colors.orange
+                              : Colors.blueGrey,
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    icon: Icon(
+                      _isFreeroamEditMode ? Icons.edit_off : Icons.edit,
+                      size: 18,
+                    ),
+                    label: Text(
+                      _isFreeroamEditMode ? 'Save' : 'Edit',
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isFreeroamEditMode
+                          ? Colors.orange
+                          : const Color(0xFF607D8B).withOpacity(0.8),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Tombol Check Status Now
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Checking Status...'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                      await _triggerPingCheck(force: true);
+                      await _loadDashboardData();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('✓ Status Updated!'),
+                            backgroundColor: Colors.green,
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('Check Status'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4CAF50).withOpacity(0.8),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              const Text(
-                'Live Terminal Map',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Spacer(),
-              if (_isPickTowerMode)
-                Container(
-                  margin: const EdgeInsets.only(right: 12),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              const SizedBox(height: 18),
+              // Terminal Layout Static
+              Expanded(
+                child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.orange.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange.shade300),
+                    borderRadius: BorderRadius.circular(16),
+                    color: Colors.black.withOpacity(0.1),
                   ),
-                  child: Text(
-                    'Pick Mode: ${_pickTowerYard ?? 'Pilih area CY'}',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 12),
-                  ),
-                ),
-              ElevatedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _isFreeroamEditMode = !_isFreeroamEditMode;
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        _isFreeroamEditMode
-                            ? 'Edit Freeroam ON'
-                            : 'Edit Freeroam OFF',
-                      ),
-                      backgroundColor:
-                          _isFreeroamEditMode ? Colors.orange : Colors.blueGrey,
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                },
-                icon: Icon(
-                  _isFreeroamEditMode ? Icons.edit_off : Icons.edit,
-                  size: 18,
-                ),
-                label: Text(
-                  _isFreeroamEditMode ? 'Save' : 'Edit',
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _isFreeroamEditMode
-                      ? Colors.orange
-                      : const Color(0xFF607D8B),
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Tombol Check Status Now
-              ElevatedButton.icon(
-                onPressed: () async {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Checking Status...'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                  await _triggerPingCheck(force: true);
-                  await _loadDashboardData();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('✓ Status Updated!'),
-                        backgroundColor: Colors.green,
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Check Status'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4CAF50),
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                  clipBehavior: Clip.hardEdge,
+                  child: TerminalLayoutStatic(
+                    devices: _buildLayoutDevices(),
+                    towers: towers,
+                    masterLocations: masterLocations,
+                    isPickMode: _isPickTowerMode,
+                    pickYardFilter: _pickTowerYard,
+                    onAreaPicked: _handleAreaPickedForTower,
+                    isFreeroamEditEnabled: _isFreeroamEditMode,
+                    onTowerMoved: (towerId, latitude, longitude) {
+                      _handleTowerPositionUpdate(towerId, latitude, longitude);
+                    },
+                    onMasterMoved: (master, latitude, longitude) {
+                      _handleMasterPositionUpdate(master, latitude, longitude);
+                    },
+                    towerPoints: towerPoints
+                        .map(
+                          (p) => StaticTowerPoint(
+                            number: p.number,
+                            label: p.label,
+                            latitude: p.latitude,
+                            longitude: p.longitude,
+                            containerYard: p.containerYard,
+                            towerIdHint: p.towerIdHint,
+                          ),
+                        )
+                        .toList(),
                   ),
                 ),
               ),
             ],
           ),
-              const SizedBox(height: 18),
-          // Terminal Layout Static
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              clipBehavior: Clip.hardEdge,
-              child: TerminalLayoutStatic(
-                devices: _buildLayoutDevices(),
-                towers: towers,
-                masterLocations: masterLocations,
-                isPickMode: _isPickTowerMode,
-                pickYardFilter: _pickTowerYard,
-                onAreaPicked: _handleAreaPickedForTower,
-                isFreeroamEditEnabled: _isFreeroamEditMode,
-                onTowerMoved: (towerId, latitude, longitude) {
-                  _handleTowerPositionUpdate(towerId, latitude, longitude);
-                },
-                onMasterMoved: (master, latitude, longitude) {
-                  _handleMasterPositionUpdate(master, latitude, longitude);
-                },
-                towerPoints: towerPoints
-                    .map(
-                      (p) => StaticTowerPoint(
-                        number: p.number,
-                        label: p.label,
-                        latitude: p.latitude,
-                        longitude: p.longitude,
-                        containerYard: p.containerYard,
-                        towerIdHint: p.towerIdHint,
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildActivityTimeline() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.75),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1976D2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child:
-                    const Icon(Icons.timeline, color: Colors.white, size: 28),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Activity Timeline',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            height: 100,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: List.generate(50, (index) {
-                double height = 20 + (index % 5) * 15.0;
-                return Container(
-                  width: 4,
-                  height: height,
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                );
-              }),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.2),
+              width: 1.5,
             ),
-          ),
-          const SizedBox(height: 12),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '00:00',
-                style: TextStyle(color: Colors.black54, fontSize: 12),
-              ),
-              Text(
-                '12:00',
-                style: TextStyle(color: Colors.black54, fontSize: 12),
-              ),
-              Text(
-                '23:59',
-                style: TextStyle(color: Colors.black54, fontSize: 12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
-        ],
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1976D2).withOpacity(0.8),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child:
+                        const Icon(Icons.timeline, color: Colors.white, size: 28),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Activity Timeline',
+                    style: TextStyle(
+                      color: Colors.white, // Changed to white
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                height: 100,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(50, (index) {
+                    double height = 20 + (index % 5) * 15.0;
+                    return Container(
+                      width: 4,
+                      height: height,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.3), // Changed to white
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '00:00',
+                    style: TextStyle(
+                        color: Colors.white.withOpacity(0.6), fontSize: 12),
+                  ),
+                  Text(
+                    '12:00',
+                    style: TextStyle(
+                        color: Colors.white.withOpacity(0.6), fontSize: 12),
+                  ),
+                  Text(
+                    '23:59',
+                    style: TextStyle(
+                        color: Colors.white.withOpacity(0.6), fontSize: 12),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

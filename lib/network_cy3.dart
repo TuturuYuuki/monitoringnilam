@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:animations/animations.dart';
 import 'package:http/http.dart' as http;
@@ -10,6 +11,7 @@ import 'utils/tower_status_override.dart';
 import 'utils/location_label_utils.dart';
 import 'widgets/expandable_fab_nav.dart';
 import 'widgets/global_header_bar.dart';
+import 'widgets/global_sidebar_nav.dart';
 
 // Network Page CY 3
 class NetworkCY3Page extends StatefulWidget {
@@ -20,7 +22,7 @@ class NetworkCY3Page extends StatefulWidget {
 }
 
 class _NetworkCY3PageState extends State<NetworkCY3Page> {
-  String selectedTower = 'CY 3';
+  String selectedArea = 'CY 3';
   static const List<String> _areaOptions = [
     'CY 1',
     'CY 2',
@@ -372,15 +374,26 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
             children: [
               const GlobalHeaderBar(currentRoute: '/network-cy3'),
               Expanded(
-                child: SingleChildScrollView(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      return Padding(
-                        padding: EdgeInsets.all(isMobile ? 8 : 20.0),
-                        child: _buildContent(context, constraints),
-                      );
-                    },
-                  ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Sidebar (Kiri)
+                    const GlobalSidebarNav(currentRoute: '/network-cy3'),
+                    const SizedBox(width: 12),
+                    // Content (Kanan)
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            return Padding(
+                              padding: EdgeInsets.all(isMobile ? 8 : 20.0),
+                              child: _buildContent(context, constraints),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               _buildFooter(),
@@ -659,7 +672,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                       const Text('•', style: TextStyle(color: Colors.white70)),
                       const SizedBox(width: 8),
                       Text(
-                        'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}',
+                        'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
                         style: const TextStyle(
                           color: Colors.greenAccent,
                           fontSize: 12,
@@ -707,7 +720,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                       const SizedBox(height: 12),
                       _buildNetworkDropdown(constraints.maxWidth),
                       const SizedBox(height: 12),
-                      _buildContainerYardButton(constraints.maxWidth),
+                      _buildAreaButton(constraints.maxWidth),
                       const SizedBox(height: 12),
                       _buildCheckStatusButton(constraints.maxWidth),
                     ],
@@ -724,7 +737,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                       _buildStatCard('DOWN', '$warningTowers', Colors.red,
                           onTap: _showWarningList, width: cardWidth),
                       _buildNetworkDropdown(cardWidth),
-                      _buildContainerYardButton(cardWidth),
+                      _buildAreaButton(cardWidth),
                       _buildCheckStatusButton(cardWidth),
                     ],
                   );
@@ -740,150 +753,274 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
 
   Widget _buildStatCard(String title, String value, Color indicatorColor,
       {VoidCallback? onTap, double? width}) {
-    final card = Container(
-      width: width,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  title,
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            width: width,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.15),
+                  Colors.white.withOpacity(0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+                BoxShadow(
+                  color: Colors.white.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(-5, -5),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white.withOpacity(0.8),
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: indicatorColor,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: indicatorColor.withOpacity(0.6),
+                            blurRadius: 12,
+                            spreadRadius: 2,
+                          ),
+                          BoxShadow(
+                            color: Colors.white.withOpacity(0.4),
+                            blurRadius: 4,
+                            spreadRadius: 0.5,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  value,
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: -1,
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: indicatorColor,
-                  shape: BoxShape.circle,
+                const SizedBox(height: 4),
+                Container(
+                  height: 2,
+                  width: 40,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [indicatorColor, indicatorColor.withOpacity(0)],
+                    ),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
+              ],
             ),
           ),
-        ],
-      ),
-    );
-
-    if (onTap == null) return card;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: card,
+        ),
       ),
     );
   }
 
   Widget _buildNetworkDropdown(double width) {
-    return Container(
-      width: width,
-      height: 80,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF4A5F7F),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white24, width: 1.0),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'AREA',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          width: width,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(0.12),
+                Colors.white.withOpacity(0.02),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.25),
+              width: 1.5,
             ),
           ),
-          const SizedBox(height: 4),
-          Flexible(
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                // --- FIX: TAMPILAN "SELECT AREA" ---
-                value: null, // Set null agar value lama tidak tampil di kotak utama
-                hint: const Text(
-                  "Select Area", 
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                dropdownColor: const Color(0xFF4A5F7F),
-                isExpanded: true,
-                icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-                items: const ['CY 1', 'CY 2', 'CY 3']
-                    .map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value, style: const TextStyle(color: Colors.white)),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  if (newValue != null) {
-                    if (newValue == 'CY 1') {
-                      Navigator.pushReplacementNamed(context, '/network');
-                    } else if (newValue == 'CY 2') {
-                      Navigator.pushReplacementNamed(context, '/network-cy2');
-                    } else if (newValue == 'CY 3') {
-                      Navigator.pushReplacementNamed(context, '/network-cy3');
-                    }
-                  }
-                },
+                child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 20),
               ),
-            ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'AREA',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.6),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: null,
+                        hint: const Text(
+                          "SELECT AREA",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        dropdownColor: const Color(0xFF0F172A),
+                        isExpanded: true,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 20),
+                        items: _areaOptions.map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(
+                              value,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          if (newValue == null) return;
+                          
+                          if (newValue == 'CY 1') {
+                            Navigator.pushReplacementNamed(context, '/network');
+                          } else if (newValue == 'CY 2') {
+                            Navigator.pushReplacementNamed(context, '/network-cy2');
+                          } else if (newValue == 'CY 3') {
+                            Navigator.pushReplacementNamed(context, '/network-cy3');
+                          } else if (newValue == 'GATE') {
+                            Navigator.pushReplacementNamed(context, '/network-gate');
+                          } else if (newValue == 'PARKING') {
+                            Navigator.pushReplacementNamed(context, '/network-parking');
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildContainerYardButton(double width) {
-    return Container(
-      width: width,
-      height: 80,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF5D6D7E),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white24, width: 1.0),
-      ),
-      child: const Center(
-        child: Text(
-          'Container\nYard 3',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+  Widget _buildAreaButton(double width) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          width: width,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFF1976D2).withOpacity(0.12),
+                const Color(0xFF1976D2).withOpacity(0.02),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: const Color(0xFF1976D2).withOpacity(0.25),
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1976D2).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.location_on_rounded,
+                    color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'AREA',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.6),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      selectedArea,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -913,29 +1050,69 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
             );
           }
         },
-        child: Container(
-          width: width,
-          height: 80,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF4CAF50),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white24, width: 1.0),
-          ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.refresh, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Check Status',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              width: width,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFF4CAF50).withOpacity(0.12),
+                    const Color(0xFF4CAF50).withOpacity(0.02),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: const Color(0xFF4CAF50).withOpacity(0.25),
+                  width: 1.5,
                 ),
               ),
-            ],
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4CAF50).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'ACTION',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.6),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 2.0,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'CHECK STATUS',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 15,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -943,206 +1120,252 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
   }
 
    Widget _buildTowerList() {
-  // Show loading indicator
-  if (isLoading) {
-    return Container(
-      // 1. Ubah padding dari .all(20) menjadi symmetric vertical agar lebih tipis
-      padding: const EdgeInsets.symmetric(vertical: 16), 
-      width: double.infinity, // Memastikan lebar penuh
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    // Show loading indicator
+    if (isLoading) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 40),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.12),
+                  Colors.white.withOpacity(0.02),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 1.5,
+              ),
+            ),
+            child: const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Loading Access Point Data...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ],
-      ),
-      child: const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // 2. Perkecil ukuran loading spinner dengan SizedBox
-            SizedBox(
-              width: 24, 
-              height: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 3, // Garis spinner lebih tipis
-              ),
-            ),
-            // 3. Perkecil jarak antara spinner dan teks
-            SizedBox(height: 10), 
-            Text(
-              'Loading Access Point Data...',
-              style: TextStyle(
-                fontSize: 14, // Ukuran font sedikit diperkecil
-                color: Colors.black87,
-              ),
-            ),
-          ],
         ),
-      ),
-    );
-  }
+      );
+    }
 
-  // Show empty state if no data
+    // Show empty state if no data
     if (towers.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.signal_wifi_off,
-                size: 64,
-                color: Colors.grey,
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 60),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.12),
+                  Colors.white.withOpacity(0.02),
+                ],
               ),
-              SizedBox(height: 16),
-              Text(
-                'No Data Access Point',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 1.5,
+              ),
+            ),
+            child: const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.signal_wifi_off_rounded,
+                    size: 64,
+                    color: Colors.white38,
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'NO DATA ACCESS POINT',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Show data table when towers exist
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(0.12),
+                Colors.white.withOpacity(0.02),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.2),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 30,
+                offset: const Offset(0, 15),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF1976D2).withOpacity(0.8),
+                      const Color(0xFF1976D2).withOpacity(0.4),
+                    ],
+                  ),
                 ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Access Point List',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    // Pagination Controls
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withOpacity(0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.chevron_left_rounded, size: 22, color: Colors.white),
+                            onPressed: currentPage > 0 ? () => setState(() => currentPage--) : null,
+                            constraints: const BoxConstraints(),
+                            padding: EdgeInsets.zero,
+                          ),
+                          const SizedBox(width: 8),
+                          ...List.generate(totalPages, (index) {
+                            bool isCurrentPage = index == currentPage;
+                            return GestureDetector(
+                              onTap: () => setState(() => currentPage = index),
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: isCurrentPage ? Colors.white.withOpacity(0.2) : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '${index + 1}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 13,
+                                    color: isCurrentPage ? Colors.white : Colors.white70,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.chevron_right_rounded, size: 22, color: Colors.white),
+                            onPressed: currentPage < totalPages - 1 ? () => setState(() => currentPage++) : null,
+                            constraints: const BoxConstraints(),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Table Header
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFFC6B430).withOpacity(0.8), 
+                      const Color(0xFFC6B430).withOpacity(0.4), 
+                    ],
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    _buildHeaderCell('Access Point ID', flex: 1),
+                    _buildHeaderCell('Location', flex: 2),
+                    _buildHeaderCell('IP Address', flex: 2),
+                    _buildHeaderCell('Status', flex: 1),
+                    _buildHeaderCell('Action', flex: 1, isLast: true),
+                  ],
+                ),
+              ),
+
+              // Table Rows
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: paginatedData.length,
+                itemBuilder: (context, index) {
+                  return _buildTableRow(paginatedData[index]);
+                },
               ),
             ],
           ),
         ),
-      );
-  }
-
-    // Show data table when towers exist
-    return Container(
-        clipBehavior: Clip.antiAlias, 
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              color: Color(0xFF1976D2),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Access Point List',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                // Pagination Controls
-                    Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      // Tombol Previous
-                      IconButton(
-                        icon: const Icon(Icons.chevron_left, size: 20),
-                        onPressed: currentPage > 0 ? () => setState(() => currentPage--) : null,
-                        constraints: const BoxConstraints(),
-                        padding: EdgeInsets.zero,
-                      ),
-                      const SizedBox(width: 8),
-
-                      // LIST ANGKA HALAMAN
-                      // Kita generate angka berdasarkan totalPages
-                      ...List.generate(totalPages, (index) {
-                        bool isCurrentPage = index == currentPage;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              currentPage = index;
-                            });
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              // Beri warna background jika halaman sedang aktif
-                              color: isCurrentPage ? const Color(0xFF1976D2) : Colors.transparent,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                // Beri warna teks putih jika aktif, biru jika tidak aktif
-                                color: isCurrentPage ? Colors.white : const Color(0xFF1976D2),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-
-                      const SizedBox(width: 8),
-                      // Tombol Next
-                      IconButton(
-                        icon: const Icon(Icons.chevron_right, size: 20),
-                        onPressed: currentPage < totalPages - 1 ? () => setState(() => currentPage++) : null,
-                        constraints: const BoxConstraints(),
-                        padding: EdgeInsets.zero,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Table Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            width: double.infinity,
-            color: const Color(0xFFC6B430),
-            child: Row(
-              children: [
-                _buildHeaderCell('Access Point ID', flex: 1),
-                _buildHeaderCell('Lokasi', flex: 2),
-                _buildHeaderCell('IP Address', flex: 2),
-                _buildHeaderCell('Status', flex: 1),
-                _buildHeaderCell('Action', flex: 1, isLast: true),
-              ],
-            ),
-          ),
-
-          // Table Rows
-          ...paginatedData.map((tower) => _buildTableRow(tower)),
-        ],
       ),
     );
   }
@@ -1150,51 +1373,57 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
   Widget _buildTableRow(Tower tower) {
     bool isWarning = isDownStatus(tower.status);
     String statusLabel = isWarning ? 'DOWN' : tower.status;
-    Color statusTextColor = isWarning ? Colors.red : Colors.black87;
+    Color statusColor = isWarning ? Colors.redAccent : Colors.greenAccent;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFE8D5C4),
+        color: Colors.white.withOpacity(0.02),
         border: Border(
-          left: BorderSide(color: Colors.grey[500]!, width: 1),
-          right: BorderSide(color: Colors.grey[500]!, width: 1),
-          bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+          bottom: BorderSide(color: Colors.white.withOpacity(0.05), width: 1),
         ),
       ),
       child: Row(
         children: [
-          _tableCell(tower.towerId, flex: 1, fontWeight: FontWeight.w800),
-          _tableCell(tower.location, flex: 2, fontWeight: FontWeight.w800),
+          _tableCell(tower.towerId, flex: 1, fontWeight: FontWeight.bold),
+          _tableCell(tower.location, flex: 2),
           _tableCell(tower.ipAddress, flex: 2),
           _tableCell(
             statusLabel,
             flex: 1,
-            fontWeight: FontWeight.w800,
-            color: statusTextColor,
+            color: statusColor,
+            fontWeight: FontWeight.bold,
           ),
-
-          // --- KOLOM AKSI KHUSUS CY 3 ---
           Expanded(
             flex: 1,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
-                  onPressed: () => _showEditForm(tower),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                  onPressed: () => _confirmDelete(tower),
-                ),
+                _buildActionButton(Icons.edit_rounded, Colors.blueAccent, () => _showEditForm(tower)),
+                const SizedBox(width: 12),
+                _buildActionButton(Icons.delete_rounded, Colors.redAccent, () => _confirmDelete(tower)),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton(IconData icon, Color color, VoidCallback onTap) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: color.withOpacity(0.2)),
+          ),
+          child: Icon(icon, color: color, size: 18),
+        ),
       ),
     );
   }
@@ -1223,26 +1452,17 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
     );
   }
 
-  Widget _buildHeaderCell(String label,
-      {required int flex, bool isLast = false}) {
+  Widget _buildHeaderCell(String label, {required int flex, bool isLast = false}) {
     return Expanded(
       flex: flex,
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border(
-            right: isLast
-                ? BorderSide.none
-                : BorderSide(color: Colors.white.withOpacity(0.35), width: 1),
-          ),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-            fontSize: 14,
-          ),
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Colors.white.withOpacity(0.9),
+          fontWeight: FontWeight.w900,
+          fontSize: 12,
+          letterSpacing: 1.0,
         ),
       ),
     );
@@ -1250,27 +1470,27 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
 
   Widget _tableCell(String text,
       {required int flex,
-      FontWeight fontWeight = FontWeight.w700,
-      Color color = Colors.black,
-      TextAlign align = TextAlign.center,
-      bool isLast = false}) {
+      Color color = Colors.white,
+      FontWeight fontWeight = FontWeight.w500}) {
     return Expanded(
       flex: flex,
       child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
           border: Border(
-            right: isLast
-                ? BorderSide.none
-                : BorderSide(color: Colors.grey[500]!, width: 0.8),
+            right: BorderSide(
+              color: Colors.white.withOpacity(0.05),
+              width: 1,
+            ),
           ),
         ),
         child: Text(
           text,
-          textAlign: align,
+          textAlign: TextAlign.center,
           style: TextStyle(
-            color: color,
+            color: color.withOpacity(0.9),
+            fontSize: 13,
             fontWeight: fontWeight,
-            fontSize: 14,
           ),
         ),
       ),

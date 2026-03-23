@@ -27,14 +27,14 @@ class ApiService {
       final startTime = DateTime.now();
       final response = await http
           .get(
-        Uri.parse('$baseUrl?endpoint=auth&action=check-connection'),
+        Uri.parse('$baseUrl?endpoint=ping'),
       )
           .timeout(
         const Duration(seconds: 5),
         onTimeout: () {
           print('❌ Connection Test TIMEOUT After 5 Seconds');
           return http.Response(
-            '{"success":False,"Message":"Cannot Reach Backend - Timeout"}',
+            '{"success":false,"message":"Cannot Reach Backend - Timeout"}',
             408,
           );
         },

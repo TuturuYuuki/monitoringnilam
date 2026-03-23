@@ -848,147 +848,148 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     required bool zoomed,
   }) {
     final color = _resolveTowerColor(devicesHere);
-    final showDot = devicesHere.isNotEmpty;
 
-    final size = zoomed ? 52.0 : 36.0;
-    final padding = zoomed ? 7.0 : 5.0;
-    final iconSize = zoomed ? 20.0 : 14.0;
-    final label = _towerLongLabel(tower);
-    final labelPadH = zoomed ? 6.0 : 4.0;
-    final labelPadV = zoomed ? 2.0 : 1.0;
+    if (!zoomed) {
+      // ZOOM OUT: Hanya icon tower saja, tidak ada titik status (Dot)
+      if (devicesHere.isEmpty) return const SizedBox.shrink();
+
+      const outerSize = 32.0;
+      const innerIconSize = 25.0;
+      return GestureDetector(
+        onTap: () => _showTowerDetailPopup(tower, devicesHere),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: Container(
+            width: outerSize,
+            height: outerSize,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Center(
+              child: _buildTowerIcon(size: innerIconSize, fallbackColor: color.withOpacity(0.8)),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // ZOOMED: Tetap icon bulat (tanpa label sesuai permintaan sebelumnya)
+    const size = 42.0;
+    const padding = 6.0;
+    const iconSize = 18.0;
 
     return GestureDetector(
       onTap: () => _showTowerDetailPopup(tower, devicesHere),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: size,
-                  height: size,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [color, color.withOpacity(0.8)],
-                    ),
-                    border: Border.all(
-                        color: Colors.white, width: zoomed ? 2.5 : 2.0),
-                    boxShadow: [
-                      BoxShadow(
-                          color: color.withOpacity(0.6),
-                          blurRadius: zoomed ? 10 : 6,
-                          spreadRadius: zoomed ? 2 : 1)
-                    ],
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(padding),
-                    child: _buildTowerIcon(
-                      size: iconSize,
-                      fallbackColor: Colors.white,
-                    ),
-                  ),
-                ),
-               if (devicesHere.isNotEmpty)
-                  Positioned(
-                    right: -3.0,
-                    top: -3.0,
-                    child: _buildTowerStatusDot(devicesHere, zoomed: zoomed),
-                  ),
-              ],
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [color, color.withOpacity(0.8)],
             ),
-            const SizedBox(height: 4),
-            Container(
-              padding: EdgeInsets.symmetric(
-                  horizontal: labelPadH, vertical: labelPadV),
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 8,
-                      fontWeight: FontWeight.bold,
-                      height: 1)),
+            border: Border.all(color: Colors.white, width: 2.0),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.5),
+                blurRadius: 8,
+                spreadRadius: 1,
+              )
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(padding),
+            child: _buildTowerIcon(
+              size: iconSize,
+              fallbackColor: Colors.white,
             ),
-          ],
+          ),
         ),
       ),
     );
   }
-
   // ─── Fallback tower marker (untuk tower tanpa upstream data) ───
   Widget _buildFallbackTowerMarkerWidget({
     required String code,
     required bool zoomed,
   }) {
-    final size = zoomed ? 52.0 : 36.0;
-    final padding = zoomed ? 7.0 : 5.0;
-    final iconSize = zoomed ? 20.0 : 14.0;
+    const color = Color(0xFF78909C); // Greyscale for fallback
+
+    if (!zoomed) {
+      // OVERVIEW: Fallback Tower Icon with White Background (No status dot)
+      const outerSize = 32.0;
+      const innerIconSize = 25.0;
+      return MouseRegion(
+        cursor: SystemMouseCursors.basic,
+        child: Container(
+          width: outerSize,
+          height: outerSize,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.12),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Center(
+            child: _buildTowerIcon(size: innerIconSize, fallbackColor: color),
+          ),
+        ),
+      );
+    }
+
+    // ZOOMED: Icon-style fallback marker, NO label
+    const size = 42.0;
+    const padding = 6.0;
+    const iconSize = 18.0;
 
     return MouseRegion(
       cursor: SystemMouseCursors.basic,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  const Color(0xFF78909C),
-                  const Color(0xFF607D8B).withOpacity(0.85),
-                ],
-              ),
-              border: Border.all(color: Colors.white, width: zoomed ? 2.5 : 2.0),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF607D8B).withOpacity(0.55),
-                  blurRadius: zoomed ? 10 : 6,
-                  spreadRadius: zoomed ? 2 : 1,
-                )
-              ],
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(padding),
-              child: _buildTowerIcon(
-                size: iconSize,
-                fallbackColor: Colors.white,
-              ),
-            ),
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              color,
+              const Color(0xFF607D8B).withOpacity(0.85),
+            ],
           ),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.75),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              'Tower $code',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                height: 1,
-              ),
-            ),
+          border: Border.all(color: Colors.white, width: 2.0),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF607D8B).withOpacity(0.55),
+              blurRadius: 8,
+              spreadRadius: 1,
+            )
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(padding),
+          child: _buildTowerIcon(
+            size: iconSize,
+            fallbackColor: Colors.white,
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1023,12 +1024,10 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       final x = (area.left + pos['cx']! * area.width) * w;
       final y = (area.top + pos['cy']! * area.height) * h;
 
-      // Zoom-out tower: smaller icon (36px)
-      const markerW = 46.0, markerH = 52.0;
-      final left = (x - markerW / 2)
-          .clamp(area.left * w + 2, (area.left + area.width) * w - markerW - 2);
-      final top = (y - markerH / 2)
-          .clamp(area.top * h + 2, (area.top + area.height) * h - markerH - 2);
+      // Zoom-out tower: Asset Icon Outer Container (32px)
+      const markerW = 32.0, markerH = 32.0;
+      final left = (x - markerW / 2).clamp(area.left * w, (area.left + area.width) * w - markerW);
+      final top = (y - markerH / 2).clamp(area.top * h, (area.top + area.height) * h - markerH);
       final canDrag = widget.isFreeroamEditEnabled;
 
       markers.add(Positioned(
@@ -1098,9 +1097,9 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       final x = pos['cx']! * w;
       final y = pos['cy']! * h;
 
-      const markerW = 64.0, markerH = 72.0;
-      final left = (x - 32).clamp(2.0, w - markerW - 2);
-      final top = (y - 36).clamp(2.0, h - markerH - 2);
+      const markerW = 42.0, markerH = 42.0;
+      final left = (x - 21).clamp(2.0, w - markerW - 2);
+      final top = (y - 21).clamp(2.0, h - markerH - 2);
       final canDrag = widget.isFreeroamEditEnabled;
 
       // ═══════════════════════════════════════════════════════════
@@ -1150,65 +1149,54 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     return markers;
   }
 
-  // ─── Master Location markers (RTG, RS, CC, TOWER) ─────────────
   List<Widget> _buildMasterLocationMarkers(double w, double h) {
     final markers = <Widget>[];
-
-    if (widget.masterLocations.isEmpty) {
-      return markers;
-    }
+    if (widget.masterLocations.isEmpty) return markers;
 
     for (final location in widget.masterLocations) {
-      final locType =
-          (location['location_type'] ?? '').toString().toUpperCase();
-      final locCode = (location['location_code'] ?? '').toString();
-      final locName = (location['location_name'] ?? '').toString();
+      final locType = (location['location_type'] ?? '').toString().toUpperCase();
+
+      // Tower dilewati karena punya fungsi builder sendiri (_buildTowerMarkers)
+      if (locType == 'TOWER') continue;
+
       final containerYard = (location['container_yard'] ?? '').toString();
       final resolved = _resolveMasterPosition(location);
 
-      // Marker layout ini pakai koordinat relatif 0..1.
       if (resolved == null) continue;
 
-      // Find which area this master location belongs to
+      // Cari area yard untuk kalkulasi posisi
       final area = areas.firstWhere(
         (a) => a.id == _normalizeAreaId(containerYard),
         orElse: () => areas.first,
       );
 
-      final markerColor = DeviceIconResolver.colorForType(locType);
-
       final cx = resolved.dx;
       final cy = resolved.dy;
 
-      // Calculate position within the area
+      // Kalkulasi posisi pixel
       final baseX = (area.left + cx * area.width) * w;
       final baseY = (area.top + cy * area.height) * h;
 
-      // Zoom-out: smaller icon (36px) with label
-      const markerW = 52.0;
-      const markerH = 58.0;
-      final left = (baseX - markerW / 2)
-          .clamp(area.left * w + 2, (area.left + area.width) * w - markerW - 2);
-      final top = (baseY - markerH / 2)
-          .clamp(area.top * h + 2, (area.top + area.height) * h - markerH - 2);
-      final canDrag =
-          _isDraggableMasterType(locType) && widget.isFreeroamEditEnabled;
+      // Ukuran Ikon Master saat Zoom Out (32px)
+      const markerSize = 32.0;
+      final left = (baseX - markerSize / 2).clamp(area.left * w, (area.left + area.width) * w - markerSize);
+      final top = (baseY - markerSize / 2).clamp(area.top * h, (area.top + area.height) * h - markerSize);
+      
       final key = _masterPreviewKey(location);
+      final canDrag = _isDraggableMasterType(locType) && widget.isFreeroamEditEnabled;
 
       markers.add(Positioned(
         left: left,
         top: top,
+        width: markerSize,
+        height: markerSize,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onPanUpdate: canDrag
               ? (details) {
                   final current = _masterDragPreview[key] ?? Offset(cx, cy);
-                  final newCx =
-                      (current.dx + (details.delta.dx / (area.width * w)))
-                          .clamp(0.0, 1.0);
-                  final newCy =
-                      (current.dy + (details.delta.dy / (area.height * h)))
-                          .clamp(0.0, 1.0);
+                  final newCx = (current.dx + (details.delta.dx / (area.width * w))).clamp(0.0, 1.0);
+                  final newCy = (current.dy + (details.delta.dy / (area.height * h))).clamp(0.0, 1.0);
                   setState(() {
                     _masterDragPreview[key] = Offset(newCx, newCy);
                   });
@@ -1224,50 +1212,10 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
               : null,
           onTap: canDrag ? null : () => _showMasterLocationPopup(location),
           child: MouseRegion(
-            cursor:
-                canDrag ? SystemMouseCursors.move : SystemMouseCursors.click,
-            child: SizedBox(
-              width: markerW,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.12),
-                          blurRadius: 4,
-                          spreadRadius: 0.5,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                    child: _buildMasterTypeVisual(locType, size: 32),
-                  ),
-                  const SizedBox(height: 2),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 4, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: markerColor.withOpacity(0.85),
-                      borderRadius: BorderRadius.circular(3),
-                      border: Border.all(color: Colors.white, width: 0.8),
-                    ),
-                    child: Text(
-                      locCode.isNotEmpty ? locCode : locName,
-                      style: const TextStyle(
-                        fontSize: 7,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                  ),
-                ],
-              ),
+            cursor: canDrag ? SystemMouseCursors.move : SystemMouseCursors.click,
+            child: Center(
+              // MENGGUNAKAN VISUAL IKON ASLI (Bukan Dot)
+              child: _buildMasterTypeVisual(locType, size: 28),
             ),
           ),
         ),
@@ -1285,31 +1233,29 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
           _normalizeAreaId((location['container_yard'] ?? '').toString());
       if (containerYard != area.id) continue;
 
+      final locType =
+          (location['location_type'] ?? '').toString().toUpperCase();
+      // Skip TOWER type as they are handled by _buildZoomedTowerMarkers
+      if (locType == 'TOWER') continue;
+
       final resolved = _resolveMasterPosition(location);
       if (resolved == null) continue;
 
       final x = resolved.dx * w;
       final y = resolved.dy * h;
-      const markerW = 72.0;
-      const markerH = 72.0;
-      final left = (x - markerW / 2).clamp(2.0, w - markerW - 2.0);
-      final top = (y - markerH / 2).clamp(2.0, h - markerH - 2.0);
+      const markerSize = 48.0;
+      final left = (x - markerSize / 2).clamp(2.0, w - markerSize - 2.0);
+      final top = (y - markerSize / 2).clamp(2.0, h - markerSize - 2.0);
 
-      final locType =
-          (location['location_type'] ?? '').toString().toUpperCase();
-      final locCode = (location['location_code'] ?? '').toString();
-      final locName = (location['location_name'] ?? '').toString();
-      final markerColor = DeviceIconResolver.colorForType(locType);
       final canDrag =
           _isDraggableMasterType(locType) && widget.isFreeroamEditEnabled;
       final key = _masterPreviewKey(location);
 
-      const labelWidth = 80.0;
-      const totalHeight = markerH + 2 + 16; // marker + spacing + label height
-
       markers.add(Positioned(
-        left: (x - labelWidth / 2).clamp(2.0, w - labelWidth - 2.0),
-        top: (y - markerH / 2).clamp(2.0, h - totalHeight - 2.0),
+        left: left,
+        top: top,
+        width: markerSize,
+        height: markerSize,
         child: GestureDetector(
           onPanUpdate: canDrag
               ? (details) {
@@ -1336,54 +1282,19 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
           child: MouseRegion(
             cursor:
                 canDrag ? SystemMouseCursors.move : SystemMouseCursors.click,
-            child: SizedBox(
-              width: labelWidth,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.18),
-                          blurRadius: 8,
-                          spreadRadius: 1,
-                          offset: const Offset(0, 2),
-                        ),
-                        BoxShadow(
-                          color: Colors.white.withOpacity(0.45),
-                          blurRadius: 6,
-                          spreadRadius: -1,
-                          offset: const Offset(0, -1),
-                        ),
-                      ],
-                    ),
-                    child: _buildMasterTypeVisual(locType, size: 48),
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: markerColor.withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: Colors.white, width: 1),
-                    ),
-                    child: Text(
-                      locCode.isNotEmpty ? locCode : locName,
-                      style: const TextStyle(
-                        fontSize: 9,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.18),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
+              child: _buildMasterTypeVisual(locType, size: 48),
             ),
           ),
         ),
@@ -1626,8 +1537,8 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       final gridSize = deviceCount + 1; // +1 for center (type marker position)
       final cols = gridSize <= 2 ? gridSize : (sqrt(gridSize.toDouble())).ceil();
       final rows = (gridSize / cols).ceil();
-      final spacingX = 13.0;
-      final spacingY = 11.0;
+      const spacingX = 13.0;
+      const spacingY = 11.0;
 
       // Generate all offset grid positions centered on parent
       final positions = <List<double>>[];
@@ -1653,25 +1564,21 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     return markers;
   }
 
-  // Build device marker widget (zoom-out): type icon + status dot outside edge.
-  Widget _buildDeviceMarker(AddedDevice device, double x, double y, double w,
+ Widget _buildDeviceMarker(AddedDevice device, double x, double y, double w,
       double h, ContainerYardArea area) {
-    const markerSize = 22.0;
-    const statusDotSize = 9.0;
-    const half = markerSize / 2;
+    // Ukuran Dot saat Zoom Out
+    const dotSize = 10.0;
+    const half = dotSize / 2;
     final isUp = device.status.toUpperCase() == 'UP';
     final statusColor = isUp ? Colors.green : Colors.red;
-    final baseColor = DeviceIconResolver.colorForType(device.type);
 
-    // Clamp to area bounds
-    final clampedX =
-        x.clamp(area.left * w + half, (area.left + area.width) * w - half);
-    final clampedY =
-        y.clamp(area.top * h + half, (area.top + area.height) * h - half);
+    // Clamp agar tidak keluar area
+    final clampedX = x.clamp(area.left * w + half, (area.left + area.width) * w - half);
+    final clampedY = y.clamp(area.top * h + half, (area.top + area.height) * h - half);
 
     return Positioned(
-      left: clampedX - (statusDotSize / 2),
-      top: clampedY - (statusDotSize / 2),
+      left: clampedX - half,
+      top: clampedY - half,
       child: GestureDetector(
         onTap: () {
           _showDeviceDetailPopup(device);
@@ -1680,17 +1587,17 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
         child: MouseRegion(
           cursor: SystemMouseCursors.click,
           child: Container(
-            width: statusDotSize,
-            height: statusDotSize,
+            width: dotSize,
+            height: dotSize,
             decoration: BoxDecoration(
               color: statusColor,
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 1.8),
+              border: Border.all(color: Colors.white, width: 1.5),
               boxShadow: [
                 BoxShadow(
-                  color: statusColor.withOpacity(0.45),
-                  blurRadius: 6,
-                  spreadRadius: 0.8,
+                  color: statusColor.withOpacity(0.4),
+                  blurRadius: 3,
+                  spreadRadius: 1,
                 ),
               ],
             ),
@@ -1839,8 +1746,8 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       final gridSize = count + 1; // +1 for center (type marker position)
       final cols = gridSize <= 2 ? gridSize : (sqrt(gridSize.toDouble())).ceil();
       final rows = (gridSize / cols).ceil();
-      final spacingX = 30.0;
-      final spacingY = 26.0;
+      const spacingX = 30.0;
+      const spacingY = 26.0;
 
       // Generate all offset grid positions centered on parent
       final positions = <List<double>>[];
@@ -1890,38 +1797,32 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
         },
         child: MouseRegion(
           cursor: SystemMouseCursors.click,
-          child: Container(
-            width: markerSize,
-            height: markerSize,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: markerColor.withOpacity(0.8), width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: markerColor.withOpacity(0.35),
-                  blurRadius: 8,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-            child: Center(
-              child: Container(
-                width: 22,
-                height: 22,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // White circular background
+              Container(
+                width: markerSize,
+                height: markerSize,
                 decoration: BoxDecoration(
-                  color: markerColor,
+                  color: Colors.white,
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.8),
-                ),
-                child: Center(
-                  child: Icon(
-                    DeviceIconResolver.iconForType(device.type),
-                    size: iconSize,
-                    color: Colors.white,
-                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
                 ),
               ),
-            ),
+              // Type Icon
+              Icon(
+                DeviceIconResolver.iconForType(device.type),
+                size: iconSize + 2,
+                color: markerColor,
+              ),
+            ],
           ),
         ),
       ),

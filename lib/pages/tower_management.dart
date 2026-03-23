@@ -21,19 +21,36 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
   String _selectedYard = 'CY1';
   double? _selectedLat;
   double? _selectedLng;
+  bool _isIdDuplicate = false;
 
   List<Tower> _towers = [];
   List<Map<String, dynamic>> _masterLocations = [];
   bool _isLoading = true;
   final int itemsPerPage = 10;
   int _currentPage = 1;
-  DateTime? _lastRefreshTime;
 
   @override
   void initState() {
     super.initState();
     _loadTowers();
     _loadNonTowerMasters();
+    _towerIdController.addListener(_idCheckListener);
+  }
+
+  void _idCheckListener() {
+    final code = _towerIdController.text.trim().toUpperCase();
+    if (code.isEmpty) {
+      if (_isIdDuplicate) setState(() => _isIdDuplicate = false);
+      return;
+    }
+    
+    final isDup = _masterLocations.any((loc) =>
+        (loc['location_type'] ?? '').toString().toUpperCase() == _selectedMasterType &&
+        (loc['location_code'] ?? '').toString().toUpperCase() == code);
+    
+    if (isDup != _isIdDuplicate) {
+      setState(() => _isIdDuplicate = isDup);
+    }
   }
 
   @override
@@ -49,7 +66,6 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
       setState(() {
         _towers = towers;
         _isLoading = false;
-        _lastRefreshTime = DateTime.now();
         _currentPage = 1; // Reset to first page when loading new data
       });
     } catch (_) {
@@ -452,15 +468,16 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
   Widget _statBox(String title, String value, Color color) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.82),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
         border: Border(left: BorderSide(color: color, width: 6)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -493,37 +510,50 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.82),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
             blurRadius: 15,
+            spreadRadius: 2,
           ),
         ],
+        border: Border.all(
+          color: Colors.grey.withOpacity(0.2),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              Container(
+                width: 4,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1976D2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 12),
               Text(
                 _selectedMasterType == 'TOWER'
                     ? 'Register New Master Data'
                     : 'Register New Master ${_selectedMasterType.toLowerCase()}',
-                style:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              if (_lastRefreshTime != null)
-                Text(
-                  'Sync: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}',
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF2C3E50),
+                  letterSpacing: 0.2,
                 ),
+              ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
@@ -532,13 +562,21 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                     labelText: 'Master Type',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.category_outlined),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   ),
                   items: const ['TOWER', 'RTG', 'RS', 'CC']
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .map((e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(e, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          ))
                       .toList(),
                   onChanged: (val) {
                     if (val != null) {
-                      setState(() => _selectedMasterType = val);
+                      setState(() {
+                        _selectedMasterType = val;
+                        // Re-validate after type change
+                        _idCheckListener();
+                      });
                     }
                   },
                 ),
@@ -546,10 +584,19 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
               const SizedBox(width: 12),
               Expanded(
                 flex: 2,
-                child: _buildTextField(
-                  _getExampleForType(_selectedMasterType),
-                  _towerIdController,
-                  _getIconForType(_selectedMasterType),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildTextField(
+                      'ID',
+                      _towerIdController,
+                      _getIconForType(_selectedMasterType),
+                      hint: _getExampleForType(_selectedMasterType),
+                      isDuplicate: _isIdDuplicate,
+                    ),
+                    const SizedBox(height: 6),
+                    _buildUsedCodesForType(_selectedMasterType),
+                  ],
                 ),
               ),
               const SizedBox(width: 12),
@@ -560,6 +607,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                     labelText: 'Yard Area',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.grid_view),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   ),
                   items: ['CY1', 'CY2', 'CY3', 'GATE', 'PARKING']
                       .map((e) => DropdownMenuItem(value: e, child: Text(e)))
@@ -577,29 +625,32 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
           Row(
             children: [
               Expanded(child: _buildPositionStatus()),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               ElevatedButton.icon(
                 onPressed: () => _openPositionPicker(),
-                icon: const Icon(Icons.place_outlined),
+                icon: const Icon(Icons.place_rounded, size: 20),
                 label: const Text('Pick Position'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueGrey[700],
+                  backgroundColor: const Color(0xFF455A64),
                   foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               ElevatedButton(
                 onPressed: _submitForm,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1976D2),
                   foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 34, vertical: 18),
+                  elevation: 2,
+                  shadowColor: const Color(0xFF1976D2).withOpacity(0.4),
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text('SAVE',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
+                child: const Text('SAVE DATA',
+                    style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.8)),
               ),
             ],
           ),
@@ -609,48 +660,186 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
   }
 
   Widget _buildTextField(
-      String label, TextEditingController ctrl, IconData icon) {
+      String label, TextEditingController ctrl, IconData icon,
+      {String? hint, bool isDuplicate = false}) {
+    final bool isEmpty = ctrl.text.trim().isEmpty;
     return TextField(
       controller: ctrl,
       decoration: InputDecoration(
         labelText: label,
+        hintText: hint,
         prefixIcon: Icon(icon, size: 20),
-        border: const OutlineInputBorder(),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        suffixIcon: isEmpty
+            ? null
+            : Icon(
+                isDuplicate ? Icons.error_outline : Icons.check_circle_outline,
+                color: isDuplicate ? Colors.red : Colors.green,
+                size: 20,
+              ),
+        border: OutlineInputBorder(
+          borderSide: BorderSide(
+            color: isEmpty
+                ? Colors.grey
+                : (isDuplicate ? Colors.red : Colors.green),
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(
+            color: isEmpty
+                ? Colors.grey.shade400
+                : (isDuplicate ? Colors.red : Colors.green),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(
+            color: isDuplicate ? Colors.red : Colors.blue,
+            width: 2,
+          ),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
   }
 
+  Widget _buildUsedCodesForType(String type) {
+    final usedCodes = _masterLocations
+        .where((loc) =>
+            (loc['location_type'] ?? '').toString().toUpperCase() == type)
+        .map((loc) => (loc['location_code'] ?? '').toString())
+        .where((code) => code.isNotEmpty)
+        .toList();
+
+    // Natural sort
+    usedCodes.sort((a, b) {
+      int extractNumber(String s) {
+        final match = RegExp(r'\d+').firstMatch(s);
+        return match != null ? int.parse(match.group(0)!) : 0;
+      }
+
+      int numA = extractNumber(a);
+      int numB = extractNumber(b);
+      if (numA != numB) return numA.compareTo(numB);
+      return a.toLowerCase().compareTo(b.toLowerCase());
+    });
+
+    if (usedCodes.isEmpty) {
+      return const Text(
+        'No Used Device Name Available For This Type.',
+        style: TextStyle(fontSize: 11, color: Colors.blueGrey),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Used Device Names:',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: Colors.blueGrey,
+                letterSpacing: 0.5,
+              ),
+            ),
+            Text(
+              '${usedCodes.length} Total',
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Colors.blueGrey,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          height: 32,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: usedCodes.length,
+            physics: const BouncingScrollPhysics(),
+            itemBuilder: (context, index) {
+              final code = usedCodes[index];
+              return Container(
+                margin: const EdgeInsets.only(right: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blueGrey.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blueGrey.withOpacity(0.15)),
+                ),
+                child: Center(
+                  child: Text(
+                    code,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.blueGrey,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
   Widget _buildPositionStatus() {
     final hasPos = _selectedLat != null && _selectedLng != null;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
-        color: hasPos ? Colors.green[50] : Colors.orange[50],
-        borderRadius: BorderRadius.circular(8),
+        color: hasPos ? const Color(0xFFE8F5E9) : const Color(0xFFFFF3E0),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-            color: hasPos ? Colors.green[200]! : Colors.orange[200]!),
+          color: hasPos ? const Color(0xFF81C784).withOpacity(0.4) : const Color(0xFFFFB74D).withOpacity(0.4),
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
-          Icon(
-            hasPos ? Icons.check_circle : Icons.info_outline,
-            size: 16,
-            color: hasPos ? Colors.green : Colors.orange,
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: hasPos ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              hasPos ? Icons.location_on : Icons.location_off_rounded,
+              size: 20,
+              color: hasPos ? Colors.green : Colors.orange,
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              hasPos
-                  ? 'Selected: ${_selectedLat!.toStringAsFixed(5)}, ${_selectedLng!.toStringAsFixed(5)}'
-                  : 'Belum pilih posisi di area CY',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: hasPos ? Colors.green[800] : Colors.orange[800],
-              ),
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  hasPos ? 'Position Selected' : 'No Position Selected',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: hasPos ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  hasPos
+                      ? '${_selectedLat!.toStringAsFixed(6)}, ${_selectedLng!.toStringAsFixed(6)}'
+                      : 'Please pick a position in the CY area',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: hasPos ? const Color(0xFF2E7D32).withOpacity(0.7) : const Color(0xFFE65100).withOpacity(0.7),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -1005,23 +1194,50 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: Colors.white
-            .withOpacity(0.9), // Sedikit lebih solid agar teks jelas
-        borderRadius: BorderRadius.circular(16), // Border radius lebih lembut
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withOpacity(0.08),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
         ],
+        border: Border.all(color: Colors.grey.withOpacity(0.2)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // HEADER TABEL
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1976D2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'All Master Location List',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF2C3E50),
+                  ),
+                ),
+              ],
+            ),
+          ),
           Container(
-            color: const Color(0xFF1976D2),
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            decoration: const BoxDecoration(
+              color: Color(0xFF455A64),
+            ),
             child: const Row(
               children: [
                 Expanded(
@@ -1034,7 +1250,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                             letterSpacing: 1))),
                 Expanded(
                     flex: 4,
-                    child: Text('NAME / ID',
+                    child: Text('NAME',
                         style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
