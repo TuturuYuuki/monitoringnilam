@@ -1119,7 +1119,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: [
                                             Text(
-                                              'Used Names For This Type (${_usedNamesForType.length})',
+                                              'Used Names For This Type',
                                               style: const TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w700,
@@ -1169,7 +1169,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                     )
                                   else
                                     const Text(
-                                      'No Used Device Name Available For This Type.',
+                                      'No Used Device Name Available For This Type',
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: Colors.black54,
