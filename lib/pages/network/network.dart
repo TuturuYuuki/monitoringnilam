@@ -1,28 +1,26 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:animations/animations.dart';
-import 'package:http/http.dart' as http;
-import 'main.dart';
-import 'services/api_service.dart';
-import 'models/tower_model.dart';
-import 'route_proxy_page.dart';
-import 'utils/tower_status_override.dart';
-import 'utils/location_label_utils.dart';
-import 'widgets/expandable_fab_nav.dart';
-import 'widgets/global_header_bar.dart';
-import 'widgets/global_sidebar_nav.dart';
+import 'package:monitoring/models/tower_model.dart';
+import 'package:monitoring/services/api_service.dart';
+import 'dart:ui';
+import 'package:monitoring/main.dart';
+import 'package:monitoring/utils/ui_utils.dart';
+import 'package:monitoring/utils/tower_status_override.dart';
+import 'package:monitoring/utils/location_label_utils.dart';
+import 'package:monitoring/widgets/global_header_bar.dart';
+import 'package:monitoring/widgets/global_sidebar_nav.dart';
+import 'package:monitoring/widgets/global_footer.dart';
 
-// Network Page CY 3
-class NetworkCY3Page extends StatefulWidget {
-  const NetworkCY3Page({super.key});
+// Network Page
+class NetworkPage extends StatefulWidget {
+  const NetworkPage({super.key});
 
   @override
-  State<NetworkCY3Page> createState() => _NetworkCY3PageState();
+  State<NetworkPage> createState() => _NetworkPageState();
 }
 
-class _NetworkCY3PageState extends State<NetworkCY3Page> {
-  String selectedArea = 'CY 3';
+class _NetworkPageState extends State<NetworkPage> {
+  String selectedArea = 'CY 1';
   static const List<String> _areaOptions = [
     'CY 1',
     'CY 2',
@@ -37,11 +35,14 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
   bool isLoading = true;
   Timer? _refreshTimer;
   DateTime? _lastRefreshTime;
+  bool _isAutoRefreshEnabled = true;
+  bool _isConnected = true;
 
   @override
   void initState() {
     super.initState();
     apiService = ApiService();
+    _checkConnection();
     _loadTowers();
     _startAutoRefresh();
   }
@@ -52,40 +53,58 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
     super.dispose();
   }
 
+  Future<void> _checkConnection() async {
+    final result = await apiService.testConnection();
+    if (mounted) {
+      setState(() {
+        _isConnected = result['success'] == true;
+      });
+    }
+  }
+
   void _startAutoRefresh() {
+    _refreshTimer?.cancel();
     // Refresh setiap 2 detik untuk monitoring realtime
     _refreshTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (mounted) {
+      if (mounted && _isAutoRefreshEnabled) {
+        _checkConnection();
         _loadTowers();
       }
     });
   }
 
-  Future<void> _loadTowers() async {
-  try {
-    // 1. Ambil data database DULU
-    final fetchedTowers = await apiService.getTowersByContainerYard('CY3');
-    
-    if (mounted) {
-      setState(() {
-        towers = _normalizeAndSortTowers(applyForcedTowerStatus(fetchedTowers));
-        isLoading = false;
-        _lastRefreshTime = DateTime.now();
-      });
-    }
-
-    // 2. Jalankan ping di background
-    _triggerRealtimePing(); 
-
-  } catch (e) {
-    print('Error Loading Tower CY3: $e');
-    if (mounted) setState(() => isLoading = false);
+  String _selectedAreaId() {
+    final normalized = selectedArea.toUpperCase().replaceAll(' ', '');
+    if (normalized == 'CY1') return 'CY1';
+    if (normalized == 'CY2') return 'CY2';
+    if (normalized == 'CY3') return 'CY3';
+    if (normalized == 'GATE') return 'GATE';
+    if (normalized == 'PARKING') return 'PARKING';
+    return 'CY1';
   }
-}
+
+  Future<void> _loadTowers() async {
+    try {
+      final fetchedTowers = await apiService.getValidatedTowersByYard(_selectedAreaId());
+      
+      if (mounted) {
+        setState(() {
+          towers = fetchedTowers;
+          isLoading = false;
+          _lastRefreshTime = DateTime.now();
+        });
+      }
+
+      _triggerRealtimePing(); 
+    } catch (e) {
+      print('Error Loading Towers: $e');
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
 
   Future<void> _triggerRealtimePing() async {
     try {
-      print('=== Starting Realtime Ping For All Towers (CY3) ===');
+      print('=== Starting Realtime Ping For All Towers ===');
 
       // Trigger backend realtime ping untuk semua devices
       final pingResult = await apiService.triggerRealtimePing();
@@ -95,195 +114,21 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
         print('IP Checked: ${pingResult['ips_checked']}');
       }
 
-      print('=== Realtime Ping Completed (CY3) ===');
+      print('=== Realtime Ping Completed ===');
     } catch (e) {
       print('Error Triggering Realtime Ping: $e');
     }
   }
 
   Future<void> _triggerPingCheck() async {
-    try {
-      const baseUrl = 'http://localhost/monitoring_api/index.php';
-
-      // Call realtime ping endpoint yang update semua towers sekaligus
-      final response = await http
-          .get(
-        Uri.parse('$baseUrl?endpoint=realtime&action=all'),
-      )
-          .timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          print('Realtime Ping Timed Out');
-          return http.Response('{"success":false}', 408);
-        },
-      );
-
-      if (response.statusCode == 200) {
-        // Wait a moment for database to update
-        await Future.delayed(const Duration(milliseconds: 500));
-        print('Realtime Ping Check Completed');
-      }
-    } catch (e) {
-      print('Error Triggering Ping Check (Ignored): $e');
-    }
+    // This method is used by the refresh button manually
+    await _triggerRealtimePing();
   }
-
-  List<Tower> _normalizeAndSortTowers(List<Tower> input) {
-    final dedup = <String, Tower>{};
-    for (final tower in input) {
-      dedup[tower.towerId.toLowerCase()] = tower;
-    }
-    final list = dedup.values.toList();
-    list.sort((a, b) => _orderValue(a).compareTo(_orderValue(b)));
-    return list;
-  }
-
-  double _orderValue(Tower tower) {
-    if (tower.towerNumber > 0) {
-      return tower.towerNumber.toDouble();
-    }
-
-    final regex = RegExp(r'^(\d+)([A-Za-z]?)$');
-    final match = regex.firstMatch(tower.towerId.trim());
-    if (match != null) {
-      final base = double.tryParse(match.group(1) ?? '') ?? 9999;
-      final suffix = match.group(2);
-      if (suffix != null && suffix.isNotEmpty) {
-        final offset = (suffix.codeUnitAt(0) - 'A'.codeUnitAt(0) + 1) / 10;
-        return base + offset;
-      }
-      return base;
-    }
-
-    return 9999;
-  }
-
-  final List<Map<String, dynamic>> towerData = [
-    {
-      'id': 'T11',
-      'location': 'Container Yard 3',
-      'ip': '192.168.30.1',
-      'device': '2 CCTV',
-      'status': 'UP',
-      'traffic': '198 Mbps',
-      'uptime': '99.6%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T12',
-      'location': 'Container Yard 3',
-      'ip': '192.168.30.2',
-      'device': '3 CCTV',
-      'status': 'UP',
-      'traffic': '212 Mbps',
-      'uptime': '98.9%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T13',
-      'location': 'Container Yard 3',
-      'ip': '192.168.30.3',
-      'device': '2 CCTV',
-      'status': 'UP',
-      'traffic': '176 Mbps',
-      'uptime': '99.3%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T14',
-      'location': 'Container Yard 3',
-      'ip': '192.168.30.4',
-      'device': '1 CCTV',
-      'status': 'Warning',
-      'traffic': '85 Mbps',
-      'uptime': '95.8%',
-      'statusColor': Colors.red,
-    },
-    {
-      'id': 'T15',
-      'location': 'Container Yard 3',
-      'ip': '192.168.30.5',
-      'device': '3 CCTV',
-      'status': 'UP',
-      'traffic': '205 Mbps',
-      'uptime': '99.1%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T16',
-      'location': 'Container Yard 3',
-      'ip': '192.168.30.6',
-      'device': '2 CCTV',
-      'status': 'Warning',
-      'traffic': '92 Mbps',
-      'uptime': '96.3%',
-      'statusColor': Colors.red,
-    },
-    {
-      'id': 'T17',
-      'location': 'Container Yard 3',
-      'ip': '192.168.30.7',
-      'device': '2 CCTV',
-      'status': 'UP',
-      'traffic': '201 Mbps',
-      'uptime': '99.0%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T18',
-      'location': 'Container Yard 3',
-      'ip': '192.168.30.8',
-      'device': '3 CCTV',
-      'status': 'UP',
-      'traffic': '215 Mbps',
-      'uptime': '99.2%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T19',
-      'location': 'Container Yard 3',
-      'ip': '192.168.30.9',
-      'device': '2 CCTV',
-      'status': 'UP',
-      'traffic': '188 Mbps',
-      'uptime': '98.8%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T20',
-      'location': 'Container Yard 3',
-      'ip': '192.168.30.10',
-      'device': '1 CCTV',
-      'status': 'UP',
-      'traffic': '156 Mbps',
-      'uptime': '99.4%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T21',
-      'location': 'Container Yard 3',
-      'ip': '192.168.30.11',
-      'device': '3 CCTV',
-      'status': 'UP',
-      'traffic': '198 Mbps',
-      'uptime': '99.1%',
-      'statusColor': Colors.green,
-    },
-  ];
-
-  List<Tower> get paginatedData {
-    int start = currentPage * itemsPerPage;
-    int end = (start + itemsPerPage > towers.length)
-        ? towers.length
-        : start + itemsPerPage;
-    return towers.sublist(start, end);
-  }
-
-  int get totalPages => (towers.length / itemsPerPage).ceil();
 
   int get totalTowers => towers.length;
   int get onlineTowers => towers.where((t) => !isDownStatus(t.status)).length;
   int get warningTowers => towers.where((t) => isDownStatus(t.status)).length;
+
 
   void _showWarningList() {
     final warnings = towers.where((t) => isDownStatus(t.status)).toList();
@@ -303,7 +148,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                 const Padding(
                   padding: EdgeInsets.all(12.0),
                   child: Text(
-                    'All Towers Are In UP Condition.',
+                    'All Towers Are In UP Condition',
                     style: TextStyle(fontSize: 13, color: Colors.black54),
                     textAlign: TextAlign.center,
                   ),
@@ -363,6 +208,16 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
     );
   }
 
+  List<Tower> get paginatedData {
+    int start = currentPage * itemsPerPage;
+    int end = (start + itemsPerPage > towers.length)
+        ? towers.length
+        : start + itemsPerPage;
+    return towers.sublist(start, end);
+  }
+
+  int get totalPages => (towers.length / itemsPerPage).ceil();
+
   @override
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
@@ -372,13 +227,13 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
         children: [
           Column(
             children: [
-              const GlobalHeaderBar(currentRoute: '/network-cy3'),
+              const GlobalHeaderBar(currentRoute: '/network'),
               Expanded(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Sidebar (Kiri)
-                    const GlobalSidebarNav(currentRoute: '/network-cy3'),
+                    const GlobalSidebarNav(currentRoute: '/network'),
                     const SizedBox(width: 12),
                     // Content (Kanan)
                     Expanded(
@@ -396,236 +251,12 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                   ],
                 ),
               ),
-              _buildFooter(),
+              const GlobalFooter(),
             ],
           ),
-          const ExpandableFabNav(currentRoute: '/network-cy3'),
         ],
       ),
     );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-  final isMobile = isMobileScreen(context);
-  double screenWidth = MediaQuery.of(context).size.width;
-  return Container(
-    width: screenWidth,
-    padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 12 : 24, vertical: isMobile ? 12 : 16),
-    color: const Color(0xFF1976D2),
-    child: isMobile
-        ? Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Terminal Nilam',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: isMobile ? 28 : 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: OpenContainer(
-                      transitionDuration: const Duration(milliseconds: 550),
-                      transitionType: ContainerTransitionType.fadeThrough,
-                      closedElevation: 0,
-                      closedColor: Colors.transparent,
-                      closedShape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                      openElevation: 0,
-                      openBuilder: (context, _) =>
-                          const RouteProxyPage('/profile'),
-                      closedBuilder: (context, openContainer) {
-                        return GestureDetector(
-                          onTap: openContainer,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(50),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 8,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.person,
-                              color: Color(0xFF1976D2),
-                              size: 24,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ScrollConfiguration(
-                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildHeaderOpenButton('+ Add New Device', '/add-device',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Dashboard', '/dashboard',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Access Point', '/network',
-                          isActive: true),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Alert', '/alerts',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Alert Report', '/report',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderLogoutButton(),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          )
-        : Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Terminal Nilam - TETAP FIXED
-              const Text(
-                'Terminal Nilam',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 30),
-              // Buttons - SCROLL HORIZONTAL
-              Expanded(
-                child: ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildHeaderOpenButton('Add New Device', '/add-device',
-                            isActive: false),
-                        const SizedBox(width: 12),
-                         _buildHeaderOpenButton('Master Data', '/tower-management',
-                            isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Dashboard', '/dashboard',
-                            isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Access Point', '/network',
-                            isActive: true),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('MMT', '/mmt-monitoring', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Alert', '/alerts', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Alert Report', '/report',
-                            isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderLogoutButton(),
-                        const SizedBox(width: 12),
-                        // Profile Icon - SCROLL dengan buttons
-                        MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: OpenContainer(
-                            transitionDuration: const Duration(milliseconds: 550),
-                            transitionType: ContainerTransitionType.fadeThrough,
-                            closedElevation: 0,
-                            closedColor: Colors.transparent,
-                            closedShape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(50),
-                            ),
-                            openElevation: 0,
-                            openBuilder: (context, _) =>
-                                const RouteProxyPage('/profile'),
-                            closedBuilder: (context, openContainer) {
-                              return GestureDetector(
-                                onTap: openContainer,
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.9),
-                                    borderRadius: BorderRadius.circular(50),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.1),
-                                        blurRadius: 8,
-                                        spreadRadius: 1,
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Icon(
-                                    Icons.person,
-                                    color: Color(0xFF1976D2),
-                                    size: 24,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-  );
-}
-
-  Widget _buildHeaderButton(String text, VoidCallback onPressed,
-      {bool isActive = false}) {
-    return buildLiquidGlassButton(text, onPressed, isActive: isActive);
-  }
-
-  Widget _buildHeaderOpenButton(String text, String route,
-      {bool isActive = false}) {
-    return OpenContainer(
-      transitionDuration: const Duration(milliseconds: 550),
-      transitionType: ContainerTransitionType.fadeThrough,
-      closedElevation: 0,
-      closedColor: Colors.transparent,
-      closedShape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      openElevation: 0,
-      openBuilder: (context, _) => RouteProxyPage(route),
-      closedBuilder: (context, openContainer) {
-        return buildLiquidGlassButton(text, openContainer, isActive: isActive);
-      },
-    );
-  }
-
-  Widget _buildHeaderLogoutButton() {
-    return buildLiquidGlassButton('Logout', () => _showLogoutDialog(context),
-        isActive: false);
   }
 
   Widget _buildContent(BuildContext context, BoxConstraints constraints) {
@@ -634,59 +265,115 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Title Section
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1976D2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.language,
-                  size: 32, color: Colors.white),
-            ),
-            const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Access Point Monitoring',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
+        if (isMobile)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Text(
-                      'Real Time Access Point Monitoring And Diagnostics',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
+                child: const Icon(Icons.language,
+                    size: 24, color: Color(0xFF1976D2)),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Access Point',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  _buildAutoRefreshToggle(),
+                ],
+              ),
+              Row(
+                children: [
+                  const Text(
+                    'Monitoring Real Time',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                  if (_lastRefreshTime != null) ...[
+                    const SizedBox(width: 8),
+                    const Text('•', style: TextStyle(color: Colors.white70)),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
+                      style: const TextStyle(
+                        color: Colors.greenAccent,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    if (_lastRefreshTime != null) ...[
-                      const SizedBox(width: 8),
-                      const Text('•', style: TextStyle(color: Colors.white70)),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
-                        style: const TextStyle(
-                          color: Colors.greenAccent,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                  ],
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+          )
+        else
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1976D2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child:
+                    const Icon(Icons.language, size: 32, color: Colors.white),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Access Point Monitoring',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Text(
+                        'Real Time Access Point Monitoring And Diagnostics',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
                         ),
                       ),
+                      if (_lastRefreshTime != null) ...[
+                        const SizedBox(width: 8),
+                        const Text('•', style: TextStyle(color: Colors.white70)),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
+                          style: const TextStyle(
+                            color: Colors.greenAccent,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        const SizedBox(height: 16),
 
         // Stats Cards Row with Dropdown
         LayoutBuilder(
@@ -1077,7 +764,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF4CAF50).withOpacity(0.1),
+                      color: Colors.white.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
@@ -1119,7 +806,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
     );
   }
 
-   Widget _buildTowerList() {
+  Widget _buildTowerList() {
     // Show loading indicator
     if (isLoading) {
       return ClipRRect(
@@ -1224,7 +911,6 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
       );
     }
 
-    // Show data table when towers exist
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: BackdropFilter(
@@ -1254,7 +940,6 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
           ),
           child: Column(
             children: [
-              // Header
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                 width: double.infinity,
@@ -1278,7 +963,6 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                         letterSpacing: 1.0,
                       ),
                     ),
-                    // Pagination Controls
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
@@ -1290,7 +974,9 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                         children: [
                           IconButton(
                             icon: const Icon(Icons.chevron_left_rounded, size: 22, color: Colors.white),
-                            onPressed: currentPage > 0 ? () => setState(() => currentPage--) : null,
+                            onPressed: currentPage > 0
+                                ? () => setState(() => currentPage--)
+                                : null,
                             constraints: const BoxConstraints(),
                             padding: EdgeInsets.zero,
                           ),
@@ -1298,20 +984,28 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                           ...List.generate(totalPages, (index) {
                             bool isCurrentPage = index == currentPage;
                             return GestureDetector(
-                              onTap: () => setState(() => currentPage = index),
+                              onTap: () {
+                                setState(() {
+                                  currentPage = index;
+                                });
+                              },
                               child: Container(
                                 margin: const EdgeInsets.symmetric(horizontal: 4),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                 decoration: BoxDecoration(
-                                  color: isCurrentPage ? Colors.white.withOpacity(0.2) : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(8),
+                                  color: isCurrentPage
+                                      ? Colors.white
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Text(
                                   '${index + 1}',
                                   style: TextStyle(
                                     fontWeight: FontWeight.w900,
-                                    fontSize: 13,
-                                    color: isCurrentPage ? Colors.white : Colors.white70,
+                                    fontSize: 14,
+                                    color: isCurrentPage
+                                        ? const Color(0xFF1976D2)
+                                        : Colors.white,
                                   ),
                                 ),
                               ),
@@ -1320,7 +1014,9 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                           const SizedBox(width: 8),
                           IconButton(
                             icon: const Icon(Icons.chevron_right_rounded, size: 22, color: Colors.white),
-                            onPressed: currentPage < totalPages - 1 ? () => setState(() => currentPage++) : null,
+                            onPressed: currentPage < totalPages - 1
+                                ? () => setState(() => currentPage++)
+                                : null,
                             constraints: const BoxConstraints(),
                             padding: EdgeInsets.zero,
                           ),
@@ -1330,8 +1026,6 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                   ],
                 ),
               ),
-
-              // Table Header
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 width: double.infinity,
@@ -1353,16 +1047,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                   ],
                 ),
               ),
-
-              // Table Rows
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: paginatedData.length,
-                itemBuilder: (context, index) {
-                  return _buildTableRow(paginatedData[index]);
-                },
-              ),
+              ...paginatedData.map((tower) => _buildTableRow(tower)),
             ],
           ),
         ),
@@ -1373,35 +1058,41 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
   Widget _buildTableRow(Tower tower) {
     bool isWarning = isDownStatus(tower.status);
     String statusLabel = isWarning ? 'DOWN' : tower.status;
-    Color statusColor = isWarning ? Colors.redAccent : Colors.greenAccent;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.02),
+        color: Colors.white.withOpacity(0.05),
         border: Border(
           bottom: BorderSide(color: Colors.white.withOpacity(0.05), width: 1),
         ),
       ),
       child: Row(
         children: [
-          _tableCell(tower.towerId, flex: 1, fontWeight: FontWeight.bold),
-          _tableCell(tower.location, flex: 2),
-          _tableCell(tower.ipAddress, flex: 2),
-          _tableCell(
-            statusLabel,
-            flex: 1,
-            color: statusColor,
-            fontWeight: FontWeight.bold,
-          ),
+          _tableCell(tower.towerId, flex: 1, fontWeight: FontWeight.w800, color: Colors.white),
+          _tableCell(tower.location, flex: 2, fontWeight: FontWeight.w800, color: Colors.white.withOpacity(0.9)),
+          _tableCell(tower.ipAddress, flex: 2, color: Colors.white.withOpacity(0.7)),
+          _tableCell(statusLabel,
+              flex: 1, fontWeight: FontWeight.w800, color: isWarning ? Colors.redAccent : Colors.greenAccent),
+
           Expanded(
             flex: 1,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildActionButton(Icons.edit_rounded, Colors.blueAccent, () => _showEditForm(tower)),
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.blueAccent, size: 20),
+                  onPressed: () => _showEditForm(tower),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
                 const SizedBox(width: 12),
-                _buildActionButton(Icons.delete_rounded, Colors.redAccent, () => _confirmDelete(tower)),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
+                  onPressed: () => _confirmDelete(tower),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
               ],
             ),
           ),
@@ -1410,59 +1101,22 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
     );
   }
 
-  Widget _buildActionButton(IconData icon, Color color, VoidCallback onTap) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: color.withOpacity(0.2)),
-          ),
-          child: Icon(icon, color: color, size: 18),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPagerIcon(IconData icon, VoidCallback? onPressed) {
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: Colors.black87.withOpacity(onPressed == null ? 0.2 : 0.6),
-            width: 1.2,
-          ),
-        ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: onPressed == null ? Colors.black26 : Colors.black87,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeaderCell(String label, {required int flex, bool isLast = false}) {
+  Widget _buildHeaderCell(String label,
+      {required int flex, bool isLast = false}) {
     return Expanded(
       flex: flex,
-      child: Text(
-        label,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: Colors.white.withOpacity(0.9),
-          fontWeight: FontWeight.w900,
-          fontSize: 12,
-          letterSpacing: 1.0,
+      child: Container(
+        decoration: const BoxDecoration(
+            // HAPUS DECORATION BORDER DI SINI agar tidak ada garis putih vertikal
+            ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
+          ),
         ),
       ),
     );
@@ -1470,49 +1124,34 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
 
   Widget _tableCell(String text,
       {required int flex,
-      Color color = Colors.white,
-      FontWeight fontWeight = FontWeight.w500}) {
+      FontWeight fontWeight = FontWeight.w700,
+      Color color = Colors.black,
+      TextAlign align = TextAlign.center,
+      bool isLast = false}) {
     return Expanded(
       flex: flex,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
           border: Border(
-            right: BorderSide(
-              color: Colors.white.withOpacity(0.05),
-              width: 1,
-            ),
+            right: isLast
+                ? BorderSide.none
+                : BorderSide(color: Colors.white.withOpacity(0.05), width: 1),
           ),
         ),
         child: Text(
           text,
-          textAlign: TextAlign.center,
+          textAlign: align,
           style: TextStyle(
-            color: color.withOpacity(0.9),
-            fontSize: 13,
+            color: color,
             fontWeight: fontWeight,
+            fontSize: 14,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildFooter() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      color: Colors.black.withOpacity(0.8),
-      child: const Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          '©2026 TPK Nilam Monitoring System',
-          style: TextStyle(color: Colors.white, fontSize: 12),
-        ),
-      ),
-    );
-  }
 
-// --- FUNGSI KHUSUS CY3 ---
   Future<void> _showEditForm(Tower tower) async {
     final ipController = TextEditingController(text: tower.ipAddress);
     var locationOptions = buildMasterLocationOptions(
@@ -1537,7 +1176,6 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
     var selectedLocation =
         matchedOption?['label'] ?? normalizeLocationLabel(tower.location);
     var selectedYard = matchedOption?['container_yard'] ?? tower.containerYard;
-
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -1555,10 +1193,12 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                 isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Location'),
                 items: locationOptions
-                    .map((option) => DropdownMenuItem<String>(
-                          value: option['label'],
-                          child: Text(option['label'] ?? ''),
-                        ))
+                    .map(
+                      (option) => DropdownMenuItem<String>(
+                        value: option['label'],
+                        child: Text(option['label'] ?? ''),
+                      ),
+                    )
                     .toList(),
                 onChanged: (value) {
                   if (value == null) return;
@@ -1587,13 +1227,11 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                 });
 
                 if (response['success'] == true) {
-                  if (mounted) {
-                    Navigator.pop(context);
-                    _loadTowers();
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('CY3 Updated Successfully'),
-                        backgroundColor: Colors.green));
-                  }
+                  Navigator.pop(context);
+                  _loadTowers();
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Successfully Updated'),
+                      backgroundColor: Colors.green));
                 }
               },
               child: const Text('Save'),
@@ -1609,7 +1247,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Delete'),
-        content: Text('Delete ${tower.towerId} from CY3?'),
+        content: Text('Are You Sure Want To Delete ${tower.towerId}?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
@@ -1619,13 +1257,11 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
             onPressed: () async {
               final response = await apiService.deleteTower(tower.id);
               if (response['success'] == true) {
-                if (mounted) {
-                  Navigator.pop(context);
-                  _loadTowers(); // Refresh data khusus CY3
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('CY3 Data Deleted Successfully'),
-                      backgroundColor: Colors.red));
-                }
+                Navigator.pop(context); // Tutup dialog
+                _loadTowers(); // REFRESH DATA DARI DATABASE
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Data Has Been Successfully Deleted'),
+                    backgroundColor: Colors.red));
               }
             },
             child: const Text('Delete', style: TextStyle(color: Colors.white)),
@@ -1635,63 +1271,92 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
     );
   }
 
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout', style: TextStyle(color: Colors.black87)),
-        content: const Text('Are You Sure To Logout?',
-            style: TextStyle(color: Colors.black87)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.black87)),
+  Widget _buildAutoRefreshToggle() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.sync, color: Colors.white70, size: 16),
+          const SizedBox(width: 8),
+          const Text(
+            'Auto Refresh',
+            style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                '/login',
-                (route) => false,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+          const SizedBox(width: 4),
+          Transform.scale(
+            scale: 0.8,
+            child: Switch(
+              value: _isAutoRefreshEnabled,
+              onChanged: (value) {
+                setState(() {
+                  _isAutoRefreshEnabled = value;
+                  if (_isAutoRefreshEnabled) {
+                    _startAutoRefresh();
+                  } else {
+                    _refreshTimer?.cancel();
+                  }
+                });
+              },
+              activeColor: Colors.blueAccent,
+              activeTrackColor: Colors.blueAccent.withOpacity(0.3),
+              inactiveThumbColor: Colors.white54,
+              inactiveTrackColor: Colors.white12,
             ),
-            child: const Text('Logout'),
           ),
         ],
       ),
     );
   }
 
-  void _showTowerDetails(Map<String, dynamic> tower) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Access Point ${tower['id']} Details'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Location: ${tower['location']}'),
-            const SizedBox(height: 8),
-            Text('Status: ${tower['status']}'),
-            const SizedBox(height: 8),
-            Text('Traffic: ${tower['traffic']}'),
-            const SizedBox(height: 8),
-            Text('Uptime: ${tower['uptime']}'),
-          ],
+  Widget _buildConnectionStatusBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: _isConnected ? Colors.greenAccent.withOpacity(0.1) : Colors.redAccent.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _isConnected ? Colors.greenAccent.withOpacity(0.3) : Colors.redAccent.withOpacity(0.3),
+          width: 1,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: _isConnected ? Colors.greenAccent : Colors.redAccent,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: _isConnected ? Colors.greenAccent : Colors.redAccent,
+                  blurRadius: 4,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            _isConnected ? 'BACKEND CONNECTED' : 'CONNECTION LOST',
+            style: TextStyle(
+              color: _isConnected ? Colors.greenAccent : Colors.redAccent,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.5,
+            ),
           ),
         ],
       ),
     );
   }
 }
+
+

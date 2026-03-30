@@ -1,35 +1,36 @@
 import 'dart:async';
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:animations/animations.dart';
 import 'package:http/http.dart' as http;
-import 'main.dart';
-import 'route_proxy_page.dart';
-import 'services/api_service.dart';
-import 'utils/location_label_utils.dart';
-import 'utils/tower_status_override.dart';
-import 'widgets/global_header_bar.dart';
-import 'widgets/global_sidebar_nav.dart';
+import 'package:monitoring/main.dart';
+import 'package:monitoring/utils/ui_utils.dart';
+import 'package:monitoring/route_proxy_page.dart';
+import 'package:monitoring/services/api_service.dart';
+import 'package:monitoring/utils/location_label_utils.dart';
+import 'package:monitoring/models/camera_model.dart';
+import 'package:monitoring/widgets/global_header_bar.dart';
+import 'package:monitoring/widgets/global_sidebar_nav.dart';
+import 'package:monitoring/widgets/global_footer.dart';
 
-// CCTV Page CY 3
-class CCTVCy3Page extends StatefulWidget {
-  const CCTVCy3Page({super.key});
+// Parking CCTV Page
+class ParkingCCTVPage extends StatefulWidget {
+  const ParkingCCTVPage({super.key});
 
   @override
-  State<CCTVCy3Page> createState() => _CCTVCy3PageState();
+  State<ParkingCCTVPage> createState() => _ParkingCCTVPageState();
 }
 
-class _CCTVCy3PageState extends State<CCTVCy3Page> {
-  String selectedArea = 'CY 3';
+class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
+  String selectedArea = 'PARKING';
   int currentPage = 0;
   int camerasPerPage = 6;
   bool isLoading = true;
-  final List<Map<String, dynamic>> allCameras = [];
+  final List<Camera> allCameras = [];
   DateTime? lastUpdated;
   Timer? _refreshTimer;
 
-  List<Map<String, dynamic>> get paginatedCameras {
+  List<Camera> get paginatedCameras {
     int start = currentPage * camerasPerPage;
     int end = (start + camerasPerPage > allCameras.length)
         ? allCameras.length
@@ -38,15 +39,15 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
   }
 
   int get totalPages => (allCameras.length / camerasPerPage).ceil();
-  int get upCameras => allCameras.where((c) => c['status'] == 'UP').length;
-  int get downCameras => allCameras.where((c) => c['status'] == 'DOWN').length;
+  int get upCameras => allCameras.where((c) => c.status == 'UP').length;
+  int get downCameras => allCameras.where((c) => c.status == 'DOWN').length;
 
   int _resolveCamerasPerPage() {
     return 6;
   }
 
   void _showOfflineList() {
-    final offlines = allCameras.where((c) => c['status'] == 'DOWN').toList();
+    final offlines = allCameras.where((c) => c.status == 'DOWN').toList();
     showFadeAlertDialog(
       context: context,
       title: 'Cameras DOWN (${offlines.length})',
@@ -83,7 +84,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          c['id'],
+                          c.cameraId,
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
@@ -137,7 +138,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
 
   Future<void> _triggerRealtimePing() async {
     try {
-      print('=== Starting Realtime Ping For All Cameras (CY3) ===');
+      print('=== Starting Realtime Ping For All Cameras (PARKING) ===');
 
       final apiService = ApiService();
       final pingResult = await apiService.triggerRealtimePing();
@@ -147,7 +148,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
         print('IP Checked: ${pingResult['ips_checked']}');
       }
 
-      print('=== Realtime Ping Completed (CY3) ===');
+      print('=== Realtime Ping Completed (PARKING) ===');
     } catch (e) {
       print('Error Triggering Realtime Ping: $e');
     }
@@ -155,60 +156,36 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
 
   Future<void> _loadCameras() async {
     try {
-      // Don't show loading if already have data (prevents flickering)
       if (allCameras.isEmpty) {
         setState(() {
           isLoading = true;
         });
       }
 
-      final apiService = ApiService();
-      final cameras = await apiService.getCamerasByContainerYard('CY3');
-      final updatedCameras = applyForcedCameraStatus(cameras);
-
-      // Resolve adaptive page size before loading data
-      final resolvedPerPage = _resolveCamerasPerPage();
-      if (resolvedPerPage != camerasPerPage) {
-        setState(() {
-          camerasPerPage = resolvedPerPage;
-          if (currentPage >= totalPages && totalPages > 0) {
-            currentPage = totalPages - 1;
-          }
-        });
-      }
+      final cameras = await ApiService().getValidatedCamerasByAreaType('Parking');
 
       if (mounted) {
         setState(() {
           allCameras.clear();
-          final camerasMap = updatedCameras
-              .map((c) => {
-                    'id': c.cameraId,
-                    'location': c.location,
-                    'status': c.status,
-                    'type': c.type,
-                    'ip_address': c.ipAddress,
-                    'container_yard': c.containerYard,
-                  })
-              .toList();
-          camerasMap
-              .sort((a, b) => a['id'].toString().compareTo(b['id'].toString()));
-          allCameras.addAll(camerasMap);
+          allCameras.addAll(cameras);
           isLoading = false;
-          // Only reset page if current page exceeds available pages
           if (currentPage >= totalPages && totalPages > 0) {
             currentPage = totalPages - 1;
+          } else if (totalPages == 0) {
+            currentPage = 0;
           }
           lastUpdated = DateTime.now();
         });
       }
 
-      // Trigger realtime ping in background after UI loads
       _triggerRealtimePing();
     } catch (e) {
       print('Error Loading Camera: $e');
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -248,13 +225,13 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
       backgroundColor: const Color(0xFF2C3E50),
       body: Column(
         children: [
-          const GlobalHeaderBar(currentRoute: '/cctv-cy3'),
+          const GlobalHeaderBar(currentRoute: '/cctv-parking'),
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (!isMobile)
-                  const GlobalSidebarNav(currentRoute: '/cctv-cy3'),
+                  const GlobalSidebarNav(currentRoute: '/cctv-parking'),
                 if (!isMobile) const SizedBox(width: 12),
                 Expanded(
                   child: SingleChildScrollView(
@@ -271,7 +248,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
               ],
             ),
           ),
-          _buildFooter(),
+          const GlobalFooter(),
         ],
       ),
     );
@@ -511,7 +488,8 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
   }
 
   Widget _buildContent(BuildContext context, BoxConstraints constraints) {
-    final isMobile = isMobileScreen(context);
+    final isMobile =
+        isMobileScreen(context); // Pastikan fungsi helper ini tersedia
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -520,6 +498,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Icon CCTV dengan Border Putih (Mobile)
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
@@ -534,7 +513,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'CCTV',
+                'CCTV Monitoring',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 20,
@@ -542,7 +521,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                 ),
               ),
               const Text(
-                'Live Monitoring',
+                'Live Camera Feeds And Surveillance System Status',
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: 12,
@@ -553,6 +532,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
         else
           Row(
             children: [
+              // Icon CCTV dengan Border Putih (Desktop)
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -562,7 +542,8 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                 child: const Icon(
                   Icons.videocam,
                   size: 32,
-                  color: Colors.white,
+                  color: Colors
+                      .white, // Warna Putih untuk kontras terhadap biru tema
                 ),
               ),
               const SizedBox(width: 16),
@@ -631,11 +612,12 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
               ),
             ],
           ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
 
         // --- STATS CARDS ROW ---
         LayoutBuilder(
           builder: (context, constraints) {
+            // Penyesuaian lebar kartu untuk mobile (bisa scroll horizontal)
             double cardWidth = isMobile
                 ? (constraints.maxWidth - 16) / 1.5
                 : constraints.maxWidth > 1400
@@ -643,36 +625,23 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                     : (constraints.maxWidth - 80) / 3;
 
             return isMobile
-                ? Column(
-                    children: [
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            _buildStatCard(
-                                'Total Camera',
-                                '${allCameras.length}',
-                                Colors.orange,
-                                cardWidth),
-                            const SizedBox(width: 8),
-                            _buildStatCard(
-                                'UP', '$upCameras', Colors.green, cardWidth),
-                            const SizedBox(width: 8),
-                            GestureDetector(
-                              onTap: _showOfflineList,
-                              child: _buildStatCard('DOWN', '$downCameras',
-                                  Colors.red, cardWidth),
-                            ),
-                          ],
+                ? SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildStatCard('Total Camera', '${allCameras.length}',
+                            Colors.orange, cardWidth),
+                        const SizedBox(width: 8),
+                        _buildStatCard(
+                            'UP', '$upCameras', Colors.green, cardWidth),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: _showOfflineList,
+                          child: _buildStatCard(
+                              'DOWN', '$downCameras', Colors.red, cardWidth),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildCCTVDropdown(constraints.maxWidth),
-                      const SizedBox(height: 12),
-                      _buildAreaButton(constraints.maxWidth),
-                      const SizedBox(height: 12),
-                      _buildCheckStatusButton(constraints.maxWidth),
-                    ],
+                      ],
+                    ),
                   )
                 : Wrap(
                     spacing: 16,
@@ -694,7 +663,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                   );
           },
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
 
         // --- CAMERA GRID ---
         _buildCameraGrid(constraints),
@@ -708,93 +677,91 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
 
   Widget _buildStatCard(
       String title, String value, Color indicatorColor, double width) {
-    return SizedBox(
-      width: width,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.white.withOpacity(0.2),
-                  Colors.white.withOpacity(0.05),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          width: width,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(0.12),
+                Colors.white.withOpacity(0.02),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.25),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 15,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white.withOpacity(0.6),
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: indicatorColor,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: indicatorColor.withOpacity(0.5),
+                          blurRadius: 6,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.2),
-                width: 1.5,
+              const SizedBox(height: 14),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: -0.5,
+                ),
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white.withOpacity(0.9),
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: indicatorColor,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: indicatorColor.withOpacity(0.5),
-                            blurRadius: 8,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: -0.5,
+              const SizedBox(height: 4),
+              Container(
+                height: 2,
+                width: 40,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [indicatorColor, indicatorColor.withOpacity(0)],
                   ),
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                const SizedBox(height: 4),
-                Container(
-                  height: 2,
-                  width: 40,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [indicatorColor, indicatorColor.withOpacity(0)],
-                    ),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -934,7 +901,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                   color: const Color(0xFF1976D2).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.business_rounded, color: Colors.white, size: 20),
+                child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 20),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -943,7 +910,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'YARD',
+                      'AREA',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.6),
                         fontSize: 10,
@@ -1094,7 +1061,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                   CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
                   SizedBox(height: 20),
                   Text(
-                    'LOADING CAMERA DATA...',
+                    'LOADING CAMERAS...',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.white,
@@ -1162,138 +1129,188 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
 
     // Show camera grid when data exists
     final isMobile = isMobileScreen(context);
-    double childAspectRatio = isMobile ? 2.4 : 2.4;
-    double spacing = isMobile ? 12 : 20;
+    double childAspectRatio = isMobile ? 1.0 : 1.0;
+    double spacing = isMobile ? 8 : 20;
 
-    return SizedBox(
-      width: double.infinity,
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: isMobile ? 320 : 420,
-          crossAxisSpacing: spacing,
-          mainAxisSpacing: spacing,
-          childAspectRatio: childAspectRatio,
-        ),
-        itemCount: paginatedCameras.length,
-        itemBuilder: (context, index) {
-          return _buildCameraCard(paginatedCameras[index]);
-        },
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: isMobile ? 180 : 240,
+        crossAxisSpacing: spacing,
+        mainAxisSpacing: spacing,
+        childAspectRatio: childAspectRatio,
       ),
+      itemCount: paginatedCameras.length,
+      itemBuilder: (context, index) {
+        return _buildCameraCard(paginatedCameras[index]);
+      },
     );
   }
 
-  Widget _buildCameraCard(Map<String, dynamic> camera) {
-    bool isUp = camera['status'] == 'UP';
-    Color statusColor = isUp ? Colors.green : Colors.red;
+  Widget _buildCameraCard(Camera camera) {
+    bool isUp = camera.status == 'UP';
+    Color statusColor =
+        isUp ? const Color(0xFF4CAF50) : const Color(0xFFE53935);
 
     return Stack(
-      // 1. Tambahkan Stack agar tombol bisa melayang di atas kartu
       children: [
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(16),
-                      topRight: Radius.circular(16),
-                    ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white.withOpacity(0.15),
+                    Colors.white.withOpacity(0.04),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.25),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 15,
+                    offset: const Offset(0, 8),
                   ),
-                  child: Center(
+                ],
+              ),
+              child: Column(
+                children: [
+                  Expanded(
                     child: Container(
-                      width: 34,
-                      height: 34,
+                      width: double.infinity,
                       decoration: BoxDecoration(
-                        color: statusColor,
-                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.white.withOpacity(0.08),
+                            Colors.transparent,
+                          ],
+                        ),
                       ),
-                          child: const Icon(Icons.videocam,
-                            color: Colors.white, size: 18),
+                      child: Center(
+                        child: Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            gradient: RadialGradient(
+                              colors: [
+                                statusColor.withOpacity(0.3),
+                                statusColor.withOpacity(0.1),
+                              ],
+                            ),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: statusColor.withOpacity(0.6),
+                              width: 2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: statusColor.withOpacity(0.4),
+                                blurRadius: 15,
+                                spreadRadius: 2,
+                              ),
+                              BoxShadow(
+                                color: Colors.white.withOpacity(0.3),
+                                blurRadius: 4,
+                                spreadRadius: 0.5,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.videocam_rounded,
+                            color: Colors.white,
+                            size: 26,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF1976D2),
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(16),
-                    bottomRight: Radius.circular(16),
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    camera['id'],
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.1),
+                      border: Border(
+                        top: BorderSide(
+                          color: Colors.white.withOpacity(0.08),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        camera.cameraId,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
-
-        // 2. Tambahkan tombol aksi melayang di pojok kanan atas
         Positioned(
           top: 8,
           right: 8,
-          child: Container(
-            decoration: BoxDecoration(
-              color:
-                  Colors.white.withOpacity(0.8), // Background putih transparan
-              shape: BoxShape.circle,
-            ),
-            child: PopupMenuButton<String>(
-              icon:
-                  const Icon(Icons.more_vert, size: 20, color: Colors.black54),
-              onSelected: (value) {
-                if (value == 'edit') {
-                  _showEditCameraForm(camera);
-                } else if (value == 'delete') {
-                  _confirmDeleteCamera(camera);
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit, color: Colors.blue, size: 18),
-                      SizedBox(width: 8),
-                      Text('Edit'),
-                    ],
-                  ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete, color: Colors.red, size: 18),
-                      SizedBox(width: 8),
-                      Text('Delete'),
-                    ],
-                  ),
+                child: PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert,
+                      size: 20, color: Colors.white70),
+                  color: const Color(0xFF1B2631),
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      _showEditCameraForm(camera);
+                    } else if (value == 'delete') {
+                      _confirmDeleteCamera(camera);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, color: Colors.blueAccent, size: 18),
+                          SizedBox(width: 8),
+                          Text('Edit', style: TextStyle(color: Colors.white)),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete, color: Colors.redAccent, size: 18),
+                          SizedBox(width: 8),
+                          Text('Delete', style: TextStyle(color: Colors.white)),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -1395,54 +1412,39 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
     );
   }
 
-  Widget _buildFooter() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      color: Colors.black.withOpacity(0.8),
-      child: const Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          '©2026 TPK Nilam Monitoring System',
-          style: TextStyle(color: Colors.white, fontSize: 12),
-        ),
-      ),
-    );
-  }
 
-  Future<void> _showEditCameraForm(Map<String, dynamic> camera) async {
+  Future<void> _showEditCameraForm(Camera camera) async {
     // Controller otomatis terisi data lama (Initial Value)
     final ipController =
-        TextEditingController(text: camera['ip_address'] ?? '');
+        TextEditingController(text: camera.ipAddress);
     var locationOptions = buildMasterLocationOptions(
       await ApiService().getAllMasterLocations(),
     );
     if (locationOptions.isEmpty) {
       locationOptions = [
         {
-          'label': normalizeLocationLabel((camera['location'] ?? '').toString()),
-          'container_yard': (camera['container_yard'] ?? '').toString(),
+          'label': normalizeLocationLabel(camera.location),
+          'container_yard': camera.containerYard,
           'location_type': 'CCTV',
-          'location_code': (camera['id'] ?? '').toString(),
-          'location_name': (camera['location'] ?? '').toString(),
+          'location_code': camera.cameraId,
+          'location_name': camera.location,
         }
       ];
     }
     final matchedOption = matchMasterLocationOption(
       locationOptions,
-      (camera['location'] ?? '').toString(),
-      currentContainerYard: (camera['container_yard'] ?? '').toString(),
+      camera.location,
+      currentContainerYard: camera.containerYard,
     );
     var selectedLocation = matchedOption?['label'] ??
-        normalizeLocationLabel((camera['location'] ?? '').toString());
-    var selectedArea = matchedOption?['container_yard'] ??
-        (camera['container_yard'] ?? '').toString();
+        normalizeLocationLabel(camera.location);
+    var selectedArea = matchedOption?['container_yard'] ?? camera.containerYard;
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setLocalState) => AlertDialog(
-        title: Text('Edit ${camera['id']}'),
+        title: Text('Edit ${camera.cameraId}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1487,7 +1489,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
             onPressed: () async {
               // PERBAIKAN: Kirim 2 argumen (ID dan Map Data)
               final response = await ApiService().updateCamera(
-                camera['id'], // Argumen 1: ID Kamera
+                camera.cameraId, // Argumen 1: ID Kamera
                 {
                   // Argumen 2: Map Data yang diubah
                   'ip_address': ipController.text,
@@ -1514,12 +1516,12 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
     );
   }
 
-  void _confirmDeleteCamera(Map<String, dynamic> camera) {
+  void _confirmDeleteCamera(Camera camera) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Camera'),
-        content: Text('Are You Sure Want To Delete Camera ${camera['id']}?'),
+        content: Text('Are You Sure Want To Delete Camera ${camera.cameraId}?'),
         actions: [
           // Tombol Cancel
           TextButton(
@@ -1530,7 +1532,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
-              final response = await ApiService().deleteCamera(camera['id']);
+              final response = await ApiService().deleteCamera(camera.cameraId);
 
               if (response['success'] == true) {
                 if (mounted) {
@@ -1582,3 +1584,5 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
     );
   }
 }
+
+

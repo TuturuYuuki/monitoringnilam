@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:monitoring/main.dart';
+import 'package:monitoring/utils/ui_utils.dart';
 import 'package:monitoring/models/tower_model.dart';
 import 'package:monitoring/services/api_service.dart';
-import '../main.dart';
-import '../utils/device_icon_resolver.dart';
-import '../widgets/global_header_bar.dart';
-import '../widgets/global_sidebar_nav.dart';
+import 'package:monitoring/utils/device_icon_resolver.dart';
+import 'package:monitoring/widgets/global_header_bar.dart';
+import 'package:monitoring/widgets/global_sidebar_nav.dart';
+import 'package:monitoring/widgets/global_footer.dart';
 
 class TowerManagementPage extends StatefulWidget {
   const TowerManagementPage({super.key});
@@ -428,7 +430,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
               ],
             ),
           ),
-          _buildFooter(),
+          const GlobalFooter(),
         ],
       ),
     );
@@ -1643,21 +1645,6 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     );
   }
 
-  Widget _buildFooter() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      color: Colors.black.withOpacity(0.8),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            '©2026 TPK Nilam Monitoring System',
-            style: TextStyle(color: Colors.white, fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildHeaderOpenButton(String text, String route,
       {bool isActive = false}) {
@@ -1677,3 +1664,5 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     showLogoutDialog(context);
   }
 }
+
+

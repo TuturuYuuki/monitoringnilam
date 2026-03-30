@@ -2,25 +2,27 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'main.dart';
-import 'services/api_service.dart';
-import 'models/tower_model.dart';
-import 'utils/tower_status_override.dart';
-import 'utils/location_label_utils.dart';
-import 'widgets/expandable_fab_nav.dart';
-import 'widgets/global_header_bar.dart';
-import 'widgets/global_sidebar_nav.dart';
+import 'package:monitoring/main.dart';
+import 'package:monitoring/utils/ui_utils.dart';
+import 'package:monitoring/services/api_service.dart';
+import 'package:monitoring/models/tower_model.dart';
+import 'package:monitoring/utils/tower_status_override.dart';
+import 'package:monitoring/utils/location_label_utils.dart';
+import 'package:monitoring/widgets/expandable_fab_nav.dart';
+import 'package:monitoring/widgets/global_header_bar.dart';
+import 'package:monitoring/widgets/global_sidebar_nav.dart';
+import 'package:monitoring/widgets/global_footer.dart';
 
-// Network Page PARKING
-class NetworkParkingPage extends StatefulWidget {
-  const NetworkParkingPage({super.key});
+// Network Page CY 2
+class NetworkCY2Page extends StatefulWidget {
+  const NetworkCY2Page({super.key});
 
   @override
-  State<NetworkParkingPage> createState() => _NetworkParkingPageState();
+  State<NetworkCY2Page> createState() => _NetworkCY2PageState();
 }
 
-class _NetworkParkingPageState extends State<NetworkParkingPage> {
-  String selectedArea = 'PARKING';
+class _NetworkCY2PageState extends State<NetworkCY2Page> {
+  String selectedArea = 'CY 2';
   static const List<String> _areaOptions = [
     'CY 1',
     'CY 2',
@@ -61,29 +63,26 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
 
   Future<void> _loadTowers() async {
     try {
-      // 1. Ambil data database DULU agar tabel langsung muncul
-      final fetchedTowers =
-          await apiService.getTowersByContainerYard('PARKING');
-
+      final fetchedTowers = await apiService.getValidatedTowersByYard('CY2');
+      
       if (mounted) {
         setState(() {
-          towers = _normalizeAndSortTowers(applyForcedTowerStatus(fetchedTowers));
+          towers = fetchedTowers;
           isLoading = false;
           _lastRefreshTime = DateTime.now();
         });
       }
 
-      // 2. Jalankan ping di background TANPA await agar tidak memicu timeout pada tabel
-      _triggerRealtimePing();
+      _triggerRealtimePing(); 
     } catch (e) {
-      print('Error Loading Tower PARKING: $e');
+      print('Error Loading Tower CY2: $e');
       if (mounted) setState(() => isLoading = false);
     }
   }
 
   Future<void> _triggerRealtimePing() async {
     try {
-      print('=== Starting Realtime Ping For All Towers (PARKING) ===');
+      print('=== Starting Realtime Ping For All Towers (CY2) ===');
 
       // Trigger backend realtime ping untuk semua devices
       final pingResult = await apiService.triggerRealtimePing();
@@ -93,7 +92,7 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
         print('IP Checked: ${pingResult['ips_checked']}');
       }
 
-      print('=== Realtime Ping Completed (PARKING) ===');
+      print('=== Realtime Ping Completed (CY2) ===');
     } catch (e) {
       print('Error Triggering Realtime Ping: $e');
     }
@@ -106,15 +105,15 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
       // Call realtime ping endpoint yang update semua towers sekaligus
       final response = await http
           .get(
-            Uri.parse('$baseUrl?endpoint=realtime&action=all'),
-          )
+        Uri.parse('$baseUrl?endpoint=realtime&action=all'),
+      )
           .timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              print('Realtime Ping Timed Out');
-              return http.Response('{"success":false}', 408);
-            },
-          );
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('Realtime Ping Timed Out');
+          return http.Response('{"success":false}', 408);
+        },
+      );
 
       if (response.statusCode == 200) {
         // Wait a moment for database to update
@@ -126,35 +125,7 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
     }
   }
 
-  List<Tower> _normalizeAndSortTowers(List<Tower> input) {
-    final dedup = <String, Tower>{};
-    for (final tower in input) {
-      dedup[tower.towerId.toLowerCase()] = tower;
-    }
-    final list = dedup.values.toList();
-    list.sort((a, b) => _orderValue(a).compareTo(_orderValue(b)));
-    return list;
-  }
 
-  double _orderValue(Tower tower) {
-    if (tower.towerNumber > 0) {
-      return tower.towerNumber.toDouble();
-    }
-
-    final regex = RegExp(r'^(\d+)([A-Za-z]?)$');
-    final match = regex.firstMatch(tower.towerId.trim());
-    if (match != null) {
-      final base = double.tryParse(match.group(1) ?? '') ?? 9999;
-      final suffix = match.group(2);
-      if (suffix != null && suffix.isNotEmpty) {
-        final offset = (suffix.codeUnitAt(0) - 'A'.codeUnitAt(0) + 1) / 10;
-        return base + offset;
-      }
-      return base;
-    }
-
-    return 9999;
-  }
 
   List<Tower> get paginatedData {
     int start = currentPage * itemsPerPage;
@@ -257,13 +228,13 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
         children: [
           Column(
             children: [
-              const GlobalHeaderBar(currentRoute: '/network-parking'),
+              const GlobalHeaderBar(currentRoute: '/network-cy2'),
               Expanded(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Sidebar (Kiri)
-                    const GlobalSidebarNav(currentRoute: '/network-parking'),
+                    const GlobalSidebarNav(currentRoute: '/network-cy2'),
                     const SizedBox(width: 12),
                     // Content (Kanan)
                     Expanded(
@@ -281,14 +252,15 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
                   ],
                 ),
               ),
-              _buildFooter(),
+              const GlobalFooter(),
             ],
           ),
-          const ExpandableFabNav(currentRoute: '/network-parking'),
+          const ExpandableFabNav(currentRoute: '/network-cy2'),
         ],
       ),
     );
   }
+
 
   Widget _buildContent(BuildContext context, BoxConstraints constraints) {
     final isMobile = isMobileScreen(context);
@@ -304,7 +276,8 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
                 color: const Color(0xFF1976D2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.language, size: 32, color: Colors.white),
+              child: const Icon(Icons.language,
+                  size: 32, color: Colors.white),
             ),
             const SizedBox(width: 16),
             Column(
@@ -372,7 +345,8 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
                             _buildStatCard('UP', '$onlineTowers', Colors.green,
                                 width: cardWidth),
                             SizedBox(width: isMobile ? 8 : 16),
-                            _buildStatCard('DOWN', '$warningTowers', Colors.red,
+                            _buildStatCard(
+                                'DOWN', '$warningTowers', Colors.blue,
                                 onTap: _showWarningList, width: cardWidth),
                           ],
                         ),
@@ -389,8 +363,8 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
                     spacing: 16,
                     runSpacing: 16,
                     children: [
-                      _buildStatCard('Total Access Point', '$totalTowers',
-                          Colors.orange,
+                      _buildStatCard(
+                          'Total Access Point', '$totalTowers', Colors.orange,
                           width: cardWidth),
                       _buildStatCard('UP', '$onlineTowers', Colors.green,
                           width: cardWidth),
@@ -592,18 +566,18 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
                           );
                         }).toList(),
                         onChanged: (String? newValue) {
-                          if (newValue != null) {
-                            if (newValue == 'CY 1') {
-                              Navigator.pushReplacementNamed(context, '/network');
-                            } else if (newValue == 'CY 2') {
-                              Navigator.pushReplacementNamed(context, '/network-cy2');
-                            } else if (newValue == 'CY 3') {
-                              Navigator.pushReplacementNamed(context, '/network-cy3');
-                            } else if (newValue == 'GATE') {
-                              Navigator.pushReplacementNamed(context, '/network-gate');
-                            } else if (newValue == 'PARKING') {
-                              Navigator.pushReplacementNamed(context, '/network-parking');
-                            }
+                          if (newValue == null) return;
+                          
+                          if (newValue == 'CY 1') {
+                            Navigator.pushReplacementNamed(context, '/network');
+                          } else if (newValue == 'CY 2') {
+                            Navigator.pushReplacementNamed(context, '/network-cy2');
+                          } else if (newValue == 'CY 3') {
+                            Navigator.pushReplacementNamed(context, '/network-cy3');
+                          } else if (newValue == 'GATE') {
+                            Navigator.pushReplacementNamed(context, '/network-gate');
+                          } else if (newValue == 'PARKING') {
+                            Navigator.pushReplacementNamed(context, '/network-parking');
                           }
                         },
                       ),
@@ -618,7 +592,7 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
     );
   }
 
- Widget _buildAreaButton(double width) {
+  Widget _buildAreaButton(double width) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: BackdropFilter(
@@ -649,7 +623,8 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
                   color: const Color(0xFF1976D2).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 20),
+                child: const Icon(Icons.location_on_rounded,
+                    color: Colors.white, size: 20),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -685,7 +660,6 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
       ),
     );
   }
-
   Widget _buildCheckStatusButton(double width) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -954,80 +928,90 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
                             padding: EdgeInsets.zero,
                           ),
                           const SizedBox(width: 8),
-                          ...List.generate(totalPages, (index) {
-                            bool isCurrentPage = index == currentPage;
-                            return GestureDetector(
-                              onTap: () => setState(() => currentPage = index),
-                              child: Container(
-                                margin: const EdgeInsets.symmetric(horizontal: 4),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: isCurrentPage ? Colors.white.withOpacity(0.2) : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  '${index + 1}',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 13,
-                                    color: isCurrentPage ? Colors.white : Colors.white70,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: const Icon(Icons.chevron_right_rounded, size: 22, color: Colors.white),
-                            onPressed: currentPage < totalPages - 1 ? () => setState(() => currentPage++) : null,
-                            constraints: const BoxConstraints(),
-                            padding: EdgeInsets.zero,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
 
-              // Table Header
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                width: double.infinity,
-                decoration: BoxDecoration(
-                   gradient: LinearGradient(
+                      // LIST ANGKA HALAMAN
+                      // Kita generate angka berdasarkan totalPages
+                      ...List.generate(totalPages, (index) {
+                        bool isCurrentPage = index == currentPage;
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              currentPage = index;
+                            });
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              // Beri warna background jika halaman sedang aktif
+                              color: isCurrentPage ? const Color(0xFF1976D2) : Colors.transparent,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '${index + 1}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                // Beri warna teks putih jika aktif, biru jika tidak aktif
+                                color: isCurrentPage ? Colors.white : const Color(0xFF1976D2),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+
+                      const SizedBox(width: 8),
+                      // Tombol Next
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right, size: 20),
+                        onPressed: currentPage < totalPages - 1 ? () => setState(() => currentPage++) : null,
+                        constraints: const BoxConstraints(),
+                        padding: EdgeInsets.zero,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Table Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
                     colors: [
                       const Color(0xFFC6B430).withOpacity(0.8), 
                       const Color(0xFFC6B430).withOpacity(0.4), 
                     ],
                   ),
-                ),
-                child: Row(
-                  children: [
-                    _buildHeaderCell('Access Point ID', flex: 1),
-                    _buildHeaderCell('Location', flex: 2),
-                    _buildHeaderCell('IP Address', flex: 2),
-                    _buildHeaderCell('Status', flex: 1),
-                    _buildHeaderCell('Action', flex: 1, isLast: true),
-                  ],
-                ),
-              ),
-
-              // Table Rows
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: paginatedData.length,
-                itemBuilder: (context, index) {
-                  return _buildTableRow(paginatedData[index]);
-                },
-              ),
-            ],
+            ),
+            child: Row(
+              children: [
+                _buildHeaderCell('Access Point ID', flex: 1),
+                _buildHeaderCell('Location', flex: 2),
+                _buildHeaderCell('IP Address', flex: 2),
+                _buildHeaderCell('Status', flex: 1),
+                _buildHeaderCell('Action', flex: 1, isLast: true),
+              ],
+            ),
           ),
-        ),
+
+          // Table Rows
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: paginatedData.length,
+            itemBuilder: (context, index) {
+              return _buildTableRow(paginatedData[index]);
+            },
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 
   Widget _buildTableRow(Tower tower) {
     bool isWarning = isDownStatus(tower.status);
@@ -1087,6 +1071,30 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
     );
   }
 
+  Widget _buildPagerIcon(IconData icon, VoidCallback? onPressed) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: Colors.black87.withOpacity(onPressed == null ? 0.2 : 0.6),
+            width: 1.2,
+          ),
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: onPressed == null ? Colors.black26 : Colors.black87,
+        ),
+      ),
+    );
+  }
+
   Widget _buildHeaderCell(String label, {required int flex, bool isLast = false}) {
     return Expanded(
       flex: flex,
@@ -1132,21 +1140,7 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
     );
   }
 
-  Widget _buildFooter() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      color: Colors.black.withOpacity(0.8),
-      child: const Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          '©2026 TPK Nilam Monitoring System',
-          style: TextStyle(color: Colors.white, fontSize: 12),
-        ),
-      ),
-    );
-  }
-
+// --- FUNGSI UNTUK MODAL EDIT ---
   Future<void> _showEditForm(Tower tower) async {
     final ipController = TextEditingController(text: tower.ipAddress);
     var locationOptions = buildMasterLocationOptions(
@@ -1238,6 +1232,7 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
     );
   }
 
+  // --- FUNGSI UNTUK KONFIRMASI HAPUS ---
   void _confirmDelete(Tower tower) {
     showDialog(
       context: context,
@@ -1255,15 +1250,14 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
               if (response['success'] == true) {
                 if (mounted) {
                   Navigator.pop(context);
-                  _loadTowers();
+                  _loadTowers(); // Refresh data CY2
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                       content: Text('Data Has Been Successfully Deleted'),
                       backgroundColor: Colors.red));
                 }
               }
             },
-            child: const Text('Delete',
-                style: TextStyle(color: Colors.white)),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -1274,15 +1268,13 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title:
-            const Text('Logout', style: TextStyle(color: Colors.black87)),
+        title: const Text('Logout', style: TextStyle(color: Colors.black87)),
         content: const Text('Are You Sure To Logout?',
             style: TextStyle(color: Colors.black87)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel',
-                style: TextStyle(color: Colors.black87)),
+            child: const Text('Cancel', style: TextStyle(color: Colors.black87)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1303,4 +1295,34 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
       ),
     );
   }
+
+  void _showTowerDetails(Map<String, dynamic> tower) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Access Point ${tower['id']} Details'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Location: ${tower['location']}'),
+            const SizedBox(height: 8),
+            Text('Status: ${tower['status']}'),
+            const SizedBox(height: 8),
+            Text('Traffic: ${tower['traffic']}'),
+            const SizedBox(height: 8),
+            Text('Uptime: ${tower['uptime']}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
 }
+
+

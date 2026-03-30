@@ -1,10 +1,10 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import '../models/device_model.dart';
-import '../models/tower_model.dart';
-import '../utils/device_icon_resolver.dart';
-import '../utils/location_label_utils.dart';
+import 'package:monitoring/models/device_model.dart';
+import 'package:monitoring/models/tower_model.dart';
+import 'package:monitoring/utils/device_icon_resolver.dart';
+import 'package:monitoring/utils/location_label_utils.dart';
 
 class TowerCoordinateFallback {
   static const Map<int, Map<String, double>> byTowerNumber = {

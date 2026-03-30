@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/device_model.dart';
+import 'package:monitoring/models/device_model.dart';
 
 class DeviceStorageService {
   static const String _storageKey = 'added_devices';

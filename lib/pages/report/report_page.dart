@@ -1,22 +1,24 @@
-import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'services/api_service.dart';
-import 'models/alert_model.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'dashboard.dart';
-import 'network.dart';
-import 'cctv.dart';
-import 'add_device.dart';
-import 'alerts.dart';
-import 'profile.dart';
-import 'main.dart';
-import 'pages/tower_management.dart';
-import 'pages/mmt_monitoring.dart';
-import 'widgets/global_header_bar.dart';
-import 'widgets/global_sidebar_nav.dart';
+import 'package:monitoring/main.dart';
+import 'package:monitoring/utils/ui_utils.dart';
+import 'package:monitoring/services/api_service.dart';
+import 'package:monitoring/models/alert_model.dart';
+import 'package:monitoring/pages/dashboard/dashboard.dart';
+import 'package:monitoring/pages/network/network.dart';
+import 'package:monitoring/pages/cctv/cctv.dart';
+import 'package:monitoring/pages/devices/add_device.dart';
+import 'package:monitoring/pages/alerts/alerts.dart';
+import 'package:monitoring/pages/profile/profile.dart';
+import 'package:monitoring/pages/network/tower_management.dart';
+import 'package:monitoring/pages/mmt/mmt_monitoring.dart';
+import 'package:monitoring/widgets/global_header_bar.dart';
+import 'package:monitoring/widgets/global_sidebar_nav.dart';
+import 'package:monitoring/widgets/global_footer.dart';
 
 class ReportPage extends StatefulWidget {
   const ReportPage({super.key});
@@ -36,6 +38,9 @@ class _ReportPageState extends State<ReportPage> {
   );
   String _statusFilter = 'ALL';
   String _selectedDeviceType = 'ALL'; // Filter: ALL, AP, CCTV, MMT
+  
+  int _currentPage = 1;
+  final int _itemsPerPage = 10;
 
   @override
   void initState() {
@@ -309,7 +314,6 @@ class _ReportPageState extends State<ReportPage> {
                     padding: EdgeInsets.all(isMobile ? 12 : 24),
                     child: Column(
                       children: [
-                        _buildDeviceTypeFilter(),
                         const SizedBox(height: 12),
                         _buildFilterBar(),
                         const SizedBox(height: 20),
@@ -321,7 +325,7 @@ class _ReportPageState extends State<ReportPage> {
               ],
             ),
           ),
-          _buildFooter(),
+          const GlobalFooter(),
         ],
       ),
     );
@@ -416,39 +420,6 @@ class _ReportPageState extends State<ReportPage> {
     );
   }
 
-  Widget _buildDeviceTypeFilter() {
-    final filterOptions = ['ALL', 'AP', 'CCTV', 'MMT'];
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: filterOptions.map((type) {
-          final isSelected = _selectedDeviceType == type;
-          return FilterChip(
-            label: Text(type),
-            selected: isSelected,
-            onSelected: (selected) {
-              setState(() {
-                _selectedDeviceType = type;
-              });
-            },
-            selectedColor: const Color(0xFF1976D2).withOpacity(0.2),
-            checkmarkColor: const Color(0xFF1976D2),
-            backgroundColor: Colors.white.withOpacity(0.7),
-            labelStyle: TextStyle(
-              color: isSelected ? const Color(0xFF1976D2) : Colors.black87,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
 
   Widget _buildFilterBar() {
     final isMobile = isMobileScreen(context);
@@ -726,8 +697,6 @@ class _ReportPageState extends State<ReportPage> {
       }
     }
 
-    final upCount = filteredAlerts.where((a) => !_isDownAlert(a)).length;
-    final downCount = filteredAlerts.where((a) => _isDownAlert(a)).length;
     final totalCount = filteredAlerts.length;
     final isMobile = isMobileScreen(context);
 
@@ -754,27 +723,34 @@ class _ReportPageState extends State<ReportPage> {
               borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
             ),
             child: Wrap(
-              spacing: 12,
-              runSpacing: 10,
+              alignment: WrapAlignment.spaceBetween,
               crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 20,
+              runSpacing: 12,
               children: [
                 const Text(
-                  'Unified Device Report',
+                  'Alert Report List',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                    fontSize: 18,
+                    letterSpacing: 0.5,
                   ),
                 ),
-                _buildReportSummaryChip('TOTAL EVENTS', totalCount, Colors.white),
-                _buildReportSummaryChip('UP EVENTS', upCount, const Color(0xFF2E7D32)),
-                _buildReportSummaryChip('DOWN EVENTS', downCount, const Color(0xFFC62828)),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildHeaderFilters(),
+                    const SizedBox(width: 24),
+                    _buildHeaderPagination(totalCount),
+                  ],
+                ),
               ],
             ),
           ),
           LayoutBuilder(
             builder: (context, constraints) {
-              final minW = isMobile ? 920.0 : 1120.0;
+              final minW = isMobile ? 800.0 : 1000.0;
               return SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: ConstrainedBox(
@@ -790,18 +766,19 @@ class _ReportPageState extends State<ReportPage> {
                     color: const Color(0xFFC6B430),
                     child: const Row(
                       children: [
-                        Expanded(flex: 1, child: _ReportHeaderText('NO')),
                         Expanded(flex: 3, child: _ReportHeaderText('DEVICE')),
-                        Expanded(flex: 2, child: _ReportHeaderText('STATUS')),
-                        Expanded(flex: 3, child: _ReportHeaderText('IP ADDRESS')),
                         Expanded(flex: 4, child: _ReportHeaderText('LOCATION')),
+                        Expanded(flex: 3, child: _ReportHeaderText('IP ADDRESS')),
+                        Expanded(flex: 2, child: _ReportHeaderText('STATUS')),
                         Expanded(flex: 3, child: _ReportHeaderText('TIMESTAMP')),
+                        Expanded(flex: 2, child: _ReportHeaderText('ACTION')),
                       ],
                     ),
                   ),
-                  ...filteredAlerts.asMap().entries.map((entry) {
-                    final index = entry.key + 1;
-                    final a = entry.value;
+                  ...filteredAlerts
+                      .skip((_currentPage - 1) * _itemsPerPage)
+                      .take(_itemsPerPage)
+                      .map((a) {
                     final isDown = _isDownAlert(a);
                     final statusText = isDown ? 'DOWN' : 'UP';
                     final statusColor = isDown ? Colors.red : Colors.green;
@@ -809,54 +786,63 @@ class _ReportPageState extends State<ReportPage> {
                     return Container(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE8D5C4),
+                        color: const Color(0xFF2C3E50).withOpacity(0.9),
                         border: Border(
-                          bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+                          bottom: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
                         ),
                       ),
                       child: Row(
                         children: [
-                          _buildReportValueCell(index.toString(), flex: 1),
                           _buildReportValueCell(
                             _cleanDeviceName(a.title),
                             flex: 3,
                             fontWeight: FontWeight.w800,
                             align: TextAlign.center,
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Center(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: statusColor.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(color: statusColor.withOpacity(0.7)),
-                                ),
-                                child: Text(
-                                  statusText,
-                                  style: TextStyle(
-                                    color: statusColor,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          _buildReportValueCell(
-                            _extractIpFromDescription(a.description),
-                            flex: 3,
+                            color: Colors.white,
                           ),
                           _buildReportValueCell(
                             a.lokasi?.isNotEmpty == true ? a.lokasi! : '-',
                             flex: 4,
                             fontWeight: FontWeight.w700,
                             align: TextAlign.center,
+                            color: Colors.white70,
                           ),
                           _buildReportValueCell(
-                            '${a.tanggal ?? '-'} ${a.waktu ?? '-'}',
+                            _extractIpFromDescription(a.description),
                             flex: 3,
+                            color: Colors.white70,
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Center(
+                              child: Text(
+                                statusText,
+                                style: TextStyle(
+                                  color: statusColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ),
+                          _buildReportValueCell(
+                            '${a.tanggal ?? ''} ${a.waktu ?? ''}',
+                            flex: 3,
+                            color: Colors.white54,
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Center(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                                    onPressed: () => _confirmDeleteAlert(a),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -1000,21 +986,137 @@ class _ReportPageState extends State<ReportPage> {
     );
   }
 
-  // FUNGSI FOOTER DIPINDAHKAN KE LUAR build()
-  Widget _buildFooter() {
+  Future<void> _confirmDeleteAlert(Alert alert) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Delete'),
+        content: Text('Hapus report log untuk ${alert.title}?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final success = await apiService.deleteAlert(alert.id);
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Log berhasil dihapus'),
+              backgroundColor: Colors.green),
+        );
+        _fetchReportData();
+      }
+    }
+  }
+
+  Widget _buildHeaderFilters() {
+    final filterOptions = ['ALL', 'AP', 'CCTV', 'MMT'];
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: filterOptions.map((type) {
+        final isSelected = _selectedDeviceType == type;
+        return InkWell(
+          onTap: () => setState(() {
+            _selectedDeviceType = type;
+            _currentPage = 1;
+          }),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: isSelected ? Colors.white.withOpacity(0.2) : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isSelected ? Colors.white : Colors.white.withOpacity(0.3),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isSelected)
+                  const Icon(Icons.check, color: Colors.white, size: 14),
+                if (isSelected) const SizedBox(width: 4),
+                Text(
+                  type,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildHeaderPagination(int totalCount) {
+    final totalPagesCount = math.max(1, (totalCount / _itemsPerPage).ceil());
+
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      color: Colors.black.withOpacity(0.8),
-      child: const Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          '©2026 TPK Nilam Monitoring System',
-          style: TextStyle(color: Colors.white, fontSize: 12),
-        ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.15)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left, color: Colors.white, size: 20),
+            onPressed: _currentPage > 1 ? () => setState(() => _currentPage--) : null,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+          const SizedBox(width: 4),
+          for (int i = 1; i <= totalPagesCount; i++)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: InkWell(
+                onTap: () => setState(() => _currentPage = i),
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: _currentPage == i ? Colors.white : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '$i',
+                    style: TextStyle(
+                      color: _currentPage == i ? const Color(0xFF1976D2) : Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          const SizedBox(width: 4),
+          IconButton(
+            icon: const Icon(Icons.chevron_right, color: Colors.white, size: 20),
+            onPressed: _currentPage < totalPagesCount ? () => setState(() => _currentPage++) : null,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+        ],
       ),
     );
   }
+
 }
 
 class _ReportHeaderText extends StatelessWidget {
@@ -1028,10 +1130,13 @@ class _ReportHeaderText extends StatelessWidget {
       text,
       textAlign: TextAlign.center,
       style: const TextStyle(
-        color: Colors.black,
+        color: Colors.white,
         fontWeight: FontWeight.bold,
         fontSize: 13,
+        letterSpacing: 0.5,
       ),
     );
   }
 }
+
+

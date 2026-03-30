@@ -9,8 +9,8 @@
 library;
 
 import 'package:flutter/material.dart';
-import '../models/device_marker.dart';
-import '../utils/layout_mapper.dart';
+import 'package:monitoring/models/device_marker.dart';
+import 'package:monitoring/utils/layout_mapper.dart';
 
 class NilamLayoutMap extends StatefulWidget {
   /// List of device markers to display

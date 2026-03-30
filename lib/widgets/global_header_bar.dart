@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../utils/auth_helper.dart';
+import 'package:monitoring/utils/auth_helper.dart';
 
 class GlobalHeaderBar extends StatefulWidget {
   final String currentRoute;

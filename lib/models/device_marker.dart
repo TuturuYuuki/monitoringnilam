@@ -7,7 +7,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import '../utils/device_icon_resolver.dart';
+import 'package:monitoring/utils/device_icon_resolver.dart';
 
 enum DeviceType {
   tower,

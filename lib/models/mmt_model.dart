@@ -1,4 +1,4 @@
-import '../utils/location_label_utils.dart';
+import 'package:monitoring/utils/location_label_utils.dart';
 
 class MMT {
   final int id;

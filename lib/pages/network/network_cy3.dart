@@ -2,25 +2,27 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'main.dart';
-import 'services/api_service.dart';
-import 'models/tower_model.dart';
-import 'utils/tower_status_override.dart';
-import 'utils/location_label_utils.dart';
-import 'widgets/expandable_fab_nav.dart';
-import 'widgets/global_header_bar.dart';
-import 'widgets/global_sidebar_nav.dart';
+import 'package:monitoring/main.dart';
+import 'package:monitoring/utils/ui_utils.dart';
+import 'package:monitoring/services/api_service.dart';
+import 'package:monitoring/models/tower_model.dart';
+import 'package:monitoring/utils/tower_status_override.dart';
+import 'package:monitoring/utils/location_label_utils.dart';
+import 'package:monitoring/widgets/expandable_fab_nav.dart';
+import 'package:monitoring/widgets/global_header_bar.dart';
+import 'package:monitoring/widgets/global_sidebar_nav.dart';
+import 'package:monitoring/widgets/global_footer.dart';
 
-// Network Page GATE
-class NetworkGatePage extends StatefulWidget {
-  const NetworkGatePage({super.key});
+// Network Page CY 3
+class NetworkCY3Page extends StatefulWidget {
+  const NetworkCY3Page({super.key});
 
   @override
-  State<NetworkGatePage> createState() => _NetworkGatePageState();
+  State<NetworkCY3Page> createState() => _NetworkCY3PageState();
 }
 
-class _NetworkGatePageState extends State<NetworkGatePage> {
-  String selectedArea = 'GATE';
+class _NetworkCY3PageState extends State<NetworkCY3Page> {
+  String selectedArea = 'CY 3';
   static const List<String> _areaOptions = [
     'CY 1',
     'CY 2',
@@ -61,28 +63,26 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
 
   Future<void> _loadTowers() async {
     try {
-      // 1. Ambil data database DULU agar tabel langsung muncul
-      final fetchedTowers = await apiService.getTowersByContainerYard('GATE');
-
+      final fetchedTowers = await apiService.getValidatedTowersByYard('CY3');
+      
       if (mounted) {
         setState(() {
-          towers = _normalizeAndSortTowers(applyForcedTowerStatus(fetchedTowers));
+          towers = fetchedTowers;
           isLoading = false;
           _lastRefreshTime = DateTime.now();
         });
       }
 
-      // 2. Jalankan ping di background TANPA await agar tidak memicu timeout pada tabel
-      _triggerRealtimePing();
+      _triggerRealtimePing(); 
     } catch (e) {
-      print('Error Loading Tower GATE: $e');
+      print('Error Loading Tower CY3: $e');
       if (mounted) setState(() => isLoading = false);
     }
   }
 
   Future<void> _triggerRealtimePing() async {
     try {
-      print('=== Starting Realtime Ping For All Towers (GATE) ===');
+      print('=== Starting Realtime Ping For All Towers (CY3) ===');
 
       // Trigger backend realtime ping untuk semua devices
       final pingResult = await apiService.triggerRealtimePing();
@@ -92,7 +92,7 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
         print('IP Checked: ${pingResult['ips_checked']}');
       }
 
-      print('=== Realtime Ping Completed (GATE) ===');
+      print('=== Realtime Ping Completed (CY3) ===');
     } catch (e) {
       print('Error Triggering Realtime Ping: $e');
     }
@@ -105,15 +105,15 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
       // Call realtime ping endpoint yang update semua towers sekaligus
       final response = await http
           .get(
-            Uri.parse('$baseUrl?endpoint=realtime&action=all'),
-          )
+        Uri.parse('$baseUrl?endpoint=realtime&action=all'),
+      )
           .timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              print('Realtime Ping Timed Out');
-              return http.Response('{"success":false}', 408);
-            },
-          );
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('Realtime Ping Timed Out');
+          return http.Response('{"success":false}', 408);
+        },
+      );
 
       if (response.statusCode == 200) {
         // Wait a moment for database to update
@@ -125,35 +125,7 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
     }
   }
 
-  List<Tower> _normalizeAndSortTowers(List<Tower> input) {
-    final dedup = <String, Tower>{};
-    for (final tower in input) {
-      dedup[tower.towerId.toLowerCase()] = tower;
-    }
-    final list = dedup.values.toList();
-    list.sort((a, b) => _orderValue(a).compareTo(_orderValue(b)));
-    return list;
-  }
 
-  double _orderValue(Tower tower) {
-    if (tower.towerNumber > 0) {
-      return tower.towerNumber.toDouble();
-    }
-
-    final regex = RegExp(r'^(\d+)([A-Za-z]?)$');
-    final match = regex.firstMatch(tower.towerId.trim());
-    if (match != null) {
-      final base = double.tryParse(match.group(1) ?? '') ?? 9999;
-      final suffix = match.group(2);
-      if (suffix != null && suffix.isNotEmpty) {
-        final offset = (suffix.codeUnitAt(0) - 'A'.codeUnitAt(0) + 1) / 10;
-        return base + offset;
-      }
-      return base;
-    }
-
-    return 9999;
-  }
 
   List<Tower> get paginatedData {
     int start = currentPage * itemsPerPage;
@@ -187,7 +159,7 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
                 const Padding(
                   padding: EdgeInsets.all(12.0),
                   child: Text(
-                    'All Towers Are In UP Status.',
+                    'All Towers Are In UP Condition.',
                     style: TextStyle(fontSize: 13, color: Colors.black54),
                     textAlign: TextAlign.center,
                   ),
@@ -256,13 +228,13 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
         children: [
           Column(
             children: [
-              const GlobalHeaderBar(currentRoute: '/network-gate'),
+              const GlobalHeaderBar(currentRoute: '/network-cy3'),
               Expanded(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Sidebar (Kiri)
-                    const GlobalSidebarNav(currentRoute: '/network-gate'),
+                    const GlobalSidebarNav(currentRoute: '/network-cy3'),
                     const SizedBox(width: 12),
                     // Content (Kanan)
                     Expanded(
@@ -280,14 +252,15 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
                   ],
                 ),
               ),
-              _buildFooter(),
+              const GlobalFooter(),
             ],
           ),
-          const ExpandableFabNav(currentRoute: '/network-gate'),
+          const ExpandableFabNav(currentRoute: '/network-cy3'),
         ],
       ),
     );
   }
+
 
   Widget _buildContent(BuildContext context, BoxConstraints constraints) {
     final isMobile = isMobileScreen(context);
@@ -303,7 +276,8 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
                 color: const Color(0xFF1976D2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.language, size: 32, color: Colors.white),
+              child: const Icon(Icons.language,
+                  size: 32, color: Colors.white),
             ),
             const SizedBox(width: 16),
             Column(
@@ -371,7 +345,8 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
                             _buildStatCard('UP', '$onlineTowers', Colors.green,
                                 width: cardWidth),
                             SizedBox(width: isMobile ? 8 : 16),
-                            _buildStatCard('DOWN', '$warningTowers', Colors.red,
+                            _buildStatCard(
+                                'DOWN', '$warningTowers', Colors.blue,
                                 onTap: _showWarningList, width: cardWidth),
                           ],
                         ),
@@ -388,8 +363,8 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
                     spacing: 16,
                     runSpacing: 16,
                     children: [
-                      _buildStatCard('Total Access Point', '$totalTowers',
-                          Colors.orange,
+                      _buildStatCard(
+                          'Total Access Point', '$totalTowers', Colors.orange,
                           width: cardWidth),
                       _buildStatCard('UP', '$onlineTowers', Colors.green,
                           width: cardWidth),
@@ -591,18 +566,18 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
                           );
                         }).toList(),
                         onChanged: (String? newValue) {
-                          if (newValue != null) {
-                            if (newValue == 'CY 1') {
-                              Navigator.pushReplacementNamed(context, '/network');
-                            } else if (newValue == 'CY 2') {
-                              Navigator.pushReplacementNamed(context, '/network-cy2');
-                            } else if (newValue == 'CY 3') {
-                              Navigator.pushReplacementNamed(context, '/network-cy3');
-                            } else if (newValue == 'GATE') {
-                              Navigator.pushReplacementNamed(context, '/network-gate');
-                            } else if (newValue == 'PARKING') {
-                              Navigator.pushReplacementNamed(context, '/network-parking');
-                            }
+                          if (newValue == null) return;
+                          
+                          if (newValue == 'CY 1') {
+                            Navigator.pushReplacementNamed(context, '/network');
+                          } else if (newValue == 'CY 2') {
+                            Navigator.pushReplacementNamed(context, '/network-cy2');
+                          } else if (newValue == 'CY 3') {
+                            Navigator.pushReplacementNamed(context, '/network-cy3');
+                          } else if (newValue == 'GATE') {
+                            Navigator.pushReplacementNamed(context, '/network-gate');
+                          } else if (newValue == 'PARKING') {
+                            Navigator.pushReplacementNamed(context, '/network-parking');
                           }
                         },
                       ),
@@ -648,7 +623,8 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
                   color: const Color(0xFF1976D2).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 20),
+                child: const Icon(Icons.location_on_rounded,
+                    color: Colors.white, size: 20),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -777,7 +753,7 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
     );
   }
 
-  Widget _buildTowerList() {
+   Widget _buildTowerList() {
     // Show loading indicator
     if (isLoading) {
       return ClipRRect(
@@ -994,7 +970,7 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 width: double.infinity,
                 decoration: BoxDecoration(
-                   gradient: LinearGradient(
+                  gradient: LinearGradient(
                     colors: [
                       const Color(0xFFC6B430).withOpacity(0.8), 
                       const Color(0xFFC6B430).withOpacity(0.4), 
@@ -1086,6 +1062,30 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
     );
   }
 
+  Widget _buildPagerIcon(IconData icon, VoidCallback? onPressed) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: Colors.black87.withOpacity(onPressed == null ? 0.2 : 0.6),
+            width: 1.2,
+          ),
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: onPressed == null ? Colors.black26 : Colors.black87,
+        ),
+      ),
+    );
+  }
+
   Widget _buildHeaderCell(String label, {required int flex, bool isLast = false}) {
     return Expanded(
       flex: flex,
@@ -1131,21 +1131,8 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
     );
   }
 
-  Widget _buildFooter() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      color: Colors.black.withOpacity(0.8),
-      child: const Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          '©2026 TPK Nilam Monitoring System',
-          style: TextStyle(color: Colors.white, fontSize: 12),
-        ),
-      ),
-    );
-  }
 
+// --- FUNGSI KHUSUS CY3 ---
   Future<void> _showEditForm(Tower tower) async {
     final ipController = TextEditingController(text: tower.ipAddress);
     var locationOptions = buildMasterLocationOptions(
@@ -1224,7 +1211,7 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
                     Navigator.pop(context);
                     _loadTowers();
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Successfully Updated'),
+                        content: Text('CY3 Updated Successfully'),
                         backgroundColor: Colors.green));
                   }
                 }
@@ -1242,7 +1229,7 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Delete'),
-        content: Text('Are you sure you want to delete ${tower.towerId}?'),
+        content: Text('Delete ${tower.towerId} from CY3?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
@@ -1254,15 +1241,14 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
               if (response['success'] == true) {
                 if (mounted) {
                   Navigator.pop(context);
-                  _loadTowers();
+                  _loadTowers(); // Refresh data khusus CY3
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Data Has Been Successfully Deleted'),
+                      content: Text('CY3 Data Deleted Successfully'),
                       backgroundColor: Colors.red));
                 }
               }
             },
-            child: const Text('Delete',
-                style: TextStyle(color: Colors.white)),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -1273,15 +1259,13 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title:
-            const Text('Logout', style: TextStyle(color: Colors.black87)),
+        title: const Text('Logout', style: TextStyle(color: Colors.black87)),
         content: const Text('Are You Sure To Logout?',
             style: TextStyle(color: Colors.black87)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel',
-                style: TextStyle(color: Colors.black87)),
+            child: const Text('Cancel', style: TextStyle(color: Colors.black87)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1302,4 +1286,34 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
       ),
     );
   }
+
+  void _showTowerDetails(Map<String, dynamic> tower) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Access Point ${tower['id']} Details'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Location: ${tower['location']}'),
+            const SizedBox(height: 8),
+            Text('Status: ${tower['status']}'),
+            const SizedBox(height: 8),
+            Text('Traffic: ${tower['traffic']}'),
+            const SizedBox(height: 8),
+            Text('Uptime: ${tower['uptime']}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
 }
+
+

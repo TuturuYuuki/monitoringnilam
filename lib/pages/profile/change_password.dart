@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'main.dart';
-import 'services/api_service.dart';
-import 'utils/auth_helper.dart';
-import 'widgets/global_header_bar.dart';
-import 'widgets/global_sidebar_nav.dart';
+import 'package:monitoring/main.dart';
+import 'package:monitoring/utils/ui_utils.dart';
+import 'package:monitoring/utils/auth_helper.dart';
+import 'package:monitoring/services/api_service.dart';
+import 'package:monitoring/widgets/global_header_bar.dart';
+import 'package:monitoring/widgets/global_sidebar_nav.dart';
+import 'package:monitoring/widgets/global_footer.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -366,7 +368,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               ],
             ),
           ),
-          _buildFooter(),
+          const GlobalFooter(),
         ],
       ),
     );
@@ -668,19 +670,5 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     );
   }
 
-   Widget _buildFooter() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      color: Colors.black.withOpacity(0.8),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            '©2026 TPK Nilam Monitoring System',
-            style: TextStyle(color: Colors.white, fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
 }
+

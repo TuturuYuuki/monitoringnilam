@@ -1,5 +1,5 @@
-import '../models/camera_model.dart';
-import '../models/tower_model.dart';
+import 'package:monitoring/models/camera_model.dart';
+import 'package:monitoring/models/tower_model.dart';
 
 // Helper untuk cek status DOWN/WARNING
 // Tidak ada lagi hardcoded tower numbers - semua data langsung dari database

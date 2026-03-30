@@ -1,28 +1,28 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:animations/animations.dart';
 import 'package:http/http.dart' as http;
-import 'main.dart';
-import 'services/api_service.dart';
-import 'models/tower_model.dart';
-import 'route_proxy_page.dart';
-import 'utils/tower_status_override.dart';
-import 'utils/location_label_utils.dart';
-import 'widgets/expandable_fab_nav.dart';
-import 'widgets/global_header_bar.dart';
-import 'widgets/global_sidebar_nav.dart';
+import 'package:monitoring/main.dart';
+import 'package:monitoring/utils/ui_utils.dart';
+import 'package:monitoring/services/api_service.dart';
+import 'package:monitoring/models/tower_model.dart';
+import 'package:monitoring/utils/tower_status_override.dart';
+import 'package:monitoring/utils/location_label_utils.dart';
+import 'package:monitoring/widgets/expandable_fab_nav.dart';
+import 'package:monitoring/widgets/global_header_bar.dart';
+import 'package:monitoring/widgets/global_sidebar_nav.dart';
+import 'package:monitoring/widgets/global_footer.dart';
 
-// Network Page CY 2
-class NetworkCY2Page extends StatefulWidget {
-  const NetworkCY2Page({super.key});
+// Network Page GATE
+class NetworkGatePage extends StatefulWidget {
+  const NetworkGatePage({super.key});
 
   @override
-  State<NetworkCY2Page> createState() => _NetworkCY2PageState();
+  State<NetworkGatePage> createState() => _NetworkGatePageState();
 }
 
-class _NetworkCY2PageState extends State<NetworkCY2Page> {
-  String selectedArea = 'CY 2';
+class _NetworkGatePageState extends State<NetworkGatePage> {
+  String selectedArea = 'GATE';
   static const List<String> _areaOptions = [
     'CY 1',
     'CY 2',
@@ -62,30 +62,27 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
   }
 
   Future<void> _loadTowers() async {
-  try {
-    // 1. Ambil data database DULU agar tabel langsung muncul
-    final fetchedTowers = await apiService.getTowersByContainerYard('CY2');
-    
-    if (mounted) {
-      setState(() {
-        towers = _normalizeAndSortTowers(applyForcedTowerStatus(fetchedTowers));
-        isLoading = false;
-        _lastRefreshTime = DateTime.now();
-      });
+    try {
+      final fetchedTowers = await apiService.getValidatedTowersByYard('GATE');
+      
+      if (mounted) {
+        setState(() {
+          towers = fetchedTowers;
+          isLoading = false;
+          _lastRefreshTime = DateTime.now();
+        });
+      }
+
+      _triggerRealtimePing(); 
+    } catch (e) {
+      print('Error Loading Tower GATE: $e');
+      if (mounted) setState(() => isLoading = false);
     }
-
-    // 2. Jalankan ping di background TANPA await agar tidak memicu timeout pada tabel
-    _triggerRealtimePing(); 
-
-  } catch (e) {
-    print('Error Loading Tower CY2: $e');
-    if (mounted) setState(() => isLoading = false);
   }
-}
 
   Future<void> _triggerRealtimePing() async {
     try {
-      print('=== Starting Realtime Ping For All Towers (CY2) ===');
+      print('=== Starting Realtime Ping For All Towers (GATE) ===');
 
       // Trigger backend realtime ping untuk semua devices
       final pingResult = await apiService.triggerRealtimePing();
@@ -95,7 +92,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
         print('IP Checked: ${pingResult['ips_checked']}');
       }
 
-      print('=== Realtime Ping Completed (CY2) ===');
+      print('=== Realtime Ping Completed (GATE) ===');
     } catch (e) {
       print('Error Triggering Realtime Ping: $e');
     }
@@ -108,15 +105,15 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
       // Call realtime ping endpoint yang update semua towers sekaligus
       final response = await http
           .get(
-        Uri.parse('$baseUrl?endpoint=realtime&action=all'),
-      )
+            Uri.parse('$baseUrl?endpoint=realtime&action=all'),
+          )
           .timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          print('Realtime Ping Timed Out');
-          return http.Response('{"success":false}', 408);
-        },
-      );
+            const Duration(seconds: 10),
+            onTimeout: () {
+              print('Realtime Ping Timed Out');
+              return http.Response('{"success":false}', 408);
+            },
+          );
 
       if (response.statusCode == 200) {
         // Wait a moment for database to update
@@ -128,98 +125,6 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     }
   }
 
-  List<Tower> _normalizeAndSortTowers(List<Tower> input) {
-    final dedup = <String, Tower>{};
-    for (final tower in input) {
-      dedup[tower.towerId.toLowerCase()] = tower;
-    }
-    final list = dedup.values.toList();
-    list.sort((a, b) => _orderValue(a).compareTo(_orderValue(b)));
-    return list;
-  }
-
-  double _orderValue(Tower tower) {
-    if (tower.towerNumber > 0) {
-      return tower.towerNumber.toDouble();
-    }
-
-    final regex = RegExp(r'^(\d+)([A-Za-z]?)$');
-    final match = regex.firstMatch(tower.towerId.trim());
-    if (match != null) {
-      final base = double.tryParse(match.group(1) ?? '') ?? 9999;
-      final suffix = match.group(2);
-      if (suffix != null && suffix.isNotEmpty) {
-        final offset = (suffix.codeUnitAt(0) - 'A'.codeUnitAt(0) + 1) / 10;
-        return base + offset;
-      }
-      return base;
-    }
-
-    return 9999;
-  }
-
-  final List<Map<String, dynamic>> towerData = [
-    {
-      'id': 'T1',
-      'location': 'Container Yard 2',
-      'ip': '192.168.20.1',
-      'device': '2 CCTV',
-      'status': 'UP',
-      'traffic': '178 Mbps',
-      'uptime': '99.5%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T2',
-      'location': 'Container Yard 2',
-      'ip': '192.168.20.2',
-      'device': '3 CCTV',
-      'status': 'UP',
-      'traffic': '205 Mbps',
-      'uptime': '98.8%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T3',
-      'location': 'Container Yard 2',
-      'ip': '192.168.20.3',
-      'device': '1 CCTV',
-      'status': 'Warning',
-      'traffic': '89 Mbps',
-      'uptime': '96.5%',
-      'statusColor': Colors.red,
-    },
-    {
-      'id': 'T4',
-      'location': 'Container Yard 2',
-      'ip': '192.168.20.4',
-      'device': '2 CCTV',
-      'status': 'UP',
-      'traffic': '192 Mbps',
-      'uptime': '99.2%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T5',
-      'location': 'Container Yard 2',
-      'ip': '192.168.20.5',
-      'device': '3 CCTV',
-      'status': 'UP',
-      'traffic': '167 Mbps',
-      'uptime': '97.8%',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 'T6',
-      'location': 'Container Yard 2',
-      'ip': '192.168.20.6',
-      'device': '2 CCTV',
-      'status': 'UP',
-      'traffic': '215 Mbps',
-      'uptime': '99.7%',
-      'statusColor': Colors.green,
-    },
-  ];
 
   List<Tower> get paginatedData {
     int start = currentPage * itemsPerPage;
@@ -322,13 +227,13 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
         children: [
           Column(
             children: [
-              const GlobalHeaderBar(currentRoute: '/network-cy2'),
+              const GlobalHeaderBar(currentRoute: '/network-gate'),
               Expanded(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Sidebar (Kiri)
-                    const GlobalSidebarNav(currentRoute: '/network-cy2'),
+                    const GlobalSidebarNav(currentRoute: '/network-gate'),
                     const SizedBox(width: 12),
                     // Content (Kanan)
                     Expanded(
@@ -346,236 +251,13 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                   ],
                 ),
               ),
-              _buildFooter(),
+              const GlobalFooter(),
             ],
           ),
-          const ExpandableFabNav(currentRoute: '/network-cy2'),
+          const ExpandableFabNav(currentRoute: '/network-gate'),
         ],
       ),
     );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-  final isMobile = isMobileScreen(context);
-  double screenWidth = MediaQuery.of(context).size.width;
-  return Container(
-    width: screenWidth,
-    padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 12 : 24, vertical: isMobile ? 12 : 16),
-    color: const Color(0xFF1976D2),
-    child: isMobile
-        ? Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Terminal Nilam',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: isMobile ? 28 : 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: OpenContainer(
-                      transitionDuration: const Duration(milliseconds: 550),
-                      transitionType: ContainerTransitionType.fadeThrough,
-                      closedElevation: 0,
-                      closedColor: Colors.transparent,
-                      closedShape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                      openElevation: 0,
-                      openBuilder: (context, _) =>
-                          const RouteProxyPage('/profile'),
-                      closedBuilder: (context, openContainer) {
-                        return GestureDetector(
-                          onTap: openContainer,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(50),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 8,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.person,
-                              color: Color(0xFF1976D2),
-                              size: 24,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ScrollConfiguration(
-                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildHeaderOpenButton('+ Add New Device', '/add-device',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Dashboard', '/dashboard',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Access Point', '/network',
-                          isActive: true),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Alert', '/alerts',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderOpenButton('Alert Report', '/report',
-                          isActive: false),
-                      const SizedBox(width: 4),
-                      _buildHeaderLogoutButton(),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          )
-        : Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Terminal Nilam - TETAP FIXED
-              const Text(
-                'Terminal Nilam',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 30),
-              // Buttons - SCROLL HORIZONTAL
-              Expanded(
-                child: ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildHeaderOpenButton('Add New Device', '/add-device',
-                            isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Master Data', '/tower-management',
-                            isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Dashboard', '/dashboard',
-                            isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Access Point', '/network',
-                            isActive: true),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('CCTV', '/cctv', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('MMT', '/mmt-monitoring', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Alert', '/alerts', isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderOpenButton('Alert Report', '/report',
-                            isActive: false),
-                        const SizedBox(width: 12),
-                        _buildHeaderLogoutButton(),
-                        const SizedBox(width: 12),
-                        // Profile Icon - SCROLL dengan buttons
-                        MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: OpenContainer(
-                            transitionDuration: const Duration(milliseconds: 550),
-                            transitionType: ContainerTransitionType.fadeThrough,
-                            closedElevation: 0,
-                            closedColor: Colors.transparent,
-                            closedShape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(50),
-                            ),
-                            openElevation: 0,
-                            openBuilder: (context, _) =>
-                                const RouteProxyPage('/profile'),
-                            closedBuilder: (context, openContainer) {
-                              return GestureDetector(
-                                onTap: openContainer,
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.9),
-                                    borderRadius: BorderRadius.circular(50),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.1),
-                                        blurRadius: 8,
-                                        spreadRadius: 1,
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Icon(
-                                    Icons.person,
-                                    color: Color(0xFF1976D2),
-                                    size: 24,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-  );
-}
-
-  Widget _buildHeaderButton(String text, VoidCallback onPressed,
-      {bool isActive = false}) {
-    return buildLiquidGlassButton(text, onPressed, isActive: isActive);
-  }
-
-  Widget _buildHeaderOpenButton(String text, String route,
-      {bool isActive = false}) {
-    return OpenContainer(
-      transitionDuration: const Duration(milliseconds: 550),
-      transitionType: ContainerTransitionType.fadeThrough,
-      closedElevation: 0,
-      closedColor: Colors.transparent,
-      closedShape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      openElevation: 0,
-      openBuilder: (context, _) => RouteProxyPage(route),
-      closedBuilder: (context, openContainer) {
-        return buildLiquidGlassButton(text, openContainer, isActive: isActive);
-      },
-    );
-  }
-
-  Widget _buildHeaderLogoutButton() {
-    return buildLiquidGlassButton('Logout', () => _showLogoutDialog(context),
-        isActive: false);
   }
 
   Widget _buildContent(BuildContext context, BoxConstraints constraints) {
@@ -592,8 +274,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                 color: const Color(0xFF1976D2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.language,
-                  size: 32, color: Colors.white),
+              child: const Icon(Icons.language, size: 32, color: Colors.white),
             ),
             const SizedBox(width: 16),
             Column(
@@ -661,8 +342,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                             _buildStatCard('UP', '$onlineTowers', Colors.green,
                                 width: cardWidth),
                             SizedBox(width: isMobile ? 8 : 16),
-                            _buildStatCard(
-                                'DOWN', '$warningTowers', Colors.blue,
+                            _buildStatCard('DOWN', '$warningTowers', Colors.red,
                                 onTap: _showWarningList, width: cardWidth),
                           ],
                         ),
@@ -679,8 +359,8 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                     spacing: 16,
                     runSpacing: 16,
                     children: [
-                      _buildStatCard(
-                          'Total Access Point', '$totalTowers', Colors.orange,
+                      _buildStatCard('Total Access Point', '$totalTowers',
+                          Colors.orange,
                           width: cardWidth),
                       _buildStatCard('UP', '$onlineTowers', Colors.green,
                           width: cardWidth),
@@ -882,18 +562,18 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                           );
                         }).toList(),
                         onChanged: (String? newValue) {
-                          if (newValue == null) return;
-                          
-                          if (newValue == 'CY 1') {
-                            Navigator.pushReplacementNamed(context, '/network');
-                          } else if (newValue == 'CY 2') {
-                            Navigator.pushReplacementNamed(context, '/network-cy2');
-                          } else if (newValue == 'CY 3') {
-                            Navigator.pushReplacementNamed(context, '/network-cy3');
-                          } else if (newValue == 'GATE') {
-                            Navigator.pushReplacementNamed(context, '/network-gate');
-                          } else if (newValue == 'PARKING') {
-                            Navigator.pushReplacementNamed(context, '/network-parking');
+                          if (newValue != null) {
+                            if (newValue == 'CY 1') {
+                              Navigator.pushReplacementNamed(context, '/network');
+                            } else if (newValue == 'CY 2') {
+                              Navigator.pushReplacementNamed(context, '/network-cy2');
+                            } else if (newValue == 'CY 3') {
+                              Navigator.pushReplacementNamed(context, '/network-cy3');
+                            } else if (newValue == 'GATE') {
+                              Navigator.pushReplacementNamed(context, '/network-gate');
+                            } else if (newValue == 'PARKING') {
+                              Navigator.pushReplacementNamed(context, '/network-parking');
+                            }
                           }
                         },
                       ),
@@ -939,8 +619,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                   color: const Color(0xFF1976D2).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.location_on_rounded,
-                    color: Colors.white, size: 20),
+                child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 20),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -976,6 +655,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
       ),
     );
   }
+
   Widget _buildCheckStatusButton(double width) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -1244,90 +924,80 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                             padding: EdgeInsets.zero,
                           ),
                           const SizedBox(width: 8),
-
-                      // LIST ANGKA HALAMAN
-                      // Kita generate angka berdasarkan totalPages
-                      ...List.generate(totalPages, (index) {
-                        bool isCurrentPage = index == currentPage;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              currentPage = index;
-                            });
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              // Beri warna background jika halaman sedang aktif
-                              color: isCurrentPage ? const Color(0xFF1976D2) : Colors.transparent,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                // Beri warna teks putih jika aktif, biru jika tidak aktif
-                                color: isCurrentPage ? Colors.white : const Color(0xFF1976D2),
+                          ...List.generate(totalPages, (index) {
+                            bool isCurrentPage = index == currentPage;
+                            return GestureDetector(
+                              onTap: () => setState(() => currentPage = index),
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: isCurrentPage ? Colors.white.withOpacity(0.2) : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '${index + 1}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 13,
+                                    color: isCurrentPage ? Colors.white : Colors.white70,
+                                  ),
+                                ),
                               ),
-                            ),
+                            );
+                          }),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.chevron_right_rounded, size: 22, color: Colors.white),
+                            onPressed: currentPage < totalPages - 1 ? () => setState(() => currentPage++) : null,
+                            constraints: const BoxConstraints(),
+                            padding: EdgeInsets.zero,
                           ),
-                        );
-                      }),
-
-                      const SizedBox(width: 8),
-                      // Tombol Next
-                      IconButton(
-                        icon: const Icon(Icons.chevron_right, size: 20),
-                        onPressed: currentPage < totalPages - 1 ? () => setState(() => currentPage++) : null,
-                        constraints: const BoxConstraints(),
-                        padding: EdgeInsets.zero,
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          // Table Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
+              ),
+
+              // Table Header
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                   gradient: LinearGradient(
                     colors: [
                       const Color(0xFFC6B430).withOpacity(0.8), 
                       const Color(0xFFC6B430).withOpacity(0.4), 
                     ],
                   ),
-            ),
-            child: Row(
-              children: [
-                _buildHeaderCell('Access Point ID', flex: 1),
-                _buildHeaderCell('Location', flex: 2),
-                _buildHeaderCell('IP Address', flex: 2),
-                _buildHeaderCell('Status', flex: 1),
-                _buildHeaderCell('Action', flex: 1, isLast: true),
-              ],
-            ),
-          ),
+                ),
+                child: Row(
+                  children: [
+                    _buildHeaderCell('Access Point ID', flex: 1),
+                    _buildHeaderCell('Location', flex: 2),
+                    _buildHeaderCell('IP Address', flex: 2),
+                    _buildHeaderCell('Status', flex: 1),
+                    _buildHeaderCell('Action', flex: 1, isLast: true),
+                  ],
+                ),
+              ),
 
-          // Table Rows
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: paginatedData.length,
-            itemBuilder: (context, index) {
-              return _buildTableRow(paginatedData[index]);
-            },
+              // Table Rows
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: paginatedData.length,
+                itemBuilder: (context, index) {
+                  return _buildTableRow(paginatedData[index]);
+                },
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-    ),
-  ),
-);
-}
+    );
+  }
 
   Widget _buildTableRow(Tower tower) {
     bool isWarning = isDownStatus(tower.status);
@@ -1387,30 +1057,6 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     );
   }
 
-  Widget _buildPagerIcon(IconData icon, VoidCallback? onPressed) {
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: Colors.black87.withOpacity(onPressed == null ? 0.2 : 0.6),
-            width: 1.2,
-          ),
-        ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: onPressed == null ? Colors.black26 : Colors.black87,
-        ),
-      ),
-    );
-  }
-
   Widget _buildHeaderCell(String label, {required int flex, bool isLast = false}) {
     return Expanded(
       flex: flex,
@@ -1456,22 +1102,6 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     );
   }
 
-  Widget _buildFooter() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      color: Colors.black.withOpacity(0.8),
-      child: const Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          '©2026 TPK Nilam Monitoring System',
-          style: TextStyle(color: Colors.white, fontSize: 12),
-        ),
-      ),
-    );
-  }
-
-// --- FUNGSI UNTUK MODAL EDIT ---
   Future<void> _showEditForm(Tower tower) async {
     final ipController = TextEditingController(text: tower.ipAddress);
     var locationOptions = buildMasterLocationOptions(
@@ -1563,7 +1193,6 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     );
   }
 
-  // --- FUNGSI UNTUK KONFIRMASI HAPUS ---
   void _confirmDelete(Tower tower) {
     showDialog(
       context: context,
@@ -1581,14 +1210,15 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
               if (response['success'] == true) {
                 if (mounted) {
                   Navigator.pop(context);
-                  _loadTowers(); // Refresh data CY2
+                  _loadTowers();
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                       content: Text('Data Has Been Successfully Deleted'),
                       backgroundColor: Colors.red));
                 }
               }
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+            child: const Text('Delete',
+                style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -1599,13 +1229,15 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Logout', style: TextStyle(color: Colors.black87)),
+        title:
+            const Text('Logout', style: TextStyle(color: Colors.black87)),
         content: const Text('Are You Sure To Logout?',
             style: TextStyle(color: Colors.black87)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.black87)),
+            child: const Text('Cancel',
+                style: TextStyle(color: Colors.black87)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1626,32 +1258,6 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
       ),
     );
   }
-
-  void _showTowerDetails(Map<String, dynamic> tower) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Access Point ${tower['id']} Details'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Location: ${tower['location']}'),
-            const SizedBox(height: 8),
-            Text('Status: ${tower['status']}'),
-            const SizedBox(height: 8),
-            Text('Traffic: ${tower['traffic']}'),
-            const SizedBox(height: 8),
-            Text('Uptime: ${tower['uptime']}'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
 }
+
+

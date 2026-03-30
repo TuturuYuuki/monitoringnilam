@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'main.dart';
-import 'services/api_service.dart';
-import 'models/alert_model.dart';
-import 'widgets/global_header_bar.dart';
-import 'widgets/global_sidebar_nav.dart';
+import 'package:monitoring/main.dart';
+import 'package:monitoring/utils/ui_utils.dart';
+import 'package:monitoring/services/api_service.dart';
+import 'package:monitoring/models/alert_model.dart';
+import 'package:monitoring/widgets/global_header_bar.dart';
+import 'package:monitoring/widgets/global_sidebar_nav.dart';
+import 'package:monitoring/widgets/global_footer.dart';
 
 class AlertsPage extends StatefulWidget {
   const AlertsPage({super.key});
@@ -148,7 +150,7 @@ class _AlertsPageState extends State<AlertsPage> {
               ],
             ),
           ),
-          _buildFooter(),
+          const GlobalFooter(),
         ],
       ),
     );
@@ -515,18 +517,6 @@ class _AlertsPageState extends State<AlertsPage> {
 
   // ==================== FOOTER ====================
 
-  Widget _buildFooter() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      color: Colors.black.withOpacity(0.8),
-      child: const Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          '©2026 TPK Nilam Monitoring System',
-          style: TextStyle(color: Colors.white, fontSize: 12),
-        ),
-      ),
-    );
-  }
 }
+
+

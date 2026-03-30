@@ -1,5 +1,5 @@
 import 'package:latlong2/latlong.dart';
-import '../utils/location_label_utils.dart';
+import 'package:monitoring/utils/location_label_utils.dart';
 
 class AddedDevice {
   final String id;

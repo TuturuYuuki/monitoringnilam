@@ -1,27 +1,29 @@
-import 'package:flutter/material.dart';
-import 'package:monitoring/models/mmt_model.dart';
-import 'package:monitoring/services/api_service.dart';
 import 'dart:async';
 import 'dart:ui';
-import 'utils/location_label_utils.dart';
-import 'main.dart';
-import 'widgets/global_header_bar.dart';
-import 'widgets/global_sidebar_nav.dart';
+import 'package:flutter/material.dart';
+import 'package:monitoring/main.dart';
+import 'package:monitoring/utils/ui_utils.dart';
+import 'package:monitoring/services/api_service.dart';
+import 'package:monitoring/utils/location_label_utils.dart';
+import 'package:monitoring/widgets/global_header_bar.dart';
+import 'package:monitoring/widgets/global_sidebar_nav.dart';
+import 'package:monitoring/widgets/global_footer.dart';
+import 'package:monitoring/models/mmt_model.dart';
 
-class MMTMonitoringCY2Page extends StatefulWidget {
-  const MMTMonitoringCY2Page({super.key});
+class MMTMonitoringParkingPage extends StatefulWidget {
+  const MMTMonitoringParkingPage({super.key});
 
   @override
-  State<MMTMonitoringCY2Page> createState() => _MMTMonitoringCY2PageState();
+  State<MMTMonitoringParkingPage> createState() => _MMTMonitoringParkingPageState();
 }
 
-class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
+class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
   final ApiService _apiService = ApiService();
   static const List<String> _areaOptions = ['CY1', 'CY2', 'CY3', 'GATE', 'PARKING'];
 
   List<MMT> _mmts = [];
   bool _isLoading = true;
-  String selectedArea = 'CY2';
+  String selectedArea = 'PARKING';
   int currentPage = 0;
   final int itemsPerPage = 5;
   Timer? _refreshTimer;
@@ -42,11 +44,12 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
 
   void _startAutoRefresh() {
     _refreshTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (mounted) {
-        _loadMMTs();
-      }
+      if (mounted) _loadMMTs();
     });
   }
+
+  /// Map UI seleksi area ke container_yard nilai di database
+  // REMOVED: _getContainerYardValue as selectedArea now maps directly via ApiService
 
   Future<void> _triggerPingCheck() async {
     try {
@@ -62,7 +65,9 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
 
   Future<void> _loadMMTs() async {
     try {
-      final mmts = await _apiService.getAllMMTs();
+      // Fetch MMTs specifically for the selected area
+      final mmts = await _apiService.getValidatedMMTsByAreaType(selectedArea);
+      
       if (mounted) {
         setState(() {
           _mmts = mmts;
@@ -73,6 +78,7 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
+        print('❌ Error loading MMTs: $e');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading MMTs: $e')),
         );
@@ -80,23 +86,21 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
     }
   }
 
-  List<MMT> get _filteredMMTs {
-    return _mmts.where((mmt) => mmt.containerYard == selectedArea).toList();
-  }
+  // List<MMT> get _filteredMMTs => _mmts;
 
-  int get totalMMTs => _filteredMMTs.length;
-  int get onlineMMTs => _filteredMMTs.where((m) => m.status == 'UP').length;
-  int get downMMTs => _filteredMMTs.where((m) => m.status != 'UP').length;
+  int get totalMMTs => _mmts.length;
+  int get onlineMMTs => _mmts.where((m) => m.status == 'UP').length;
+  int get downMMTs => _mmts.where((m) => m.status != 'UP').length;
 
   List<MMT> get paginatedData {
-    int start = currentPage * itemsPerPage;
-    int end = (start + itemsPerPage > _filteredMMTs.length)
-        ? _filteredMMTs.length
+    final start = currentPage * itemsPerPage;
+    final end = (start + itemsPerPage > _mmts.length)
+        ? _mmts.length
         : start + itemsPerPage;
-    return _filteredMMTs.sublist(start, end);
+    return _mmts.sublist(start, end);
   }
 
-  int get totalPages => (_filteredMMTs.length / itemsPerPage).ceil();
+  int get totalPages => (_mmts.length / itemsPerPage).ceil();
 
   @override
   Widget build(BuildContext context) {
@@ -105,29 +109,27 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
       backgroundColor: const Color(0xFF2C3E50),
       body: Column(
         children: [
-          const GlobalHeaderBar(currentRoute: '/mmt-cy2'),
+          const GlobalHeaderBar(currentRoute: '/mmt-monitoring-parking'),
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const GlobalSidebarNav(currentRoute: '/mmt-cy2'),
+                const GlobalSidebarNav(currentRoute: '/mmt-monitoring-parking'),
                 const SizedBox(width: 12),
                 Expanded(
                   child: SingleChildScrollView(
                     child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        return Padding(
-                          padding: EdgeInsets.all(isMobile ? 8 : 20.0),
-                          child: _buildContent(context, constraints),
-                        );
-                      },
+                      builder: (context, constraints) => Padding(
+                        padding: EdgeInsets.all(isMobile ? 8 : 20.0),
+                        child: _buildContent(context, constraints),
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          _buildFooter(),
+          const GlobalFooter(),
         ],
       ),
     );
@@ -150,26 +152,18 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.device_hub,
-                    size: 24, color: Color(0xFF1976D2)),
+                child: const Icon(Icons.device_hub, size: 24, color: Color(0xFF1976D2)),
               ),
               const SizedBox(height: 8),
               const Text(
                 'MMT Monitoring',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
               ),
               Row(
                 children: [
                   const Text(
                     'Monitoring Real Time',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                   if (_lastRefreshTime != null) ...[
                     const SizedBox(width: 8),
@@ -197,8 +191,7 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
                   color: const Color(0xFF1976D2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.device_hub,
-                    size: 32, color: Colors.white),
+                child: const Icon(Icons.device_hub, size: 32, color: Colors.white),
               ),
               const SizedBox(width: 16),
               Column(
@@ -206,26 +199,18 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
                 children: [
                   const Text(
                     'MMT Monitoring',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
                       const Text(
                         'Real Time MMT Device Monitoring And Diagnostics',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
                       ),
                       if (_lastRefreshTime != null) ...[
                         const SizedBox(width: 8),
-                        const Text('•',
-                            style: TextStyle(color: Colors.white70)),
+                        const Text('•', style: TextStyle(color: Colors.white70)),
                         const SizedBox(width: 8),
                         Text(
                           'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
@@ -247,7 +232,7 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
         // Stats Cards
         LayoutBuilder(
           builder: (context, constraints) {
-            double cardWidth = isMobile
+            final cardWidth = isMobile
                 ? (constraints.maxWidth - 16) / 1.5
                 : constraints.maxWidth > 1400
                     ? (constraints.maxWidth - 100) / 5
@@ -260,16 +245,11 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: [
-                            _buildStatCard('Total MMT', '$totalMMTs',
-                                Colors.orange,
-                                width: cardWidth),
+                            _buildStatCard('Total MMT', '$totalMMTs', Colors.orange, width: cardWidth),
                             SizedBox(width: isMobile ? 8 : 16),
-                            _buildStatCard('UP', '$onlineMMTs', Colors.green,
-                                width: cardWidth),
+                            _buildStatCard('UP', '$onlineMMTs', Colors.green, width: cardWidth),
                             SizedBox(width: isMobile ? 8 : 16),
-                            _buildStatCard(
-                                'DOWN', '$downMMTs', Colors.red,
-                                width: cardWidth),
+                            _buildStatCard('DOWN', '$downMMTs', Colors.red, width: cardWidth),
                           ],
                         ),
                       ),
@@ -285,13 +265,9 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
                     spacing: 16,
                     runSpacing: 16,
                     children: [
-                      _buildStatCard(
-                          'Total MMT', '$totalMMTs', Colors.orange,
-                          width: cardWidth),
-                      _buildStatCard('UP', '$onlineMMTs', Colors.green,
-                          width: cardWidth),
-                      _buildStatCard('DOWN', '$downMMTs', Colors.red,
-                          width: cardWidth),
+                      _buildStatCard('Total MMT', '$totalMMTs', Colors.orange, width: cardWidth),
+                      _buildStatCard('UP', '$onlineMMTs', Colors.green, width: cardWidth),
+                      _buildStatCard('DOWN', '$downMMTs', Colors.red, width: cardWidth),
                       _buildNetworkDropdown(cardWidth),
                       _buildAreaButton(cardWidth),
                       _buildCheckStatusButton(cardWidth),
@@ -301,7 +277,6 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
         ),
         const SizedBox(height: 16),
 
-        // MMT List
         _buildMMTList(),
       ],
     );
@@ -672,21 +647,9 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
-              ),
+              Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
               const SizedBox(height: 4),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
             ],
           ),
         ),
@@ -696,46 +659,59 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
 
   Widget _buildMMTList() {
     if (_isLoading) {
-      return Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 40),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.12),
+                  Colors.white.withOpacity(0.02),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 1.5,
+              ),
             ),
-          ],
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                ),
+            child: const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Loading MMT Data...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(height: 10),
-              Text(
-                'Loading MMT Data...',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       );
     }
 
-    if (_filteredMMTs.isEmpty) {
+    if (_mmts.isEmpty) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(24),
         child: BackdropFilter(
@@ -789,16 +765,11 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         children: [
+          // Header biru — MMT List + pagination
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             width: double.infinity,
@@ -806,20 +777,11 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'MMT List',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
+                const Text('MMT List',
+                    style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800)),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
                   child: Row(
                     children: [
                       IconButton(
@@ -832,18 +794,12 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
                       ...List.generate(totalPages, (index) {
                         final isCurrentPage = index == currentPage;
                         return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              currentPage = index;
-                            });
-                          },
+                          onTap: () => setState(() => currentPage = index),
                           child: Container(
                             margin: const EdgeInsets.symmetric(horizontal: 4),
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: isCurrentPage
-                                  ? const Color(0xFF1976D2)
-                                  : Colors.transparent,
+                              color: isCurrentPage ? const Color(0xFF1976D2) : Colors.transparent,
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -851,9 +807,7 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
-                                color: isCurrentPage
-                                    ? Colors.white
-                                    : const Color(0xFF1976D2),
+                                color: isCurrentPage ? Colors.white : const Color(0xFF1976D2),
                               ),
                             ),
                           ),
@@ -862,7 +816,8 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
                       const SizedBox(width: 8),
                       IconButton(
                         icon: const Icon(Icons.chevron_right, size: 20),
-                        onPressed: currentPage < totalPages - 1 ? () => setState(() => currentPage++) : null,
+                        onPressed:
+                            currentPage < totalPages - 1 ? () => setState(() => currentPage++) : null,
                         constraints: const BoxConstraints(),
                         padding: EdgeInsets.zero,
                       ),
@@ -872,6 +827,7 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
               ],
             ),
           ),
+          // Header kolom kuning
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
             width: double.infinity,
@@ -892,32 +848,22 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
     );
   }
 
-  Widget _buildHeaderCell(String label,
-      {required int flex, bool isLast = false}) {
+  Widget _buildHeaderCell(String label, {required int flex, bool isLast = false}) {
     return Expanded(
       flex: flex,
-      child: Text(
-        label,
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w800,
-          fontSize: 14,
-        ),
-      ),
+      child: Text(label,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
     );
   }
 
   Widget _buildMMTTableRow(MMT mmt) {
     final isDown = mmt.status != 'UP';
-    final statusColor = isDown ? Colors.red : Colors.black87;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       decoration: BoxDecoration(
         color: const Color(0xFFE8D5C4),
-        border: Border(
-          bottom: BorderSide(color: Colors.grey[300]!, width: 1),
-        ),
+        border: Border(bottom: BorderSide(color: Colors.grey[300]!, width: 1)),
       ),
       child: Row(
         children: [
@@ -927,7 +873,7 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
           _buildTableCell(
             isDown ? 'DOWN' : mmt.status,
             flex: 1,
-            color: statusColor,
+            color: isDown ? Colors.red : Colors.black87,
             fontWeight: FontWeight.w800,
           ),
           Expanded(
@@ -970,15 +916,9 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
                 : BorderSide(color: Colors.grey[500]!, width: 0.8),
           ),
         ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: color,
-            fontWeight: fontWeight,
-            fontSize: 14,
-          ),
-          textAlign: align,
-        ),
+        child: Text(text,
+            style: TextStyle(color: color, fontWeight: fontWeight, fontSize: 14),
+            textAlign: align),
       ),
     );
   }
@@ -1015,7 +955,9 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: ipController, decoration: const InputDecoration(labelText: 'IP Address')),
+            TextField(
+                controller: ipController,
+                decoration: const InputDecoration(labelText: 'IP Address')),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               value: selectedLocation,
@@ -1050,15 +992,13 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
                 'location': selectedLocation,
                 'container_yard': selectedYard,
               });
-              
               if (response['success'] == true) {
                 if (mounted) {
-                  Navigator.pop(context); // Tutup dialog
-                  await _loadMMTs(); // REFRESH DATA DARI DATABASE
+                  Navigator.pop(context);
+                  await _loadMMTs();
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Successfully Updated'), backgroundColor: Colors.green)
-                    );
+                        const SnackBar(content: Text('Successfully Updated'), backgroundColor: Colors.green));
                   }
                 }
               } else {
@@ -1066,8 +1006,7 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
                   Navigator.pop(context);
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Failed to update'), backgroundColor: Colors.red)
-                    );
+                        const SnackBar(content: Text('Failed to update'), backgroundColor: Colors.red));
                   }
                 }
               }
@@ -1094,12 +1033,12 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
               final response = await _apiService.deleteMMT(mmt.id);
               if (response['success'] == true) {
                 if (mounted) {
-                  Navigator.pop(context); // Tutup dialog
-                  await _loadMMTs(); // REFRESH DATA DARI DATABASE
+                  Navigator.pop(context);
+                  await _loadMMTs();
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Data Has Been Successfully Deleted'), backgroundColor: Colors.red)
-                    );
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Data Has Been Successfully Deleted'),
+                        backgroundColor: Colors.red));
                   }
                 }
               } else {
@@ -1107,8 +1046,7 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
                   Navigator.pop(context);
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Failed to delete'), backgroundColor: Colors.red)
-                    );
+                        const SnackBar(content: Text('Failed to delete'), backgroundColor: Colors.red));
                   }
                 }
               }
@@ -1119,8 +1057,6 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
       ),
     );
   }
-
-  // REMOVED: _buildTableCellLegacy() - no longer needed
 
   Widget _buildPagerButton(IconData icon, VoidCallback? onPressed) {
     return InkWell(
@@ -1137,21 +1073,6 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
     );
   }
 
-  Widget _buildFooter() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      color: Colors.black.withOpacity(0.8),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            '©2026 TPK Nilam Monitoring System',
-            style: TextStyle(color: Colors.white, fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _showMMTDetails(MMT mmt) {
     showDialog(
@@ -1174,10 +1095,7 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
         ],
       ),
     );
@@ -1190,23 +1108,19 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
         title: const Text('Delete MMT?'),
         content: Text('Are you sure you want to delete ${mmt.mmtId}?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${mmt.mmtId} deleted')),
-              );
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(SnackBar(content: Text('${mmt.mmtId} deleted')));
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete',
-                style: TextStyle(color: Colors.white)),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
   }
 }
+

@@ -1,4 +1,4 @@
-import '../utils/location_label_utils.dart';
+import 'package:monitoring/utils/location_label_utils.dart';
 
 class Alert {
   final int id; // Ubah dynamic menjadi int agar pasti angka

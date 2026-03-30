@@ -1,17 +1,19 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
-import 'main.dart';
-import 'models/camera_model.dart';
-import 'models/device_model.dart';
-import 'models/mmt_model.dart';
-import 'services/api_service.dart';
-import 'services/device_storage_service.dart';
-import 'utils/navigation_helper.dart';
-import 'utils/device_icon_resolver.dart';
-import 'utils/location_label_utils.dart';
-import 'widgets/global_header_bar.dart';
-import 'widgets/global_sidebar_nav.dart';
+import 'package:monitoring/main.dart';
+import 'package:monitoring/utils/ui_utils.dart';
+import 'package:monitoring/models/camera_model.dart';
+import 'package:monitoring/models/device_model.dart';
+import 'package:monitoring/models/mmt_model.dart';
+import 'package:monitoring/services/api_service.dart';
+import 'package:monitoring/services/device_storage_service.dart';
+import 'package:monitoring/utils/navigation_helper.dart';
+import 'package:monitoring/utils/device_icon_resolver.dart';
+import 'package:monitoring/utils/location_label_utils.dart';
+import 'package:monitoring/widgets/global_header_bar.dart';
+import 'package:monitoring/widgets/global_sidebar_nav.dart';
+import 'package:monitoring/widgets/global_footer.dart';
 
 class AddDevicePage extends StatefulWidget {
   const AddDevicePage({super.key});
@@ -1118,9 +1120,9 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                         Row(
                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: [
-                                            Text(
+                                            const Text(
                                               'Used Names For This Type',
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w700,
                                                 color: Colors.blueGrey,
@@ -1289,7 +1291,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                   ],
                 ),
               ),
-              _buildFooter(),
+              const GlobalFooter(),
             ],
           ),
         ],
@@ -1297,20 +1299,6 @@ class _AddDevicePageState extends State<AddDevicePage> {
     );
   }
 
-  Widget _buildFooter() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      color: Colors.black.withOpacity(0.8),
-      child: const Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          '©2026 TPK Nilam Monitoring System',
-          style: TextStyle(color: Colors.white, fontSize: 12),
-        ),
-      ),
-    );
-  }
 
   Widget _buildFooterLink(String text) {
     return Text(
@@ -1319,3 +1307,5 @@ class _AddDevicePageState extends State<AddDevicePage> {
     );
   }
 }
+
+

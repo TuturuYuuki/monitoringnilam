@@ -1,14 +1,17 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../models/user_model.dart';
-import '../models/tower_model.dart';
-import '../models/camera_model.dart';
-import '../models/mmt_model.dart';
-import '../models/alert_model.dart';
-import '../models/device_model.dart';
-import 'device_storage_service.dart';
+import 'package:monitoring/models/user_model.dart';
+import 'package:monitoring/models/tower_model.dart';
+import 'package:monitoring/models/camera_model.dart';
+import 'package:monitoring/models/mmt_model.dart';
+import 'package:monitoring/models/alert_model.dart';
+import 'package:monitoring/models/device_model.dart';
+import 'package:monitoring/services/device_storage_service.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
+
+import 'package:monitoring/utils/tower_utils.dart';
+import 'package:monitoring/utils/tower_status_override.dart';
 
 class ApiService {
   static const String baseUrl =
@@ -958,7 +961,6 @@ class ApiService {
     }
   }
 
-  // Fungsi ini fleksibel untuk CY berapa pun
   Future<List<Tower>> getTowersByContainerYard(String yardName) async {
     try {
       final response = await http.get(
@@ -980,6 +982,12 @@ class ApiService {
       print('Error Fetching $yardName: $e');
       return [];
     }
+  }
+
+  /// Fetches towers for a specific yard, applies status overrides, and sorts them.
+  Future<List<Tower>> getValidatedTowersByYard(String yardName) async {
+    final rawTowers = await getTowersByContainerYard(yardName);
+    return TowerUtils.normalizeAndSortTowers(applyForcedTowerStatus(rawTowers));
   }
 
   Future<Tower?> getTowerById(int towerId) async {
@@ -1042,6 +1050,37 @@ class ApiService {
       print('Error fetching cameras: $e');
       return [];
     }
+  }
+
+  Future<List<Camera>> getCamerasByContainerYard(String yardName) async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+            '$baseUrl?endpoint=cctv&action=by-yard&container_yard=$yardName'),
+      );
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        if (json['success'] == true && json['data'] != null) {
+          List<Camera> cameras = (json['data'] as List)
+              .map((item) => Camera.fromJson(item as Map<String, dynamic>))
+              .toList();
+          return cameras;
+        }
+      }
+      return [];
+    } catch (e) {
+      print('Error Fetching $yardName Cameras: $e');
+      return [];
+    }
+  }
+
+  /// Fetches cameras for a specific yard, applies status overrides, and sorts them by ID.
+  Future<List<Camera>> getValidatedCamerasByYard(String yardName) async {
+    final rawCameras = await getCamerasByContainerYard(yardName);
+    final validated = applyForcedCameraStatus(rawCameras);
+    validated.sort((a, b) => a.cameraId.compareTo(b.cameraId));
+    return validated;
   }
 
 // Fungsi untuk mengupdate data kamera
@@ -1111,28 +1150,6 @@ class ApiService {
     }
   }
 
-  Future<List<Camera>> getCamerasByContainerYard(String containerYard) async {
-    try {
-      final response = await http.get(
-        Uri.parse(
-            '$baseUrl?endpoint=cctv&action=by-yard&container_yard=$containerYard'),
-      );
-
-      if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
-        if (json['success'] == true && json['data'] != null) {
-          List<Camera> cameras = (json['data'] as List)
-              .map((item) => Camera.fromJson(item as Map<String, dynamic>))
-              .toList();
-          return cameras;
-        }
-      }
-      return [];
-    } catch (e) {
-      print('Error fetching cameras by yard: $e');
-      return [];
-    }
-  }
 
   Future<List<Camera>> getCamerasByAreaType(String areaType) async {
     try {
@@ -1155,6 +1172,14 @@ class ApiService {
       print('Error fetching cameras by area type: $e');
       return [];
     }
+  }
+
+  /// Fetches cameras for a specific area type, applies status overrides, and sorts them by ID.
+  Future<List<Camera>> getValidatedCamerasByAreaType(String areaType) async {
+    final rawCameras = await getCamerasByAreaType(areaType);
+    final validated = applyForcedCameraStatus(rawCameras);
+    validated.sort((a, b) => a.cameraId.compareTo(b.cameraId));
+    return validated;
   }
 
   Future<List<Camera>> getOfflineCameras() async {
@@ -1303,6 +1328,20 @@ class ApiService {
     } catch (e) {
       return {'success': false, 'message': 'Error: $e'};
     }
+  }
+
+  /// Fetches MMTs for a specific yard and sorts them by ID.
+  Future<List<MMT>> getValidatedMMTsByYard(String yardName) async {
+    final rawMMTs = await getMMTsByContainerYard(yardName);
+    rawMMTs.sort((a, b) => a.mmtId.compareTo(b.mmtId));
+    return rawMMTs;
+  }
+
+  /// Fetches MMTs by area type (Wait, MMT might only use Yard filtering, check backend if area_type exists).
+  /// For now, we will use Yard-based filtering which is consistent with the current implementation.
+  Future<List<MMT>> getValidatedMMTsByAreaType(String areaType) async {
+    // Current MMT pages use Yard names like 'CY1', 'CY2', etc.
+    return getValidatedMMTsByYard(areaType);
   }
 
   // ==================== ALERT ENDPOINTS ====================

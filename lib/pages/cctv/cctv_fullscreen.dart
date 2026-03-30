@@ -1,13 +1,14 @@
 import 'dart:async';
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'main.dart';
-import 'services/api_service.dart';
-import 'utils/tower_status_override.dart';
-import 'widgets/global_header_bar.dart';
-import 'widgets/global_sidebar_nav.dart';
+import 'package:monitoring/main.dart';
+import 'package:monitoring/utils/ui_utils.dart';
+import 'package:monitoring/services/api_service.dart';
+import 'package:monitoring/utils/tower_status_override.dart';
+import 'package:monitoring/widgets/global_header_bar.dart';
+import 'package:monitoring/widgets/global_sidebar_nav.dart';
+import 'package:monitoring/widgets/global_footer.dart';
 
 // Fullscreen CCTV Page - All Areas
 class CCTVFullscreenPage extends StatefulWidget {
@@ -187,7 +188,7 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
               ],
             ),
           ),
-          _buildFooter(),
+          const GlobalFooter(),
         ],
       ),
     );
@@ -606,21 +607,6 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
     );
   }
 
-  Widget _buildFooter() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      color: Colors.black.withOpacity(0.8),
-      child: const Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          '©2026 Terminal Nilam. All rights reserved.',
-          style: TextStyle(color: Colors.white, fontSize: 12),
-        ),
-      ),
-    );
-  }
-
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -645,3 +631,5 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
     );
   }
 }
+
+

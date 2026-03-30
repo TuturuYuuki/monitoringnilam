@@ -1,6 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'main.dart';
+import 'package:monitoring/utils/ui_utils.dart';
 import 'services/api_service.dart';
 import 'utils/auth_helper.dart';
 
