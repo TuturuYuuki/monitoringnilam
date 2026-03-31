@@ -90,3 +90,19 @@ test_*.html
 *_SETUP.md
 *_IMPLEMENTATION.md
 *_REPORT.md
+# --- Private / unnecessary files (untracked by request) ---
+# Backup coordinates and generated analysis files
+coordinates_backup.json
+lib/constants/coordinates_backup.dart
+analysis_output_final.txt
+analysis_output.txt
+analysis_output_utf8.txt
+analysis_output_final_utf8.txt
+lib_stats.txt
+
+# Optional internal docs / scripts
+ALERTS_DB_POPULATION_FIX.md
+ALERTS_FIX_SUMMARY.md
+ALERT_REPORT_FIX_SUMMARY.md
+BACKEND_COORDINATE_INTEGRATION.md
+PNG_LAYOUT_MAP_COMPLETE.md
