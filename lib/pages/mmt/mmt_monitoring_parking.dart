@@ -9,6 +9,7 @@ import 'package:monitoring/widgets/global_header_bar.dart';
 import 'package:monitoring/widgets/global_sidebar_nav.dart';
 import 'package:monitoring/widgets/global_footer.dart';
 import 'package:monitoring/models/mmt_model.dart';
+import 'package:monitoring/theme/app_dropdown_style.dart';
 
 class MMTMonitoringParkingPage extends StatefulWidget {
   const MMTMonitoringParkingPage({super.key});
@@ -508,7 +509,8 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
                             letterSpacing: 0.5,
                           ),
                         ),
-                        dropdownColor: const Color(0xFF0F172A),
+                        dropdownColor: AppDropdownStyle.menuBackground,
+                        borderRadius: AppDropdownStyle.menuBorderRadius,
                         isExpanded: true,
                         icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 20),
                         items: _areaOptions.map((String value) {
@@ -962,6 +964,8 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
             DropdownButtonFormField<String>(
               value: selectedLocation,
               isExpanded: true,
+              dropdownColor: AppDropdownStyle.menuBackground,
+              borderRadius: AppDropdownStyle.menuBorderRadius,
               decoration: const InputDecoration(labelText: 'Location'),
               items: locationOptions
                   .map((option) => DropdownMenuItem<String>(

@@ -12,6 +12,7 @@ import 'package:monitoring/widgets/expandable_fab_nav.dart';
 import 'package:monitoring/widgets/global_header_bar.dart';
 import 'package:monitoring/widgets/global_sidebar_nav.dart';
 import 'package:monitoring/widgets/global_footer.dart';
+import 'package:monitoring/theme/app_dropdown_style.dart';
 
 // Network Page CY 2
 class NetworkCY2Page extends StatefulWidget {
@@ -553,7 +554,8 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                             letterSpacing: 0.5,
                           ),
                         ),
-                        dropdownColor: const Color(0xFF0F172A),
+                        dropdownColor: AppDropdownStyle.menuBackground,
+                        borderRadius: AppDropdownStyle.menuBorderRadius,
                         isExpanded: true,
                         icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 20),
                         items: _areaOptions.map((String value) {
@@ -1181,6 +1183,8 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
               DropdownButtonFormField<String>(
                 value: selectedLocation,
                 isExpanded: true,
+                dropdownColor: AppDropdownStyle.menuBackground,
+                borderRadius: AppDropdownStyle.menuBorderRadius,
                 decoration: const InputDecoration(labelText: 'Location'),
                 items: locationOptions
                     .map((option) => DropdownMenuItem<String>(

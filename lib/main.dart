@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:monitoring/theme/app_dropdown_style.dart';
 import 'utils/auth_helper.dart';
 import 'pages/dashboard/dashboard.dart';
 import 'pages/network/network.dart';
@@ -240,12 +241,12 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
         fontFamily: 'Arial',
-        canvasColor: const Color(0xFF37474F),
+        canvasColor: AppDropdownStyle.menuBackground,
         popupMenuTheme: PopupMenuThemeData(
-          color: const Color(0xFF37474F).withOpacity(0.97),
+          color: AppDropdownStyle.menuBackground,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: Colors.white.withOpacity(0.18)),
+            borderRadius: AppDropdownStyle.menuBorderRadius,
+            side: BorderSide(color: Colors.white.withOpacity(0.22)),
           ),
           textStyle: const TextStyle(
             color: Colors.white,
@@ -256,12 +257,12 @@ class MyApp extends StatelessWidget {
         menuTheme: MenuThemeData(
           style: MenuStyle(
             backgroundColor: WidgetStateProperty.all(
-              const Color(0xFF37474F).withOpacity(0.97),
+              AppDropdownStyle.menuBackground,
             ),
             shape: WidgetStateProperty.all(
               RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: Colors.white.withOpacity(0.18)),
+                borderRadius: AppDropdownStyle.menuBorderRadius,
+                side: BorderSide(color: Colors.white.withOpacity(0.22)),
               ),
             ),
           ),

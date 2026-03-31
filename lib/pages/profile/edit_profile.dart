@@ -724,7 +724,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: const Color(0xFF2C3E50),
       body: Column(
         children: [
           const GlobalHeaderBar(currentRoute: '/edit-profile'),

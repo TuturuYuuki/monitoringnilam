@@ -9,6 +9,7 @@ import 'package:monitoring/models/device_model.dart';
 import 'package:monitoring/models/mmt_model.dart';
 import 'package:monitoring/services/api_service.dart';
 import 'package:monitoring/services/device_storage_service.dart';
+import 'package:monitoring/theme/app_dropdown_style.dart';
 import 'package:monitoring/utils/navigation_helper.dart';
 import 'package:monitoring/utils/device_icon_resolver.dart';
 import 'package:monitoring/utils/location_label_utils.dart';
@@ -1069,7 +1070,8 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                       color: Colors.white,
                                       fontWeight: FontWeight.w600,
                                     ),
-                                    dropdownColor: const Color(0xFF37474F),
+                                    dropdownColor: AppDropdownStyle.menuBackground,
+                                    borderRadius: AppDropdownStyle.menuBorderRadius,
                                     iconEnabledColor: Colors.white70,
                                     decoration: InputDecoration(
                                       labelText: 'Device Type',
@@ -1303,7 +1305,8 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                       fontWeight: FontWeight.w600,
                                       fontSize: 13,
                                     ),
-                                    dropdownColor: const Color(0xFF37474F),
+                                    dropdownColor: AppDropdownStyle.menuBackground,
+                                    borderRadius: AppDropdownStyle.menuBorderRadius,
                                     iconEnabledColor: Colors.white70,
                                     decoration: InputDecoration(
                                       labelText: 'Location',

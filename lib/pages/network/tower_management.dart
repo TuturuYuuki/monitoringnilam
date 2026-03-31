@@ -7,6 +7,7 @@ import 'package:monitoring/utils/device_icon_resolver.dart';
 import 'package:monitoring/widgets/global_header_bar.dart';
 import 'package:monitoring/widgets/global_sidebar_nav.dart';
 import 'package:monitoring/widgets/global_footer.dart';
+import 'package:monitoring/theme/app_dropdown_style.dart';
 
 class TowerManagementPage extends StatefulWidget {
   const TowerManagementPage({super.key});
@@ -300,6 +301,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
               children: [
                 DropdownButtonFormField<String>(
                   value: selectedType,
+                  dropdownColor: AppDropdownStyle.menuBackground,
+                  borderRadius: AppDropdownStyle.menuBorderRadius,
                   decoration: const InputDecoration(labelText: 'Location Type'),
                   items: const ['TOWER']
                       .map((e) => DropdownMenuItem(value: e, child: Text(e)))
@@ -318,6 +321,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: selectedYard,
+                  dropdownColor: AppDropdownStyle.menuBackground,
+                  borderRadius: AppDropdownStyle.menuBorderRadius,
                   decoration: const InputDecoration(labelText: 'Lokasi'),
                   items: ['CY1', 'CY2', 'CY3', 'GATE', 'PARKING']
                       .map((e) => DropdownMenuItem(value: e, child: Text(e)))
@@ -609,11 +614,12 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                       Expanded(
                         child: Theme(
                           data: Theme.of(context).copyWith(
-                            canvasColor: const Color(0xFF2C3E50),
+                            canvasColor: AppDropdownStyle.menuBackground,
                           ),
                           child: DropdownButtonFormField<String>(
                             value: _selectedMasterType,
-                            dropdownColor: const Color(0xFF2C3E50),
+                            dropdownColor: AppDropdownStyle.menuBackground,
+                            borderRadius: AppDropdownStyle.menuBorderRadius,
                             style: const TextStyle(color: Colors.white),
                             decoration: InputDecoration(
                               labelText: 'Master Type',
@@ -670,11 +676,12 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                       Expanded(
                         child: Theme(
                           data: Theme.of(context).copyWith(
-                            canvasColor: const Color(0xFF2C3E50),
+                            canvasColor: AppDropdownStyle.menuBackground,
                           ),
                           child: DropdownButtonFormField<String>(
                             value: _selectedYard,
-                            dropdownColor: const Color(0xFF2C3E50),
+                            dropdownColor: AppDropdownStyle.menuBackground,
+                            borderRadius: AppDropdownStyle.menuBorderRadius,
                             style: const TextStyle(color: Colors.white),
                             decoration: InputDecoration(
                               labelText: 'Yard Area',
@@ -1010,6 +1017,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
               children: [
                 DropdownButtonFormField<String>(
                   value: selectedType,
+                  dropdownColor: AppDropdownStyle.menuBackground,
+                  borderRadius: AppDropdownStyle.menuBorderRadius,
                   decoration: const InputDecoration(labelText: 'Location Type'),
                   items: ['TOWER', 'RTG', 'RS', 'CC']
                       .map((e) => DropdownMenuItem(value: e, child: Text(e)))
@@ -1028,6 +1037,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: selectedYard,
+                  dropdownColor: AppDropdownStyle.menuBackground,
+                  borderRadius: AppDropdownStyle.menuBorderRadius,
                   decoration: const InputDecoration(labelText: 'Location'),
                   items: ['CY1', 'CY2', 'CY3', 'GATE', 'PARKING']
                       .map((e) => DropdownMenuItem(value: e, child: Text(e)))
@@ -1339,15 +1350,72 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                   ],
                 ),
               ),
-              LayoutBuilder(
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                            LayoutBuilder(
                 builder: (context, constraints) {
                   return Container(
                     width: constraints.maxWidth,
                     height: 600,
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: Colors.white30, width: 1.5),
+                      borderRadius: const BorderRadius.vertical(
+                          bottom: Radius.circular(16)),
                     ),
                     child: Column(
                       children: [
@@ -1396,6 +1464,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                             ],
                           ),
                         ),
+
                         if (data.isEmpty)
                           const Padding(
                             padding: EdgeInsets.all(40),
@@ -1524,15 +1593,27 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                             ),
                           ),
                         // FOOTER / PAGINATION
-                        if (unified.length > itemsPerPage)
+
+
+
+
+
+
+
+
+
+                                                if (unified.length > itemsPerPage)
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.05),
+                              borderRadius: const BorderRadius.vertical(
+                                  bottom: Radius.circular(16)),
                               border: Border(
                                   top: BorderSide(color: Colors.white10)),
                             ),
                             child: Row(
+
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(

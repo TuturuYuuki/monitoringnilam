@@ -6,6 +6,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:monitoring/main.dart';
+import 'package:monitoring/theme/app_dropdown_style.dart';
 import 'package:monitoring/utils/ui_utils.dart'
     show
         isMobileScreen,
@@ -45,7 +46,7 @@ class _ReportPageState extends State<ReportPage> {
   );
   String _statusFilter = 'ALL';
   String _selectedDeviceType = 'ALL'; // Filter: ALL, AP, CCTV, MMT
-  
+
   int _currentPage = 1;
   final int _itemsPerPage = 10;
 
@@ -95,7 +96,7 @@ class _ReportPageState extends State<ReportPage> {
         });
 
       final filteredAlerts = _filterByDeviceType(sortedAlerts);
-      
+
       final uniqueDevices = <String, Alert>{};
       for (final a in filteredAlerts) {
         final devName = _cleanDeviceName(a.title);
@@ -104,8 +105,10 @@ class _ReportPageState extends State<ReportPage> {
         }
       }
 
-      final upAlerts = uniqueDevices.values.where((a) => !_isDownAlert(a)).toList();
-      final downAlerts = uniqueDevices.values.where((a) => _isDownAlert(a)).toList();
+      final upAlerts =
+          uniqueDevices.values.where((a) => !_isDownAlert(a)).toList();
+      final downAlerts =
+          uniqueDevices.values.where((a) => _isDownAlert(a)).toList();
       final upCount = upAlerts.length;
       final downCount = downAlerts.length;
 
@@ -123,11 +126,15 @@ class _ReportPageState extends State<ReportPage> {
           }).toList(growable: false);
 
       const tableHeaders = [
-        'No', 'Device', 'Status', 'IP', 'Location', 'Timestamp'
+        'No',
+        'Device',
+        'Status',
+        'IP',
+        'Location',
+        'Timestamp'
       ];
 
-      pw.Widget pageHeader(String sectionTitle, PdfColor titleBg) =>
-          pw.Column(
+      pw.Widget pageHeader(String sectionTitle, PdfColor titleBg) => pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.center,
             children: [
               pw.Container(
@@ -185,8 +192,7 @@ class _ReportPageState extends State<ReportPage> {
                   pw.TableHelper.fromTextArray(
                     headers: tableHeaders,
                     data: buildRows(upAlerts),
-                    headerStyle:
-                        pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                    headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                     headerDecoration:
                         const pw.BoxDecoration(color: PdfColors.green200),
                     cellAlignment: pw.Alignment.center,
@@ -217,8 +223,7 @@ class _ReportPageState extends State<ReportPage> {
                   pw.TableHelper.fromTextArray(
                     headers: tableHeaders,
                     data: buildRows(downAlerts),
-                    headerStyle:
-                        pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                    headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                     headerDecoration:
                         const pw.BoxDecoration(color: PdfColors.red200),
                     cellAlignment: pw.Alignment.center,
@@ -257,15 +262,14 @@ class _ReportPageState extends State<ReportPage> {
 
   String _extractDeviceType(Alert alert) {
     if (alert.deviceType != null && alert.deviceType!.isNotEmpty) {
-       final dt = alert.deviceType!.toLowerCase();
-       if (dt.contains('tower') || dt.contains('ap')) return 'AP';
-       if (dt.contains('camera') || dt.contains('cctv')) return 'CCTV';
-       if (dt.contains('mmt')) return 'MMT';
+      final dt = alert.deviceType!.toLowerCase();
+      if (dt.contains('tower') || dt.contains('ap')) return 'AP';
+      if (dt.contains('camera') || dt.contains('cctv')) return 'CCTV';
+      if (dt.contains('mmt')) return 'MMT';
     }
 
-    final src =
-        '${alert.title} ${alert.description} ${alert.lokasi ?? ''}'
-            .toUpperCase();
+    final src = '${alert.title} ${alert.description} ${alert.lokasi ?? ''}'
+        .toUpperCase();
     if (RegExp(r'\b(AP|TOWER)\b').hasMatch(src)) return 'AP';
     if (RegExp(r'\b(CAM|CCTV)\b').hasMatch(src)) return 'CCTV';
     if (RegExp(r'\bMMT\b').hasMatch(src)) return 'MMT';
@@ -435,7 +439,6 @@ class _ReportPageState extends State<ReportPage> {
     );
   }
 
-
   Widget _buildFilterBar() {
     final isMobile = isMobileScreen(context);
     return liquidGlassCard(
@@ -450,7 +453,8 @@ class _ReportPageState extends State<ReportPage> {
                   behavior: HitTestBehavior.opaque,
                   onTap: _pickDateRange,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 12),
                     decoration: appGlassFieldDecoration(radius: 16),
                     child: Row(
                       children: [
@@ -477,9 +481,9 @@ class _ReportPageState extends State<ReportPage> {
                     child: DropdownButton<String>(
                       value: _statusFilter,
                       isExpanded: true,
-                      dropdownColor: const Color(0xFF37474F),
+                      dropdownColor: AppDropdownStyle.menuBackground,
                       iconEnabledColor: Colors.white70,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: AppDropdownStyle.menuBorderRadius,
                       style: const TextStyle(
                           fontSize: 12,
                           color: Colors.white,
@@ -490,8 +494,8 @@ class _ReportPageState extends State<ReportPage> {
                                 child: SizedBox(
                                   width: double.infinity,
                                   child: Text(s,
-                                      style: const TextStyle(
-                                          color: Colors.white)),
+                                      style:
+                                          const TextStyle(color: Colors.white)),
                                 ),
                               ))
                           .toList(),
@@ -507,7 +511,8 @@ class _ReportPageState extends State<ReportPage> {
                   onPressed: _generateReportPdf,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red.shade700,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -576,9 +581,9 @@ class _ReportPageState extends State<ReportPage> {
                         child: DropdownButton<String>(
                           value: _statusFilter,
                           isExpanded: true,
-                          dropdownColor: const Color(0xFF37474F),
+                          dropdownColor: AppDropdownStyle.menuBackground,
                           iconEnabledColor: Colors.white70,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: AppDropdownStyle.menuBorderRadius,
                           style: const TextStyle(
                               fontSize: 12,
                               color: Colors.white,
@@ -624,7 +629,8 @@ class _ReportPageState extends State<ReportPage> {
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.picture_as_pdf, size: 18, color: Colors.white),
+                        Icon(Icons.picture_as_pdf,
+                            size: 18, color: Colors.white),
                         SizedBox(width: 8),
                         Text("Export PDF",
                             style: TextStyle(
@@ -647,48 +653,92 @@ class _ReportPageState extends State<ReportPage> {
       firstDate: DateTime(2024),
       lastDate: DateTime(2030),
       builder: (context, child) {
-        final cs = ColorScheme.dark(
-          primary: const Color(0xFF42A5F5),
-          onPrimary: Colors.white,
-          surface: const Color(0xFF37474F),
-          onSurface: Colors.white,
-          secondary: const Color(0xFF90CAF9),
-          onSecondary: Colors.white,
-        );
+        // App Core Colors
+        const Color primaryBlue = Color(0xFF1976D2);
+        const Color backgroundDark = Color(0xFF2C3E50);
+        const Color surfaceDark = Color(0xFF34495E);
+
         return Center(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-              child: Container(
-                constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width > 600
-                        ? 480
-                        : double.infinity),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withOpacity(0.28)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.35),
-                      blurRadius: 24,
-                      offset: const Offset(0, 12),
-                    ),
-                  ],
-                ),
-                child: Theme(
-                  data: Theme.of(context).copyWith(
-                    colorScheme: cs,
-                    dialogTheme: DialogThemeData(
-                      backgroundColor: Colors.transparent,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 550, maxHeight: 600),
+            child: Container(
+              margin: const EdgeInsets.all(24),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(28),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                  child: Theme(
+                    data: Theme.of(context).copyWith(
+                      brightness: Brightness.dark,
+                      colorScheme: ColorScheme.dark(
+                        primary: primaryBlue,
+                        onPrimary: Colors.white,
+                        surface: backgroundDark.withOpacity(0.85),
+                        onSurface: Colors.white,
+                        secondary: const Color(0xFF64B5F6),
+                        onSecondary: Colors.white,
+                        surfaceContainerHighest: surfaceDark.withOpacity(0.5),
+                      ),
+                      appBarTheme: const AppBarTheme(
+                        backgroundColor: primaryBlue,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        centerTitle: false,
+                        iconTheme: IconThemeData(color: Colors.white),
+                      ),
+                      dialogTheme: DialogThemeData(
+                        backgroundColor: backgroundDark.withOpacity(0.85),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(28),
+                        ),
+                      ),
+                      datePickerTheme: DatePickerThemeData(
+                        backgroundColor: Colors.transparent,
+                        headerBackgroundColor: primaryBlue,
+                        headerForegroundColor: Colors.white,
+                        rangeSelectionBackgroundColor:
+                            primaryBlue.withOpacity(0.45),
+                        rangePickerHeaderBackgroundColor: primaryBlue,
+                        rangePickerHeaderForegroundColor: Colors.white,
+                        rangePickerSurfaceTintColor: Colors.transparent,
+                        surfaceTintColor: Colors.transparent,
+                        dayStyle: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                        weekdayStyle: const TextStyle(
+                          color: Colors.white70,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                        dayForegroundColor:
+                            WidgetStateProperty.resolveWith((states) {
+                          if (states.contains(WidgetState.disabled))
+                            return Colors.white24;
+                          return Colors.white;
+                        }),
+                        todayForegroundColor:
+                            WidgetStateProperty.all(const Color(0xFFFFD54F)),
+                        todayBorder: const BorderSide(
+                            color: Color(0xFFFFD54F), width: 1.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(28),
+                        ),
+                      ),
+                      textButtonTheme: TextButtonThemeData(
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          textStyle: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
                       ),
                     ),
+                    child: Material(
+                      color: backgroundDark.withOpacity(0.75),
+                      child: child,
+                    ),
                   ),
-                  child: child!,
                 ),
               ),
             ),
@@ -696,6 +746,7 @@ class _ReportPageState extends State<ReportPage> {
         );
       },
     );
+
     if (picked != null) {
       setState(() => _selectedRange = picked);
       _fetchReportData();
@@ -728,7 +779,7 @@ class _ReportPageState extends State<ReportPage> {
       });
 
     final filteredAlerts = _filterByDeviceType(sortedAlerts);
-    
+
     // Deduplicate to count unique UP/DOWN devices to match Dashboard
     final uniqueDevices = <String, Alert>{};
     for (final a in filteredAlerts) {
@@ -797,22 +848,32 @@ class _ReportPageState extends State<ReportPage> {
                             horizontal: 24, vertical: 14),
                         width: double.infinity,
                         color: const Color(0xFFC6B430),
-                        child: const Row(
+                        child: Row(
                           children: [
                             Expanded(
-                                flex: 3, child: _ReportHeaderText('DEVICE')),
+                                flex: 3,
+                                child: _ReportHeaderText('DEVICE',
+                                    color: Colors.black87)),
                             Expanded(
-                                flex: 4, child: _ReportHeaderText('LOCATION')),
+                                flex: 4,
+                                child: _ReportHeaderText('LOCATION',
+                                    color: Colors.black87)),
                             Expanded(
                                 flex: 3,
-                                child: _ReportHeaderText('IP ADDRESS')),
+                                child: _ReportHeaderText('IP ADDRESS',
+                                    color: Colors.black87)),
                             Expanded(
-                                flex: 2, child: _ReportHeaderText('STATUS')),
+                                flex: 2,
+                                child: _ReportHeaderText('STATUS',
+                                    color: Colors.black87)),
                             Expanded(
                                 flex: 3,
-                                child: _ReportHeaderText('TIMESTAMP')),
+                                child: _ReportHeaderText('TIMESTAMP',
+                                    color: Colors.black87)),
                             Expanded(
-                                flex: 2, child: _ReportHeaderText('ACTION')),
+                                flex: 2,
+                                child: _ReportHeaderText('ACTION',
+                                    color: Colors.black87)),
                           ],
                         ),
                       ),
@@ -822,7 +883,9 @@ class _ReportPageState extends State<ReportPage> {
                           .map((a) {
                         final isDown = _isDownAlert(a);
                         final statusText = isDown ? 'DOWN' : 'UP';
-                        final statusColor = isDown ? Colors.red : Colors.green;
+                        final statusColor = isDown
+                            ? const Color(0xFFFF5252)
+                            : const Color(0xFF69F0AE);
 
                         return Container(
                           padding: const EdgeInsets.symmetric(
@@ -863,8 +926,9 @@ class _ReportPageState extends State<ReportPage> {
                                     statusText,
                                     style: TextStyle(
                                       color: statusColor,
-                                      fontWeight: FontWeight.bold,
+                                      fontWeight: FontWeight.w800,
                                       fontSize: 13,
+                                      letterSpacing: 0.6,
                                     ),
                                   ),
                                 ),
@@ -909,10 +973,13 @@ class _ReportPageState extends State<ReportPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: isWhite ? Colors.white.withOpacity(0.18) : accent.withOpacity(0.12),
+        color:
+            isWhite ? Colors.white.withOpacity(0.18) : accent.withOpacity(0.12),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
-          color: isWhite ? Colors.white.withOpacity(0.45) : accent.withOpacity(0.5),
+          color: isWhite
+              ? Colors.white.withOpacity(0.45)
+              : accent.withOpacity(0.5),
         ),
       ),
       child: Text(
@@ -1078,10 +1145,13 @@ class _ReportPageState extends State<ReportPage> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color: isSelected ? Colors.white.withOpacity(0.2) : Colors.transparent,
+              color: isSelected
+                  ? Colors.white.withOpacity(0.2)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: isSelected ? Colors.white : Colors.white.withOpacity(0.3),
+                color:
+                    isSelected ? Colors.white : Colors.white.withOpacity(0.3),
               ),
             ),
             child: Row(
@@ -1094,7 +1164,8 @@ class _ReportPageState extends State<ReportPage> {
                   type,
                   style: TextStyle(
                     color: Colors.white,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontWeight:
+                        isSelected ? FontWeight.bold : FontWeight.normal,
                     fontSize: 12,
                   ),
                 ),
@@ -1121,7 +1192,8 @@ class _ReportPageState extends State<ReportPage> {
         children: [
           IconButton(
             icon: const Icon(Icons.chevron_left, color: Colors.white, size: 20),
-            onPressed: _currentPage > 1 ? () => setState(() => _currentPage--) : null,
+            onPressed:
+                _currentPage > 1 ? () => setState(() => _currentPage--) : null,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
           ),
@@ -1136,13 +1208,16 @@ class _ReportPageState extends State<ReportPage> {
                   height: 28,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: _currentPage == i ? Colors.white : Colors.transparent,
+                    color:
+                        _currentPage == i ? Colors.white : Colors.transparent,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     '$i',
                     style: TextStyle(
-                      color: _currentPage == i ? const Color(0xFF1976D2) : Colors.white,
+                      color: _currentPage == i
+                          ? const Color(0xFF1976D2)
+                          : Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -1152,8 +1227,11 @@ class _ReportPageState extends State<ReportPage> {
             ),
           const SizedBox(width: 4),
           IconButton(
-            icon: const Icon(Icons.chevron_right, color: Colors.white, size: 20),
-            onPressed: _currentPage < totalPagesCount ? () => setState(() => _currentPage++) : null,
+            icon:
+                const Icon(Icons.chevron_right, color: Colors.white, size: 20),
+            onPressed: _currentPage < totalPagesCount
+                ? () => setState(() => _currentPage++)
+                : null,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
           ),
@@ -1161,21 +1239,22 @@ class _ReportPageState extends State<ReportPage> {
       ),
     );
   }
-
 }
 
 class _ReportHeaderText extends StatelessWidget {
   final String text;
 
-  const _ReportHeaderText(this.text);
+  final Color color;
+
+  const _ReportHeaderText(this.text, {this.color = Colors.white});
 
   @override
   Widget build(BuildContext context) {
     return Text(
       text,
       textAlign: TextAlign.center,
-      style: const TextStyle(
-        color: Colors.white,
+      style: TextStyle(
+        color: color,
         fontWeight: FontWeight.bold,
         fontSize: 13,
         letterSpacing: 0.5,
@@ -1183,5 +1262,3 @@ class _ReportHeaderText extends StatelessWidget {
     );
   }
 }
-
-

@@ -223,31 +223,39 @@ class _AlertsPageState extends State<AlertsPage> {
       runSpacing: 8,
       children: [
         _summaryChip(Icons.arrow_downward_rounded, '$feedDown DOWN',
-            Colors.red.shade700),
+            const Color(0xFFFF1744)),
         _summaryChip(Icons.arrow_upward_rounded, '$feedUp UP',
-            Colors.green.shade700),
+            const Color(0xFF00E676)),
       ],
     );
   }
 
   Widget _summaryChip(IconData icon, String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.13),
+        color: color.withOpacity(0.22),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withOpacity(0.75), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.25),
+            blurRadius: 8,
+            spreadRadius: 0,
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: color),
+          Icon(icon, size: 16, color: color),
           const SizedBox(width: 4),
           Text(label,
               style: TextStyle(
                   color: color,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12)),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                  letterSpacing: 0.3)),
         ],
       ),
     );
@@ -344,10 +352,10 @@ class _AlertsPageState extends State<AlertsPage> {
   Widget _buildAlertCard(Alert alert) {
     final isDown = _isDownAlert(alert);
     final statusColor =
-        isDown ? const Color(0xFFC62828) : const Color(0xFF2E7D32);
+        isDown ? const Color(0xFFFF1744) : const Color(0xFF00E676);
     final bgColor = isDown
-        ? const Color(0xFFC62828).withOpacity(0.18)
-        : const Color(0xFF2E7D32).withOpacity(0.18);
+        ? const Color(0xFFFF1744).withOpacity(0.22)
+        : const Color(0xFF00E676).withOpacity(0.18);
     final deviceName = _cleanDeviceName(alert.title);
     final ip = _extractIpFromDescription(alert.description);
     final date = alert.tanggal ?? '-';
@@ -358,7 +366,7 @@ class _AlertsPageState extends State<AlertsPage> {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(10),
-        border: Border(left: BorderSide(color: statusColor, width: 5)),
+        border: Border(left: BorderSide(color: statusColor, width: 6)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -368,15 +376,16 @@ class _AlertsPageState extends State<AlertsPage> {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.15),
+              color: statusColor.withOpacity(0.35),
               shape: BoxShape.circle,
+              border: Border.all(color: statusColor.withOpacity(0.9), width: 1.5),
             ),
             child: Icon(
               isDown
                   ? Icons.arrow_downward_rounded
                   : Icons.arrow_upward_rounded,
-              color: statusColor,
-              size: 20,
+              color: Colors.white,
+              size: 22,
             ),
           ),
           const SizedBox(width: 12),
