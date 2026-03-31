@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:monitoring/main.dart';
@@ -967,24 +968,72 @@ class _AddDevicePageState extends State<AddDevicePage> {
                       child: SingleChildScrollView(
                         padding: EdgeInsets.all(isMobile ? 12 : 32),
                         child: Center(
-                          child: Container(
-                            constraints: const BoxConstraints(maxWidth: 600),
-                            padding: const EdgeInsets.all(32),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.06),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 4),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(24),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                              child: Container(
+                                constraints:
+                                    const BoxConstraints(maxWidth: 600),
+                                padding: const EdgeInsets.all(32),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.10),
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.28),
+                                    width: 1.5,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.22),
+                                      blurRadius: 24,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                              border: Border.all(color: Colors.grey.withOpacity(0.1)),
-                            ),
-                            child: Form(
-                              key: _formKey,
-                              child: Column(
+                                child: Theme(
+                                  data: Theme.of(context).copyWith(
+                                    brightness: Brightness.dark,
+                                    inputDecorationTheme:
+                                        InputDecorationTheme(
+                                      filled: true,
+                                      fillColor:
+                                          Colors.white.withOpacity(0.06),
+                                      labelStyle: const TextStyle(
+                                          color: Colors.white70),
+                                      floatingLabelStyle: const TextStyle(
+                                          color: Colors.white70),
+                                      hintStyle: TextStyle(
+                                          color:
+                                              Colors.white.withOpacity(0.45)),
+                                      helperStyle: TextStyle(
+                                          color:
+                                              Colors.white.withOpacity(0.55)),
+                                      errorStyle: const TextStyle(
+                                          color: Color(0xFFFFAB91)),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                            color: Colors.white
+                                                .withOpacity(0.32)),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                            color: Colors.white
+                                                .withOpacity(0.32)),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: const BorderSide(
+                                            color: Color(0xFF64B5F6),
+                                            width: 2),
+                                      ),
+                                    ),
+                                  ),
+                                  child: Form(
+                                    key: _formKey,
+                                    child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -995,7 +1044,8 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                         height: 28,
                                         decoration: BoxDecoration(
                                           color: const Color(0xFF1976D2),
-                                          borderRadius: BorderRadius.circular(2),
+                                          borderRadius:
+                                              BorderRadius.circular(2),
                                         ),
                                       ),
                                       const SizedBox(width: 14),
@@ -1004,7 +1054,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                         style: TextStyle(
                                           fontSize: 24,
                                           fontWeight: FontWeight.w800,
-                                          color: Color(0xFF2C3E50),
+                                          color: Colors.white,
                                           letterSpacing: 0.5,
                                         ),
                                       ),
@@ -1015,11 +1065,21 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                   // ===== TIPE DEVICE =====
                                   DropdownButtonFormField<String>(
                                     value: _selectedDeviceType,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    dropdownColor: const Color(0xFF37474F),
+                                    iconEnabledColor: Colors.white70,
                                     decoration: InputDecoration(
                                       labelText: 'Device Type',
-                                      prefixIcon: Icon(_getDeviceIcon(_selectedDeviceType), color: const Color(0xFF1976D2)),
+                                      prefixIcon: Icon(
+                                          _getDeviceIcon(_selectedDeviceType),
+                                          color: const Color(0xFF90CAF9)),
                                       border: const OutlineInputBorder(),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 16),
                                     ),
                                     onChanged: (String? newValue) {
                                       if (newValue != null) {
@@ -1037,7 +1097,10 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                             (String value) {
                                       return DropdownMenuItem<String>(
                                         value: value,
-                                        child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                        child: Text(value,
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white)),
                                       );
                                     }).toList(),
                                   ),
@@ -1052,7 +1115,9 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                       hintText: 'Enter Device Name',
                                       helperText:
                                           'Example: ${_getDeviceNameExample(_selectedDeviceType)}',
-                                      prefixIcon: const Icon(Icons.label_outline, color: Color(0xFF1976D2)),
+                                      prefixIcon: const Icon(
+                                          Icons.label_outline,
+                                          color: Color(0xFF90CAF9)),
                                       suffixIcon: _isCheckingName
                                           ? const Padding(
                                               padding: EdgeInsets.all(12),
@@ -1062,6 +1127,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                                 child:
                                                     CircularProgressIndicator(
                                                   strokeWidth: 2,
+                                                  color: Colors.white54,
                                                 ),
                                               ),
                                             )
@@ -1072,7 +1138,9 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                                   color: Colors.green,
                                                 )
                                               : (_nameError != null)
-                                                  ? const Icon(Icons.error_outline, color: Colors.red)
+                                                  ? const Icon(
+                                                      Icons.error_outline,
+                                                      color: Colors.red)
                                                   : null,
                                       border: const OutlineInputBorder(),
                                       contentPadding:
@@ -1105,9 +1173,9 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                         const SizedBox(width: 8),
                                         Text(
                                           'Loading Used Name For $_selectedDeviceType...',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 12,
-                                            color: Colors.black54,
+                                            color: Colors.white.withOpacity(0.65),
                                           ),
                                         ),
                                       ],
@@ -1118,23 +1186,29 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
                                           children: [
-                                            const Text(
+                                            Text(
                                               'Used Names For This Type',
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w700,
-                                                color: Colors.blueGrey,
+                                                color: Colors.white.withOpacity(0.75),
                                               ),
                                             ),
                                             TextButton(
                                               onPressed: _showAllUsedNames,
                                               style: TextButton.styleFrom(
-                                                visualDensity: VisualDensity.compact,
+                                                visualDensity:
+                                                    VisualDensity.compact,
                                                 padding: EdgeInsets.zero,
+                                                foregroundColor:
+                                                    const Color(0xFF90CAF9),
                                               ),
-                                              child: const Text('View All', style: TextStyle(fontSize: 11)),
+                                              child: const Text('View All',
+                                                  style:
+                                                      TextStyle(fontSize: 11)),
                                             ),
                                           ],
                                         ),
@@ -1144,22 +1218,31 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                           child: ListView.separated(
                                             scrollDirection: Axis.horizontal,
                                             itemCount: _usedNamesForType.length,
-                                            separatorBuilder: (_, __) => const SizedBox(width: 8),
+                                            separatorBuilder: (_, __) =>
+                                                const SizedBox(width: 8),
                                             itemBuilder: (context, index) {
                                               return Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 4),
                                                 decoration: BoxDecoration(
-                                                  color: Colors.blue.withOpacity(0.08),
-                                                  borderRadius: BorderRadius.circular(20),
-                                                  border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                                                  color: Colors.white
+                                                      .withOpacity(0.08),
+                                                  borderRadius:
+                                                      BorderRadius.circular(20),
+                                                  border: Border.all(
+                                                      color: Colors.white
+                                                          .withOpacity(0.22)),
                                                 ),
                                                 child: Center(
                                                   child: Text(
                                                     _usedNamesForType[index],
                                                     style: const TextStyle(
                                                       fontSize: 11,
-                                                      fontWeight: FontWeight.w600,
-                                                      color: Colors.blue,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: Color(0xFF90CAF9),
                                                     ),
                                                   ),
                                                 ),
@@ -1170,11 +1253,11 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                       ],
                                     )
                                   else
-                                    const Text(
+                                    Text(
                                       'No Used Device Name Available For This Type',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: Colors.black54,
+                                        color: Colors.white.withOpacity(0.55),
                                       ),
                                     ),
                                   const SizedBox(height: 24),
@@ -1187,10 +1270,10 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                       hintText: 'Entry An IP Address',
                                       helperText:
                                           'Format: xxx.xxx.xxx.xxx (Example: 10.2.71.60)',
-                                      prefixIcon: Icon(Icons.router, color: Color(0xFF1976D2)),
+                                      prefixIcon: Icon(Icons.router,
+                                          color: Color(0xFF90CAF9)),
                                       border: OutlineInputBorder(),
-                                      contentPadding:
-                                          EdgeInsets.symmetric(
+                                      contentPadding: EdgeInsets.symmetric(
                                         horizontal: 16,
                                         vertical: 16,
                                       ),
@@ -1211,15 +1294,31 @@ class _AddDevicePageState extends State<AddDevicePage> {
 
                                   // ===== LOKASI =====
                                   DropdownButtonFormField<String>(
-                                    value: _locationData.containsKey(_selectedLocation)
+                                    value: _locationData
+                                            .containsKey(_selectedLocation)
                                         ? _selectedLocation
                                         : null,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                    dropdownColor: const Color(0xFF37474F),
+                                    iconEnabledColor: Colors.white70,
                                     decoration: InputDecoration(
                                       labelText: 'Location',
-                                      prefixIcon: Icon(_getLocationIcon(_selectedLocation.isEmpty ? '?' : _selectedLocation), color: const Color(0xFF1976D2)),
+                                      prefixIcon: Icon(
+                                          _getLocationIcon(
+                                              _selectedLocation.isEmpty
+                                                  ? '?'
+                                                  : _selectedLocation),
+                                          color: const Color(0xFF90CAF9)),
                                       border: const OutlineInputBorder(),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                                      hintText: 'Select location from master tower',
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 16),
+                                      hintText:
+                                          'Select location from master tower',
                                     ),
                                     onChanged: (String? newValue) {
                                       if (newValue != null) {
@@ -1233,18 +1332,22 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                             (String value) {
                                       return DropdownMenuItem<String>(
                                         value: value,
-                                        child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                        child: Text(value,
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                                color: Colors.white)),
                                       );
                                     }).toList(),
                                   ),
                                   if (_isLoadingLocations)
-                                    const Padding(
-                                      padding: EdgeInsets.only(top: 8),
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 8),
                                       child: Text(
                                         'Loading Locations From Unified Master Data...',
                                         style: TextStyle(
                                             fontSize: 12,
-                                            color: Colors.black54),
+                                            color: Colors.white.withOpacity(0.55)),
                                       ),
                                     ),
                                   const SizedBox(height: 40),
@@ -1288,9 +1391,12 @@ class _AddDevicePageState extends State<AddDevicePage> {
                         ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
+            ],
+          ),
+        ),
               const GlobalFooter(),
             ],
           ),
@@ -1299,13 +1405,13 @@ class _AddDevicePageState extends State<AddDevicePage> {
     );
   }
 
-
   Widget _buildFooterLink(String text) {
     return Text(
       text,
-      style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13, fontWeight: FontWeight.w500),
+      style: TextStyle(
+          color: Colors.white.withOpacity(0.6),
+          fontSize: 13,
+          fontWeight: FontWeight.w500),
     );
   }
 }
-
-

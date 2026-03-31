@@ -191,12 +191,20 @@ class _AlertsPageState extends State<AlertsPage> {
           label: Text(type),
           selected: isSelected,
           onSelected: (_) => setState(() => _selectedDeviceType = type),
-          selectedColor: const Color(0xFF1976D2).withOpacity(0.2),
-          checkmarkColor: const Color(0xFF1976D2),
-          backgroundColor: Colors.white.withOpacity(0.7),
+          selectedColor: const Color(0xFF1976D2).withOpacity(0.45),
+          checkmarkColor: Colors.white,
+          backgroundColor: Colors.white.withOpacity(0.12),
+          side: BorderSide(
+            color: isSelected
+                ? Colors.white.withOpacity(0.45)
+                : Colors.white.withOpacity(0.22),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           labelStyle: TextStyle(
-            color: isSelected ? const Color(0xFF1976D2) : Colors.black87,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? Colors.white : Colors.white.withOpacity(0.88),
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
           ),
         );
       }).toList(),
@@ -248,20 +256,9 @@ class _AlertsPageState extends State<AlertsPage> {
   // ==================== ALERT LIST ====================
 
   Widget _buildAlertList(List<Alert> filtered) {
-    return Container(
+    return liquidGlassCard(
+      borderRadius: 22,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(color: Colors.grey.withOpacity(0.1)),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -281,7 +278,7 @@ class _AlertsPageState extends State<AlertsPage> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF2C3E50),
+                  color: Colors.white,
                 ),
               ),
               const Spacer(),
@@ -289,11 +286,14 @@ class _AlertsPageState extends State<AlertsPage> {
                   ? const SizedBox(
                       width: 14,
                       height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2))
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white70,
+                      ))
                   : Text(
                       '${filtered.length} Alerts Detected',
-                      style: const TextStyle(
-                        color: Colors.blueGrey,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.65),
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -304,20 +304,23 @@ class _AlertsPageState extends State<AlertsPage> {
           if (_isLoading)
             const SizedBox(
                 height: 200,
-                child: Center(child: CircularProgressIndicator()))
+                child: Center(
+                    child: CircularProgressIndicator(color: Colors.white70)))
           else if (filtered.isEmpty)
-            const SizedBox(
+            SizedBox(
               height: 200,
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.check_circle_outline,
-                        color: Colors.green, size: 48),
-                    SizedBox(height: 12),
-                    Text('No Alert',
-                        style: TextStyle(
-                            color: Colors.black54, fontSize: 16)),
+                        color: Colors.lightGreenAccent.shade200, size: 48),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No Alert',
+                      style: TextStyle(
+                          color: Colors.white.withOpacity(0.75), fontSize: 16),
+                    ),
                   ],
                 ),
               ),
@@ -342,8 +345,9 @@ class _AlertsPageState extends State<AlertsPage> {
     final isDown = _isDownAlert(alert);
     final statusColor =
         isDown ? const Color(0xFFC62828) : const Color(0xFF2E7D32);
-    final bgColor =
-        isDown ? const Color(0xFFFFEBEE) : const Color(0xFFE8F5E9);
+    final bgColor = isDown
+        ? const Color(0xFFC62828).withOpacity(0.18)
+        : const Color(0xFF2E7D32).withOpacity(0.18);
     final deviceName = _cleanDeviceName(alert.title);
     final ip = _extractIpFromDescription(alert.description);
     final date = alert.tanggal ?? '-';
@@ -382,7 +386,9 @@ class _AlertsPageState extends State<AlertsPage> {
               children: [
                 Text(deviceName,
                     style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 14),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Colors.white),
                     overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 4),
                 Wrap(
@@ -424,10 +430,10 @@ class _AlertsPageState extends State<AlertsPage> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 13, color: Colors.black54),
+        Icon(icon, size: 13, color: Colors.white54),
         const SizedBox(width: 4),
         Text(text,
-            style: const TextStyle(fontSize: 12, color: Colors.black54)),
+            style: const TextStyle(fontSize: 12, color: Colors.white60)),
       ],
     );
   }
@@ -439,14 +445,12 @@ class _AlertsPageState extends State<AlertsPage> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
+          liquidGlassCard(
+            borderRadius: 14,
+            blurSigma: 10,
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-            ),
             child: const Icon(Icons.notifications_active,
-                size: 24, color: Color(0xFF1976D2)),
+                size: 24, color: Color(0xFF90CAF9)),
           ),
           const SizedBox(height: 8),
           const Text(

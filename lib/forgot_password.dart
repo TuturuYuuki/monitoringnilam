@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'main.dart';
 import 'services/api_service.dart';
+import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -43,12 +44,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         });
 
         if (response['success'] == true) {
-          // OTP sent successfully, navigate to verify page
           if (mounted) {
-            // Check if OTP is in response (development mode)
             final String? devOtp = response['otp'];
 
-            // Show OTP in dialog if in development mode
             if (devOtp != null) {
               await showDialog(
                 context: context,
@@ -104,7 +102,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             );
           }
         } else {
-          // Show error message
           if (mounted) {
             showDialog(
               context: context,
@@ -125,6 +122,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         setState(() {
           _isLoading = false;
         });
+
         if (mounted) {
           showDialog(
             context: context,
@@ -147,88 +145,82 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   @override
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
+    final screenSize = MediaQuery.of(context).size;
+    final glassWidth = (screenSize.width * 0.9).clamp(320.0, 500.0);
+    final glassHeight = (screenSize.height * 0.8).clamp(550.0, 650.0);
+
     return Scaffold(
-      body: Stack(
-        children: [
-          // Background Image
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/images/background.png'),
-                fit: BoxFit.cover,
+      body: LiquidGlassView(
+        backgroundWidget: Stack(
+          children: [
+            Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/images/background.png'),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
-          ),
-
-          // Dark Overlay
-          Container(
-            color: Colors.black.withOpacity(0.4),
-          ),
-
-          // Logo Danantara Indonesia - Kiri Atas
-          Positioned(
-            left: isMobile ? 10 : 20,
-            top: isMobile ? 10 : 20,
-            child: Image.asset(
-              'assets/images/logo_danantara.png',
-              width: isMobile ? 140 : 180,
-              height: isMobile ? 50 : 70,
-              fit: BoxFit.contain,
+            Container(
+              color: Colors.black.withOpacity(0.4),
             ),
-          ),
-
-          // Logo Pelindo - Kanan Atas
-          Positioned(
-            right: 20,
-            top: 20,
-            child: Image.asset(
-              'assets/images/logo_nilam.png',
-              width: isMobile ? 140 : 180,
-              height: isMobile ? 50 : 70,
-              fit: BoxFit.contain,
+            Positioned(
+              left: isMobile ? 10 : 20,
+              top: isMobile ? 10 : 20,
+              child: Image.asset(
+                'assets/images/logo_danantara.png',
+                width: isMobile ? 140 : 180,
+                height: isMobile ? 50 : 70,
+                fit: BoxFit.contain,
+              ),
             ),
-          ),
-
-          // Content
-          SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(24),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+            Positioned(
+              right: 20,
+              top: 20,
+              child: Image.asset(
+                'assets/images/logo_nilam.png',
+                width: isMobile ? 140 : 180,
+                height: isMobile ? 50 : 70,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ],
+        ),
+        children: [
+          LiquidGlass(
+            width: glassWidth,
+            height: glassHeight,
+            position:
+                const LiquidGlassAlignPosition(alignment: Alignment.center),
+            distortion: 0.35,
+            distortionWidth: 45,
+            refractionMode: LiquidGlassRefractionMode.shapeRefraction,
+            blur: const LiquidGlassBlur(sigmaX: 15, sigmaY: 15),
+            color: Colors.white.withOpacity(0.1),
+            shape: const RoundedRectangleShape(
+              cornerRadius: 24,
+              borderWidth: 1.5,
+              borderColor: Colors.white30,
+            ),
+            child: Stack(
+              children: [
+                Center(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24.0,
+                        vertical: 40.0,
+                      ),
                       child: Container(
-                        constraints: const BoxConstraints(maxWidth: 500),
+                        constraints: BoxConstraints(maxWidth: glassWidth),
                         padding: const EdgeInsets.all(40),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(24),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.3),
-                            width: 1.5,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 30,
-                            ),
-                          ],
                         ),
                         child: Form(
                           key: _formKey,
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              // Back Button & Icon
-                               Align(
-                                alignment: Alignment.centerLeft,
-                                child: IconButton(
-                                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 24),
-                                  onPressed: () => Navigator.pop(context),
-                                ),
-                              ),
                               const SizedBox(height: 10),
                               const Icon(
                                 Icons.lock_reset_rounded,
@@ -244,7 +236,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                   shadows: [
-                                    Shadow(color: Colors.black38, blurRadius: 4, offset: Offset(0, 2)),
+                                    Shadow(
+                                      color: Colors.black38,
+                                      blurRadius: 4,
+                                      offset: Offset(0, 2),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -259,67 +255,101 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-
                               const SizedBox(height: 40),
-
-                              // Email Field
                               TextFormField(
                                 controller: _emailController,
                                 keyboardType: TextInputType.emailAddress,
                                 style: const TextStyle(color: Colors.white),
                                 decoration: InputDecoration(
                                   hintText: 'Email Address',
-                                  hintStyle: const TextStyle(color: Colors.white60),
-                                  prefixIcon: const Icon(Icons.email_outlined, color: Colors.white70),
+                                  hintStyle:
+                                      const TextStyle(color: Colors.white60),
+                                  prefixIcon: const Icon(
+                                    Icons.email_outlined,
+                                    color: Colors.white70,
+                                  ),
                                   filled: true,
-                                  fillColor: Colors.black.withOpacity(0.2),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Colors.blue, width: 1.5)),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                                  fillColor: Colors.black.withOpacity(0.45),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(
+                                      color: Colors.blue,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 18,
+                                  ),
                                 ),
                                 validator: (value) {
-                                  if (value == null || value.isEmpty) return 'Please Enter Your Email';
-                                  if (!value.contains('@')) return 'Enter A Valid Email';
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please Enter Your Email';
+                                  }
+                                  if (!value.contains('@')) {
+                                    return 'Enter A Valid Email';
+                                  }
                                   return null;
                                 },
                               ),
-
                               const SizedBox(height: 40),
-
-                              // Send OTP Button
-                              Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(16),
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFF1976D2), Color(0xFF0D47A1)],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF1976D2).withOpacity(0.5),
-                                      blurRadius: 15,
-                                      offset: const Offset(0, 5),
+                              SizedBox(
+                                width: double.infinity,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(16),
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFF1976D2),
+                                        Color(0xFF0D47A1),
+                                      ],
+                                      begin: Alignment.centerLeft,
+                                      end: Alignment.centerRight,
                                     ),
-                                  ],
-                                ),
-                                child: ElevatedButton(
-                                  onPressed: _isLoading ? null : _handleSendOtp,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.transparent,
-                                    shadowColor: Colors.transparent,
-                                    padding: const EdgeInsets.symmetric(vertical: 18),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF1976D2)
+                                            .withOpacity(0.5),
+                                        blurRadius: 15,
+                                        offset: const Offset(0, 5),
+                                      ),
+                                    ],
                                   ),
-                                  child: _isLoading
-                                      ? const SizedBox(
-                                          height: 24, width: 24,
-                                          child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-                                        )
-                                      : const Text(
-                                          'Send OTP Code',
-                                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                                        ),
+                                  child: ElevatedButton(
+                                    onPressed:
+                                        _isLoading ? null : _handleSendOtp,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.transparent,
+                                      shadowColor: Colors.transparent,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 18,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                    ),
+                                    child: _isLoading
+                                        ? const SizedBox(
+                                            height: 24,
+                                            width: 24,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2.5,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : const Text(
+                                            'Send OTP Code',
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                  ),
                                 ),
                               ),
                             ],
@@ -329,7 +359,23 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     ),
                   ),
                 ),
-              ),
+                Align(
+                  alignment: Alignment.topLeft,
+                  child: SafeArea(
+                    child: Padding(
+                      padding: EdgeInsets.all(isMobile ? 12 : 16),
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          color: Colors.white,
+                          size: 26,
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

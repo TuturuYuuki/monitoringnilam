@@ -240,6 +240,32 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
         fontFamily: 'Arial',
+        canvasColor: const Color(0xFF37474F),
+        popupMenuTheme: PopupMenuThemeData(
+          color: const Color(0xFF37474F).withOpacity(0.97),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: Colors.white.withOpacity(0.18)),
+          ),
+          textStyle: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+        menuTheme: MenuThemeData(
+          style: MenuStyle(
+            backgroundColor: WidgetStateProperty.all(
+              const Color(0xFF37474F).withOpacity(0.97),
+            ),
+            shape: WidgetStateProperty.all(
+              RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: Colors.white.withOpacity(0.18)),
+              ),
+            ),
+          ),
+        ),
       ),
       initialRoute: '/',
       home: const AuthWrapper(),

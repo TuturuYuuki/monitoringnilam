@@ -1,11 +1,18 @@
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:monitoring/main.dart';
-import 'package:monitoring/utils/ui_utils.dart';
+import 'package:monitoring/utils/ui_utils.dart'
+    show
+        isMobileScreen,
+        buildLiquidGlassButton,
+        showLogoutDialog,
+        liquidGlassCard,
+        appGlassFieldDecoration;
 import 'package:monitoring/services/api_service.dart';
 import 'package:monitoring/models/alert_model.dart';
 import 'package:monitoring/pages/dashboard/dashboard.dart';
@@ -411,11 +418,19 @@ class _ReportPageState extends State<ReportPage> {
     return GestureDetector(
       onTap: () => Navigator.push(context,
           MaterialPageRoute(builder: (context) => const ProfilePage())),
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.9), shape: BoxShape.circle),
-        child: const Icon(Icons.person, color: Color(0xFF1976D2), size: 24),
+      child: ClipOval(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.22),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withOpacity(0.35)),
+            ),
+            child: const Icon(Icons.person, color: Colors.white, size: 24),
+          ),
+        ),
       ),
     );
   }
@@ -423,12 +438,10 @@ class _ReportPageState extends State<ReportPage> {
 
   Widget _buildFilterBar() {
     final isMobile = isMobileScreen(context);
-    return Container(
+    return liquidGlassCard(
+      borderRadius: 18,
+      blurSigma: 16,
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(12),
-      ),
       child: isMobile
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -438,20 +451,17 @@ class _ReportPageState extends State<ReportPage> {
                   onTap: _pickDateRange,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: Colors.grey.shade400),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    decoration: appGlassFieldDecoration(radius: 16),
                     child: Row(
                       children: [
-                        const Icon(Icons.calendar_month,
-                            size: 16, color: Colors.blue),
+                        Icon(Icons.calendar_month,
+                            size: 16, color: Colors.white.withOpacity(0.85)),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             "${DateFormat('dd/MM').format(_selectedRange.start)} - ${DateFormat('dd/MM').format(_selectedRange.end)}",
-                            style: const TextStyle(fontSize: 12),
+                            style: const TextStyle(
+                                fontSize: 12, color: Colors.white),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -462,22 +472,26 @@ class _ReportPageState extends State<ReportPage> {
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.grey.shade400),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  decoration: appGlassFieldDecoration(radius: 16),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: _statusFilter,
                       isExpanded: true,
-                      style: const TextStyle(fontSize: 12, color: Colors.black),
+                      dropdownColor: const Color(0xFF37474F),
+                      iconEnabledColor: Colors.white70,
+                      borderRadius: BorderRadius.circular(16),
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600),
                       items: ['ALL', 'UP', 'DOWN']
                           .map((s) => DropdownMenuItem(
                                 value: s,
                                 child: SizedBox(
                                   width: double.infinity,
-                                  child: Text(s),
+                                  child: Text(s,
+                                      style: const TextStyle(
+                                          color: Colors.white)),
                                 ),
                               ))
                           .toList(),
@@ -528,20 +542,18 @@ class _ReportPageState extends State<ReportPage> {
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            border: Border.all(color: Colors.grey.shade400),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                          decoration: appGlassFieldDecoration(radius: 16),
                           child: Row(
                             children: [
-                              const Icon(Icons.calendar_month,
-                                  size: 16, color: Colors.blue),
+                              Icon(Icons.calendar_month,
+                                  size: 16,
+                                  color: Colors.white.withOpacity(0.85)),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   "${DateFormat('dd/MM').format(_selectedRange.start)} - ${DateFormat('dd/MM').format(_selectedRange.end)}",
-                                  style: const TextStyle(fontSize: 12),
+                                  style: const TextStyle(
+                                      fontSize: 12, color: Colors.white),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -559,23 +571,26 @@ class _ReportPageState extends State<ReportPage> {
                     height: 44,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: Colors.grey.shade400),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      decoration: appGlassFieldDecoration(radius: 16),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           value: _statusFilter,
                           isExpanded: true,
-                          style:
-                              const TextStyle(fontSize: 12, color: Colors.black),
+                          dropdownColor: const Color(0xFF37474F),
+                          iconEnabledColor: Colors.white70,
+                          borderRadius: BorderRadius.circular(16),
+                          style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600),
                           items: ['ALL', 'UP', 'DOWN']
                               .map((s) => DropdownMenuItem(
                                     value: s,
                                     child: SizedBox(
                                       width: double.infinity,
-                                      child: Text(s),
+                                      child: Text(s,
+                                          style: const TextStyle(
+                                              color: Colors.white)),
                                     ),
                                   ))
                               .toList(),
@@ -632,24 +647,50 @@ class _ReportPageState extends State<ReportPage> {
       firstDate: DateTime(2024),
       lastDate: DateTime(2030),
       builder: (context, child) {
+        final cs = ColorScheme.dark(
+          primary: const Color(0xFF42A5F5),
+          onPrimary: Colors.white,
+          surface: const Color(0xFF37474F),
+          onSurface: Colors.white,
+          secondary: const Color(0xFF90CAF9),
+          onSecondary: Colors.white,
+        );
         return Center(
-          child: Container(
-            constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width > 600
-                    ? 450
-                    : double.infinity),
-            child: Theme(
-              data: Theme.of(context).copyWith(
-                colorScheme: const ColorScheme.light(
-                    primary: Color(0xFF1976D2),
-                    onPrimary: Colors.white,
-                    surface: Colors.white,
-                    onSurface: Colors.black),
-                dialogTheme: DialogTheme(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16))),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: Container(
+                constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width > 600
+                        ? 480
+                        : double.infinity),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: Colors.white.withOpacity(0.28)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.35),
+                      blurRadius: 24,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: Theme(
+                  data: Theme.of(context).copyWith(
+                    colorScheme: cs,
+                    dialogTheme: DialogThemeData(
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                  ),
+                  child: child!,
+                ),
               ),
-              child: child!,
             ),
           ),
         );
@@ -700,19 +741,10 @@ class _ReportPageState extends State<ReportPage> {
     final totalCount = filteredAlerts.length;
     final isMobile = isMobileScreen(context);
 
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.94),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.12),
-            blurRadius: 18,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return liquidGlassCard(
+      borderRadius: 18,
+      blurSigma: 16,
+      padding: EdgeInsets.zero,
       child: Column(
         children: [
           Container(
@@ -720,7 +752,7 @@ class _ReportPageState extends State<ReportPage> {
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             decoration: const BoxDecoration(
               color: Color(0xFF1976D2),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
             ),
             child: Wrap(
               alignment: WrapAlignment.spaceBetween,
@@ -759,99 +791,112 @@ class _ReportPageState extends State<ReportPage> {
                     maxWidth: math.max(constraints.maxWidth, minW),
                   ),
                   child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                    width: double.infinity,
-                    color: const Color(0xFFC6B430),
-                    child: const Row(
-                      children: [
-                        Expanded(flex: 3, child: _ReportHeaderText('DEVICE')),
-                        Expanded(flex: 4, child: _ReportHeaderText('LOCATION')),
-                        Expanded(flex: 3, child: _ReportHeaderText('IP ADDRESS')),
-                        Expanded(flex: 2, child: _ReportHeaderText('STATUS')),
-                        Expanded(flex: 3, child: _ReportHeaderText('TIMESTAMP')),
-                        Expanded(flex: 2, child: _ReportHeaderText('ACTION')),
-                      ],
-                    ),
-                  ),
-                  ...filteredAlerts
-                      .skip((_currentPage - 1) * _itemsPerPage)
-                      .take(_itemsPerPage)
-                      .map((a) {
-                    final isDown = _isDownAlert(a);
-                    final statusText = isDown ? 'DOWN' : 'UP';
-                    final statusColor = isDown ? Colors.red : Colors.green;
-
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2C3E50).withOpacity(0.9),
-                        border: Border(
-                          bottom: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 14),
+                        width: double.infinity,
+                        color: const Color(0xFFC6B430),
+                        child: const Row(
+                          children: [
+                            Expanded(
+                                flex: 3, child: _ReportHeaderText('DEVICE')),
+                            Expanded(
+                                flex: 4, child: _ReportHeaderText('LOCATION')),
+                            Expanded(
+                                flex: 3,
+                                child: _ReportHeaderText('IP ADDRESS')),
+                            Expanded(
+                                flex: 2, child: _ReportHeaderText('STATUS')),
+                            Expanded(
+                                flex: 3,
+                                child: _ReportHeaderText('TIMESTAMP')),
+                            Expanded(
+                                flex: 2, child: _ReportHeaderText('ACTION')),
+                          ],
                         ),
                       ),
-                      child: Row(
-                        children: [
-                          _buildReportValueCell(
-                            _cleanDeviceName(a.title),
-                            flex: 3,
-                            fontWeight: FontWeight.w800,
-                            align: TextAlign.center,
-                            color: Colors.white,
+                      ...filteredAlerts
+                          .skip((_currentPage - 1) * _itemsPerPage)
+                          .take(_itemsPerPage)
+                          .map((a) {
+                        final isDown = _isDownAlert(a);
+                        final statusText = isDown ? 'DOWN' : 'UP';
+                        final statusColor = isDown ? Colors.red : Colors.green;
+
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2C3E50).withOpacity(0.9),
+                            border: Border(
+                              bottom: BorderSide(
+                                  color: Colors.white.withOpacity(0.1),
+                                  width: 1),
+                            ),
                           ),
-                          _buildReportValueCell(
-                            a.lokasi?.isNotEmpty == true ? a.lokasi! : '-',
-                            flex: 4,
-                            fontWeight: FontWeight.w700,
-                            align: TextAlign.center,
-                            color: Colors.white70,
-                          ),
-                          _buildReportValueCell(
-                            _extractIpFromDescription(a.description),
-                            flex: 3,
-                            color: Colors.white70,
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Center(
-                              child: Text(
-                                statusText,
-                                style: TextStyle(
-                                  color: statusColor,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
+                          child: Row(
+                            children: [
+                              _buildReportValueCell(
+                                _cleanDeviceName(a.title),
+                                flex: 3,
+                                fontWeight: FontWeight.w800,
+                                align: TextAlign.center,
+                                color: Colors.white,
+                              ),
+                              _buildReportValueCell(
+                                a.lokasi?.isNotEmpty == true ? a.lokasi! : '-',
+                                flex: 4,
+                                fontWeight: FontWeight.w700,
+                                align: TextAlign.center,
+                                color: Colors.white70,
+                              ),
+                              _buildReportValueCell(
+                                _extractIpFromDescription(a.description),
+                                flex: 3,
+                                color: Colors.white70,
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: Center(
+                                  child: Text(
+                                    statusText,
+                                    style: TextStyle(
+                                      color: statusColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
-                          _buildReportValueCell(
-                            '${a.tanggal ?? ''} ${a.waktu ?? ''}',
-                            flex: 3,
-                            color: Colors.white54,
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Center(
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                                    onPressed: () => _confirmDeleteAlert(a),
-                                  ),
-                                ],
+                              _buildReportValueCell(
+                                '${a.tanggal ?? ''} ${a.waktu ?? ''}',
+                                flex: 3,
+                                color: Colors.white54,
                               ),
-                            ),
+                              Expanded(
+                                flex: 2,
+                                child: Center(
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.delete,
+                                            color: Colors.red, size: 20),
+                                        onPressed: () => _confirmDeleteAlert(a),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    );
-                  }),
-                ],
-              ),
-            ),
-          );
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              );
             },
           ),
         ],

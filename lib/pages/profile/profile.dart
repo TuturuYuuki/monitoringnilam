@@ -76,7 +76,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A), // Darker Navy
+      backgroundColor: const Color(0xFF2C3E50),
       body: Stack(
         children: [
           Column(

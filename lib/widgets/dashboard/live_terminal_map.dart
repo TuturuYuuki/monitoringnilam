@@ -1,9 +1,8 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:monitoring/models/tower_model.dart';
-import 'package:monitoring/models/device_model.dart';
-import 'package:monitoring/widgets/terminal_layout_static.dart';
 import 'package:monitoring/constants/terminal_data.dart';
+import 'package:monitoring/models/device_model.dart';
+import 'package:monitoring/models/tower_model.dart';
+import 'package:monitoring/widgets/terminal_layout_static.dart';
 
 class LiveTerminalMap extends StatefulWidget {
   final List<AddedDevice> devices;
@@ -12,8 +11,10 @@ class LiveTerminalMap extends StatefulWidget {
   final bool isPickMode;
   final String? pickYardFilter;
   final Function(String areaId, double relX, double relY) onAreaPicked;
-  final Function(String towerId, double latitude, double longitude) onTowerMoved;
-  final Function(Map<String, dynamic> master, double latitude, double longitude) onMasterMoved;
+  final Function(String towerId, double latitude, double longitude)
+      onTowerMoved;
+  final Function(Map<String, dynamic> master, double latitude, double longitude)
+      onMasterMoved;
   final Future<void> Function({bool force}) onTriggerPingCheck;
   final Future<void> Function() onLoadDashboardData;
 
@@ -40,24 +41,24 @@ class _LiveTerminalMapState extends State<LiveTerminalMap> {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final mapWidth = constraints.maxWidth;
+        final mapHeight = constraints.maxHeight;
+
+        return Container(
+          width: mapWidth,
+          height: mapHeight,
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.12),
+            color: const Color(0xFF3B4D63).withOpacity(0.92),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.2),
-              width: 1.5,
-            ),
-            boxShadow: [
+            border: Border.all(color: Colors.white24, width: 1.2),
+            boxShadow: const [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
+                color: Color(0x22000000),
+                blurRadius: 12,
+                offset: Offset(0, 6),
               ),
             ],
           ),
@@ -71,7 +72,8 @@ class _LiveTerminalMapState extends State<LiveTerminalMap> {
                       color: const Color(0xFF1976D2).withOpacity(0.8),
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: const Icon(Icons.map, color: Colors.white, size: 28),
+                    child:
+                        const Icon(Icons.map, color: Colors.white, size: 28),
                   ),
                   const SizedBox(width: 12),
                   const Text(
@@ -87,19 +89,24 @@ class _LiveTerminalMapState extends State<LiveTerminalMap> {
                   if (widget.isPickMode)
                     Container(
                       margin: const EdgeInsets.only(right: 12),
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.orange.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.orange.withOpacity(0.5)),
+                        border: Border.all(
+                          color: Colors.orange.withOpacity(0.5),
+                        ),
                       ),
                       child: Text(
                         'Pick Mode: ${widget.pickYardFilter ?? 'Pilih area CY'}',
                         style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12),
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   ElevatedButton.icon(
@@ -114,9 +121,8 @@ class _LiveTerminalMapState extends State<LiveTerminalMap> {
                                 ? 'Edit Freeroam ON'
                                 : 'Edit Freeroam OFF',
                           ),
-                          backgroundColor: _isFreeroamEditMode
-                              ? Colors.orange
-                              : Colors.blueGrey,
+                          backgroundColor:
+                              _isFreeroamEditMode ? Colors.orange : Colors.blueGrey,
                           duration: const Duration(seconds: 2),
                         ),
                       );
@@ -125,23 +131,22 @@ class _LiveTerminalMapState extends State<LiveTerminalMap> {
                       _isFreeroamEditMode ? Icons.edit_off : Icons.edit,
                       size: 18,
                     ),
-                    label: Text(
-                      _isFreeroamEditMode ? 'Save' : 'Edit',
-                    ),
+                    label: Text(_isFreeroamEditMode ? 'Save' : 'Edit'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _isFreeroamEditMode
                           ? Colors.orange
                           : const Color(0xFF607D8B).withOpacity(0.8),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 12),
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // Tombol Check Status Now
                   ElevatedButton.icon(
                     onPressed: () async {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -152,23 +157,25 @@ class _LiveTerminalMapState extends State<LiveTerminalMap> {
                       );
                       await widget.onTriggerPingCheck(force: true);
                       await widget.onLoadDashboardData();
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('✓ Status Updated!'),
-                            backgroundColor: Colors.green,
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      }
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('✓ Status Updated!'),
+                          backgroundColor: Colors.green,
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
                     },
                     icon: const Icon(Icons.refresh, size: 18),
                     label: const Text('Check Status'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4CAF50).withOpacity(0.8),
+                      backgroundColor:
+                          const Color(0xFF4CAF50).withOpacity(0.8),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -177,7 +184,6 @@ class _LiveTerminalMapState extends State<LiveTerminalMap> {
                 ],
               ),
               const SizedBox(height: 18),
-              // Terminal Layout Static
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
@@ -212,8 +218,8 @@ class _LiveTerminalMapState extends State<LiveTerminalMap> {
               ),
             ],
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

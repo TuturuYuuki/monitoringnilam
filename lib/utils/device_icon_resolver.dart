@@ -72,9 +72,9 @@ class DeviceIconResolver {
       case 'RTG':
         return Colors.orange;
       case 'RS':
-        return const Color(0xFF00897B);
+        return const Color(0xFF00695C);
       case 'CC':
-        return Colors.blueGrey;
+        return const Color(0xFF3949AB);
       case 'GATE':
         return Colors.brown;
       case 'PARKING':

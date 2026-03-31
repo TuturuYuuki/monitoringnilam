@@ -45,11 +45,12 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
       if (_isIdDuplicate) setState(() => _isIdDuplicate = false);
       return;
     }
-    
+
     final isDup = _masterLocations.any((loc) =>
-        (loc['location_type'] ?? '').toString().toUpperCase() == _selectedMasterType &&
+        (loc['location_type'] ?? '').toString().toUpperCase() ==
+            _selectedMasterType &&
         (loc['location_code'] ?? '').toString().toUpperCase() == code);
-    
+
     if (isDup != _isIdDuplicate) {
       setState(() => _isIdDuplicate = isDup);
     }
@@ -439,225 +440,319 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
   Widget _buildInventoryStats() {
     final counts = _countMastersByLocation();
     final items = [
-      {'label': 'Container Yard 1', 'value': '${counts['CY1'] ?? 0}', 'color': const Color(0xFF1976D2)},
-      {'label': 'Container Yard 2', 'value': '${counts['CY2'] ?? 0}', 'color': Colors.orange},
-      {'label': 'Container Yard 3', 'value': '${counts['CY3'] ?? 0}', 'color': Colors.teal},
-      {'label': 'Gate',             'value': '${counts['GATE'] ?? 0}', 'color': Colors.purple},
-      {'label': 'Parking',          'value': '${counts['PARKING'] ?? 0}', 'color': Colors.pink},
+      {
+        'label': 'Container Yard 1',
+        'value': '${counts['CY1'] ?? 0}',
+        'color': const Color(0xFF1976D2)
+      },
+      {
+        'label': 'Container Yard 2',
+        'value': '${counts['CY2'] ?? 0}',
+        'color': Colors.orange
+      },
+      {
+        'label': 'Container Yard 3',
+        'value': '${counts['CY3'] ?? 0}',
+        'color': Colors.teal
+      },
+      {
+        'label': 'Gate',
+        'value': '${counts['GATE'] ?? 0}',
+        'color': Colors.purple
+      },
+      {
+        'label': 'Parking',
+        'value': '${counts['PARKING'] ?? 0}',
+        'color': Colors.pink
+      },
     ];
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
-        final perRow = w < 400 ? 2 : w < 780 ? 3 : 5;
+        final perRow = w < 400
+            ? 2
+            : w < 780
+                ? 3
+                : 5;
         const spacing = 16.0;
         final boxWidth = (w - spacing * (perRow - 1)) / perRow;
         return Wrap(
           spacing: spacing,
           runSpacing: spacing,
-          children: items.map((item) => SizedBox(
-            width: boxWidth,
-            child: _statBox(
-              item['label'] as String,
-              item['value'] as String,
-              item['color'] as Color,
-            ),
-          )).toList(),
+          children: items
+              .map((item) => SizedBox(
+                    width: boxWidth,
+                    child: _statBox(
+                      item['label'] as String,
+                      item['value'] as String,
+                      item['color'] as Color,
+                    ),
+                  ))
+              .toList(),
         );
       },
     );
   }
 
   Widget _statBox(String title, String value, Color color) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border(left: BorderSide(color: color, width: 6)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.black54,
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = constraints.maxWidth;
+        return Container(
+          child: Container(
+            width: cardWidth,
+            height: 110,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+              border:
+                  Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
+            ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 4,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16),
+                    child: Text(
+                      value,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildAddTowerForm() {
-    return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 15,
-            spreadRadius: 2,
-          ),
-        ],
-        border: Border.all(
-          color: Colors.grey.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 4,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1976D2),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                _selectedMasterType == 'TOWER'
-                    ? 'Register New Master Data'
-                    : 'Register New Master ${_selectedMasterType.toLowerCase()}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF2C3E50),
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _selectedMasterType,
-                  decoration: const InputDecoration(
-                    labelText: 'Master Type',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.category_outlined),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          child: Container(
+            width: constraints.maxWidth,
+            height: 380, // Estimated height for the form
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white30, width: 1.5),
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 4,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1976D2),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        _selectedMasterType == 'TOWER'
+                            ? 'Register New Master Data'
+                            : 'Register New Master ${_selectedMasterType.toLowerCase()}',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
                   ),
-                  items: const ['TOWER', 'RTG', 'RS', 'CC']
-                      .map((e) => DropdownMenuItem(
-                            value: e,
-                            child: Text(e, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          ))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) {
-                      setState(() {
-                        _selectedMasterType = val;
-                        // Re-validate after type change
-                        _idCheckListener();
-                      });
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildTextField(
-                      'ID',
-                      _towerIdController,
-                      _getIconForType(_selectedMasterType),
-                      hint: _getExampleForType(_selectedMasterType),
-                      isDuplicate: _isIdDuplicate,
-                    ),
-                    const SizedBox(height: 6),
-                    _buildUsedCodesForType(_selectedMasterType),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _selectedYard,
-                  decoration: const InputDecoration(
-                    labelText: 'Yard Area',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.grid_view),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  const SizedBox(height: 24),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Theme(
+                          data: Theme.of(context).copyWith(
+                            canvasColor: const Color(0xFF2C3E50),
+                          ),
+                          child: DropdownButtonFormField<String>(
+                            value: _selectedMasterType,
+                            dropdownColor: const Color(0xFF2C3E50),
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              labelText: 'Master Type',
+                              labelStyle:
+                                  const TextStyle(color: Colors.white70),
+                              border: const OutlineInputBorder(),
+                              enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Colors.white.withOpacity(0.3))),
+                              prefixIcon: const Icon(Icons.category_outlined,
+                                  color: Colors.white70),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 16),
+                            ),
+                            items: const ['TOWER', 'RTG', 'RS', 'CC']
+                                .map((e) => DropdownMenuItem(
+                                      value: e,
+                                      child: Text(e,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white)),
+                                    ))
+                                .toList(),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setState(() {
+                                  _selectedMasterType = val;
+                                  _idCheckListener();
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildTextField(
+                              'ID',
+                              _towerIdController,
+                              _getIconForType(_selectedMasterType),
+                              hint: _getExampleForType(_selectedMasterType),
+                              isDuplicate: _isIdDuplicate,
+                            ),
+                            const SizedBox(height: 6),
+                            _buildUsedCodesForType(_selectedMasterType),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Theme(
+                          data: Theme.of(context).copyWith(
+                            canvasColor: const Color(0xFF2C3E50),
+                          ),
+                          child: DropdownButtonFormField<String>(
+                            value: _selectedYard,
+                            dropdownColor: const Color(0xFF2C3E50),
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              labelText: 'Yard Area',
+                              labelStyle:
+                                  const TextStyle(color: Colors.white70),
+                              border: const OutlineInputBorder(),
+                              enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Colors.white.withOpacity(0.3))),
+                              prefixIcon: const Icon(Icons.grid_view,
+                                  color: Colors.white70),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 16),
+                            ),
+                            items: ['CY1', 'CY2', 'CY3', 'GATE', 'PARKING']
+                                .map((e) => DropdownMenuItem(
+                                    value: e,
+                                    child: Text(e,
+                                        style: const TextStyle(
+                                            color: Colors.white))))
+                                .toList(),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setState(() => _selectedYard = val);
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  items: ['CY1', 'CY2', 'CY3', 'GATE', 'PARKING']
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) {
-                      setState(() => _selectedYard = val);
-                    }
-                  },
-                ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(child: _buildPositionStatus()),
+                      const SizedBox(width: 16),
+                      ElevatedButton.icon(
+                        onPressed: () => _openPositionPicker(),
+                        icon: const Icon(Icons.place_rounded, size: 20),
+                        label: const Text('Pick Position'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white.withOpacity(0.2),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 20),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                  color: Colors.white.withOpacity(0.3))),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton(
+                        onPressed: _submitForm,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueAccent,
+                          foregroundColor: Colors.white,
+                          elevation: 2,
+                          shadowColor: Colors.blueAccent.withOpacity(0.4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 40, vertical: 20),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('SAVE DATA',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.8)),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(child: _buildPositionStatus()),
-              const SizedBox(width: 16),
-              ElevatedButton.icon(
-                onPressed: () => _openPositionPicker(),
-                icon: const Icon(Icons.place_rounded, size: 20),
-                label: const Text('Pick Position'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF455A64),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton(
-                onPressed: _submitForm,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1976D2),
-                  foregroundColor: Colors.white,
-                  elevation: 2,
-                  shadowColor: const Color(0xFF1976D2).withOpacity(0.4),
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('SAVE DATA',
-                    style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.8)),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -667,38 +762,42 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     final bool isEmpty = ctrl.text.trim().isEmpty;
     return TextField(
       controller: ctrl,
+      style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         labelText: label,
+        labelStyle: const TextStyle(color: Colors.white70),
         hintText: hint,
-        prefixIcon: Icon(icon, size: 20),
+        hintStyle: const TextStyle(color: Colors.white38),
+        prefixIcon: Icon(icon, size: 20, color: Colors.white70),
         suffixIcon: isEmpty
             ? null
             : Icon(
                 isDuplicate ? Icons.error_outline : Icons.check_circle_outline,
-                color: isDuplicate ? Colors.red : Colors.green,
+                color: isDuplicate ? Colors.redAccent : Colors.greenAccent,
                 size: 20,
               ),
         border: OutlineInputBorder(
           borderSide: BorderSide(
             color: isEmpty
-                ? Colors.grey
-                : (isDuplicate ? Colors.red : Colors.green),
+                ? Colors.white30
+                : (isDuplicate ? Colors.redAccent : Colors.greenAccent),
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderSide: BorderSide(
             color: isEmpty
-                ? Colors.grey.shade400
-                : (isDuplicate ? Colors.red : Colors.green),
+                ? Colors.white.withOpacity(0.3)
+                : (isDuplicate ? Colors.redAccent : Colors.greenAccent),
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderSide: BorderSide(
-            color: isDuplicate ? Colors.red : Colors.blue,
+            color: isDuplicate ? Colors.redAccent : Colors.blueAccent,
             width: 2,
           ),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
   }
@@ -767,7 +866,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
               final code = usedCodes[index];
               return Container(
                 margin: const EdgeInsets.only(right: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.blueGrey.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(8),
@@ -790,6 +890,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
       ],
     );
   }
+
   Widget _buildPositionStatus() {
     final hasPos = _selectedLat != null && _selectedLng != null;
     return Container(
@@ -798,7 +899,9 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
         color: hasPos ? const Color(0xFFE8F5E9) : const Color(0xFFFFF3E0),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: hasPos ? const Color(0xFF81C784).withOpacity(0.4) : const Color(0xFFFFB74D).withOpacity(0.4),
+          color: hasPos
+              ? const Color(0xFF81C784).withOpacity(0.4)
+              : const Color(0xFFFFB74D).withOpacity(0.4),
           width: 1,
         ),
       ),
@@ -807,7 +910,9 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: hasPos ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+              color: hasPos
+                  ? Colors.green.withOpacity(0.1)
+                  : Colors.orange.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -827,7 +932,9 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
-                    color: hasPos ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
+                    color: hasPos
+                        ? const Color(0xFF2E7D32)
+                        : const Color(0xFFE65100),
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -838,7 +945,9 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: hasPos ? const Color(0xFF2E7D32).withOpacity(0.7) : const Color(0xFFE65100).withOpacity(0.7),
+                    color: hasPos
+                        ? const Color(0xFF2E7D32).withOpacity(0.7)
+                        : const Color(0xFFE65100).withOpacity(0.7),
                   ),
                 ),
               ],
@@ -1193,232 +1302,275 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     final endIndex = (startIndex + itemsPerPage).clamp(0, unified.length);
     final data = unified.sublist(startIndex, endIndex);
 
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          width: constraints.maxWidth,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white24, width: 1.5),
           ),
-        ],
-        border: Border.all(color: Colors.grey.withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Container(
-                  width: 4,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1976D2),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  'All Master Location List',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF2C3E50),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            decoration: const BoxDecoration(
-              color: Color(0xFF455A64),
-            ),
-            child: const Row(
-              children: [
-                Expanded(
-                    flex: 2,
-                    child: Text('TYPE',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                            letterSpacing: 1))),
-                Expanded(
-                    flex: 4,
-                    child: Text('NAME',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                            letterSpacing: 1))),
-                Expanded(
-                    flex: 2,
-                    child: Text('LOCATION',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                            letterSpacing: 1))),
-                Expanded(
-                    flex: 2,
-                    child: Center(
-                        child: Text('ACTIONS',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                letterSpacing: 1)))),
-              ],
-            ),
-          ),
-
-          if (data.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(40),
-              child: Text('Belum ada data Master.',
-                  style: TextStyle(color: Colors.grey)),
-            )
-          else
-            // BODY TABEL
-            ...data.map((item) {
-              final bool isLast = data.last == item;
-              return Container(
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: isLast ? Colors.transparent : Colors.grey.shade200,
-                      width: 1,
-                    ),
-                  ),
-                ),
-                padding:
-                    const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(20),
                 child: Row(
                   children: [
-                    // Kolom Type dengan Badge
-                    Expanded(
-                      flex: 2,
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: _getTypeColor(item['type'].toString())
-                                .withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            item['type'].toString(),
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: _getTypeColor(item['type'].toString()),
-                              fontSize: 10,
-                            ),
-                          ),
-                        ),
+                    Container(
+                      width: 4,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1976D2),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-
-                    // Kolom Name
-                    Expanded(
-                      flex: 4,
-                      child: Text(
-                        (item['location_name'] ?? item['code'] ?? '-')
-                            .toString(),
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                            color: Colors.black87),
-                      ),
-                    ),
-
-                    // Kolom Yard
-                    Expanded(
-                      flex: 2,
-                      child: Row(
-                        children: [
-                          const Icon(Icons.grid_view_rounded,
-                              size: 14, color: Colors.grey),
-                          const SizedBox(width: 6),
-                          Text(
-                            (item['yard'] ?? '-').toString(),
-                            style: const TextStyle(
-                                fontSize: 13,
-                                color: Colors.black54,
-                                fontWeight: FontWeight.w500),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Kolom Action
-                    Expanded(
-                      flex: 2,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _buildActionBtn(Icons.info_outline, Colors.teal,
-                              () => _showMasterDetailDialog(item)),
-                          const SizedBox(width: 8),
-                          _buildActionBtn(Icons.edit_outlined, Colors.blue,
-                              () => _showEditNonTowerDialog(item)),
-                          const SizedBox(width: 8),
-                          _buildActionBtn(Icons.delete_outline, Colors.red,
-                              () => _showDeleteNonTowerDialog(item)),
-                        ],
+                    const SizedBox(width: 12),
+                    const Text(
+                      'All Master Location List',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
                       ),
                     ),
                   ],
                 ),
-              );
-            }),
-
-          // FOOTER / PAGINATION
-          if (unified.length > itemsPerPage)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                border: Border(top: BorderSide(color: Colors.grey.shade200)),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Page $_currentPage of $totalPages  •  Total ${unified.length} items',
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.blueGrey.shade700,
-                        fontWeight: FontWeight.w500),
-                  ),
-                  Row(
-                    children: [
-                      _buildPageBtn(
-                          Icons.chevron_left,
-                          _currentPage > 1
-                              ? () => setState(() => _currentPage--)
-                              : null),
-                      const SizedBox(width: 12),
-                      _buildPageBtn(
-                          Icons.chevron_right,
-                          _currentPage < totalPages
-                              ? () => setState(() => _currentPage++)
-                              : null),
-                    ],
-                  ),
-                ],
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  return Container(
+                    width: constraints.maxWidth,
+                    height: 600,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.white30, width: 1.5),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                          ),
+                          child: const Row(
+                            children: [
+                              Expanded(
+                                  flex: 2,
+                                  child: Text('TYPE',
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          letterSpacing: 1))),
+                              Expanded(
+                                  flex: 4,
+                                  child: Text('NAME',
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          letterSpacing: 1))),
+                              Expanded(
+                                  flex: 2,
+                                  child: Text('LOCATION',
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          letterSpacing: 1))),
+                              Expanded(
+                                  flex: 2,
+                                  child: Center(
+                                      child: Text('ACTIONS',
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13,
+                                              letterSpacing: 1)))),
+                            ],
+                          ),
+                        ),
+                        if (data.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.all(40),
+                            child: Text('Belum ada data Master.',
+                                style: TextStyle(color: Colors.white54)),
+                          )
+                        else
+                          // BODY TABEL
+                          Expanded(
+                            child: ListView.builder(
+                              itemCount: data.length,
+                              itemBuilder: (context, index) {
+                                final item = data[index];
+                                final bool isLast = index == data.length - 1;
+                                return Container(
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      bottom: BorderSide(
+                                        color: isLast
+                                            ? Colors.transparent
+                                            : Colors.white10,
+                                        width: 1,
+                                      ),
+                                    ),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 12, horizontal: 20),
+                                  child: Row(
+                                    children: [
+                                      // Kolom Type dengan Badge
+                                      Expanded(
+                                        flex: 2,
+                                        child: Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10, vertical: 5),
+                                            decoration: BoxDecoration(
+                                              color: _getTypeColor(
+                                                      item['type'].toString())
+                                                  .withOpacity(0.88),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              border: Border.all(
+                                                  color: Colors.white
+                                                      .withOpacity(0.35),
+                                                  width: 1,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              item['type'].toString(),
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w800,
+                                                color: Colors.white,
+                                                fontSize: 11,
+                                                letterSpacing: 0.4,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      // Kolom Name
+                                      Expanded(
+                                        flex: 4,
+                                        child: Text(
+                                          (item['location_name'] ??
+                                                  item['code'] ??
+                                                  '-')
+                                              .toString(),
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                              color: Colors.white),
+                                        ),
+                                      ),
+                                      // Kolom Yard
+                                      Expanded(
+                                        flex: 2,
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.grid_view_rounded,
+                                                size: 14,
+                                                color: Colors.white54),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              (item['yard'] ?? '-').toString(),
+                                              style: const TextStyle(
+                                                  fontSize: 13,
+                                                  color: Colors.white70,
+                                                  fontWeight: FontWeight.w500),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      // Kolom Action
+                                      Expanded(
+                                        flex: 2,
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            _buildActionBtn(
+                                                Icons.info_outline,
+                                                Colors.tealAccent,
+                                                () => _showMasterDetailDialog(
+                                                    item)),
+                                            const SizedBox(width: 8),
+                                            _buildActionBtn(
+                                                Icons.edit_outlined,
+                                                Colors.blueAccent,
+                                                () => _showEditNonTowerDialog(
+                                                    item)),
+                                            const SizedBox(width: 8),
+                                            _buildActionBtn(
+                                                Icons.delete_outline,
+                                                Colors.redAccent,
+                                                () => _showDeleteNonTowerDialog(
+                                                    item)),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        // FOOTER / PAGINATION
+                        if (unified.length > itemsPerPage)
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.05),
+                              border: Border(
+                                  top: BorderSide(color: Colors.white10)),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Page $_currentPage of $totalPages  •  Total ${unified.length} items',
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.white70,
+                                      fontWeight: FontWeight.w500),
+                                ),
+                                Row(
+                                  children: [
+                                    _buildPageBtn(
+                                        Icons.chevron_left,
+                                        _currentPage > 1
+                                            ? () =>
+                                                setState(() => _currentPage--)
+                                            : null),
+                                    const SizedBox(width: 12),
+                                    _buildPageBtn(
+                                        Icons.chevron_right,
+                                        _currentPage < totalPages
+                                            ? () =>
+                                                setState(() => _currentPage++)
+                                            : null),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                },
               ),
-            ),
-        ],
-      ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -1450,13 +1602,13 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
         child: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: isDisabled ? Colors.grey.shade200 : Colors.white,
+            color: isDisabled ? Colors.white10 : Colors.white24,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-                color: isDisabled ? Colors.transparent : Colors.grey.shade300),
+                color: isDisabled ? Colors.transparent : Colors.white30),
           ),
           child: Icon(icon,
-              color: isDisabled ? Colors.grey : Colors.blueAccent, size: 20),
+              color: isDisabled ? Colors.white24 : Colors.white, size: 20),
         ),
       ),
     );
@@ -1645,7 +1797,6 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     );
   }
 
-
   Widget _buildHeaderOpenButton(String text, String route,
       {bool isActive = false}) {
     return buildLiquidGlassButton(
@@ -1664,5 +1815,3 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     showLogoutDialog(context);
   }
 }
-
-

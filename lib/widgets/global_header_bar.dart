@@ -1,3 +1,4 @@
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:monitoring/utils/auth_helper.dart';
 
@@ -71,70 +72,79 @@ class _GlobalHeaderBarState extends State<GlobalHeaderBar> {
 
   @override
   Widget build(BuildContext context) {
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      clipBehavior: Clip.none,
-      decoration: const BoxDecoration(
-        color: Color(0xFF1976D2),
-        boxShadow: [
-          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
-        ],
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Row(
-          children: [
-            const Row(
-              mainAxisSize: MainAxisSize.min,
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          clipBehavior: Clip.none,
+          decoration: BoxDecoration(
+            color: const Color(0xFF1976D2).withOpacity(0.78),
+            boxShadow: const [
+              BoxShadow(
+                  color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
+            ],
+            border: Border(
+              bottom: BorderSide(color: Colors.white.withOpacity(0.12)),
+            ),
+          ),
+          child: SafeArea(
+            bottom: false,
+            child: Row(
               children: [
-                Icon(
-                  Icons.warehouse,
-                  color: Colors.white,
-                  size: 30,
+                const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.warehouse,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                    SizedBox(width: 12),
+                    Text(
+                      'TPK Nilam',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(width: 12),
-                Text(
-                  'TPK Nilam',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
+                const Spacer(),
+                InkWell(
+                  onTap: _openProfile,
+                  borderRadius: BorderRadius.circular(30),
+                  child: Row(
+                    children: [
+                      Text(
+                        _name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Colors.white24,
+                        child:
+                            Icon(Icons.person, color: Colors.white, size: 20),
+                      ),
+                    ],
                   ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: _logout,
+                  icon: const Icon(Icons.logout, color: Colors.white, size: 22),
                 ),
               ],
             ),
-            const Spacer(),
-            InkWell(
-              onTap: _openProfile,
-              borderRadius: BorderRadius.circular(30),
-              child: Row(
-                children: [
-                  Text(
-                    _name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const CircleAvatar(
-                    radius: 18,
-                    backgroundColor: Colors.white24,
-                    child: Icon(Icons.person, color: Colors.white, size: 20),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              onPressed: _logout,
-              icon: const Icon(Icons.logout, color: Colors.white, size: 22),
-            ),
-          ],
+          ),
         ),
       ),
     );

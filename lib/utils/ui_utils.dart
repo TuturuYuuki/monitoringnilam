@@ -2,6 +2,57 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:monitoring/utils/auth_helper.dart';
 
+/// Shared frosted-glass panel used across dark pages (alerts, report, etc.).
+BoxDecoration appGlassDecoration({
+  double borderRadius = 20,
+  double fillOpacity = 0.10,
+  double borderOpacity = 0.28,
+}) {
+  return BoxDecoration(
+    color: Colors.white.withOpacity(fillOpacity),
+    borderRadius: BorderRadius.circular(borderRadius),
+    border: Border.all(
+      color: Colors.white.withOpacity(borderOpacity),
+      width: 1.5,
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.22),
+        blurRadius: 20,
+        offset: const Offset(0, 8),
+      ),
+    ],
+  );
+}
+
+Widget liquidGlassCard({
+  required Widget child,
+  double borderRadius = 20,
+  EdgeInsetsGeometry? padding,
+  double blurSigma = 14,
+}) {
+  return ClipRRect(
+    borderRadius: BorderRadius.circular(borderRadius),
+    child: BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+      child: Container(
+        padding: padding,
+        decoration: appGlassDecoration(borderRadius: borderRadius),
+        child: child,
+      ),
+    ),
+  );
+}
+
+/// Inline glass field for date triggers / compact dropdown rows on dark UIs.
+BoxDecoration appGlassFieldDecoration({double radius = 16}) {
+  return BoxDecoration(
+    color: Colors.white.withOpacity(0.08),
+    borderRadius: BorderRadius.circular(radius),
+    border: Border.all(color: Colors.white.withOpacity(0.22)),
+  );
+}
+
 // Responsive helper functions
 bool isMobileScreen(BuildContext context) {
   return MediaQuery.of(context).size.width < 600;
