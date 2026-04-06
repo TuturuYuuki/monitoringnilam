@@ -300,7 +300,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
-                  value: selectedType,
+                  initialValue: selectedType,
                   dropdownColor: AppDropdownStyle.menuBackground,
                   borderRadius: AppDropdownStyle.menuBorderRadius,
                   decoration: const InputDecoration(labelText: 'Location Type'),
@@ -320,7 +320,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: selectedYard,
+                  initialValue: selectedYard,
                   dropdownColor: AppDropdownStyle.menuBackground,
                   borderRadius: AppDropdownStyle.menuBorderRadius,
                   decoration: const InputDecoration(labelText: 'Lokasi'),
@@ -617,7 +617,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                             canvasColor: AppDropdownStyle.menuBackground,
                           ),
                           child: DropdownButtonFormField<String>(
-                            value: _selectedMasterType,
+                            initialValue: _selectedMasterType,
                             dropdownColor: AppDropdownStyle.menuBackground,
                             borderRadius: AppDropdownStyle.menuBorderRadius,
                             style: const TextStyle(color: Colors.white),
@@ -679,7 +679,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                             canvasColor: AppDropdownStyle.menuBackground,
                           ),
                           child: DropdownButtonFormField<String>(
-                            value: _selectedYard,
+                            initialValue: _selectedYard,
                             dropdownColor: AppDropdownStyle.menuBackground,
                             borderRadius: AppDropdownStyle.menuBorderRadius,
                             style: const TextStyle(color: Colors.white),
@@ -1016,7 +1016,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
-                  value: selectedType,
+                  initialValue: selectedType,
                   dropdownColor: AppDropdownStyle.menuBackground,
                   borderRadius: AppDropdownStyle.menuBorderRadius,
                   decoration: const InputDecoration(labelText: 'Location Type'),
@@ -1036,7 +1036,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: selectedYard,
+                  initialValue: selectedYard,
                   dropdownColor: AppDropdownStyle.menuBackground,
                   borderRadius: AppDropdownStyle.menuBorderRadius,
                   decoration: const InputDecoration(labelText: 'Location'),
@@ -1609,7 +1609,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                               color: Colors.white.withOpacity(0.05),
                               borderRadius: const BorderRadius.vertical(
                                   bottom: Radius.circular(16)),
-                              border: Border(
+                              border: const Border(
                                   top: BorderSide(color: Colors.white10)),
                             ),
                             child: Row(

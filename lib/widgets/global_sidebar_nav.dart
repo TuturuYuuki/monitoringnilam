@@ -79,7 +79,7 @@ class GlobalSidebarNav extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.25),
+                color: Colors.black.withValues(alpha: 0.25),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -136,6 +136,11 @@ class GlobalSidebarNav extends StatelessWidget {
           current == '/edit-profile' ||
           current == '/change-password';
     }
+    if (target == '/global-diagnostics') {
+      return current == '/global-diagnostics' ||
+          current == '/device-diagnostics' ||
+          current == '/device-performance';
+    }
     return false;
   }
 
@@ -187,6 +192,12 @@ class GlobalSidebarNav extends StatelessWidget {
       label: 'Alert Report',
       route: '/report',
       color: Color(0xFF8E24AA),
+    ),
+    const _SidebarNavItem(
+      icon: Icons.monitor,
+      label: 'Performance',
+      route: '/global-diagnostics',
+      color: Color(0xFF3949AB),
     ),
     const _SidebarNavItem(
       icon: Icons.person,

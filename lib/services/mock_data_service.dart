@@ -1,6 +1,6 @@
 import 'package:monitoring/models/tower_model.dart';
 import 'package:monitoring/models/camera_model.dart';
-import 'package:monitoring/constants/coordinates_backup.dart';
+import 'package:monitoring/constants/terminal_data.dart';
 
 /// 🧪 Mock Data Service for Development & Testing
 /// Provides towers and cameras with coordinates from backup data
@@ -12,21 +12,21 @@ class MockDataService {
   static List<Tower> getMockTowers() {
     List<Tower> towers = [];
     
-    CoordinatesBackup.TOWERS.forEach((id, towerData) {
+    for (var point in towerPoints) {
       towers.add(Tower(
-        id: id,
-        towerId: towerData['name'],
-        towerNumber: id,
-        location: 'TPK Nilam - ${towerData['cy']}',
-        ipAddress: '192.168.1.${100 + id}',
-        status: id % 3 == 0 ? 'DOWN' : 'UP', // Simulate some down devices
-        containerYard: towerData['cy'],
-        createdAt: DateTime.now().subtract(Duration(days: id)).toIso8601String(),
+        id: point.number,
+        towerId: point.name,
+        towerNumber: point.number,
+        location: 'TPK Nilam - ${point.containerYard}',
+        ipAddress: '192.168.1.${100 + point.number}',
+        status: point.number % 3 == 0 ? 'DOWN' : 'UP', // Simulate some down devices
+        containerYard: point.containerYard,
+        createdAt: DateTime.now().subtract(Duration(days: point.number)).toIso8601String(),
         updatedAt: DateTime.now().toIso8601String(),
-        latitude: towerData['lat'],
-        longitude: towerData['lng'],
+        latitude: point.latitude,
+        longitude: point.longitude,
       ));
-    });
+    }
     
     return towers;
   }

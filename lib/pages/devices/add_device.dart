@@ -1065,7 +1065,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
 
                                   // ===== TIPE DEVICE =====
                                   DropdownButtonFormField<String>(
-                                    value: _selectedDeviceType,
+                                    initialValue: _selectedDeviceType,
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.w600,
@@ -1296,7 +1296,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
 
                                   // ===== LOKASI =====
                                   DropdownButtonFormField<String>(
-                                    value: _locationData
+                                    initialValue: _locationData
                                             .containsKey(_selectedLocation)
                                         ? _selectedLocation
                                         : null,

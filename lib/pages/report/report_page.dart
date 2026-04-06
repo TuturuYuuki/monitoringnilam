@@ -714,8 +714,9 @@ class _ReportPageState extends State<ReportPage> {
                         ),
                         dayForegroundColor:
                             WidgetStateProperty.resolveWith((states) {
-                          if (states.contains(WidgetState.disabled))
+                          if (states.contains(WidgetState.disabled)) {
                             return Colors.white24;
+                          }
                           return Colors.white;
                         }),
                         todayForegroundColor:
@@ -848,7 +849,7 @@ class _ReportPageState extends State<ReportPage> {
                             horizontal: 24, vertical: 14),
                         width: double.infinity,
                         color: const Color(0xFFC6B430),
-                        child: Row(
+                        child: const Row(
                           children: [
                             Expanded(
                                 flex: 3,

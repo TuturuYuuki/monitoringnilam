@@ -1023,7 +1023,7 @@ class _MMTMonitoringCY2PageState extends State<MMTMonitoringCY2Page> {
             TextField(controller: ipController, decoration: const InputDecoration(labelText: 'IP Address')),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: selectedLocation,
+              initialValue: selectedLocation,
               isExpanded: true,
               dropdownColor: AppDropdownStyle.menuBackground,
               borderRadius: AppDropdownStyle.menuBorderRadius,

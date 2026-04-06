@@ -1142,7 +1142,7 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
                   decoration: const InputDecoration(labelText: 'IP Address')),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: selectedLocation,
+                initialValue: selectedLocation,
                 isExpanded: true,
                 dropdownColor: AppDropdownStyle.menuBackground,
                 borderRadius: AppDropdownStyle.menuBorderRadius,

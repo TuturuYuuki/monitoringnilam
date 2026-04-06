@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -37,7 +36,7 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     if (args != null) {
-      email = args['email'] ?? '';
+      email = (args['email'] ?? '').toString().trim().toLowerCase();
       remainingSeconds = args['expires_in'] ?? 600;
       _startTimer();
     }
@@ -435,8 +434,9 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                             validator: (value) {
                               final cleanText = value?.trim() ?? '';
                               if (cleanText.isEmpty) return 'Please Enter OTP';
-                              if (cleanText.length != 6)
+                              if (cleanText.length != 6) {
                                 return 'OTP Must Be Exactly 6 Digits';
+                              }
                               return null;
                             },
                           ),

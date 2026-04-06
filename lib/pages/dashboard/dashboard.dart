@@ -19,7 +19,6 @@ import 'package:monitoring/pages/alerts/alerts.dart';
 import 'package:monitoring/pages/profile/profile.dart';
 import 'package:monitoring/pages/devices/add_device.dart';
 import 'package:monitoring/services/device_storage_service.dart';
-import 'package:monitoring/utils/ui_utils.dart';
 import 'package:monitoring/utils/tower_status_override.dart';
 import 'package:monitoring/utils/layout_mapper.dart';
 import 'package:monitoring/utils/device_icon_resolver.dart';

@@ -1,11 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:animations/animations.dart';
 import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:monitoring/main.dart';
 import 'package:monitoring/utils/ui_utils.dart';
-import 'package:monitoring/route_proxy_page.dart';
 import 'package:monitoring/services/api_service.dart';
 import 'package:monitoring/utils/location_label_utils.dart';
 import 'package:monitoring/models/camera_model.dart';
@@ -280,41 +278,31 @@ class _GateCCTVPageState extends State<GateCCTVPage> {
                     ),
                     MouseRegion(
                       cursor: SystemMouseCursors.click,
-                      child: OpenContainer(
-                        transitionDuration: const Duration(milliseconds: 550),
-                        transitionType: ContainerTransitionType.fadeThrough,
-                        closedElevation: 0,
-                        closedColor: Colors.transparent,
-                        closedShape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(50),
-                        ),
-                        openElevation: 0,
-                        openBuilder: (context, _) =>
-                            const RouteProxyPage('/profile'),
-                        closedBuilder: (context, openContainer) {
-                          return GestureDetector(
-                            onTap: openContainer,
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.9),
-                                borderRadius: BorderRadius.circular(50),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 8,
-                                    spreadRadius: 1,
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.person,
-                                color: Color(0xFF1976D2),
-                                size: 24,
-                              ),
-                            ),
-                          );
+                      child: GestureDetector(
+                        onTap: () {
+                          if (mounted) {
+                            Navigator.pushReplacementNamed(context, '/profile');
+                          }
                         },
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.9),
+                            borderRadius: BorderRadius.circular(50),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            color: Color(0xFF1976D2),
+                            size: 24,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -409,43 +397,32 @@ class _GateCCTVPageState extends State<GateCCTVPage> {
                           // Profile Icon - SCROLL dengan buttons
                           MouseRegion(
                             cursor: SystemMouseCursors.click,
-                            child: OpenContainer(
-                              transitionDuration:
-                                  const Duration(milliseconds: 550),
-                              transitionType:
-                                  ContainerTransitionType.fadeThrough,
-                              closedElevation: 0,
-                              closedColor: Colors.transparent,
-                              closedShape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(50),
-                              ),
-                              openElevation: 0,
-                              openBuilder: (context, _) =>
-                                  const RouteProxyPage('/profile'),
-                              closedBuilder: (context, openContainer) {
-                                return GestureDetector(
-                                  onTap: openContainer,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.9),
-                                      borderRadius: BorderRadius.circular(50),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.1),
-                                          blurRadius: 8,
-                                          spreadRadius: 1,
-                                        ),
-                                      ],
-                                    ),
-                                    child: const Icon(
-                                      Icons.person,
-                                      color: Color(0xFF1976D2),
-                                      size: 24,
-                                    ),
-                                  ),
-                                );
+                            child: GestureDetector(
+                              onTap: () {
+                                if (mounted) {
+                                  Navigator.pushReplacementNamed(
+                                      context, '/profile');
+                                }
                               },
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.9),
+                                  borderRadius: BorderRadius.circular(50),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 8,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.person,
+                                  color: Color(0xFF1976D2),
+                                  size: 24,
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -465,19 +442,14 @@ class _GateCCTVPageState extends State<GateCCTVPage> {
 
   Widget _buildHeaderOpenButton(String text, String route,
       {bool isActive = false}) {
-    return OpenContainer(
-      transitionDuration: const Duration(milliseconds: 550),
-      transitionType: ContainerTransitionType.fadeThrough,
-      closedElevation: 0,
-      closedColor: Colors.transparent,
-      closedShape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      openElevation: 0,
-      openBuilder: (context, _) => RouteProxyPage(route),
-      closedBuilder: (context, openContainer) {
-        return buildLiquidGlassButton(text, openContainer, isActive: isActive);
+    return buildLiquidGlassButton(
+      text,
+      () {
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, route);
+        }
       },
+      isActive: isActive,
     );
   }
 
@@ -1451,7 +1423,7 @@ class _GateCCTVPageState extends State<GateCCTVPage> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: selectedLocation,
+              initialValue: selectedLocation,
               isExpanded: true,
               dropdownColor: AppDropdownStyle.menuBackground,
               borderRadius: AppDropdownStyle.menuBorderRadius,

@@ -17,6 +17,10 @@ class ApiService {
   static const String baseUrl =
       'http://localhost/monitoring_api/index.php'; // Pakai 10.0.2.2 jika Emulator
   static const String alertsUrl = 'http://localhost/monitoring_api/alerts.php';
+  static const String performanceUrl =
+      'http://localhost/monitoring_api/performance.php';
+  static const String performanceUrlFallback =
+      'http://localhost/monitoring_api/performance.php';
 
   // ==================== CONNECTION TEST ====================
 
@@ -413,14 +417,15 @@ class ApiService {
   /// Send OTP to email for password reset
   Future<Map<String, dynamic>> sendForgotPasswordOtp(String email) async {
     try {
+      final normalizedEmail = email.trim().toLowerCase();
       print('=== Forgot Password - Send OTP ===');
-      print('Email: $email');
+      print('Email: $normalizedEmail');
 
       final response = await http
           .post(
         Uri.parse('http://localhost/monitoring_api/forgot_password.php'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email}),
+        body: jsonEncode({'email': normalizedEmail}),
       )
           .timeout(
         const Duration(seconds: 10),
@@ -1849,6 +1854,133 @@ class ApiService {
         'message': 'Koneksi terputus atau server offline'
       };
     }
+  }
+
+  Future<Map<String, dynamic>> getDevicePerformance({
+    required String deviceType,
+    required String deviceId,
+  }) async {
+    try {
+      final type = deviceType.trim().toLowerCase();
+      final id = deviceId.trim();
+
+      if (id.isEmpty || (type != 'tower' && type != 'camera')) {
+        return {
+          'success': false,
+          'message': 'Invalid performance request parameter'
+        };
+      }
+
+      return _requestPerformanceWithFallback(
+        queryParameters: {
+          'device_type': type,
+          'device_id': id,
+        },
+        timeoutMessage: 'Performance API timeout',
+        defaultMessage: 'Failed to fetch performance telemetry',
+      );
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Error fetching performance telemetry: $e'
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> getGlobalDiagnostics() async {
+    try {
+      return _requestPerformanceWithFallback(
+        queryParameters: const {'scope': 'global'},
+        timeoutMessage: 'Global diagnostics API timeout',
+        defaultMessage: 'Failed to fetch global diagnostics',
+      );
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Error fetching global diagnostics: $e',
+      };
+    }
+  }
+
+  List<Uri> _buildPerformanceCandidateUris({
+    required Map<String, String> queryParameters,
+  }) {
+    final orderedCandidates = <String>[];
+    void addCandidate(String value) {
+      if (!orderedCandidates.contains(value)) {
+        orderedCandidates.add(value);
+      }
+    }
+
+    // Primary endpoint - all endpoints consolidated in /monitoring_api
+    addCandidate(performanceUrl);
+
+    // Fallback if primary fails
+    addCandidate(performanceUrlFallback);
+
+    // Final fallback: try from baseUrl by replacing path
+    final configuredBase = Uri.tryParse(baseUrl);
+    if (configuredBase != null) {
+      final fallbackUri = configuredBase.replace(path: '/monitoring_api/performance.php').toString();
+      if (!orderedCandidates.contains(fallbackUri)) {
+        addCandidate(fallbackUri);
+      }
+    }
+
+    return orderedCandidates
+        .map((base) => Uri.parse(base).replace(queryParameters: queryParameters))
+        .toList(growable: false);
+  }
+
+  Future<Map<String, dynamic>> _requestPerformanceWithFallback({
+    required Map<String, String> queryParameters,
+    required String timeoutMessage,
+    required String defaultMessage,
+  }) async {
+    final candidates =
+        _buildPerformanceCandidateUris(queryParameters: queryParameters);
+
+    String? lastMessage;
+    for (final uri in candidates) {
+      try {
+        final response = await http.get(uri).timeout(
+          const Duration(seconds: 12),
+          onTimeout: () => http.Response(
+            '{"success":false,"message":"$timeoutMessage"}',
+            408,
+          ),
+        );
+
+        final body = response.body.trimLeft();
+        if (!_looksLikeJson(body)) {
+          lastMessage = 'Endpoint $uri returned non-JSON response';
+          continue;
+        }
+
+        final decoded = jsonDecode(body) as Map<String, dynamic>;
+        if (response.statusCode == 200 && decoded['success'] == true) {
+          return decoded;
+        }
+
+        lastMessage = decoded['message']?.toString();
+      } catch (e) {
+        lastMessage = e.toString();
+      }
+    }
+
+    return {
+      'success': false,
+      'message':
+          lastMessage ?? '$defaultMessage. Check backend URL and PHP server.',
+    };
+  }
+
+  bool _looksLikeJson(String body) {
+    if (body.isEmpty) {
+      return false;
+    }
+    final first = body[0];
+    return first == '{' || first == '[';
   }
 
   // Test connectivity untuk IP spesifik

@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:monitoring/utils/ui_utils.dart';
 import 'services/api_service.dart';
@@ -119,8 +118,7 @@ class _LoginPageState extends State<LoginPage> {
     final isMobile = isMobileScreen(context);
     final screenSize = MediaQuery.of(context).size;
     final glassWidth = (screenSize.width * 0.9).clamp(320.0, 480.0);
-    // Adjusted glass height to be more flexible but enough to fit all content on small screens
-    final glassHeight = (screenSize.height * 0.9).clamp(580.0, 650.0);
+    final glassHeight = (screenSize.height * 0.86).clamp(520.0, 620.0);
 
     return Scaffold(
       body: LiquidGlassView(

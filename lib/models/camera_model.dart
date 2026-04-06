@@ -14,6 +14,16 @@ class Camera {
   final double? latitude;
   final double? longitude;
 
+  final int cpuLoad;
+  final int ramUsage;
+  final int latencyMs;
+  final double packetLoss;
+  final int bwRx;
+  final int bwTx;
+  final int uptimeSeconds;
+  final String? macAddress;
+  final String firmwareVersion;
+
   Camera({
     required this.id,
     required this.cameraId,
@@ -27,6 +37,15 @@ class Camera {
     required this.updatedAt,
     this.latitude,
     this.longitude,
+    this.cpuLoad = 0,
+    this.ramUsage = 0,
+    this.latencyMs = 0,
+    this.packetLoss = 0.0,
+    this.bwRx = 0,
+    this.bwTx = 0,
+    this.uptimeSeconds = 0,
+    this.macAddress,
+    this.firmwareVersion = '1.0.0',
   });
 
   factory Camera.fromJson(Map<String, dynamic> json) {
@@ -43,6 +62,15 @@ class Camera {
       updatedAt: json['updated_at']?.toString() ?? '',
       latitude: json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null,
       longitude: json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null,
+      cpuLoad: int.tryParse(json['cpu_load'].toString()) ?? 0,
+      ramUsage: int.tryParse(json['ram_usage'].toString()) ?? 0,
+      latencyMs: int.tryParse(json['latency_ms'].toString()) ?? 0,
+      packetLoss: double.tryParse(json['packet_loss'].toString()) ?? 0.0,
+      bwRx: int.tryParse(json['bw_rx'].toString()) ?? 0,
+      bwTx: int.tryParse(json['bw_tx'].toString()) ?? 0,
+      uptimeSeconds: int.tryParse(json['uptime_seconds'].toString()) ?? 0,
+      macAddress: json['mac_address']?.toString(),
+      firmwareVersion: json['firmware_version']?.toString() ?? '1.0.0',
     );
   }
 
@@ -60,6 +88,15 @@ class Camera {
       'updated_at': updatedAt,
       'latitude': latitude,
       'longitude': longitude,
+      'cpu_load': cpuLoad,
+      'ram_usage': ramUsage,
+      'latency_ms': latencyMs,
+      'packet_loss': packetLoss,
+      'bw_rx': bwRx,
+      'bw_tx': bwTx,
+      'uptime_seconds': uptimeSeconds,
+      'mac_address': macAddress,
+      'firmware_version': firmwareVersion,
     };
   }
 }

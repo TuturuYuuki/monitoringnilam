@@ -1223,7 +1223,7 @@ class _CCTVCy2PageState extends State<CCTVCy2Page> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: selectedLocation,
+              initialValue: selectedLocation,
               isExpanded: true,
               dropdownColor: AppDropdownStyle.menuBackground,
               borderRadius: AppDropdownStyle.menuBorderRadius,

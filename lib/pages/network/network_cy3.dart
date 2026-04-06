@@ -1173,7 +1173,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                   decoration: const InputDecoration(labelText: 'IP Address')),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: selectedLocation,
+                initialValue: selectedLocation,
                 isExpanded: true,
                 dropdownColor: AppDropdownStyle.menuBackground,
                 borderRadius: AppDropdownStyle.menuBorderRadius,

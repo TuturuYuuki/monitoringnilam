@@ -1285,7 +1285,7 @@ class _CCTVPageState extends State<CCTVPage> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: selectedLocation,
+                initialValue: selectedLocation,
                 isExpanded: true,
                 dropdownColor: AppDropdownStyle.menuBackground,
                 borderRadius: AppDropdownStyle.menuBorderRadius,

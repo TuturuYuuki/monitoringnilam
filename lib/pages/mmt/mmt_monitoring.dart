@@ -1112,7 +1112,7 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
                   decoration: const InputDecoration(labelText: 'IP Address')),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: selectedLocation,
+                initialValue: selectedLocation,
                 isExpanded: true,
                 dropdownColor: AppDropdownStyle.menuBackground,
                 borderRadius: AppDropdownStyle.menuBorderRadius,
@@ -1300,7 +1300,7 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
                   }
                 });
               },
-              activeColor: Colors.blueAccent,
+              activeThumbColor: Colors.blueAccent,
               activeTrackColor: Colors.blueAccent.withOpacity(0.3),
               inactiveThumbColor: Colors.white54,
               inactiveTrackColor: Colors.white12,

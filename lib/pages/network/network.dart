@@ -1074,23 +1074,28 @@ class _NetworkPageState extends State<NetworkPage> {
           _tableCell(tower.towerId, flex: 1, fontWeight: FontWeight.w800, color: Colors.white),
           _tableCell(tower.location, flex: 2, fontWeight: FontWeight.w800, color: Colors.white.withOpacity(0.9)),
           _tableCell(tower.ipAddress, flex: 2, color: Colors.white.withOpacity(0.7)),
-          _tableCell(statusLabel,
-              flex: 1, fontWeight: FontWeight.w800, color: isWarning ? Colors.redAccent : Colors.greenAccent),
-
+          _tableCell(
+            statusLabel,
+            flex: 1,
+            fontWeight: FontWeight.w800,
+            color: isWarning ? Colors.redAccent : Colors.greenAccent,
+          ),
           Expanded(
             flex: 1,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.blueAccent, size: 20),
+                  icon: const Icon(Icons.edit,
+                      color: Colors.blueAccent, size: 20),
                   onPressed: () => _showEditForm(tower),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
                 const SizedBox(width: 12),
                 IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
+                  icon: const Icon(Icons.delete,
+                      color: Colors.redAccent, size: 20),
                   onPressed: () => _confirmDelete(tower),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -1191,7 +1196,7 @@ class _NetworkPageState extends State<NetworkPage> {
                   decoration: const InputDecoration(labelText: 'IP Address')),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: selectedLocation,
+                initialValue: selectedLocation,
                 isExpanded: true,
                 dropdownColor: AppDropdownStyle.menuBackground,
                 borderRadius: AppDropdownStyle.menuBorderRadius,
@@ -1307,7 +1312,7 @@ class _NetworkPageState extends State<NetworkPage> {
                   }
                 });
               },
-              activeColor: Colors.blueAccent,
+              activeThumbColor: Colors.blueAccent,
               activeTrackColor: Colors.blueAccent.withOpacity(0.3),
               inactiveThumbColor: Colors.white54,
               inactiveTrackColor: Colors.white12,

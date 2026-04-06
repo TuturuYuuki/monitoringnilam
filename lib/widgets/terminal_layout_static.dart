@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:monitoring/models/device_model.dart';
 import 'package:monitoring/models/tower_model.dart';
+import 'package:monitoring/utils/layout_mapper.dart';
 import 'package:monitoring/utils/device_icon_resolver.dart';
 import 'package:monitoring/utils/location_label_utils.dart';
 
@@ -642,10 +643,19 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
         double.tryParse((location['latitude'] ?? '0').toString()) ?? 0.0;
     final lng =
         double.tryParse((location['longitude'] ?? '0').toString()) ?? 0.0;
-    if (!_isRelativeCoordinate(lat) || !_isRelativeCoordinate(lng)) {
-      return null;
+    if (_isRelativeCoordinate(lat) && _isRelativeCoordinate(lng)) {
+      return Offset(lat, lng);
     }
-    return Offset(lat, lng);
+
+    if (lat.abs() > 0.0 && lng.abs() > 0.0) {
+      final pixel = LayoutMapper.latLngToPixel(lat, lng);
+      return Offset(
+        (pixel.x / LayoutMapper.PNG_WIDTH).clamp(0.0, 1.0),
+        (pixel.y / LayoutMapper.PNG_HEIGHT).clamp(0.0, 1.0),
+      );
+    }
+
+    return null;
   }
 
   // ─── Tower label helpers ─────────────────────────────────────
@@ -1648,6 +1658,41 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       };
     }
 
+    // 2. Try to find parent in Towers
+    for (final tower in _uniqueTowersForRender()) {
+      if (_isHiddenCy3Tower(tower)) continue;
+
+      final towerIdMsg = tower.towerId.toUpperCase();
+      final towerLocMsg = tower.location.toUpperCase();
+      final towerIdKey = _normalizeMatchKey(tower.towerId);
+      final towerLocKey = _normalizeMatchKey(tower.location);
+      final yard = _normalizeAreaId(tower.containerYard);
+      final resolved = _resolveTowerPosition(tower);
+
+      if (resolved == null) {
+        continue;
+      }
+
+      final isMatch = target == towerIdMsg ||
+          target == towerLocMsg ||
+          (towerIdMsg.isNotEmpty && target.contains(towerIdMsg)) ||
+          (towerLocMsg.isNotEmpty && target.contains(towerLocMsg)) ||
+          (towerIdKey.isNotEmpty && targetKey.contains(towerIdKey)) ||
+          (towerLocKey.isNotEmpty && targetKey.contains(towerLocKey));
+
+      if (isMatch) {
+        final area = areas.firstWhere(
+          (a) => a.id == yard,
+          orElse: () => areas.first,
+        );
+        return {
+          'cx': resolved['cx']!,
+          'cy': resolved['cy']!,
+          'area': area,
+        };
+      }
+    }
+
     if (kDebugMode) print('⚠️ Parent NOT found for: $locationName');
     return null;
   }
@@ -1836,17 +1881,23 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
         c == 'CY1' ||
         c == 'CONTAINERYARD1' ||
         c == 'CONTAINERYARD01' ||
-        c == 'YARD1') return 'CY1';
+        c == 'YARD1') {
+      return 'CY1';
+    }
     if (c == 'CY02' ||
         c == 'CY2' ||
         c == 'CONTAINERYARD2' ||
         c == 'CONTAINERYARD02' ||
-        c == 'YARD2') return 'CY2';
+        c == 'YARD2') {
+      return 'CY2';
+    }
     if (c == 'CY03' ||
         c == 'CY3' ||
         c == 'CONTAINERYARD3' ||
         c == 'CONTAINERYARD03' ||
-        c == 'YARD3') return 'CY3';
+        c == 'YARD3') {
+      return 'CY3';
+    }
     return c;
   }
 

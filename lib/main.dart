@@ -30,6 +30,9 @@ import 'pages/network/network_gate.dart';
 import 'pages/network/network_parking.dart';
 import 'pages/mmt/mmt_monitoring_gate.dart';
 import 'pages/mmt/mmt_monitoring_parking.dart';
+import 'pages/diagnostics/device_diagnostics_page.dart';
+import 'pages/diagnostics/global_diagnostics_page.dart';
+import 'pages/diagnostics/device_performance_page.dart';
 export 'utils/ui_utils.dart';
 
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
@@ -303,6 +306,9 @@ class MyApp extends StatelessWidget {
         '/mmt-monitoring-cy3': (context) => const MMTMonitoringCY3Page(),
         '/mmt-monitoring-gate': (context) => const MMTMonitoringGatePage(),
         '/mmt-monitoring-parking': (context) => const MMTMonitoringParkingPage(),
+        '/device-diagnostics': (context) => const DeviceDiagnosticsPage(),
+        '/global-diagnostics': (context) => const GlobalDiagnosticsPage(),
+        '/device-performance': (context) => const DevicePerformancePage(),
       },
     );
   }

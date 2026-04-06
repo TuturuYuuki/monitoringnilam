@@ -83,9 +83,6 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
     }
   }
 
-  // List<MMT> get _filteredMMTs {
-  //   return _mmts.where((mmt) => mmt.containerYard == selectedArea).toList();
-  // }
 
   int get totalMMTs => _mmts.length;
   int get onlineMMTs => _mmts.where((m) => m.status == 'UP').length;
@@ -1022,7 +1019,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
             TextField(controller: ipController, decoration: const InputDecoration(labelText: 'IP Address')),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: selectedLocation,
+              initialValue: selectedLocation,
               isExpanded: true,
               dropdownColor: AppDropdownStyle.menuBackground,
               borderRadius: AppDropdownStyle.menuBorderRadius,

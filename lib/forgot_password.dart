@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'main.dart';
 import 'services/api_service.dart';
@@ -31,13 +30,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   void _handleSendOtp() async {
     if (_formKey.currentState!.validate()) {
+      final normalizedEmail = _emailController.text.trim().toLowerCase();
+
       setState(() {
         _isLoading = true;
       });
 
       try {
-        final response =
-            await apiService.sendForgotPasswordOtp(_emailController.text);
+        final response = await apiService.sendForgotPasswordOtp(normalizedEmail);
 
         setState(() {
           _isLoading = false;
@@ -96,7 +96,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               context,
               '/forgot-password-verify',
               arguments: {
-                'email': _emailController.text,
+                'email': normalizedEmail,
                 'expires_in': response['expires_in'] ?? 600,
               },
             );
@@ -287,10 +287,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                   ),
                                 ),
                                 validator: (value) {
-                                  if (value == null || value.isEmpty) {
+                                  final email = value?.trim() ?? '';
+                                  if (email.isEmpty) {
                                     return 'Please Enter Your Email';
                                   }
-                                  if (!value.contains('@')) {
+                                  if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                                      .hasMatch(email)) {
                                     return 'Enter A Valid Email';
                                   }
                                   return null;

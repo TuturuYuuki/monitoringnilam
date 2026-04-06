@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:monitoring/utils/ui_utils.dart';
 import 'services/api_service.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 
@@ -231,10 +230,12 @@ class _SignUpPageState extends State<SignUpPage> {
   void _showValidationErrorDialog() {
     List<String> errorFields = [];
 
-    if (_usernameController.text.isEmpty)
+    if (_usernameController.text.isEmpty) {
       errorFields.add('Username Must Be Filled');
-    if (_nameController.text.isEmpty)
+    }
+    if (_nameController.text.isEmpty) {
       errorFields.add('Full Name Must Be Filled');
+    }
     if (_emailController.text.isEmpty) {
       errorFields.add('Email Must Be Filled');
     } else if (!_emailController.text.endsWith('@gmail.com')) {
@@ -448,9 +449,10 @@ class _SignUpPageState extends State<SignUpPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 768;
     final screenSize = MediaQuery.of(context).size;
     final glassWidth = (screenSize.width * 0.9).clamp(320.0, 520.0);
-    final glassHeight = (screenSize.height * 0.95).clamp(640.0, 800.0);
+    final glassHeight = (screenSize.height * 0.9).clamp(540.0, 740.0);
 
     return Scaffold(
       body: LiquidGlassView(
@@ -466,6 +468,26 @@ class _SignUpPageState extends State<SignUpPage> {
             ),
             Container(
               color: Colors.black.withOpacity(0.4),
+            ),
+            Positioned(
+              left: isMobile ? 10 : 20,
+              top: isMobile ? 10 : 20,
+              child: Image.asset(
+                'assets/images/logo_danantara.png',
+                width: isMobile ? 140 : 180,
+                height: isMobile ? 50 : 70,
+                fit: BoxFit.contain,
+              ),
+            ),
+            Positioned(
+              right: isMobile ? 12 : 24,
+              top: isMobile ? 12 : 24,
+              child: Image.asset(
+                'assets/images/logo_nilam.png',
+                width: isMobile ? 180 : 240,
+                height: isMobile ? 70 : 100,
+                fit: BoxFit.contain,
+              ),
             ),
           ],
         ),
@@ -494,12 +516,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Image.asset(
-                        'assets/images/logo_nilam.png',
-                        height: 90,
-                        fit: BoxFit.contain,
-                      ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 8),
                       const Text('Registration',
                           style: TextStyle(
                               fontSize: 28,
@@ -536,10 +553,13 @@ class _SignUpPageState extends State<SignUpPage> {
                         icon: Icons.email_outlined,
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
-                          if (value == null || value.isEmpty)
+                          if (value == null || value.isEmpty) {
                             return 'Please enter your email';
+                          }
                           if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
-                              .hasMatch(value)) return 'Invalid email format';
+                              .hasMatch(value)) {
+                            return 'Invalid email format';
+                          }
                           return null;
                         },
                       ),
@@ -560,10 +580,12 @@ class _SignUpPageState extends State<SignUpPage> {
                               () => _obscurePassword = !_obscurePassword),
                         ),
                         validator: (value) {
-                          if (value == null || value.isEmpty)
+                          if (value == null || value.isEmpty) {
                             return 'Please enter your password';
-                          if (value.length < 8)
+                          }
+                          if (value.length < 8) {
                             return 'Min 8 characters required';
+                          }
                           return null;
                         },
                       ),
@@ -584,10 +606,12 @@ class _SignUpPageState extends State<SignUpPage> {
                                   !_obscureConfirmPassword),
                         ),
                         validator: (value) {
-                          if (value == null || value.isEmpty)
+                          if (value == null || value.isEmpty) {
                             return 'Confirm your password';
-                          if (value != _passwordController.text)
+                          }
+                          if (value != _passwordController.text) {
                             return 'Password does not match';
+                          }
                           return null;
                         },
                       ),
