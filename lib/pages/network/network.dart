@@ -86,8 +86,9 @@ class _NetworkPageState extends State<NetworkPage> {
 
   Future<void> _loadTowers() async {
     try {
-      final fetchedTowers = await apiService.getValidatedTowersByYard(_selectedAreaId());
-      
+      final fetchedTowers =
+          await apiService.getValidatedTowersByYard(_selectedAreaId());
+
       if (mounted) {
         setState(() {
           towers = fetchedTowers;
@@ -96,7 +97,7 @@ class _NetworkPageState extends State<NetworkPage> {
         });
       }
 
-      _triggerRealtimePing(); 
+      _triggerRealtimePing();
     } catch (e) {
       print('Error Loading Towers: $e');
       if (mounted) setState(() => isLoading = false);
@@ -129,7 +130,6 @@ class _NetworkPageState extends State<NetworkPage> {
   int get totalTowers => towers.length;
   int get onlineTowers => towers.where((t) => !isDownStatus(t.status)).length;
   int get warningTowers => towers.where((t) => isDownStatus(t.status)).length;
-
 
   void _showWarningList() {
     final warnings = towers.where((t) => isDownStatus(t.status)).toList();
@@ -230,27 +230,18 @@ class _NetworkPageState extends State<NetworkPage> {
             children: [
               const GlobalHeaderBar(currentRoute: '/network'),
               Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Sidebar (Kiri)
-                    const GlobalSidebarNav(currentRoute: '/network'),
-                    const SizedBox(width: 12),
-                    // Content (Kanan)
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            return Padding(
-                              padding: EdgeInsets.all(isMobile ? 8 : 20.0),
-                              child: _buildContent(context, constraints),
-                            );
-                          },
-                        ),
+                child: GlobalSidebarNav(
+                    currentRoute: '/network',
+                    child: SingleChildScrollView(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          return Padding(
+                            padding: EdgeInsets.all(isMobile ? 8 : 20.0),
+                            child: _buildContent(context, constraints),
+                          );
+                        },
                       ),
-                    ),
-                  ],
-                ),
+                    )),
               ),
               const GlobalFooter(),
             ],
@@ -357,7 +348,8 @@ class _NetworkPageState extends State<NetworkPage> {
                       ),
                       if (_lastRefreshTime != null) ...[
                         const SizedBox(width: 8),
-                        const Text('•', style: TextStyle(color: Colors.white70)),
+                        const Text('•',
+                            style: TextStyle(color: Colors.white70)),
                         const SizedBox(width: 8),
                         Text(
                           'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
@@ -577,7 +569,8 @@ class _NetworkPageState extends State<NetworkPage> {
                   color: Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 20),
+                child: const Icon(Icons.location_on_rounded,
+                    color: Colors.white, size: 20),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -610,29 +603,36 @@ class _NetworkPageState extends State<NetworkPage> {
                         dropdownColor: AppDropdownStyle.menuBackground,
                         borderRadius: AppDropdownStyle.menuBorderRadius,
                         isExpanded: true,
-                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 20),
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                            color: Colors.white, size: 20),
                         items: _areaOptions.map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
                             child: Text(
                               value,
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700),
                             ),
                           );
                         }).toList(),
                         onChanged: (String? newValue) {
                           if (newValue == null) return;
-                          
+
                           if (newValue == 'CY 1') {
                             Navigator.pushReplacementNamed(context, '/network');
                           } else if (newValue == 'CY 2') {
-                            Navigator.pushReplacementNamed(context, '/network-cy2');
+                            Navigator.pushReplacementNamed(
+                                context, '/network-cy2');
                           } else if (newValue == 'CY 3') {
-                            Navigator.pushReplacementNamed(context, '/network-cy3');
+                            Navigator.pushReplacementNamed(
+                                context, '/network-cy3');
                           } else if (newValue == 'GATE') {
-                            Navigator.pushReplacementNamed(context, '/network-gate');
+                            Navigator.pushReplacementNamed(
+                                context, '/network-gate');
                           } else if (newValue == 'PARKING') {
-                            Navigator.pushReplacementNamed(context, '/network-parking');
+                            Navigator.pushReplacementNamed(
+                                context, '/network-parking');
                           }
                         },
                       ),
@@ -769,7 +769,8 @@ class _NetworkPageState extends State<NetworkPage> {
                       color: Colors.white.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+                    child: const Icon(Icons.refresh_rounded,
+                        color: Colors.white, size: 20),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -943,7 +944,8 @@ class _NetworkPageState extends State<NetworkPage> {
           child: Column(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                 width: double.infinity,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -966,16 +968,19 @@ class _NetworkPageState extends State<NetworkPage> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white.withOpacity(0.2)),
+                        border:
+                            Border.all(color: Colors.white.withOpacity(0.2)),
                       ),
                       child: Row(
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.chevron_left_rounded, size: 22, color: Colors.white),
+                            icon: const Icon(Icons.chevron_left_rounded,
+                                size: 22, color: Colors.white),
                             onPressed: currentPage > 0
                                 ? () => setState(() => currentPage--)
                                 : null,
@@ -992,8 +997,10 @@ class _NetworkPageState extends State<NetworkPage> {
                                 });
                               },
                               child: Container(
-                                margin: const EdgeInsets.symmetric(horizontal: 4),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
                                 decoration: BoxDecoration(
                                   color: isCurrentPage
                                       ? Colors.white
@@ -1015,7 +1022,8 @@ class _NetworkPageState extends State<NetworkPage> {
                           }),
                           const SizedBox(width: 8),
                           IconButton(
-                            icon: const Icon(Icons.chevron_right_rounded, size: 22, color: Colors.white),
+                            icon: const Icon(Icons.chevron_right_rounded,
+                                size: 22, color: Colors.white),
                             onPressed: currentPage < totalPages - 1
                                 ? () => setState(() => currentPage++)
                                 : null,
@@ -1029,13 +1037,14 @@ class _NetworkPageState extends State<NetworkPage> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 width: double.infinity,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      const Color(0xFFC6B430).withOpacity(0.8), 
-                      const Color(0xFFC6B430).withOpacity(0.4), 
+                      const Color(0xFFC6B430).withOpacity(0.8),
+                      const Color(0xFFC6B430).withOpacity(0.4),
                     ],
                   ),
                 ),
@@ -1071,9 +1080,14 @@ class _NetworkPageState extends State<NetworkPage> {
       ),
       child: Row(
         children: [
-          _tableCell(tower.towerId, flex: 1, fontWeight: FontWeight.w800, color: Colors.white),
-          _tableCell(tower.location, flex: 2, fontWeight: FontWeight.w800, color: Colors.white.withOpacity(0.9)),
-          _tableCell(tower.ipAddress, flex: 2, color: Colors.white.withOpacity(0.7)),
+          _tableCell(tower.towerId,
+              flex: 1, fontWeight: FontWeight.w800, color: Colors.white),
+          _tableCell(tower.location,
+              flex: 2,
+              fontWeight: FontWeight.w800,
+              color: Colors.white.withOpacity(0.9)),
+          _tableCell(tower.ipAddress,
+              flex: 2, color: Colors.white.withOpacity(0.7)),
           _tableCell(
             statusLabel,
             flex: 1,
@@ -1158,7 +1172,6 @@ class _NetworkPageState extends State<NetworkPage> {
     );
   }
 
-
   Future<void> _showEditForm(Tower tower) async {
     final ipController = TextEditingController(text: tower.ipAddress);
     var locationOptions = buildMasterLocationOptions(
@@ -1217,7 +1230,8 @@ class _NetworkPageState extends State<NetworkPage> {
                   );
                   setLocalState(() {
                     selectedLocation = value;
-                    selectedYard = option['container_yard'] ?? tower.containerYard;
+                    selectedYard =
+                        option['container_yard'] ?? tower.containerYard;
                   });
                 },
               ),
@@ -1295,7 +1309,8 @@ class _NetworkPageState extends State<NetworkPage> {
           const SizedBox(width: 8),
           const Text(
             'Auto Refresh',
-            style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+            style: TextStyle(
+                color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
           ),
           const SizedBox(width: 4),
           Transform.scale(
@@ -1327,10 +1342,14 @@ class _NetworkPageState extends State<NetworkPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: _isConnected ? Colors.greenAccent.withOpacity(0.1) : Colors.redAccent.withOpacity(0.1),
+        color: _isConnected
+            ? Colors.greenAccent.withOpacity(0.1)
+            : Colors.redAccent.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: _isConnected ? Colors.greenAccent.withOpacity(0.3) : Colors.redAccent.withOpacity(0.3),
+          color: _isConnected
+              ? Colors.greenAccent.withOpacity(0.3)
+              : Colors.redAccent.withOpacity(0.3),
           width: 1,
         ),
       ),
@@ -1367,5 +1386,3 @@ class _NetworkPageState extends State<NetworkPage> {
     );
   }
 }
-
-

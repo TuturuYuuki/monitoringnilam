@@ -41,7 +41,9 @@ class RecentEventsTable extends StatelessWidget {
                 ),
               ),
               Text(
-                isLiveData ? 'Live backend telemetry' : 'No historical backend data',
+                isLiveData
+                    ? 'Live backend telemetry'
+                    : 'No historical backend data',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.5),
                   fontSize: 11,

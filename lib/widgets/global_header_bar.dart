@@ -96,11 +96,7 @@ class _GlobalHeaderBarState extends State<GlobalHeaderBar> {
                 const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.warehouse,
-                      color: Colors.white,
-                      size: 30,
-                    ),
+                    Icon(Icons.warehouse, color: Colors.white, size: 30),
                     SizedBox(width: 12),
                     Text(
                       'TPK Nilam',

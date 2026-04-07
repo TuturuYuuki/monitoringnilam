@@ -1,223 +1,336 @@
 import 'package:flutter/material.dart';
 
-class GlobalSidebarNav extends StatelessWidget {
+class _NavItem {
+  final IconData icon;
+  final String label;
+  final String route;
+  const _NavItem(this.icon, this.label, this.route);
+}
+
+/// A wrapper widget that renders a collapsible sidebar on the left
+/// and places [child] content to the right with proper spacing.
+///
+/// When [enabled] is false (e.g. on mobile), the sidebar is hidden
+/// and the [child] fills the full width.
+class GlobalSidebarNav extends StatefulWidget {
   final String currentRoute;
+  final Widget child;
+  final bool enabled;
 
   const GlobalSidebarNav({
     super.key,
     required this.currentRoute,
+    required this.child,
+    this.enabled = true,
   });
 
+  /// The width of the collapsed sidebar strip.
+  static const double collapsedWidth = 52;
+
   @override
-  Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 900;
-    final items = _items;
+  State<GlobalSidebarNav> createState() => _GlobalSidebarNavState();
+}
 
-    if (isMobile) {
-      return Container(
-        height: 64,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          itemCount: items.length,
-          itemBuilder: (context, index) {
-            final item = items[index];
-            final isActive = _isActiveRoute(currentRoute, item.route);
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: _buildItem(context, item, isActive, compact: true),
-            );
-          },
-        ),
-      );
-    }
+class _GlobalSidebarNavState extends State<GlobalSidebarNav> {
+  bool _isExpanded = false;
 
-    return Container(
-      width: 188,
-      margin: const EdgeInsets.only(left: 12, top: 8),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: items.map((item) {
-            final isActive = _isActiveRoute(currentRoute, item.route);
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _buildItem(context, item, isActive),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
+  static const double _collapsedWidth = GlobalSidebarNav.collapsedWidth;
+  static const double _expandedWidth = 210;
+  static const _bgColor = Color(0xFF151C2C);
+  static const _activeColor = Color(0xFF3B82F6);
 
-  Widget _buildItem(
-    BuildContext context,
-    _SidebarNavItem item,
-    bool isActive, {
-    bool compact = false,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          if (!_isActiveRoute(currentRoute, item.route)) {
-            Navigator.pushReplacementNamed(context, item.route);
-          }
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: compact ? 12 : 14,
-            vertical: compact ? 10 : 12,
-          ),
-          decoration: BoxDecoration(
-            color: isActive ? item.color : const Color(0xFF0F172A),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isActive ? Colors.white38 : const Color(0xFF334155),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(item.icon, color: Colors.white, size: compact ? 18 : 20),
-              SizedBox(width: compact ? 8 : 10),
-              Text(
-                item.label,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: compact ? 12 : 13,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  static const List<_NavItem> _navItems = [
+    _NavItem(Icons.dashboard_outlined, 'Dashboard', '/dashboard'),
+    _NavItem(Icons.storage_outlined, 'Master Data', '/tower-management'),
+    _NavItem(Icons.add_circle_outline, 'Add Device', '/add-device'),
+    _NavItem(Icons.router_outlined, 'Access Point', '/network'),
+    _NavItem(Icons.videocam_outlined, 'CCTV', '/cctv'),
+    _NavItem(Icons.monitor_outlined, 'MMT', '/mmt-monitoring'),
+    _NavItem(Icons.warning_amber_outlined, 'Alerts', '/alerts'),
+    _NavItem(Icons.assessment_outlined, 'Report', '/report'),
+    _NavItem(Icons.speed_outlined, 'Performance', '/global-diagnostics'),
+    _NavItem(Icons.person_outline, 'Profile', '/profile'),
+  ];
 
-  bool _isActiveRoute(String current, String target) {
+  static bool _isActiveRoute(String current, String target) {
     if (current == target) return true;
     if (target == '/network') {
-      return current == '/network' ||
-          current == '/network-cy2' ||
-          current == '/network-cy3' ||
-          current == '/network-gate' ||
-          current == '/network-parking';
+      return [
+        '/network',
+        '/network-cy2',
+        '/network-cy3',
+        '/network-gate',
+        '/network-parking'
+      ].contains(current);
     }
     if (target == '/cctv') {
-      return current == '/cctv' ||
-          current == '/cctv-cy2' ||
-          current == '/cctv-cy3' ||
-          current == '/cctv-gate' ||
-          current == '/cctv-parking' ||
-          current == '/cctv-fullscreen';
+      return [
+        '/cctv',
+        '/cctv-cy2',
+        '/cctv-cy3',
+        '/cctv-gate',
+        '/cctv-parking',
+        '/cctv-fullscreen'
+      ].contains(current);
     }
     if (target == '/mmt-monitoring') {
-      return current == '/mmt-monitoring' ||
-          current == '/mmt-monitoring-cy2' ||
-          current == '/mmt-monitoring-cy3' ||
-          current == '/mmt-monitoring-gate' ||
-          current == '/mmt-monitoring-parking' ||
-          current == '/mmt-cy2' ||
-          current == '/mmt-cy3';
+      return [
+        '/mmt-monitoring',
+        '/mmt-monitoring-cy2',
+        '/mmt-monitoring-cy3',
+        '/mmt-monitoring-gate',
+        '/mmt-monitoring-parking',
+        '/mmt-cy2',
+        '/mmt-cy3'
+      ].contains(current);
     }
     if (target == '/profile') {
-      return current == '/profile' ||
-          current == '/edit-profile' ||
-          current == '/change-password';
+      return ['/profile', '/edit-profile', '/change-password']
+          .contains(current);
     }
     if (target == '/global-diagnostics') {
-      return current == '/global-diagnostics' ||
-          current == '/device-diagnostics' ||
-          current == '/device-performance';
+      return [
+        '/global-diagnostics',
+        '/device-diagnostics',
+        '/device-performance'
+      ].contains(current);
     }
     return false;
   }
 
-  static final List<_SidebarNavItem> _items = [
-    const _SidebarNavItem(
-      icon: Icons.dashboard,
-      label: 'Dashboard',
-      route: '/dashboard',
-      color: Color(0xFF1976D2),
-    ),
-    const _SidebarNavItem(
-      icon: Icons.storage,
-      label: 'Master Data',
-      route: '/tower-management',
-      color: Color(0xFF607D8B),
-    ),
-    const _SidebarNavItem(
-      icon: Icons.add_circle,
-      label: 'Add Device',
-      route: '/add-device',
-      color: Color(0xFFFB8C00),
-    ),
-    const _SidebarNavItem(
-      icon: Icons.router,
-      label: 'Access Point',
-      route: '/network',
-      color: Color(0xFF546E7A),
-    ),
-    const _SidebarNavItem(
-      icon: Icons.videocam,
-      label: 'CCTV',
-      route: '/cctv',
-      color: Color(0xFF00897B),
-    ),
-    const _SidebarNavItem(
-      icon: Icons.monitor,
-      label: 'MMT',
-      route: '/mmt-monitoring',
-      color: Color(0xFF43A047),
-    ),
-    const _SidebarNavItem(
-      icon: Icons.warning,
-      label: 'Alerts',
-      route: '/alerts',
-      color: Color(0xFFE53935),
-    ),
-    const _SidebarNavItem(
-      icon: Icons.assessment,
-      label: 'Alert Report',
-      route: '/report',
-      color: Color(0xFF8E24AA),
-    ),
-    const _SidebarNavItem(
-      icon: Icons.monitor,
-      label: 'Performance',
-      route: '/global-diagnostics',
-      color: Color(0xFF3949AB),
-    ),
-    const _SidebarNavItem(
-      icon: Icons.person,
-      label: 'Profile',
-      route: '/profile',
-      color: Color(0xFF607D8B),
-    ),
-  ];
-}
+  void _navigate(String route) {
+    if (!_isActiveRoute(widget.currentRoute, route)) {
+      Navigator.pushReplacementNamed(context, route);
+    } else {
+      setState(() => _isExpanded = false);
+    }
+  }
 
-class _SidebarNavItem {
-  final IconData icon;
-  final String label;
-  final String route;
-  final Color color;
+  @override
+  Widget build(BuildContext context) {
+    // When disabled (mobile), just show content full-width
+    if (!widget.enabled) {
+      return widget.child;
+    }
 
-  const _SidebarNavItem({
-    required this.icon,
-    required this.label,
-    required this.route,
-    required this.color,
-  });
+    return Stack(
+      children: [
+        // Content with left padding for sidebar space
+        Padding(
+          padding: const EdgeInsets.only(left: _collapsedWidth),
+          child: widget.child,
+        ),
+        // Scrim overlay when expanded
+        if (_isExpanded)
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () => setState(() => _isExpanded = false),
+              child: Container(color: Colors.black.withOpacity(0.3)),
+            ),
+          ),
+        // Sidebar panel (always on top)
+        Positioned(
+          left: 0,
+          top: 0,
+          bottom: 0,
+          child: _isExpanded ? _buildExpandedPanel() : _buildCollapsedPanel(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCollapsedPanel() {
+    return Material(
+      elevation: 2,
+      shadowColor: Colors.black26,
+      color: _bgColor,
+      child: SizedBox(
+        width: _collapsedWidth,
+        child: Column(
+          children: [
+            const SizedBox(height: 8),
+            _buildToggle(),
+            const Divider(
+                color: Colors.white10, height: 20, indent: 10, endIndent: 10),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: _navItems.map((item) {
+                    final isActive =
+                        _isActiveRoute(widget.currentRoute, item.route);
+                    return Tooltip(
+                      message: item.label,
+                      preferBelow: false,
+                      waitDuration: const Duration(milliseconds: 400),
+                      textStyle: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2A3650),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: InkWell(
+                        onTap: () => _navigate(item.route),
+                        child: Container(
+                          width: _collapsedWidth,
+                          height: 46,
+                          alignment: Alignment.center,
+                          child: Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              color: isActive
+                                  ? _activeColor.withOpacity(0.2)
+                                  : Colors.transparent,
+                            ),
+                            child: Icon(item.icon,
+                                color: isActive ? _activeColor : Colors.white54,
+                                size: 21),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpandedPanel() {
+    return Material(
+      elevation: 16,
+      shadowColor: Colors.black54,
+      color: _bgColor,
+      child: SizedBox(
+        width: _expandedWidth,
+        child: Column(
+          children: [
+            const SizedBox(height: 8),
+            _buildToggle(),
+            const Divider(
+                color: Colors.white10, height: 20, indent: 12, endIndent: 12),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: _navItems.map((item) {
+                    final isActive =
+                        _isActiveRoute(widget.currentRoute, item.route);
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      child: InkWell(
+                        onTap: () => _navigate(item.route),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          height: 44,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            color: isActive
+                                ? _activeColor.withOpacity(0.12)
+                                : Colors.transparent,
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                  color: isActive
+                                      ? _activeColor.withOpacity(0.2)
+                                      : Colors.transparent,
+                                ),
+                                child: Icon(item.icon,
+                                    color: isActive
+                                        ? _activeColor
+                                        : Colors.white54,
+                                    size: 21),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  item.label,
+                                  style: TextStyle(
+                                    color: isActive
+                                        ? Colors.white
+                                        : Colors.white70,
+                                    fontSize: 14,
+                                    fontWeight: isActive
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (isActive)
+                                Container(
+                                  width: 4,
+                                  height: 18,
+                                  decoration: BoxDecoration(
+                                    color: _activeColor,
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildToggle() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: InkWell(
+        onTap: () => setState(() => _isExpanded = !_isExpanded),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          height: 38,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            color: Colors.white.withOpacity(0.06),
+          ),
+          child: Row(
+            mainAxisAlignment: _isExpanded
+                ? MainAxisAlignment.spaceBetween
+                : MainAxisAlignment.center,
+            children: [
+              if (_isExpanded) ...[
+                const Padding(
+                  padding: EdgeInsets.only(left: 12),
+                  child: Text('Navigation',
+                      style: TextStyle(
+                          color: Colors.white60,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5)),
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(right: 8),
+                  child: Icon(Icons.close_rounded,
+                      color: Colors.white54, size: 18),
+                ),
+              ] else
+                const Icon(Icons.menu_rounded, color: Colors.white60, size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

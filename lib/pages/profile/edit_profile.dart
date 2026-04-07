@@ -54,14 +54,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
       _nameController.text = cachedData['fullname'] ?? '';
       _usernameController.text = cachedData['username'] ?? '';
       _emailController.text = cachedData['email'] ?? '';
-     _phoneController.text = (cachedData['phone'] == null || cachedData['phone'] == '') 
-        ? '-' : cachedData['phone']!;
-    _divisionController.text = (cachedData['division'] == null || cachedData['division'] == '') 
-        ? '-' : cachedData['division']!;
-        
-    _locationController.text = cachedData['location'] ?? '';
-    _currentEmail = cachedData['email'] ?? '';
-    _emailVerified = true;
+      _phoneController.text =
+          (cachedData['phone'] == null || cachedData['phone'] == '')
+              ? '-'
+              : cachedData['phone']!;
+      _divisionController.text =
+          (cachedData['division'] == null || cachedData['division'] == '')
+              ? '-'
+              : cachedData['division']!;
+
+      _locationController.text = cachedData['location'] ?? '';
+      _currentEmail = cachedData['email'] ?? '';
+      _emailVerified = true;
     });
 
     try {
@@ -135,8 +139,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (newEmail == _currentEmail) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content:
-              Text('The Email Is The Same As Your Current Email. No Verification Required'),
+          content: Text(
+              'The Email Is The Same As Your Current Email. No Verification Required'),
           backgroundColor: Colors.green,
         ),
       );
@@ -324,7 +328,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 _emailVerified = false;
               });
             },
-            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            child:
+                const Text('Cancel', style: TextStyle(color: Colors.white70)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -603,22 +608,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
       _isLoading = true;
     });
 
-   try {
-    // Bersihkan data: jika isinya '-' ubah jadi string kosong sebelum dikirim ke DB
-    String finalPhone = _phoneController.text.trim();
-    String finalDivision = _divisionController.text.trim();
-    
-    if (finalPhone == '-') finalPhone = '';
-    if (finalDivision == '-') finalDivision = '';
+    try {
+      // Bersihkan data: jika isinya '-' ubah jadi string kosong sebelum dikirim ke DB
+      String finalPhone = _phoneController.text.trim();
+      String finalDivision = _divisionController.text.trim();
 
-    final updateData = {
-      'fullname': _nameController.text.trim(),
-      'email': _emailController.text.trim(),
-      'username': _usernameController.text.trim(),
-      'phone': finalPhone,
-      'location': _locationController.text.trim(),
-      'division': finalDivision,
-    };
+      if (finalPhone == '-') finalPhone = '';
+      if (finalDivision == '-') finalDivision = '';
+
+      final updateData = {
+        'fullname': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'username': _usernameController.text.trim(),
+        'phone': finalPhone,
+        'location': _locationController.text.trim(),
+        'division': finalDivision,
+      };
 
       print('=== Update Profile Request ===');
       print('User ID: $_userId');
@@ -677,8 +682,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         }
 
         if (mounted) {
-          const message =
-              'Profile Successfully Updated!';
+          const message = 'Profile Successfully Updated!';
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -729,35 +733,26 @@ class _EditProfilePageState extends State<EditProfilePage> {
         children: [
           const GlobalHeaderBar(currentRoute: '/edit-profile'),
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (!isMobile)
-                  const GlobalSidebarNav(currentRoute: '/edit-profile'),
-                if (!isMobile) const SizedBox(width: 12),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Padding(
-                      padding: EdgeInsets.all(isMobile ? 8 : 24.0),
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                              maxWidth: isMobile ? double.infinity : 600),
-                          child: _buildContent(),
-                        ),
+            child: GlobalSidebarNav(
+                currentRoute: '/edit-profile',
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: EdgeInsets.all(isMobile ? 8 : 24.0),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                            maxWidth: isMobile ? double.infinity : 600),
+                        child: _buildContent(),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                )),
           ),
           const GlobalFooter(),
         ],
       ),
     );
   }
-
 
   Widget _buildContent() {
     return Column(
@@ -1156,7 +1151,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
       ],
     );
   }
-
 }
 
 // ==================== OTP DIALOG WITH TIMER ====================
@@ -1519,9 +1513,7 @@ class _OtpDialogState extends State<_OtpDialog> {
                                     ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    _isResending
-                                        ? 'Sending...'
-                                        : 'Resend Code',
+                                    _isResending ? 'Sending...' : 'Resend Code',
                                     style: const TextStyle(
                                       color: Color(0xFF1976D2),
                                       fontSize: 13,
@@ -1651,5 +1643,3 @@ class _OtpDialogState extends State<_OtpDialog> {
     );
   }
 }
-
-

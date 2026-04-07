@@ -54,7 +54,10 @@ class DevicePerformanceController extends ChangeNotifier {
 
   List<String> deviceOptions(String type) {
     if (type == 'camera') {
-      return _cameras.map((e) => e.cameraId).where((e) => e.isNotEmpty).toList();
+      return _cameras
+          .map((e) => e.cameraId)
+          .where((e) => e.isNotEmpty)
+          .toList();
     }
     if (type == 'mmt') {
       return _mmts.map((e) => e.mmtId).where((e) => e.isNotEmpty).toList();
@@ -82,7 +85,9 @@ class DevicePerformanceController extends ChangeNotifier {
         _selectedType = 'camera';
       } else if (rawType.contains('mmt')) {
         _selectedType = 'mmt';
-      } else if (rawType.contains('tower') || rawType.contains('ap') || rawType.contains('access')) {
+      } else if (rawType.contains('tower') ||
+          rawType.contains('ap') ||
+          rawType.contains('access')) {
         _selectedType = 'access_point';
       }
 
@@ -107,7 +112,8 @@ class DevicePerformanceController extends ChangeNotifier {
     _towers = towers;
     _cameras = cameras;
     _mmts = mmts;
-    _selectedDeviceId = resolveInitialDeviceId(_selectedType, _selectedDeviceId);
+    _selectedDeviceId =
+        resolveInitialDeviceId(_selectedType, _selectedDeviceId);
     notifyListeners();
   }
 
@@ -153,7 +159,8 @@ class DevicePerformanceController extends ChangeNotifier {
       deviceId: _selectedDeviceId,
     );
 
-    if (response['success'] == true && response['data'] is Map<String, dynamic>) {
+    if (response['success'] == true &&
+        response['data'] is Map<String, dynamic>) {
       final data = response['data'] as Map<String, dynamic>;
       _pushTrafficSample(
         rx: toDouble(data['traffic_rx_mbps']),
@@ -168,7 +175,8 @@ class DevicePerformanceController extends ChangeNotifier {
     }
 
     _isRefreshing = false;
-    _error = response['message']?.toString() ?? 'Gagal mengambil data telemetry.';
+    _error =
+        response['message']?.toString() ?? 'Gagal mengambil data telemetry.';
     notifyListeners();
   }
 

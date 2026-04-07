@@ -58,7 +58,8 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     if (args != null) {
       email = args['email'] ?? '';
       otp = args['otp'] ?? '';
@@ -125,14 +126,17 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                 content: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.check_circle, color: Colors.green, size: 64),
+                    const Icon(Icons.check_circle,
+                        color: Colors.green, size: 64),
                     const SizedBox(height: 16),
-                    Text(response['message'] ?? 'Password Successfully Changed', textAlign: TextAlign.center),
+                    Text(response['message'] ?? 'Password Successfully Changed',
+                        textAlign: TextAlign.center),
                   ],
                 ),
                 actions: [
                   TextButton(
-                    onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false),
+                    onPressed: () => Navigator.pushNamedAndRemoveUntil(
+                        context, '/login', (route) => false),
                     child: const Text('Login Now'),
                   ),
                 ],
@@ -156,7 +160,11 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         builder: (context) => AlertDialog(
           title: const Text('Failed'),
           content: Text(message),
-          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'))
+          ],
         ),
       );
     }
@@ -205,7 +213,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
               right: 20,
               top: 20,
               child: Image.asset(
-                'assets/images/logo_pelindo.png',
+                'assets/images/logo_nilam.png',
                 width: isMobile ? 140 : 180,
                 height: isMobile ? 50 : 70,
                 fit: BoxFit.contain,
@@ -218,208 +226,302 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           LiquidGlass(
             width: glassWidth,
             height: glassHeight,
-            position: const LiquidGlassAlignPosition(alignment: Alignment.center),
+            position:
+                const LiquidGlassAlignPosition(alignment: Alignment.center),
             distortion: 0.35,
             distortionWidth: 45,
             refractionMode: LiquidGlassRefractionMode.shapeRefraction,
             blur: const LiquidGlassBlur(sigmaX: 15, sigmaY: 15),
             color: Colors.white.withOpacity(0.1),
-            shape: const RoundedRectangleShape(cornerRadius: 24, borderWidth: 1.5, borderColor: Colors.white30),
+            shape: const RoundedRectangleShape(
+                cornerRadius: 24,
+                borderWidth: 1.5,
+                borderColor: Colors.white30),
             child: Center(
               child: SingleChildScrollView(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24.0, vertical: 40.0),
                   child: Container(
                     constraints: BoxConstraints(
                       maxWidth: glassWidth,
                     ),
-                    padding: const EdgeInsets.all(40),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(24),
                     ),
-                    child: Form(
-                      key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // Back Button & Icon
-                             Align(
-                              alignment: Alignment.centerLeft,
-                              child: IconButton(
-                                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 24),
-                                onPressed: () => Navigator.pop(context),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            const Icon(
-                              Icons.vpn_key_rounded,
-                              size: 50,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'Reset Password',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                                shadows: [
-                                  Shadow(color: Colors.black38, blurRadius: 4, offset: Offset(0, 2)),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Create a strong new password to secure your account',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.white70,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-
-                            const SizedBox(height: 40),
-
-                            // New Password Field with local Stack for Requirements
-                            Stack(
-                              clipBehavior: Clip.none,
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          top: 16,
+                          left: 16,
+                          child: IconButton(
+                            icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                                color: Colors.white, size: 24),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(40, 52, 40, 40),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
+                                const Icon(
+                                  Icons.vpn_key_rounded,
+                                  size: 50,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'Reset Password',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    shadows: [
+                                      Shadow(
+                                          color: Colors.black38,
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2)),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Create a strong new password to secure your account',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.white70,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 40),
+
+                                // New Password Field with local Stack for Requirements
+                                Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    TextFormField(
+                                      controller: _newPasswordController,
+                                      focusNode: _passwordFocusNode,
+                                      obscureText: _obscureNewPassword,
+                                      style:
+                                          const TextStyle(color: Colors.white),
+                                      decoration: InputDecoration(
+                                        hintText: 'New Password',
+                                        hintStyle: const TextStyle(
+                                            color: Colors.white60),
+                                        prefixIcon: const Icon(
+                                            Icons.lock_outline,
+                                            color: Colors.white70),
+                                        filled: true,
+                                        fillColor:
+                                            Colors.black.withOpacity(0.45),
+                                        border: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                            borderSide: BorderSide.none),
+                                        focusedBorder: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                            borderSide: const BorderSide(
+                                                color: Colors.blue,
+                                                width: 1.5)),
+                                        suffixIcon: IconButton(
+                                          icon: Icon(
+                                              _obscureNewPassword
+                                                  ? Icons.visibility_off
+                                                  : Icons.visibility,
+                                              color: Colors.white70),
+                                          onPressed: () => setState(() =>
+                                              _obscureNewPassword =
+                                                  !_obscureNewPassword),
+                                        ),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                                horizontal: 20, vertical: 18),
+                                      ),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty)
+                                          return 'Please Enter New Password';
+                                        if (!_hasMinLength ||
+                                            !_hasUppercase ||
+                                            !_hasLowercase ||
+                                            !_hasNumber)
+                                          return 'Requirements Not Met';
+                                        return null;
+                                      },
+                                    ),
+
+                                    // Floating Requirements Hint
+                                    if (_showPasswordRequirements)
+                                      Positioned(
+                                        bottom: 70,
+                                        left: 0,
+                                        right: 0,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(16),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                            boxShadow: const [
+                                              BoxShadow(
+                                                  color: Colors.black45,
+                                                  blurRadius: 15,
+                                                  offset: Offset(0, 5))
+                                            ],
+                                            border: Border.all(
+                                                color: Colors.blue
+                                                    .withOpacity(0.5),
+                                                width: 1.5),
+                                          ),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                  'Password Requirements:',
+                                                  style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: Colors.blue,
+                                                      fontSize: 13)),
+                                              const SizedBox(height: 8),
+                                              _buildPasswordRequirement(
+                                                  '8 Characters',
+                                                  _hasMinLength),
+                                              _buildPasswordRequirement(
+                                                  'Uppercase Letter',
+                                                  _hasUppercase),
+                                              _buildPasswordRequirement(
+                                                  'Lowercase Letter',
+                                                  _hasLowercase),
+                                              _buildPasswordRequirement(
+                                                  'Number', _hasNumber),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 20),
+
+                                // Confirm Password Field
                                 TextFormField(
-                                  controller: _newPasswordController,
-                                  focusNode: _passwordFocusNode,
-                                  obscureText: _obscureNewPassword,
+                                  controller: _confirmPasswordController,
+                                  obscureText: _obscureConfirmPassword,
                                   style: const TextStyle(color: Colors.white),
                                   decoration: InputDecoration(
-                                    hintText: 'New Password',
-                                    hintStyle: const TextStyle(color: Colors.white60),
-                                    prefixIcon: const Icon(Icons.lock_outline, color: Colors.white70),
+                                    hintText: 'Confirm New Password',
+                                    hintStyle:
+                                        const TextStyle(color: Colors.white60),
+                                    prefixIcon: const Icon(
+                                        Icons.lock_reset_outlined,
+                                        color: Colors.white70),
                                     filled: true,
                                     fillColor: Colors.black.withOpacity(0.45),
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Colors.blue, width: 1.5)),
+                                    border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: BorderSide.none),
+                                    focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: const BorderSide(
+                                            color: Colors.blue, width: 1.5)),
                                     suffixIcon: IconButton(
-                                      icon: Icon(_obscureNewPassword ? Icons.visibility_off : Icons.visibility, color: Colors.white70),
-                                      onPressed: () => setState(() => _obscureNewPassword = !_obscureNewPassword),
+                                      icon: Icon(
+                                          _obscureConfirmPassword
+                                              ? Icons.visibility_off
+                                              : Icons.visibility,
+                                          color: Colors.white70),
+                                      onPressed: () => setState(() =>
+                                          _obscureConfirmPassword =
+                                              !_obscureConfirmPassword),
                                     ),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 20, vertical: 18),
                                   ),
                                   validator: (value) {
-                                    if (value == null || value.isEmpty) return 'Please Enter New Password';
-                                    if (!_hasMinLength || !_hasUppercase || !_hasLowercase || !_hasNumber) return 'Requirements Not Met';
+                                    if (value == null || value.isEmpty)
+                                      return 'Confirm Your Password';
+                                    if (value != _newPasswordController.text)
+                                      return 'Password Does Not Match';
                                     return null;
                                   },
                                 ),
-                                
-                                // Floating Requirements Hint
-                                if (_showPasswordRequirements)
-                                  Positioned(
-                                    bottom: 70, 
-                                    left: 0, 
-                                    right: 0,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(16),
-                                        boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 15, offset: Offset(0, 5))],
-                                        border: Border.all(color: Colors.blue.withOpacity(0.5), width: 1.5),
-                                      ),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          const Text('Password Requirements:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue, fontSize: 13)),
-                                          const SizedBox(height: 8),
-                                          _buildPasswordRequirement('8 Characters', _hasMinLength),
-                                          _buildPasswordRequirement('Uppercase Letter', _hasUppercase),
-                                          _buildPasswordRequirement('Lowercase Letter', _hasLowercase),
-                                          _buildPasswordRequirement('Number', _hasNumber),
-                                        ],
-                                      ),
+
+                                const SizedBox(height: 40),
+
+                                // Reset Button
+                                Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(16),
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFF1976D2),
+                                        Color(0xFF0D47A1)
+                                      ],
+                                      begin: Alignment.centerLeft,
+                                      end: Alignment.centerRight,
                                     ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF1976D2)
+                                            .withOpacity(0.5),
+                                        blurRadius: 15,
+                                        offset: const Offset(0, 5),
+                                      ),
+                                    ],
                                   ),
+                                  child: ElevatedButton(
+                                    onPressed: _isLoading
+                                        ? null
+                                        : _handleResetPassword,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.transparent,
+                                      shadowColor: Colors.transparent,
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 18),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(16)),
+                                    ),
+                                    child: _isLoading
+                                        ? const SizedBox(
+                                            height: 24,
+                                            width: 24,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2.5,
+                                                color: Colors.white),
+                                          )
+                                        : const Text(
+                                            'Reset Password',
+                                            style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white),
+                                          ),
+                                  ),
+                                ),
                               ],
                             ),
-                            
-                            const SizedBox(height: 20),
-
-                            // Confirm Password Field
-                            TextFormField(
-                              controller: _confirmPasswordController,
-                              obscureText: _obscureConfirmPassword,
-                              style: const TextStyle(color: Colors.white),
-                              decoration: InputDecoration(
-                                hintText: 'Confirm New Password',
-                                hintStyle: const TextStyle(color: Colors.white60),
-                                prefixIcon: const Icon(Icons.lock_reset_outlined, color: Colors.white70),
-                                filled: true,
-                                fillColor: Colors.black.withOpacity(0.45),
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Colors.blue, width: 1.5)),
-                                suffixIcon: IconButton(
-                                  icon: Icon(_obscureConfirmPassword ? Icons.visibility_off : Icons.visibility, color: Colors.white70),
-                                  onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) return 'Confirm Your Password';
-                                if (value != _newPasswordController.text) return 'Password Does Not Match';
-                                return null;
-                              },
-                            ),
-
-                            const SizedBox(height: 40),
-
-                            // Reset Button
-                            Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16),
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFF1976D2), Color(0xFF0D47A1)],
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF1976D2).withOpacity(0.5),
-                                    blurRadius: 15,
-                                    offset: const Offset(0, 5),
-                                  ),
-                                ],
-                              ),
-                              child: ElevatedButton(
-                                onPressed: _isLoading ? null : _handleResetPassword,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.transparent,
-                                  shadowColor: Colors.transparent,
-                                  padding: const EdgeInsets.symmetric(vertical: 18),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                ),
-                                child: _isLoading
-                                    ? const SizedBox(
-                                        height: 24, width: 24,
-                                        child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-                                      )
-                                    : const Text(
-                                        'Reset Password',
-                                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                                      ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
-                  
-              ],
+                ),
+              ),
             ),
-          );
-        }
+          ),
+        ],
+      ),
+    );
+  }
 }

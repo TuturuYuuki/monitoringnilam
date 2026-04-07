@@ -23,7 +23,8 @@ class DeviceDiagnosticsRepository {
       deviceId: deviceId,
     );
 
-    if (response['success'] != true || response['data'] is! Map<String, dynamic>) {
+    if (response['success'] != true ||
+        response['data'] is! Map<String, dynamic>) {
       return null;
     }
 
@@ -74,20 +75,19 @@ class DeviceDiagnosticsRepository {
             .whereType<Map>()
             .map((row) => Map<String, dynamic>.from(row))
             .map((row) {
-              final rawTime = row['time']?.toString() ?? '';
-              final parsedTime = DateTime.tryParse(rawTime);
-              final hhmmss = parsedTime == null
-                  ? rawTime
-                  : '${parsedTime.hour.toString().padLeft(2, '0')}:${parsedTime.minute.toString().padLeft(2, '0')}:${parsedTime.second.toString().padLeft(2, '0')}';
-              final durationSeconds = _toInt(row['duration_seconds']);
+            final rawTime = row['time']?.toString() ?? '';
+            final parsedTime = DateTime.tryParse(rawTime);
+            final hhmmss = parsedTime == null
+                ? rawTime
+                : '${parsedTime.hour.toString().padLeft(2, '0')}:${parsedTime.minute.toString().padLeft(2, '0')}:${parsedTime.second.toString().padLeft(2, '0')}';
+            final durationSeconds = _toInt(row['duration_seconds']);
 
-              return DeviceDiagnosticsEvent(
-                time: hhmmss,
-                event: row['message']?.toString() ?? '-',
-                duration: durationSeconds > 0 ? '${durationSeconds}s' : '-',
-              );
-            })
-            .toList(growable: false)
+            return DeviceDiagnosticsEvent(
+              time: hhmmss,
+              event: row['message']?.toString() ?? '-',
+              duration: durationSeconds > 0 ? '${durationSeconds}s' : '-',
+            );
+          }).toList(growable: false)
         : const <DeviceDiagnosticsEvent>[];
 
     return DeviceDiagnosticsSnapshot(
@@ -145,5 +145,4 @@ class DeviceDiagnosticsRepository {
     }
     return 'camera';
   }
-
 }

@@ -315,26 +315,20 @@ class _ReportPageState extends State<ReportPage> {
         children: [
           const GlobalHeaderBar(currentRoute: '/report'),
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (!isMobile) const GlobalSidebarNav(currentRoute: '/report'),
-                if (!isMobile) const SizedBox(width: 12),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.all(isMobile ? 12 : 24),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 12),
-                        _buildFilterBar(),
-                        const SizedBox(height: 20),
-                        _buildReportTable(),
-                      ],
-                    ),
+            child: GlobalSidebarNav(
+                currentRoute: '/report',
+                enabled: !isMobile,
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(isMobile ? 12 : 24),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 12),
+                      _buildFilterBar(),
+                      const SizedBox(height: 20),
+                      _buildReportTable(),
+                    ],
                   ),
-                ),
-              ],
-            ),
+                )),
           ),
           const GlobalFooter(),
         ],

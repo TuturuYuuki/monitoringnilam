@@ -65,7 +65,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
   Future<void> _loadTowers() async {
     try {
       final fetchedTowers = await apiService.getValidatedTowersByYard('CY3');
-      
+
       if (mounted) {
         setState(() {
           towers = fetchedTowers;
@@ -74,7 +74,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
         });
       }
 
-      _triggerRealtimePing(); 
+      _triggerRealtimePing();
     } catch (e) {
       print('Error Loading Tower CY3: $e');
       if (mounted) setState(() => isLoading = false);
@@ -125,8 +125,6 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
       print('Error Triggering Ping Check (Ignored): $e');
     }
   }
-
-
 
   List<Tower> get paginatedData {
     int start = currentPage * itemsPerPage;
@@ -231,27 +229,18 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
             children: [
               const GlobalHeaderBar(currentRoute: '/network-cy3'),
               Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Sidebar (Kiri)
-                    const GlobalSidebarNav(currentRoute: '/network-cy3'),
-                    const SizedBox(width: 12),
-                    // Content (Kanan)
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            return Padding(
-                              padding: EdgeInsets.all(isMobile ? 8 : 20.0),
-                              child: _buildContent(context, constraints),
-                            );
-                          },
-                        ),
+                child: GlobalSidebarNav(
+                    currentRoute: '/network-cy3',
+                    child: SingleChildScrollView(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          return Padding(
+                            padding: EdgeInsets.all(isMobile ? 8 : 20.0),
+                            child: _buildContent(context, constraints),
+                          );
+                        },
                       ),
-                    ),
-                  ],
-                ),
+                    )),
               ),
               const GlobalFooter(),
             ],
@@ -261,7 +250,6 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
       ),
     );
   }
-
 
   Widget _buildContent(BuildContext context, BoxConstraints constraints) {
     final isMobile = isMobileScreen(context);
@@ -277,8 +265,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                 color: const Color(0xFF1976D2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.language,
-                  size: 32, color: Colors.white),
+              child: const Icon(Icons.language, size: 32, color: Colors.white),
             ),
             const SizedBox(width: 16),
             Column(
@@ -524,7 +511,8 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                   color: Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 20),
+                child: const Icon(Icons.location_on_rounded,
+                    color: Colors.white, size: 20),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -557,29 +545,36 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                         dropdownColor: AppDropdownStyle.menuBackground,
                         borderRadius: AppDropdownStyle.menuBorderRadius,
                         isExpanded: true,
-                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 20),
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                            color: Colors.white, size: 20),
                         items: _areaOptions.map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
                             child: Text(
                               value,
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700),
                             ),
                           );
                         }).toList(),
                         onChanged: (String? newValue) {
                           if (newValue == null) return;
-                          
+
                           if (newValue == 'CY 1') {
                             Navigator.pushReplacementNamed(context, '/network');
                           } else if (newValue == 'CY 2') {
-                            Navigator.pushReplacementNamed(context, '/network-cy2');
+                            Navigator.pushReplacementNamed(
+                                context, '/network-cy2');
                           } else if (newValue == 'CY 3') {
-                            Navigator.pushReplacementNamed(context, '/network-cy3');
+                            Navigator.pushReplacementNamed(
+                                context, '/network-cy3');
                           } else if (newValue == 'GATE') {
-                            Navigator.pushReplacementNamed(context, '/network-gate');
+                            Navigator.pushReplacementNamed(
+                                context, '/network-gate');
                           } else if (newValue == 'PARKING') {
-                            Navigator.pushReplacementNamed(context, '/network-parking');
+                            Navigator.pushReplacementNamed(
+                                context, '/network-parking');
                           }
                         },
                       ),
@@ -716,7 +711,8 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                       color: const Color(0xFF4CAF50).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+                    child: const Icon(Icons.refresh_rounded,
+                        color: Colors.white, size: 20),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -755,7 +751,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
     );
   }
 
-   Widget _buildTowerList() {
+  Widget _buildTowerList() {
     // Show loading indicator
     if (isLoading) {
       return ClipRRect(
@@ -892,7 +888,8 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
             children: [
               // Header
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                 width: double.infinity,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -916,17 +913,22 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                     ),
                     // Pagination Controls
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white.withOpacity(0.2)),
+                        border:
+                            Border.all(color: Colors.white.withOpacity(0.2)),
                       ),
                       child: Row(
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.chevron_left_rounded, size: 22, color: Colors.white),
-                            onPressed: currentPage > 0 ? () => setState(() => currentPage--) : null,
+                            icon: const Icon(Icons.chevron_left_rounded,
+                                size: 22, color: Colors.white),
+                            onPressed: currentPage > 0
+                                ? () => setState(() => currentPage--)
+                                : null,
                             constraints: const BoxConstraints(),
                             padding: EdgeInsets.zero,
                           ),
@@ -936,10 +938,14 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                             return GestureDetector(
                               onTap: () => setState(() => currentPage = index),
                               child: Container(
-                                margin: const EdgeInsets.symmetric(horizontal: 4),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 6),
                                 decoration: BoxDecoration(
-                                  color: isCurrentPage ? Colors.white.withOpacity(0.2) : Colors.transparent,
+                                  color: isCurrentPage
+                                      ? Colors.white.withOpacity(0.2)
+                                      : Colors.transparent,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
@@ -947,7 +953,9 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                                   style: TextStyle(
                                     fontWeight: FontWeight.w900,
                                     fontSize: 13,
-                                    color: isCurrentPage ? Colors.white : Colors.white70,
+                                    color: isCurrentPage
+                                        ? Colors.white
+                                        : Colors.white70,
                                   ),
                                 ),
                               ),
@@ -955,8 +963,11 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                           }),
                           const SizedBox(width: 8),
                           IconButton(
-                            icon: const Icon(Icons.chevron_right_rounded, size: 22, color: Colors.white),
-                            onPressed: currentPage < totalPages - 1 ? () => setState(() => currentPage++) : null,
+                            icon: const Icon(Icons.chevron_right_rounded,
+                                size: 22, color: Colors.white),
+                            onPressed: currentPage < totalPages - 1
+                                ? () => setState(() => currentPage++)
+                                : null,
                             constraints: const BoxConstraints(),
                             padding: EdgeInsets.zero,
                           ),
@@ -969,13 +980,14 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
 
               // Table Header
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 width: double.infinity,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      const Color(0xFFC6B430).withOpacity(0.8), 
-                      const Color(0xFFC6B430).withOpacity(0.4), 
+                      const Color(0xFFC6B430).withOpacity(0.8),
+                      const Color(0xFFC6B430).withOpacity(0.4),
                     ],
                   ),
                 ),
@@ -1035,9 +1047,11 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildActionButton(Icons.edit_rounded, Colors.blueAccent, () => _showEditForm(tower)),
+                _buildActionButton(Icons.edit_rounded, Colors.blueAccent,
+                    () => _showEditForm(tower)),
                 const SizedBox(width: 12),
-                _buildActionButton(Icons.delete_rounded, Colors.redAccent, () => _confirmDelete(tower)),
+                _buildActionButton(Icons.delete_rounded, Colors.redAccent,
+                    () => _confirmDelete(tower)),
               ],
             ),
           ),
@@ -1088,7 +1102,8 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
     );
   }
 
-  Widget _buildHeaderCell(String label, {required int flex, bool isLast = false}) {
+  Widget _buildHeaderCell(String label,
+      {required int flex, bool isLast = false}) {
     return Expanded(
       flex: flex,
       child: Text(
@@ -1132,7 +1147,6 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
       ),
     );
   }
-
 
 // --- FUNGSI KHUSUS CY3 ---
   Future<void> _showEditForm(Tower tower) async {
@@ -1192,7 +1206,8 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                   );
                   setLocalState(() {
                     selectedLocation = value;
-                    selectedYard = option['container_yard'] ?? tower.containerYard;
+                    selectedYard =
+                        option['container_yard'] ?? tower.containerYard;
                   });
                 },
               ),
@@ -1269,7 +1284,8 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.black87)),
+            child:
+                const Text('Cancel', style: TextStyle(color: Colors.black87)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1319,5 +1335,3 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
     );
   }
 }
-
-

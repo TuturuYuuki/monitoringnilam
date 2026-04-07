@@ -167,26 +167,18 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
         children: [
           const GlobalHeaderBar(currentRoute: '/cctv-fullscreen'),
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (!isMobile)
-                  const GlobalSidebarNav(currentRoute: '/cctv-fullscreen'),
-                if (!isMobile) const SizedBox(width: 12),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        return Padding(
-                          padding: EdgeInsets.all(isMobile ? 8 : 16),
-                          child: _buildContent(context, constraints),
-                        );
-                      },
-                    ),
+            child: GlobalSidebarNav(
+                currentRoute: '/cctv-fullscreen',
+                child: SingleChildScrollView(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Padding(
+                        padding: EdgeInsets.all(isMobile ? 8 : 16),
+                        child: _buildContent(context, constraints),
+                      );
+                    },
                   ),
-                ),
-              ],
-            ),
+                )),
           ),
           const GlobalFooter(),
         ],
@@ -459,7 +451,8 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                  CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 3),
                   SizedBox(height: 20),
                   Text(
                     'LOADING CAMERA DATA...',
@@ -631,5 +624,3 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
     );
   }
 }
-
-

@@ -56,7 +56,7 @@ class GlobalDiagnosticsSnapshot {
       diskVolumes: _asList(data['disk_volumes'])
           .map(GlobalDiskVolume.fromApi)
           .toList(growable: false),
-        highErrors: _asList(data['high_errors'])
+      highErrors: _asList(data['high_errors'])
           .map(GlobalHighError.fromApi)
           .toList(growable: false),
       latencySeries: _parseSeries(charts['latency']),
@@ -157,14 +157,54 @@ class GlobalDiagnosticsSnapshot {
         ),
       ),
       topCpuSeries: const [
-        GlobalCpuSeries(name: 'CPU 1', deviceType: 'access_point', deviceTypeLabel: 'Access Point', value: 26, colorHex: '#1B9FDC'),
-        GlobalCpuSeries(name: 'CPU 7', deviceType: 'camera', deviceTypeLabel: 'Camera', value: 45, colorHex: '#E542A3'),
-        GlobalCpuSeries(name: 'CPU 4', deviceType: 'camera', deviceTypeLabel: 'Camera', value: 26, colorHex: '#33B1D0'),
-        GlobalCpuSeries(name: 'CPU 2', deviceType: 'access_point', deviceTypeLabel: 'Access Point', value: 26, colorHex: '#7C76F2'),
-        GlobalCpuSeries(name: 'CPU 8', deviceType: 'mmt', deviceTypeLabel: 'MMT', value: 32, colorHex: '#8FBE34'),
-        GlobalCpuSeries(name: 'CPU 5', deviceType: 'camera', deviceTypeLabel: 'Camera', value: 51, colorHex: '#E58E24'),
-        GlobalCpuSeries(name: 'CPU 6', deviceType: 'access_point', deviceTypeLabel: 'Access Point', value: 32, colorHex: '#646BD1'),
-        GlobalCpuSeries(name: 'CPU 3', deviceType: 'camera', deviceTypeLabel: 'Camera', value: 32, colorHex: '#A74D4B'),
+        GlobalCpuSeries(
+            name: 'CPU 1',
+            deviceType: 'access_point',
+            deviceTypeLabel: 'Access Point',
+            value: 26,
+            colorHex: '#1B9FDC'),
+        GlobalCpuSeries(
+            name: 'CPU 7',
+            deviceType: 'camera',
+            deviceTypeLabel: 'Camera',
+            value: 45,
+            colorHex: '#E542A3'),
+        GlobalCpuSeries(
+            name: 'CPU 4',
+            deviceType: 'camera',
+            deviceTypeLabel: 'Camera',
+            value: 26,
+            colorHex: '#33B1D0'),
+        GlobalCpuSeries(
+            name: 'CPU 2',
+            deviceType: 'access_point',
+            deviceTypeLabel: 'Access Point',
+            value: 26,
+            colorHex: '#7C76F2'),
+        GlobalCpuSeries(
+            name: 'CPU 8',
+            deviceType: 'mmt',
+            deviceTypeLabel: 'MMT',
+            value: 32,
+            colorHex: '#8FBE34'),
+        GlobalCpuSeries(
+            name: 'CPU 5',
+            deviceType: 'camera',
+            deviceTypeLabel: 'Camera',
+            value: 51,
+            colorHex: '#E58E24'),
+        GlobalCpuSeries(
+            name: 'CPU 6',
+            deviceType: 'access_point',
+            deviceTypeLabel: 'Access Point',
+            value: 32,
+            colorHex: '#646BD1'),
+        GlobalCpuSeries(
+            name: 'CPU 3',
+            deviceType: 'camera',
+            deviceTypeLabel: 'Camera',
+            value: 32,
+            colorHex: '#A74D4B'),
       ],
     );
   }
@@ -200,7 +240,10 @@ class GlobalDiagnosticsSnapshot {
 
   static List<Map<String, dynamic>> _asList(dynamic value) {
     if (value is List) {
-      return value.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList(growable: false);
+      return value
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList(growable: false);
     }
     return const <Map<String, dynamic>>[];
   }

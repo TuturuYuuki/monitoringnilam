@@ -10,7 +10,8 @@ class GlobalDiagnosticsRepository {
   Future<GlobalDiagnosticsLoadResult> loadSnapshot() async {
     final response = await _apiService.getGlobalDiagnostics();
 
-    if (response['success'] == true && response['data'] is Map<String, dynamic>) {
+    if (response['success'] == true &&
+        response['data'] is Map<String, dynamic>) {
       final data = response['data'] as Map<String, dynamic>;
       return GlobalDiagnosticsLoadResult(
         snapshot: GlobalDiagnosticsSnapshot.fromApi(data),

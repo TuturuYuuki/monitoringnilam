@@ -42,8 +42,9 @@ class _AlertsPageState extends State<AlertsPage> {
   Future<void> _loadAlerts({bool showLoading = true}) async {
     if (showLoading && mounted) setState(() => _isLoading = true);
     try {
-      final results = await apiService.getAllAlerts(source: 'HISTORY', limit: 200);
-      
+      final results =
+          await apiService.getAllAlerts(source: 'HISTORY', limit: 200);
+
       if (mounted) {
         final alertListRaw = results['alerts'] as List? ?? [];
         final List<Alert> loaded = [];
@@ -68,7 +69,10 @@ class _AlertsPageState extends State<AlertsPage> {
 
   bool _isDeviceDown(String status) {
     final s = status.toUpperCase().trim();
-    return s == 'DOWN' || s == 'OFFLINE' || s == 'UNREACHABLE' || s == 'WARNING';
+    return s == 'DOWN' ||
+        s == 'OFFLINE' ||
+        s == 'UNREACHABLE' ||
+        s == 'WARNING';
   }
 
   // ==================== HELPERS ====================
@@ -93,22 +97,20 @@ class _AlertsPageState extends State<AlertsPage> {
     var s = rawTitle.trim();
     s = s.replaceAll(
         RegExp(r'\s+is\s+now\s+(up|down)\b', caseSensitive: false), '');
-    s = s.replaceAll(
-        RegExp(r'\s+is\s+(up|down)\b', caseSensitive: false), '');
+    s = s.replaceAll(RegExp(r'\s+is\s+(up|down)\b', caseSensitive: false), '');
     return s.trim();
   }
 
   String _extractDeviceType(Alert alert) {
     if (alert.deviceType != null && alert.deviceType!.isNotEmpty) {
-       final dt = alert.deviceType!.toLowerCase();
-       if (dt.contains('tower') || dt.contains('ap')) return 'AP';
-       if (dt.contains('camera') || dt.contains('cctv')) return 'CCTV';
-       if (dt.contains('mmt')) return 'MMT';
+      final dt = alert.deviceType!.toLowerCase();
+      if (dt.contains('tower') || dt.contains('ap')) return 'AP';
+      if (dt.contains('camera') || dt.contains('cctv')) return 'CCTV';
+      if (dt.contains('mmt')) return 'MMT';
     }
 
-    final src =
-        '${alert.title} ${alert.description} ${alert.lokasi ?? ''}'
-            .toUpperCase();
+    final src = '${alert.title} ${alert.description} ${alert.lokasi ?? ''}'
+        .toUpperCase();
     if (RegExp(r'\b(AP|TOWER)\b').hasMatch(src)) return 'AP';
     if (RegExp(r'\b(CAM|CCTV)\b').hasMatch(src)) return 'CCTV';
     if (RegExp(r'\bMMT\b').hasMatch(src)) return 'MMT';
@@ -139,16 +141,10 @@ class _AlertsPageState extends State<AlertsPage> {
         children: [
           const GlobalHeaderBar(currentRoute: '/alerts'),
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (!isMobile) const GlobalSidebarNav(currentRoute: '/alerts'),
-                if (!isMobile) const SizedBox(width: 12),
-                Expanded(
-                  child: _buildContent(isMobile),
-                ),
-              ],
-            ),
+            child: GlobalSidebarNav(
+                currentRoute: '/alerts',
+                enabled: !isMobile,
+                child: _buildContent(isMobile)),
           ),
           const GlobalFooter(),
         ],
@@ -159,7 +155,7 @@ class _AlertsPageState extends State<AlertsPage> {
   Widget _buildContent(bool isMobile) {
     // We remove the early return for empty alerts so the layout always shows.
     final filtered = _filterByDeviceType(_alerts);
-    
+
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
           isMobile ? 12 : 24, isMobile ? 12 : 24, isMobile ? 12 : 24, 24),
@@ -224,8 +220,8 @@ class _AlertsPageState extends State<AlertsPage> {
       children: [
         _summaryChip(Icons.arrow_downward_rounded, '$feedDown DOWN',
             const Color(0xFFFF1744)),
-        _summaryChip(Icons.arrow_upward_rounded, '$feedUp UP',
-            const Color(0xFF00E676)),
+        _summaryChip(
+            Icons.arrow_upward_rounded, '$feedUp UP', const Color(0xFF00E676)),
       ],
     );
   }
@@ -339,8 +335,7 @@ class _AlertsPageState extends State<AlertsPage> {
               physics: const NeverScrollableScrollPhysics(),
               itemCount: filtered.length,
               separatorBuilder: (_, __) => const SizedBox(height: 6),
-              itemBuilder: (context, index) =>
-                  _buildAlertCard(filtered[index]),
+              itemBuilder: (context, index) => _buildAlertCard(filtered[index]),
             ),
         ],
       ),
@@ -378,7 +373,8 @@ class _AlertsPageState extends State<AlertsPage> {
             decoration: BoxDecoration(
               color: statusColor.withOpacity(0.35),
               shape: BoxShape.circle,
-              border: Border.all(color: statusColor.withOpacity(0.9), width: 1.5),
+              border:
+                  Border.all(color: statusColor.withOpacity(0.9), width: 1.5),
             ),
             child: Icon(
               isDown
@@ -404,8 +400,7 @@ class _AlertsPageState extends State<AlertsPage> {
                   spacing: 16,
                   runSpacing: 2,
                   children: [
-                    _infoRow(
-                        Icons.location_on_outlined, alert.lokasi ?? '-'),
+                    _infoRow(Icons.location_on_outlined, alert.lokasi ?? '-'),
                     _infoRow(Icons.lan_outlined, 'IP: $ip'),
                     _infoRow(Icons.calendar_today_outlined, date),
                     _infoRow(Icons.access_time_outlined, time),
@@ -441,8 +436,7 @@ class _AlertsPageState extends State<AlertsPage> {
       children: [
         Icon(icon, size: 13, color: Colors.white54),
         const SizedBox(width: 4),
-        Text(text,
-            style: const TextStyle(fontSize: 12, color: Colors.white60)),
+        Text(text, style: const TextStyle(fontSize: 12, color: Colors.white60)),
       ],
     );
   }
@@ -529,7 +523,4 @@ class _AlertsPageState extends State<AlertsPage> {
   }
 
   // ==================== FOOTER ====================
-
 }
-
-

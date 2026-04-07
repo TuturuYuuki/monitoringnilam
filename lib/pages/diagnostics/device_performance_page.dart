@@ -1,3 +1,4 @@
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:monitoring/pages/diagnostics/performance/application/device_performance_controller.dart';
 import 'package:monitoring/pages/diagnostics/performance/presentation/widgets/radial_gauge_card.dart';
@@ -51,62 +52,75 @@ class _DevicePerformancePageState extends State<DevicePerformancePage> {
             children: [
               const GlobalHeaderBar(currentRoute: '/device-performance'),
               Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (!isMobile)
-                      const GlobalSidebarNav(currentRoute: '/device-performance'),
-                    if (!isMobile) const SizedBox(width: 12),
-                    Expanded(
-                      child: _controller.isBootLoading
-                          ? const Center(child: CircularProgressIndicator())
-                          : SafeArea(
-                              child: SingleChildScrollView(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildPageToolbar(),
-                                    const SizedBox(height: 12),
-                                    _buildControlCard(),
+                child: GlobalSidebarNav(
+                  currentRoute: '/device-performance',
+                  enabled: !isMobile,
+                  child: _controller.isBootLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : SafeArea(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.all(16),
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color:
+                                    Color(0xFF2C3E50).withValues(alpha: 0.24),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                    color:
+                                        Colors.white.withValues(alpha: 0.12)),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.15),
+                                    blurRadius: 30,
+                                    offset: const Offset(0, 10),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildPageToolbar(),
+                                  const SizedBox(height: 12),
+                                  _buildControlCard(),
+                                  const SizedBox(height: 16),
+                                  if (_controller.error != null)
+                                    _buildErrorBanner(_controller.error!),
+                                  if (telemetry != null) ...[
+                                    _buildHeaderMeta(telemetry),
                                     const SizedBox(height: 16),
-                                    if (_controller.error != null)
-                                      _buildErrorBanner(_controller.error!),
-                                    if (telemetry != null) ...[
-                                      _buildHeaderMeta(telemetry),
-                                      const SizedBox(height: 16),
-                                      isMobile
-                                          ? Column(
-                                              children: [
-                                                _buildGaugeGrid(telemetry),
-                                                const SizedBox(height: 16),
-                                                _buildTrafficCard(),
-                                              ],
-                                            )
-                                          : Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Expanded(
-                                                  flex: 5,
-                                                  child: _buildGaugeGrid(telemetry),
-                                                ),
-                                                const SizedBox(width: 16),
-                                                Expanded(
-                                                  flex: 6,
-                                                  child: _buildTrafficCard(),
-                                                ),
-                                              ],
-                                            ),
-                                      const SizedBox(height: 16),
-                                      _buildInfoTable(telemetry),
-                                    ],
+                                    isMobile
+                                        ? Column(
+                                            children: [
+                                              _buildGaugeGrid(telemetry),
+                                              const SizedBox(height: 16),
+                                              _buildTrafficCard(),
+                                            ],
+                                          )
+                                        : Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Expanded(
+                                                flex: 5,
+                                                child:
+                                                    _buildGaugeGrid(telemetry),
+                                              ),
+                                              const SizedBox(width: 16),
+                                              Expanded(
+                                                flex: 6,
+                                                child: _buildTrafficCard(),
+                                              ),
+                                            ],
+                                          ),
+                                    const SizedBox(height: 16),
+                                    _buildInfoTable(telemetry),
                                   ],
-                                ),
+                                ],
                               ),
                             ),
-                    ),
-                  ],
+                          ),
+                        ),
                 ),
               ),
               const GlobalFooter(),
@@ -120,13 +134,14 @@ class _DevicePerformancePageState extends State<DevicePerformancePage> {
   Widget _buildPageToolbar() {
     return Row(
       children: [
-        const Expanded(
+        Expanded(
           child: Text(
             'Device Performance Monitoring',
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              color: Colors.white.withValues(alpha: 0.95),
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.5,
             ),
           ),
         ),
@@ -142,7 +157,8 @@ class _DevicePerformancePageState extends State<DevicePerformancePage> {
               ? const SizedBox(
                   height: 14,
                   width: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white),
                 )
               : const Icon(Icons.refresh),
           label: const Text('Refresh'),
@@ -154,89 +170,109 @@ class _DevicePerformancePageState extends State<DevicePerformancePage> {
   Widget _buildControlCard() {
     final deviceIds = _controller.deviceOptions(_controller.selectedType);
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1B2631),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          const Text(
-            'Target Device',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-          SizedBox(
-            width: 190,
-            child: DropdownButtonFormField<String>(
-              key: ValueKey('type-${_controller.selectedType}'),
-              initialValue: _controller.selectedType,
-              decoration: _inputDecoration('Jenis'),
-              dropdownColor: const Color(0xFF253645),
-              items: const [
-                DropdownMenuItem(value: 'access_point', child: Text('Access Point')),
-                DropdownMenuItem(value: 'camera', child: Text('CCTV')),
-                DropdownMenuItem(value: 'mmt', child: Text('MMT')),
-              ],
-              onChanged: (value) {
-                if (value == null) {
-                  return;
-                }
-                _controller.updateSelectedType(value);
-              },
-            ),
-          ),
-          SizedBox(
-            width: 240,
-            child: DropdownButtonFormField<String>(
-              key: ValueKey(
-                'id-${_controller.selectedType}-${_controller.selectedDeviceId}-${deviceIds.length}',
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.16),
+            borderRadius: BorderRadius.circular(16),
+            border:
+                Border.all(color: Color(0xFFFFFFFF).withValues(alpha: 0.62)),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0xFF87C5FF).withValues(alpha: 0.12),
+                blurRadius: 22,
+                spreadRadius: 1,
+                offset: const Offset(0, 8),
               ),
-              initialValue: deviceIds.contains(_controller.selectedDeviceId)
-                  ? _controller.selectedDeviceId
-                  : null,
-              decoration: _inputDecoration('Device ID'),
-              dropdownColor: const Color(0xFF253645),
-              items: deviceIds
-                  .map(
-                    (id) => DropdownMenuItem(
-                      value: id,
-                      child: Text(id),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (value) {
-                if (value == null) {
-                  return;
-                }
-                _controller.updateSelectedDeviceId(value);
-              },
-            ),
+            ],
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              'Refresh otomatis: ${DevicePerformanceController.refreshInterval.inSeconds} detik',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.85),
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              const Text(
+                'Target Device',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                ),
               ),
-            ),
+              SizedBox(
+                width: 190,
+                child: DropdownButtonFormField<String>(
+                  key: ValueKey('type-${_controller.selectedType}'),
+                  initialValue: _controller.selectedType,
+                  decoration: _inputDecoration('Jenis'),
+                  dropdownColor: const Color(0xFF2C3E50),
+                  style: const TextStyle(color: Colors.white),
+                  items: const [
+                    DropdownMenuItem(
+                        value: 'access_point', child: Text('Access Point')),
+                    DropdownMenuItem(value: 'camera', child: Text('CCTV')),
+                    DropdownMenuItem(value: 'mmt', child: Text('MMT')),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) {
+                      return;
+                    }
+                    _controller.updateSelectedType(value);
+                  },
+                ),
+              ),
+              SizedBox(
+                width: 240,
+                child: DropdownButtonFormField<String>(
+                  key: ValueKey(
+                    'id-${_controller.selectedType}-${_controller.selectedDeviceId}-${deviceIds.length}',
+                  ),
+                  initialValue: deviceIds.contains(_controller.selectedDeviceId)
+                      ? _controller.selectedDeviceId
+                      : null,
+                  decoration: _inputDecoration('Device ID'),
+                  dropdownColor: const Color(0xFF2C3E50),
+                  style: const TextStyle(color: Colors.white),
+                  items: deviceIds
+                      .map(
+                        (id) => DropdownMenuItem(
+                          value: id,
+                          child: Text(id),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) {
+                      return;
+                    }
+                    _controller.updateSelectedDeviceId(value);
+                  },
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'Refresh otomatis: ${DevicePerformanceController.refreshInterval.inSeconds} detik',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -244,16 +280,16 @@ class _DevicePerformancePageState extends State<DevicePerformancePage> {
   InputDecoration _inputDecoration(String label) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: Colors.white70),
+      labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.92)),
       filled: true,
-      fillColor: const Color(0xFF253645),
+      fillColor: Colors.white.withValues(alpha: 0.08),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.35)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: Colors.lightBlueAccent.withValues(alpha: 0.8)),
+        borderSide: const BorderSide(color: Color(0xFF2196F3), width: 2),
       ),
     );
   }
@@ -264,13 +300,16 @@ class _DevicePerformancePageState extends State<DevicePerformancePage> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFD32F2F).withValues(alpha: 0.18),
-        border: Border.all(color: const Color(0xFFD32F2F).withValues(alpha: 0.7)),
-        borderRadius: BorderRadius.circular(12),
+        color: const Color(0xFFFFF4E5),
+        border: Border.all(color: const Color(0xFFFFC107)),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         message,
-        style: const TextStyle(color: Colors.white),
+        style: const TextStyle(
+            color: Color(0xFF9A6700),
+            fontWeight: FontWeight.w700,
+            fontSize: 12),
       ),
     );
   }
@@ -285,50 +324,61 @@ class _DevicePerformancePageState extends State<DevicePerformancePage> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF1B2631),
-        borderRadius: BorderRadius.circular(14),
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
       ),
       child: Wrap(
-        spacing: 14,
-        runSpacing: 10,
+        spacing: 8,
+        runSpacing: 8,
         children: [
-          _metaChip('Status', status, color: isUp ? Colors.greenAccent : Colors.redAccent),
-          _metaChip('CPU/RAM Warning', '${DevicePerformanceController.warningThreshold}%'),
-          _metaChip('Last Update', updatedLabel),
-          _metaChip('Device', '${telemetry['device_type']} / ${telemetry['device_id']}'),
+          _metaChip('Status', status,
+              chipColor:
+                  isUp ? const Color(0xFF219653) : const Color(0xFFEB5757)),
+          _metaChip('CPU/RAM Warning',
+              '${DevicePerformanceController.warningThreshold}%',
+              chipColor: const Color(0xFF2D9CDB)),
+          _metaChip('Last Update', updatedLabel,
+              chipColor: const Color(0xFFF2994A)),
+          _metaChip('Device',
+              '${telemetry['device_type']} / ${telemetry['device_id']}',
+              chipColor: const Color(0xFF27AE60)),
         ],
       ),
     );
   }
 
-  Widget _metaChip(String label, String value, {Color color = Colors.white}) {
+  Widget _metaChip(String label, String value,
+      {Color chipColor = const Color(0xFF2D9CDB)}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+        color: chipColor.withOpacity(0.22),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: chipColor.withOpacity(0.75)),
       ),
-      child: RichText(
-        text: TextSpan(
-          text: '$label: ',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.7),
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
-          children: [
-            TextSpan(
-              text: value,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-              ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$label: ',
+            style: TextStyle(
+              color: chipColor.withValues(alpha: 0.95),
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
             ),
-          ],
-        ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -402,7 +452,10 @@ class _DevicePerformancePageState extends State<DevicePerformancePage> {
 
   Widget _buildInfoTable(Map<String, dynamic> telemetry) {
     final rows = [
-      ['Uptime', _formatDuration(_controller.toInt(telemetry['uptime_seconds']))],
+      [
+        'Uptime',
+        _formatDuration(_controller.toInt(telemetry['uptime_seconds']))
+      ],
       [
         'Bandwidth RX',
         '${_controller.toDouble(telemetry['traffic_rx_mbps']).toStringAsFixed(2)} Mbps'

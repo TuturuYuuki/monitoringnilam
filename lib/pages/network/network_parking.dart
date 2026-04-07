@@ -64,8 +64,9 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
 
   Future<void> _loadTowers() async {
     try {
-      final fetchedTowers = await apiService.getValidatedTowersByYard('PARKING');
-      
+      final fetchedTowers =
+          await apiService.getValidatedTowersByYard('PARKING');
+
       if (mounted) {
         setState(() {
           towers = fetchedTowers;
@@ -74,7 +75,7 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
         });
       }
 
-      _triggerRealtimePing(); 
+      _triggerRealtimePing();
     } catch (e) {
       print('Error Loading Tower PARKING: $e');
       if (mounted) setState(() => isLoading = false);
@@ -106,15 +107,15 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
       // Call realtime ping endpoint yang update semua towers sekaligus
       final response = await http
           .get(
-            Uri.parse('$baseUrl?endpoint=realtime&action=all'),
-          )
+        Uri.parse('$baseUrl?endpoint=realtime&action=all'),
+      )
           .timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              print('Realtime Ping Timed Out');
-              return http.Response('{"success":false}', 408);
-            },
-          );
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('Realtime Ping Timed Out');
+          return http.Response('{"success":false}', 408);
+        },
+      );
 
       if (response.statusCode == 200) {
         // Wait a moment for database to update
@@ -125,7 +126,6 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
       print('Error Triggering Ping Check (Ignored): $e');
     }
   }
-
 
   List<Tower> get paginatedData {
     int start = currentPage * itemsPerPage;
@@ -230,27 +230,18 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
             children: [
               const GlobalHeaderBar(currentRoute: '/network-parking'),
               Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Sidebar (Kiri)
-                    const GlobalSidebarNav(currentRoute: '/network-parking'),
-                    const SizedBox(width: 12),
-                    // Content (Kanan)
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            return Padding(
-                              padding: EdgeInsets.all(isMobile ? 8 : 20.0),
-                              child: _buildContent(context, constraints),
-                            );
-                          },
-                        ),
+                child: GlobalSidebarNav(
+                    currentRoute: '/network-parking',
+                    child: SingleChildScrollView(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          return Padding(
+                            padding: EdgeInsets.all(isMobile ? 8 : 20.0),
+                            child: _buildContent(context, constraints),
+                          );
+                        },
                       ),
-                    ),
-                  ],
-                ),
+                    )),
               ),
               const GlobalFooter(),
             ],
@@ -360,8 +351,8 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
                     spacing: 16,
                     runSpacing: 16,
                     children: [
-                      _buildStatCard('Total Access Point', '$totalTowers',
-                          Colors.orange,
+                      _buildStatCard(
+                          'Total Access Point', '$totalTowers', Colors.orange,
                           width: cardWidth),
                       _buildStatCard('UP', '$onlineTowers', Colors.green,
                           width: cardWidth),
@@ -520,7 +511,8 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
                   color: Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 20),
+                child: const Icon(Icons.location_on_rounded,
+                    color: Colors.white, size: 20),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -553,28 +545,36 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
                         dropdownColor: AppDropdownStyle.menuBackground,
                         borderRadius: AppDropdownStyle.menuBorderRadius,
                         isExpanded: true,
-                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 20),
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                            color: Colors.white, size: 20),
                         items: _areaOptions.map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
                             child: Text(
                               value,
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700),
                             ),
                           );
                         }).toList(),
                         onChanged: (String? newValue) {
                           if (newValue != null) {
                             if (newValue == 'CY 1') {
-                              Navigator.pushReplacementNamed(context, '/network');
+                              Navigator.pushReplacementNamed(
+                                  context, '/network');
                             } else if (newValue == 'CY 2') {
-                              Navigator.pushReplacementNamed(context, '/network-cy2');
+                              Navigator.pushReplacementNamed(
+                                  context, '/network-cy2');
                             } else if (newValue == 'CY 3') {
-                              Navigator.pushReplacementNamed(context, '/network-cy3');
+                              Navigator.pushReplacementNamed(
+                                  context, '/network-cy3');
                             } else if (newValue == 'GATE') {
-                              Navigator.pushReplacementNamed(context, '/network-gate');
+                              Navigator.pushReplacementNamed(
+                                  context, '/network-gate');
                             } else if (newValue == 'PARKING') {
-                              Navigator.pushReplacementNamed(context, '/network-parking');
+                              Navigator.pushReplacementNamed(
+                                  context, '/network-parking');
                             }
                           }
                         },
@@ -590,7 +590,7 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
     );
   }
 
- Widget _buildAreaButton(double width) {
+  Widget _buildAreaButton(double width) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: BackdropFilter(
@@ -621,7 +621,8 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
                   color: const Color(0xFF1976D2).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 20),
+                child: const Icon(Icons.location_on_rounded,
+                    color: Colors.white, size: 20),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -711,7 +712,8 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
                       color: const Color(0xFF4CAF50).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+                    child: const Icon(Icons.refresh_rounded,
+                        color: Colors.white, size: 20),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -887,7 +889,8 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
             children: [
               // Header
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                 width: double.infinity,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -911,17 +914,22 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
                     ),
                     // Pagination Controls
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white.withOpacity(0.2)),
+                        border:
+                            Border.all(color: Colors.white.withOpacity(0.2)),
                       ),
                       child: Row(
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.chevron_left_rounded, size: 22, color: Colors.white),
-                            onPressed: currentPage > 0 ? () => setState(() => currentPage--) : null,
+                            icon: const Icon(Icons.chevron_left_rounded,
+                                size: 22, color: Colors.white),
+                            onPressed: currentPage > 0
+                                ? () => setState(() => currentPage--)
+                                : null,
                             constraints: const BoxConstraints(),
                             padding: EdgeInsets.zero,
                           ),
@@ -931,10 +939,14 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
                             return GestureDetector(
                               onTap: () => setState(() => currentPage = index),
                               child: Container(
-                                margin: const EdgeInsets.symmetric(horizontal: 4),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 6),
                                 decoration: BoxDecoration(
-                                  color: isCurrentPage ? Colors.white.withOpacity(0.2) : Colors.transparent,
+                                  color: isCurrentPage
+                                      ? Colors.white.withOpacity(0.2)
+                                      : Colors.transparent,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
@@ -942,7 +954,9 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
                                   style: TextStyle(
                                     fontWeight: FontWeight.w900,
                                     fontSize: 13,
-                                    color: isCurrentPage ? Colors.white : Colors.white70,
+                                    color: isCurrentPage
+                                        ? Colors.white
+                                        : Colors.white70,
                                   ),
                                 ),
                               ),
@@ -950,8 +964,11 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
                           }),
                           const SizedBox(width: 8),
                           IconButton(
-                            icon: const Icon(Icons.chevron_right_rounded, size: 22, color: Colors.white),
-                            onPressed: currentPage < totalPages - 1 ? () => setState(() => currentPage++) : null,
+                            icon: const Icon(Icons.chevron_right_rounded,
+                                size: 22, color: Colors.white),
+                            onPressed: currentPage < totalPages - 1
+                                ? () => setState(() => currentPage++)
+                                : null,
                             constraints: const BoxConstraints(),
                             padding: EdgeInsets.zero,
                           ),
@@ -964,13 +981,14 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
 
               // Table Header
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 width: double.infinity,
                 decoration: BoxDecoration(
-                   gradient: LinearGradient(
+                  gradient: LinearGradient(
                     colors: [
-                      const Color(0xFFC6B430).withOpacity(0.8), 
-                      const Color(0xFFC6B430).withOpacity(0.4), 
+                      const Color(0xFFC6B430).withOpacity(0.8),
+                      const Color(0xFFC6B430).withOpacity(0.4),
                     ],
                   ),
                 ),
@@ -1030,9 +1048,11 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildActionButton(Icons.edit_rounded, Colors.blueAccent, () => _showEditForm(tower)),
+                _buildActionButton(Icons.edit_rounded, Colors.blueAccent,
+                    () => _showEditForm(tower)),
                 const SizedBox(width: 12),
-                _buildActionButton(Icons.delete_rounded, Colors.redAccent, () => _confirmDelete(tower)),
+                _buildActionButton(Icons.delete_rounded, Colors.redAccent,
+                    () => _confirmDelete(tower)),
               ],
             ),
           ),
@@ -1059,7 +1079,8 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
     );
   }
 
-  Widget _buildHeaderCell(String label, {required int flex, bool isLast = false}) {
+  Widget _buildHeaderCell(String label,
+      {required int flex, bool isLast = false}) {
     return Expanded(
       flex: flex,
       child: Text(
@@ -1161,7 +1182,8 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
                   );
                   setLocalState(() {
                     selectedLocation = value;
-                    selectedYard = option['container_yard'] ?? tower.containerYard;
+                    selectedYard =
+                        option['container_yard'] ?? tower.containerYard;
                   });
                 },
               ),
@@ -1221,8 +1243,7 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
                 }
               }
             },
-            child: const Text('Delete',
-                style: TextStyle(color: Colors.white)),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -1233,15 +1254,14 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title:
-            const Text('Logout', style: TextStyle(color: Colors.black87)),
+        title: const Text('Logout', style: TextStyle(color: Colors.black87)),
         content: const Text('Are You Sure To Logout?',
             style: TextStyle(color: Colors.black87)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel',
-                style: TextStyle(color: Colors.black87)),
+            child:
+                const Text('Cancel', style: TextStyle(color: Colors.black87)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1263,5 +1283,3 @@ class _NetworkParkingPageState extends State<NetworkParkingPage> {
     );
   }
 }
-
-

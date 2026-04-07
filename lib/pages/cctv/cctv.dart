@@ -240,27 +240,19 @@ class _CCTVPageState extends State<CCTVPage> {
             children: [
               const GlobalHeaderBar(currentRoute: '/cctv'),
               Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Sidebar (Kiri)
-                    if (!isMobile) const GlobalSidebarNav(currentRoute: '/cctv'),
-                    if (!isMobile) const SizedBox(width: 12),
-                    // Content (Kanan)
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            return Padding(
-                              padding: EdgeInsets.all(isMobile ? 12 : 24),
-                              child: _buildContent(context, constraints),
-                            );
-                          },
-                        ),
+                child: GlobalSidebarNav(
+                    currentRoute: '/cctv',
+                    enabled: !isMobile,
+                    child: SingleChildScrollView(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          return Padding(
+                            padding: EdgeInsets.all(isMobile ? 12 : 24),
+                            child: _buildContent(context, constraints),
+                          );
+                        },
                       ),
-                    ),
-                  ],
-                ),
+                    )),
               ),
               const GlobalFooter(),
             ],
@@ -269,7 +261,6 @@ class _CCTVPageState extends State<CCTVPage> {
       ),
     );
   }
-
 
   Widget _buildContent(BuildContext context, BoxConstraints constraints) {
     final isMobile = isMobileScreen(context);
@@ -294,14 +285,14 @@ class _CCTVPageState extends State<CCTVPage> {
                 ),
               ),
               const SizedBox(height: 8),
-                  const Text(
-                    'CCTV',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+              const Text(
+                'CCTV',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const Text(
                 'Live Monitoring',
                 style: TextStyle(
@@ -312,91 +303,90 @@ class _CCTVPageState extends State<CCTVPage> {
             ],
           ),
         const SizedBox(height: 16),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1976D2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.videocam,
-                  size: 32,
-                  color: Colors.white,
-                ),
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1976D2),
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
+              child: const Icon(
+                Icons.videocam,
+                size: 32,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Text(
+                      'CCTV Monitoring',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Text(
+                      'Live Camera Feeds And Surveillance System Status',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                    if (lastUpdated != null) ...[
+                      const SizedBox(width: 8),
+                      const Text('•', style: TextStyle(color: Colors.white70)),
+                      const SizedBox(width: 8),
                       Text(
-                        'CCTV Monitoring',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
+                        'Updated: ${lastUpdated!.hour.toString().padLeft(2, '0')}:${lastUpdated!.minute.toString().padLeft(2, '0')}:${lastUpdated!.second.toString().padLeft(2, '0')}',
+                        style: const TextStyle(
+                          color: Colors.greenAccent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Text(
-                        'Live Camera Feeds And Surveillance System Status',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
-                      ),
-                      if (lastUpdated != null) ...[
-                        const SizedBox(width: 8),
-                        const Text('•',
-                            style: TextStyle(color: Colors.white70)),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Updated: ${lastUpdated!.hour.toString().padLeft(2, '0')}:${lastUpdated!.minute.toString().padLeft(2, '0')}:${lastUpdated!.second.toString().padLeft(2, '0')}',
-                          style: const TextStyle(
-                            color: Colors.greenAccent,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-              const Spacer(),
-              const SizedBox(width: 16),
-              // Fullscreen Button
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, '/cctv-fullscreen'),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.3),
-                        width: 1,
-                      ),
+                  ],
+                ),
+              ],
+            ),
+            const Spacer(),
+            const SizedBox(width: 16),
+            // Fullscreen Button
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () => Navigator.pushNamed(context, '/cctv-fullscreen'),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.3),
+                      width: 1,
                     ),
-                    child: const Icon(
-                      Icons.fullscreen,
-                      color: Colors.white,
-                      size: 24,
-                    ),
+                  ),
+                  child: const Icon(
+                    Icons.fullscreen,
+                    color: Colors.white,
+                    size: 24,
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
+        ),
         const SizedBox(height: 16),
 
         // --- STATS CARDS ROW ---
@@ -571,8 +561,16 @@ class _CCTVPageState extends State<CCTVPage> {
         ),
       ),
     );
-  }  Widget _buildCCTVDropdown(double width) {
-    final List<String> areaOptions = ['CY 1', 'CY 2', 'CY 3', 'GATE', 'PARKING'];
+  }
+
+  Widget _buildCCTVDropdown(double width) {
+    final List<String> areaOptions = [
+      'CY 1',
+      'CY 2',
+      'CY 3',
+      'GATE',
+      'PARKING'
+    ];
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
@@ -604,7 +602,8 @@ class _CCTVPageState extends State<CCTVPage> {
                   color: Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 20),
+                child: const Icon(Icons.location_on_rounded,
+                    color: Colors.white, size: 20),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -622,7 +621,7 @@ class _CCTVPageState extends State<CCTVPage> {
                       ),
                     ),
                     const SizedBox(height: 2),
-                     DropdownButtonHideUnderline(
+                    DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: null,
                         hint: const Text(
@@ -637,29 +636,36 @@ class _CCTVPageState extends State<CCTVPage> {
                         dropdownColor: AppDropdownStyle.menuBackground,
                         borderRadius: AppDropdownStyle.menuBorderRadius,
                         isExpanded: true,
-                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 20),
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                            color: Colors.white, size: 20),
                         items: areaOptions.map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
                             child: Text(
                               value,
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700),
                             ),
                           );
                         }).toList(),
                         onChanged: (String? newValue) {
                           if (newValue == null) return;
-                          
+
                           if (newValue == 'CY 1') {
                             Navigator.pushReplacementNamed(context, '/cctv');
                           } else if (newValue == 'CY 2') {
-                            Navigator.pushReplacementNamed(context, '/cctv-cy2');
+                            Navigator.pushReplacementNamed(
+                                context, '/cctv-cy2');
                           } else if (newValue == 'CY 3') {
-                            Navigator.pushReplacementNamed(context, '/cctv-cy3');
+                            Navigator.pushReplacementNamed(
+                                context, '/cctv-cy3');
                           } else if (newValue == 'GATE') {
-                            Navigator.pushReplacementNamed(context, '/cctv-gate');
+                            Navigator.pushReplacementNamed(
+                                context, '/cctv-gate');
                           } else if (newValue == 'PARKING') {
-                            Navigator.pushReplacementNamed(context, '/cctv-parking');
+                            Navigator.pushReplacementNamed(
+                                context, '/cctv-parking');
                           }
                         },
                       ),
@@ -705,7 +711,8 @@ class _CCTVPageState extends State<CCTVPage> {
                   color: const Color(0xFF1976D2).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.business_rounded, color: Colors.white, size: 20),
+                child: const Icon(Icons.business_rounded,
+                    color: Colors.white, size: 20),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -795,7 +802,8 @@ class _CCTVPageState extends State<CCTVPage> {
                       color: Colors.white.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+                    child: const Icon(Icons.refresh_rounded,
+                        color: Colors.white, size: 20),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -862,7 +870,8 @@ class _CCTVPageState extends State<CCTVPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                  CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 3),
                   SizedBox(height: 20),
                   Text(
                     'LOADING CAMERAS...',
@@ -1214,7 +1223,9 @@ class _CCTVPageState extends State<CCTVPage> {
                               '${index + 1}',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                                fontWeight: isCurrent
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                               ),
                             ),
                           ),
@@ -1241,12 +1252,10 @@ class _CCTVPageState extends State<CCTVPage> {
     );
   }
 
-
 // --- FUNGSI EDIT KAMERA ---
   Future<void> _showEditCameraForm(Camera camera) async {
     // Controller otomatis terisi data lama (Initial Value)
-    final ipController =
-        TextEditingController(text: camera.ipAddress);
+    final ipController = TextEditingController(text: camera.ipAddress);
     final masterData = await ApiService().getAllMasterLocations();
     if (!mounted) return;
 
@@ -1267,8 +1276,8 @@ class _CCTVPageState extends State<CCTVPage> {
       camera.location,
       currentContainerYard: camera.containerYard,
     );
-    var selectedLocation = matchedOption?['label'] ??
-        normalizeLocationLabel(camera.location);
+    var selectedLocation =
+        matchedOption?['label'] ?? normalizeLocationLabel(camera.location);
     var selectedArea = matchedOption?['container_yard'] ?? camera.containerYard;
 
     showDialog(
@@ -1381,5 +1390,3 @@ class _CCTVPageState extends State<CCTVPage> {
     );
   }
 }
-
-

@@ -83,30 +83,20 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               const GlobalHeaderBar(currentRoute: '/profile'),
               Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Sidebar (Kiri)
-                    if (!isMobile)
-                      const GlobalSidebarNav(currentRoute: '/profile'),
-                    if (!isMobile) const SizedBox(width: 12),
-                    // Content (Kanan)
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Padding(
-                          padding: EdgeInsets.all(isMobile ? 8 : 24.0),
-                          child: Center(
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                  maxWidth: isMobile ? double.infinity : 800),
-                              child: _buildContent(context),
-                            ),
+                child: GlobalSidebarNav(
+                    currentRoute: '/profile',
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: EdgeInsets.all(isMobile ? 8 : 24.0),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                                maxWidth: isMobile ? double.infinity : 800),
+                            child: _buildContent(context),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
+                    )),
               ),
               const GlobalFooter(),
             ],
@@ -650,7 +640,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-
   void _showProfilePhotoDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -768,5 +757,3 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 }
-
-

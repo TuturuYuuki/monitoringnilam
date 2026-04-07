@@ -20,7 +20,13 @@ class MMTMonitoringPage extends StatefulWidget {
 
 class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
   final ApiService _apiService = ApiService();
-  static const List<String> _areaOptions = ['CY1', 'CY2', 'CY3', 'GATE', 'PARKING'];
+  static const List<String> _areaOptions = [
+    'CY1',
+    'CY2',
+    'CY3',
+    'GATE',
+    'PARKING'
+  ];
 
   List<MMT> _mmts = [];
   bool _isLoading = true;
@@ -124,28 +130,18 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
         children: [
           const GlobalHeaderBar(currentRoute: '/mmt-monitoring'),
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Sidebar (Kiri)
-                if (!isMobile)
-                  const GlobalSidebarNav(currentRoute: '/mmt-monitoring'),
-                if (!isMobile) const SizedBox(width: 12),
-                // Content (Kanan)
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        return Padding(
-                          padding: EdgeInsets.all(isMobile ? 8 : 20.0),
-                          child: _buildContent(context, constraints),
-                        );
-                      },
-                    ),
+            child: GlobalSidebarNav(
+                currentRoute: '/mmt-monitoring',
+                child: SingleChildScrollView(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Padding(
+                        padding: EdgeInsets.all(isMobile ? 8 : 20.0),
+                        child: _buildContent(context, constraints),
+                      );
+                    },
                   ),
-                ),
-              ],
-            ),
+                )),
           ),
           const GlobalFooter(),
         ],
@@ -528,7 +524,8 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
                   color: Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 20),
+                child: const Icon(Icons.location_on_rounded,
+                    color: Colors.white, size: 20),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -561,29 +558,37 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
                         dropdownColor: AppDropdownStyle.menuBackground,
                         borderRadius: AppDropdownStyle.menuBorderRadius,
                         isExpanded: true,
-                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 20),
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                            color: Colors.white, size: 20),
                         items: _areaOptions.map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
                             child: Text(
                               value,
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700),
                             ),
                           );
                         }).toList(),
                         onChanged: (String? newValue) {
                           if (newValue == null) return;
-                          
+
                           if (newValue == 'CY1') {
-                            Navigator.pushReplacementNamed(context, '/mmt-monitoring');
+                            Navigator.pushReplacementNamed(
+                                context, '/mmt-monitoring');
                           } else if (newValue == 'CY2') {
-                            Navigator.pushReplacementNamed(context, '/mmt-monitoring-cy2');
+                            Navigator.pushReplacementNamed(
+                                context, '/mmt-monitoring-cy2');
                           } else if (newValue == 'CY3') {
-                            Navigator.pushReplacementNamed(context, '/mmt-monitoring-cy3');
+                            Navigator.pushReplacementNamed(
+                                context, '/mmt-monitoring-cy3');
                           } else if (newValue == 'GATE') {
-                            Navigator.pushReplacementNamed(context, '/mmt-monitoring-gate');
+                            Navigator.pushReplacementNamed(
+                                context, '/mmt-monitoring-gate');
                           } else if (newValue == 'PARKING') {
-                            Navigator.pushReplacementNamed(context, '/mmt-monitoring-parking');
+                            Navigator.pushReplacementNamed(
+                                context, '/mmt-monitoring-parking');
                           }
                         },
                       ),
@@ -650,7 +655,8 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
                       color: Colors.white.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+                    child: const Icon(Icons.refresh_rounded,
+                        color: Colors.white, size: 20),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -854,7 +860,8 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
           child: Column(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 width: double.infinity,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -877,16 +884,19 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white.withOpacity(0.2)),
+                        border:
+                            Border.all(color: Colors.white.withOpacity(0.2)),
                       ),
                       child: Row(
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.chevron_left_rounded, size: 20, color: Colors.white),
+                            icon: const Icon(Icons.chevron_left_rounded,
+                                size: 20, color: Colors.white),
                             onPressed: currentPage > 0
                                 ? () => setState(() => currentPage--)
                                 : null,
@@ -903,8 +913,10 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
                                 });
                               },
                               child: Container(
-                                margin: const EdgeInsets.symmetric(horizontal: 4),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 6),
                                 decoration: BoxDecoration(
                                   color: isCurrentPage
                                       ? Colors.white
@@ -926,7 +938,8 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
                           }),
                           const SizedBox(width: 8),
                           IconButton(
-                            icon: const Icon(Icons.chevron_right_rounded, size: 20, color: Colors.white),
+                            icon: const Icon(Icons.chevron_right_rounded,
+                                size: 20, color: Colors.white),
                             onPressed: currentPage < totalPages - 1
                                 ? () => setState(() => currentPage++)
                                 : null,
@@ -944,8 +957,8 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
                 final tableContent = Column(
                   children: [
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 14),
                       width: double.infinity,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -981,7 +994,7 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
         ),
       ),
     );
-}
+  }
 
   Widget _buildHeaderCell(String label,
       {required int flex, bool isLast = false}) {
@@ -1011,9 +1024,14 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
       ),
       child: Row(
         children: [
-          _buildTableCell(mmt.mmtId, flex: 2, fontWeight: FontWeight.w800, color: Colors.white),
-          _buildTableCell(mmt.location, flex: 3, fontWeight: FontWeight.w800, color: Colors.white.withOpacity(0.9)),
-          _buildTableCell(mmt.ipAddress, flex: 2, color: Colors.white.withOpacity(0.7)),
+          _buildTableCell(mmt.mmtId,
+              flex: 2, fontWeight: FontWeight.w800, color: Colors.white),
+          _buildTableCell(mmt.location,
+              flex: 3,
+              fontWeight: FontWeight.w800,
+              color: Colors.white.withOpacity(0.9)),
+          _buildTableCell(mmt.ipAddress,
+              flex: 2, color: Colors.white.withOpacity(0.7)),
           _buildTableCell(
             isDown ? 'DOWN' : mmt.status,
             flex: 1,
@@ -1026,14 +1044,16 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.blueAccent, size: 20),
+                  icon: const Icon(Icons.edit,
+                      color: Colors.blueAccent, size: 20),
                   onPressed: () => _editMMT(mmt),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
                 const SizedBox(width: 12),
                 IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
+                  icon: const Icon(Icons.delete,
+                      color: Colors.redAccent, size: 20),
                   onPressed: () => _confirmDeleteMMT(mmt),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -1131,7 +1151,8 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
                   );
                   setLocalState(() {
                     selectedLocation = value;
-                    selectedYard = option['container_yard'] ?? mmt.containerYard;
+                    selectedYard =
+                        option['container_yard'] ?? mmt.containerYard;
                   });
                 },
               ),
@@ -1237,7 +1258,6 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
     );
   }
 
-
   void _showMMTDetails(MMT mmt) {
     showDialog(
       context: context,
@@ -1283,7 +1303,8 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
           const SizedBox(width: 8),
           const Text(
             'Auto Refresh',
-            style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+            style: TextStyle(
+                color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
           ),
           const SizedBox(width: 4),
           Transform.scale(
@@ -1315,10 +1336,14 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: _isConnected ? Colors.greenAccent.withOpacity(0.1) : Colors.redAccent.withOpacity(0.1),
+        color: _isConnected
+            ? Colors.greenAccent.withOpacity(0.1)
+            : Colors.redAccent.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: _isConnected ? Colors.greenAccent.withOpacity(0.3) : Colors.redAccent.withOpacity(0.3),
+          color: _isConnected
+              ? Colors.greenAccent.withOpacity(0.3)
+              : Colors.redAccent.withOpacity(0.3),
           width: 1,
         ),
       ),
@@ -1355,5 +1380,3 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
     );
   }
 }
-
-

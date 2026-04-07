@@ -65,7 +65,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
   Future<void> _loadTowers() async {
     try {
       final fetchedTowers = await apiService.getValidatedTowersByYard('CY2');
-      
+
       if (mounted) {
         setState(() {
           towers = fetchedTowers;
@@ -74,7 +74,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
         });
       }
 
-      _triggerRealtimePing(); 
+      _triggerRealtimePing();
     } catch (e) {
       print('Error Loading Tower CY2: $e');
       if (mounted) setState(() => isLoading = false);
@@ -125,8 +125,6 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
       print('Error Triggering Ping Check (Ignored): $e');
     }
   }
-
-
 
   List<Tower> get paginatedData {
     int start = currentPage * itemsPerPage;
@@ -231,27 +229,18 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
             children: [
               const GlobalHeaderBar(currentRoute: '/network-cy2'),
               Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Sidebar (Kiri)
-                    const GlobalSidebarNav(currentRoute: '/network-cy2'),
-                    const SizedBox(width: 12),
-                    // Content (Kanan)
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            return Padding(
-                              padding: EdgeInsets.all(isMobile ? 8 : 20.0),
-                              child: _buildContent(context, constraints),
-                            );
-                          },
-                        ),
+                child: GlobalSidebarNav(
+                    currentRoute: '/network-cy2',
+                    child: SingleChildScrollView(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          return Padding(
+                            padding: EdgeInsets.all(isMobile ? 8 : 20.0),
+                            child: _buildContent(context, constraints),
+                          );
+                        },
                       ),
-                    ),
-                  ],
-                ),
+                    )),
               ),
               const GlobalFooter(),
             ],
@@ -261,7 +250,6 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
       ),
     );
   }
-
 
   Widget _buildContent(BuildContext context, BoxConstraints constraints) {
     final isMobile = isMobileScreen(context);
@@ -277,8 +265,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                 color: const Color(0xFF1976D2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.language,
-                  size: 32, color: Colors.white),
+              child: const Icon(Icons.language, size: 32, color: Colors.white),
             ),
             const SizedBox(width: 16),
             Column(
@@ -524,7 +511,8 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                   color: Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 20),
+                child: const Icon(Icons.location_on_rounded,
+                    color: Colors.white, size: 20),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -557,29 +545,36 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                         dropdownColor: AppDropdownStyle.menuBackground,
                         borderRadius: AppDropdownStyle.menuBorderRadius,
                         isExpanded: true,
-                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 20),
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                            color: Colors.white, size: 20),
                         items: _areaOptions.map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
                             child: Text(
                               value,
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700),
                             ),
                           );
                         }).toList(),
                         onChanged: (String? newValue) {
                           if (newValue == null) return;
-                          
+
                           if (newValue == 'CY 1') {
                             Navigator.pushReplacementNamed(context, '/network');
                           } else if (newValue == 'CY 2') {
-                            Navigator.pushReplacementNamed(context, '/network-cy2');
+                            Navigator.pushReplacementNamed(
+                                context, '/network-cy2');
                           } else if (newValue == 'CY 3') {
-                            Navigator.pushReplacementNamed(context, '/network-cy3');
+                            Navigator.pushReplacementNamed(
+                                context, '/network-cy3');
                           } else if (newValue == 'GATE') {
-                            Navigator.pushReplacementNamed(context, '/network-gate');
+                            Navigator.pushReplacementNamed(
+                                context, '/network-gate');
                           } else if (newValue == 'PARKING') {
-                            Navigator.pushReplacementNamed(context, '/network-parking');
+                            Navigator.pushReplacementNamed(
+                                context, '/network-parking');
                           }
                         },
                       ),
@@ -662,6 +657,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
       ),
     );
   }
+
   Widget _buildCheckStatusButton(double width) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -715,7 +711,8 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                       color: const Color(0xFF4CAF50).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+                    child: const Icon(Icons.refresh_rounded,
+                        color: Colors.white, size: 20),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -891,7 +888,8 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
             children: [
               // Header
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                 width: double.infinity,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -915,105 +913,119 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                     ),
                     // Pagination Controls
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white.withOpacity(0.2)),
+                        border:
+                            Border.all(color: Colors.white.withOpacity(0.2)),
                       ),
                       child: Row(
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.chevron_left_rounded, size: 22, color: Colors.white),
-                            onPressed: currentPage > 0 ? () => setState(() => currentPage--) : null,
+                            icon: const Icon(Icons.chevron_left_rounded,
+                                size: 22, color: Colors.white),
+                            onPressed: currentPage > 0
+                                ? () => setState(() => currentPage--)
+                                : null,
                             constraints: const BoxConstraints(),
                             padding: EdgeInsets.zero,
                           ),
                           const SizedBox(width: 8),
 
-                      // LIST ANGKA HALAMAN
-                      // Kita generate angka berdasarkan totalPages
-                      ...List.generate(totalPages, (index) {
-                        bool isCurrentPage = index == currentPage;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              currentPage = index;
-                            });
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              // Beri warna background jika halaman sedang aktif
-                              color: isCurrentPage ? const Color(0xFF1976D2) : Colors.transparent,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                // Beri warna teks putih jika aktif, biru jika tidak aktif
-                                color: isCurrentPage ? Colors.white : const Color(0xFF1976D2),
+                          // LIST ANGKA HALAMAN
+                          // Kita generate angka berdasarkan totalPages
+                          ...List.generate(totalPages, (index) {
+                            bool isCurrentPage = index == currentPage;
+                            return GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  currentPage = index;
+                                });
+                              },
+                              child: Container(
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  // Beri warna background jika halaman sedang aktif
+                                  color: isCurrentPage
+                                      ? const Color(0xFF1976D2)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  '${index + 1}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    // Beri warna teks putih jika aktif, biru jika tidak aktif
+                                    color: isCurrentPage
+                                        ? Colors.white
+                                        : const Color(0xFF1976D2),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                        );
-                      }),
+                            );
+                          }),
 
-                      const SizedBox(width: 8),
-                      // Tombol Next
-                      IconButton(
-                        icon: const Icon(Icons.chevron_right, size: 20),
-                        onPressed: currentPage < totalPages - 1 ? () => setState(() => currentPage++) : null,
-                        constraints: const BoxConstraints(),
-                        padding: EdgeInsets.zero,
+                          const SizedBox(width: 8),
+                          // Tombol Next
+                          IconButton(
+                            icon: const Icon(Icons.chevron_right, size: 20),
+                            onPressed: currentPage < totalPages - 1
+                                ? () => setState(() => currentPage++)
+                                : null,
+                            constraints: const BoxConstraints(),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ],
                       ),
+                    ),
+                  ],
+                ),
+              ),
+              // Table Header
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFFC6B430).withOpacity(0.8),
+                      const Color(0xFFC6B430).withOpacity(0.4),
                     ],
                   ),
                 ),
-              ],
-            ),
-          ),
-          // Table Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFFC6B430).withOpacity(0.8), 
-                      const Color(0xFFC6B430).withOpacity(0.4), 
-                    ],
-                  ),
-            ),
-            child: Row(
-              children: [
-                _buildHeaderCell('Access Point ID', flex: 1),
-                _buildHeaderCell('Location', flex: 2),
-                _buildHeaderCell('IP Address', flex: 2),
-                _buildHeaderCell('Status', flex: 1),
-                _buildHeaderCell('Action', flex: 1, isLast: true),
-              ],
-            ),
-          ),
+                child: Row(
+                  children: [
+                    _buildHeaderCell('Access Point ID', flex: 1),
+                    _buildHeaderCell('Location', flex: 2),
+                    _buildHeaderCell('IP Address', flex: 2),
+                    _buildHeaderCell('Status', flex: 1),
+                    _buildHeaderCell('Action', flex: 1, isLast: true),
+                  ],
+                ),
+              ),
 
-          // Table Rows
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: paginatedData.length,
-            itemBuilder: (context, index) {
-              return _buildTableRow(paginatedData[index]);
-            },
+              // Table Rows
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: paginatedData.length,
+                itemBuilder: (context, index) {
+                  return _buildTableRow(paginatedData[index]);
+                },
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-    ),
-  ),
-);
-}
+    );
+  }
 
   Widget _buildTableRow(Tower tower) {
     bool isWarning = isDownStatus(tower.status);
@@ -1044,9 +1056,11 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildActionButton(Icons.edit_rounded, Colors.blueAccent, () => _showEditForm(tower)),
+                _buildActionButton(Icons.edit_rounded, Colors.blueAccent,
+                    () => _showEditForm(tower)),
                 const SizedBox(width: 12),
-                _buildActionButton(Icons.delete_rounded, Colors.redAccent, () => _confirmDelete(tower)),
+                _buildActionButton(Icons.delete_rounded, Colors.redAccent,
+                    () => _confirmDelete(tower)),
               ],
             ),
           ),
@@ -1097,7 +1111,8 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     );
   }
 
-  Widget _buildHeaderCell(String label, {required int flex, bool isLast = false}) {
+  Widget _buildHeaderCell(String label,
+      {required int flex, bool isLast = false}) {
     return Expanded(
       flex: flex,
       child: Text(
@@ -1200,7 +1215,8 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                   );
                   setLocalState(() {
                     selectedLocation = value;
-                    selectedYard = option['container_yard'] ?? tower.containerYard;
+                    selectedYard =
+                        option['container_yard'] ?? tower.containerYard;
                   });
                 },
               ),
@@ -1278,7 +1294,8 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.black87)),
+            child:
+                const Text('Cancel', style: TextStyle(color: Colors.black87)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1328,5 +1345,3 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     );
   }
 }
-
-

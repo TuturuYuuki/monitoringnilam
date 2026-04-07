@@ -51,16 +51,12 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage> {
           children: [
             const GlobalHeaderBar(currentRoute: '/device-diagnostics'),
             Expanded(
-              child: Row(
-                children: [
-                  if (!isMobile)
-                    const GlobalSidebarNav(currentRoute: '/device-diagnostics'),
-                  const Expanded(
-                    child: Center(
-                      child: CircularProgressIndicator(color: Colors.white),
-                    ),
-                  ),
-                ],
+              child: GlobalSidebarNav(
+                currentRoute: '/device-diagnostics',
+                enabled: !isMobile,
+                child: const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
               ),
             ),
             const GlobalFooter(),
@@ -79,132 +75,127 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage> {
         children: [
           const GlobalHeaderBar(currentRoute: '/device-diagnostics'),
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (!isMobile)
-                  const GlobalSidebarNav(currentRoute: '/device-diagnostics'),
-                if (!isMobile) const SizedBox(width: 12),
-                Expanded(
-                  child: SafeArea(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 6),
-                                  decoration: BoxDecoration(
+            child: GlobalSidebarNav(
+                currentRoute: '/device-diagnostics',
+                enabled: !isMobile,
+                child: SafeArea(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: _controller.isLiveData
+                                      ? Colors.green.withValues(alpha: 0.18)
+                                      : Colors.orange.withValues(alpha: 0.18),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
                                     color: _controller.isLiveData
-                                        ? Colors.green.withValues(alpha: 0.18)
-                                        : Colors.orange.withValues(alpha: 0.18),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: _controller.isLiveData
-                                          ? Colors.greenAccent.withValues(alpha: 0.8)
-                                          : Colors.orangeAccent.withValues(alpha: 0.8),
-                                    ),
+                                        ? Colors.greenAccent
+                                            .withValues(alpha: 0.8)
+                                        : Colors.orangeAccent
+                                            .withValues(alpha: 0.8),
                                   ),
-                                  child: Text(
-                                    _controller.isLiveData
-                                        ? 'Data Source: Backend'
+                                ),
+                                child: Text(
+                                  _controller.isLiveData
+                                      ? 'Data Source: Backend'
                                       : 'Data Source: No Data',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 11,
-                                    ),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 11,
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                _buildPerformanceButton(
-                                  context,
-                                  controller: _controller,
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (_controller.errorMessage != null) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              _controller.errorMessage!,
-                              style: const TextStyle(
-                                color: Colors.orangeAccent,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
                               ),
-                            ),
-                          ],
-                          const SizedBox(height: 12),
-                          DeviceDiagnosticsHeaderCard(viewModel: viewModel),
-                          const SizedBox(height: 16),
-                          MetricSummaryGrid(
-                            isMobile: isMobile,
-                            metrics: _controller.metrics,
+                              const SizedBox(width: 8),
+                              _buildPerformanceButton(
+                                context,
+                                controller: _controller,
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 24),
-                          if (isMobile)
-                            Column(
-                              children: [
-                                DiagnosticsLineChartCard(
+                        ),
+                        if (_controller.errorMessage != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            _controller.errorMessage!,
+                            style: const TextStyle(
+                              color: Colors.orangeAccent,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                        DeviceDiagnosticsHeaderCard(viewModel: viewModel),
+                        const SizedBox(height: 16),
+                        MetricSummaryGrid(
+                          isMobile: isMobile,
+                          metrics: _controller.metrics,
+                        ),
+                        const SizedBox(height: 24),
+                        if (isMobile)
+                          Column(
+                            children: [
+                              DiagnosticsLineChartCard(
+                                title: 'Response Time',
+                                subtitle: 'Last 1 hour',
+                                spots: responseTimeSpots,
+                                color: Colors.lightBlueAccent,
+                              ),
+                              const SizedBox(height: 16),
+                              DiagnosticsLineChartCard(
+                                title: 'Packet Loss',
+                                subtitle: 'Last 1 hour',
+                                spots: packetLossSpots,
+                                color: Colors.orangeAccent,
+                                showPercentInLeftAxis: true,
+                              ),
+                            ],
+                          )
+                        else
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: DiagnosticsLineChartCard(
                                   title: 'Response Time',
                                   subtitle: 'Last 1 hour',
                                   spots: responseTimeSpots,
                                   color: Colors.lightBlueAccent,
                                 ),
-                                const SizedBox(height: 16),
-                                DiagnosticsLineChartCard(
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: DiagnosticsLineChartCard(
                                   title: 'Packet Loss',
                                   subtitle: 'Last 1 hour',
                                   spots: packetLossSpots,
                                   color: Colors.orangeAccent,
                                   showPercentInLeftAxis: true,
                                 ),
-                              ],
-                            )
-                          else
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: DiagnosticsLineChartCard(
-                                    title: 'Response Time',
-                                    subtitle: 'Last 1 hour',
-                                    spots: responseTimeSpots,
-                                    color: Colors.lightBlueAccent,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: DiagnosticsLineChartCard(
-                                    title: 'Packet Loss',
-                                    subtitle: 'Last 1 hour',
-                                    spots: packetLossSpots,
-                                    color: Colors.orangeAccent,
-                                    showPercentInLeftAxis: true,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          const SizedBox(height: 24),
-                          RecentEventsTable(
-                            rows: _controller.events,
-                            isLiveData: _controller.isLiveData,
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 24),
-                        ],
-                      ),
+                        const SizedBox(height: 24),
+                        RecentEventsTable(
+                          rows: _controller.events,
+                          isLiveData: _controller.isLiveData,
+                        ),
+                        const SizedBox(height: 24),
+                      ],
                     ),
                   ),
-                ),
-              ],
-            ),
+                )),
           ),
           const GlobalFooter(),
         ],
@@ -233,4 +224,3 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage> {
     );
   }
 }
-

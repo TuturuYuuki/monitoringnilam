@@ -401,40 +401,30 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
         children: [
           const GlobalHeaderBar(currentRoute: '/tower-management'),
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Sidebar (Kiri) — hidden on mobile
-                if (!isMobile)
-                  const GlobalSidebarNav(currentRoute: '/tower-management'),
-                if (!isMobile) const SizedBox(width: 12),
-                // Content (Kanan)
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.all(isMobile ? 10 : 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildInventoryStats(),
-                        const SizedBox(height: 24),
-                        _buildAddTowerForm(),
-                        const SizedBox(height: 28),
-                        const Text(
-                          'All Master Location',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
+            child: GlobalSidebarNav(
+                currentRoute: '/tower-management',
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(isMobile ? 10 : 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildInventoryStats(),
+                      const SizedBox(height: 24),
+                      _buildAddTowerForm(),
+                      const SizedBox(height: 28),
+                      const Text(
+                        'All Master Location',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
-                        const SizedBox(height: 14),
-                        _buildUnifiedMasterTable(),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 14),
+                      _buildUnifiedMasterTable(),
+                    ],
                   ),
-                ),
-              ],
-            ),
+                )),
           ),
           const GlobalFooter(),
         ],
@@ -1350,64 +1340,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                   ],
                 ),
               ),
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                            LayoutBuilder(
+              LayoutBuilder(
                 builder: (context, constraints) {
                   return Container(
                     width: constraints.maxWidth,
@@ -1509,9 +1442,9 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                                               borderRadius:
                                                   BorderRadius.circular(20),
                                               border: Border.all(
-                                                  color: Colors.white
-                                                      .withOpacity(0.35),
-                                                  width: 1,
+                                                color: Colors.white
+                                                    .withOpacity(0.35),
+                                                width: 1,
                                               ),
                                             ),
                                             child: Text(
@@ -1594,15 +1527,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                           ),
                         // FOOTER / PAGINATION
 
-
-
-
-
-
-
-
-
-                                                if (unified.length > itemsPerPage)
+                        if (unified.length > itemsPerPage)
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -1613,7 +1538,6 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                                   top: BorderSide(color: Colors.white10)),
                             ),
                             child: Row(
-
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(

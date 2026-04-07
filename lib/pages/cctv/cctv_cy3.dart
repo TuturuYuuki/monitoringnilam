@@ -147,7 +147,8 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
       }
 
       final apiService = ApiService();
-      final validatedCameras = await apiService.getValidatedCamerasByYard('CY3');
+      final validatedCameras =
+          await apiService.getValidatedCamerasByYard('CY3');
 
       if (mounted) {
         setState(() {
@@ -205,26 +206,18 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
         children: [
           const GlobalHeaderBar(currentRoute: '/cctv-cy3'),
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (!isMobile)
-                  const GlobalSidebarNav(currentRoute: '/cctv-cy3'),
-                if (!isMobile) const SizedBox(width: 12),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        return Padding(
-                          padding: EdgeInsets.all(isMobile ? 12 : 24),
-                          child: _buildContent(context, constraints),
-                        );
-                      },
-                    ),
+            child: GlobalSidebarNav(
+                currentRoute: '/cctv-cy3',
+                child: SingleChildScrollView(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Padding(
+                        padding: EdgeInsets.all(isMobile ? 12 : 24),
+                        child: _buildContent(context, constraints),
+                      );
+                    },
                   ),
-                ),
-              ],
-            ),
+                )),
           ),
           const GlobalFooter(),
         ],
@@ -757,7 +750,13 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
   }
 
   Widget _buildCCTVDropdown(double width) {
-    final List<String> areaOptions = ['CY 1', 'CY 2', 'CY 3', 'GATE', 'PARKING'];
+    final List<String> areaOptions = [
+      'CY 1',
+      'CY 2',
+      'CY 3',
+      'GATE',
+      'PARKING'
+    ];
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
@@ -789,7 +788,8 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                   color: Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 20),
+                child: const Icon(Icons.location_on_rounded,
+                    color: Colors.white, size: 20),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -807,7 +807,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                       ),
                     ),
                     const SizedBox(height: 2),
-                     DropdownButtonHideUnderline(
+                    DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: null,
                         hint: const Text(
@@ -822,29 +822,36 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                         dropdownColor: AppDropdownStyle.menuBackground,
                         borderRadius: AppDropdownStyle.menuBorderRadius,
                         isExpanded: true,
-                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 20),
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                            color: Colors.white, size: 20),
                         items: areaOptions.map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
                             child: Text(
                               value,
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700),
                             ),
                           );
                         }).toList(),
                         onChanged: (String? newValue) {
                           if (newValue == null) return;
-                          
+
                           if (newValue == 'CY 1') {
                             Navigator.pushReplacementNamed(context, '/cctv');
                           } else if (newValue == 'CY 2') {
-                            Navigator.pushReplacementNamed(context, '/cctv-cy2');
+                            Navigator.pushReplacementNamed(
+                                context, '/cctv-cy2');
                           } else if (newValue == 'CY 3') {
-                            Navigator.pushReplacementNamed(context, '/cctv-cy3');
+                            Navigator.pushReplacementNamed(
+                                context, '/cctv-cy3');
                           } else if (newValue == 'GATE') {
-                            Navigator.pushReplacementNamed(context, '/cctv-gate');
+                            Navigator.pushReplacementNamed(
+                                context, '/cctv-gate');
                           } else if (newValue == 'PARKING') {
-                            Navigator.pushReplacementNamed(context, '/cctv-parking');
+                            Navigator.pushReplacementNamed(
+                                context, '/cctv-parking');
                           }
                         },
                       ),
@@ -890,7 +897,8 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                   color: const Color(0xFF1976D2).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.business_rounded, color: Colors.white, size: 20),
+                child: const Icon(Icons.business_rounded,
+                    color: Colors.white, size: 20),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -980,7 +988,8 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                       color: Colors.white.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+                    child: const Icon(Icons.refresh_rounded,
+                        color: Colors.white, size: 20),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -1047,7 +1056,8 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                  CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 3),
                   SizedBox(height: 20),
                   Text(
                     'LOADING CAMERA DATA...',
@@ -1178,8 +1188,8 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                         color: statusColor,
                         shape: BoxShape.circle,
                       ),
-                          child: const Icon(Icons.videocam,
-                            color: Colors.white, size: 18),
+                      child: const Icon(Icons.videocam,
+                          color: Colors.white, size: 18),
                     ),
                   ),
                 ),
@@ -1324,7 +1334,9 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
                               '${index + 1}',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                                fontWeight: isCurrent
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                               ),
                             ),
                           ),
@@ -1351,7 +1363,6 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
     );
   }
 
-
   Future<void> _showEditCameraForm(Camera camera) async {
     final ipController = TextEditingController(text: camera.ipAddress);
     var locationOptions = buildMasterLocationOptions(
@@ -1373,8 +1384,8 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
       camera.location,
       currentContainerYard: camera.containerYard,
     );
-    var selectedLocation = matchedOption?['label'] ??
-        normalizeLocationLabel(camera.location);
+    var selectedLocation =
+        matchedOption?['label'] ?? normalizeLocationLabel(camera.location);
     var selectedArea = matchedOption?['container_yard'] ?? camera.containerYard;
 
     showDialog(
@@ -1382,73 +1393,73 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
       builder: (context) => StatefulBuilder(
         builder: (context, setLocalState) => AlertDialog(
           title: Text('Edit ${camera.cameraId}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: ipController,
-              decoration: const InputDecoration(labelText: 'IP Address'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: ipController,
+                decoration: const InputDecoration(labelText: 'IP Address'),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: selectedLocation,
+                isExpanded: true,
+                dropdownColor: AppDropdownStyle.menuBackground,
+                borderRadius: AppDropdownStyle.menuBorderRadius,
+                decoration: const InputDecoration(labelText: 'Location'),
+                items: locationOptions
+                    .map((option) => DropdownMenuItem<String>(
+                          value: option['label'],
+                          child: Text(option['label'] ?? ''),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  final option = locationOptions.firstWhere(
+                    (item) => item['label'] == value,
+                    orElse: () => locationOptions.first,
+                  );
+                  setLocalState(() {
+                    selectedLocation = value;
+                    selectedArea = option['container_yard'] ?? selectedArea;
+                  });
+                },
+              ),
+            ],
+          ),
+          actions: [
+            // Tombol Cancel
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
             ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: selectedLocation,
-              isExpanded: true,
-              dropdownColor: AppDropdownStyle.menuBackground,
-              borderRadius: AppDropdownStyle.menuBorderRadius,
-              decoration: const InputDecoration(labelText: 'Location'),
-              items: locationOptions
-                  .map((option) => DropdownMenuItem<String>(
-                        value: option['label'],
-                        child: Text(option['label'] ?? ''),
-                      ))
-                  .toList(),
-              onChanged: (value) {
-                if (value == null) return;
-                final option = locationOptions.firstWhere(
-                  (item) => item['label'] == value,
-                  orElse: () => locationOptions.first,
+            // Tombol Save
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () async {
+                final response = await ApiService().updateCamera(
+                  camera.cameraId,
+                  {
+                    'ip_address': ipController.text,
+                    'location': selectedLocation,
+                    'container_yard': selectedArea,
+                  },
                 );
-                setLocalState(() {
-                  selectedLocation = value;
-                  selectedArea = option['container_yard'] ?? selectedArea;
-                });
+
+                if (response['success'] == true) {
+                  if (mounted) {
+                    Navigator.pop(context); // Menutup dialog
+                    _loadCameras(); // Refresh data
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Updated Successfully'),
+                        backgroundColor: Colors.green));
+                  }
+                }
               },
+              child: const Text('Save', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
-        actions: [
-          // Tombol Cancel
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          // Tombol Save
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () async {
-              final response = await ApiService().updateCamera(
-                camera.cameraId,
-                {
-                  'ip_address': ipController.text,
-                  'location': selectedLocation,
-                  'container_yard': selectedArea,
-                },
-              );
-
-              if (response['success'] == true) {
-                if (mounted) {
-                  Navigator.pop(context); // Menutup dialog
-                  _loadCameras(); // Refresh data
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Updated Successfully'),
-                      backgroundColor: Colors.green));
-                }
-              }
-            },
-            child: const Text('Save', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
       ),
     );
   }
@@ -1521,5 +1532,3 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
     );
   }
 }
-
-

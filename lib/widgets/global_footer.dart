@@ -12,7 +12,7 @@ class GlobalFooter extends StatelessWidget {
       child: const Align(
         alignment: Alignment.centerLeft,
         child: Text(
-          '©2026 TPK Nilam Monitoring System',
+          '© 2026 Pelindo Terminal Petikemas Teluk Lamong - TPK Nilam',
           style: TextStyle(color: Colors.white, fontSize: 12),
         ),
       ),

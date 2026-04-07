@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 import 'package:fl_chart/fl_chart.dart';
@@ -17,11 +18,22 @@ class GlobalDiagnosticsPage extends StatefulWidget {
 class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
   final GlobalDiagnosticsController _controller = GlobalDiagnosticsController();
   bool _isRefreshing = false;
+  Timer? _autoRefreshTimer;
 
   @override
   void initState() {
     super.initState();
     _bootstrap();
+    _autoRefreshTimer = Timer.periodic(
+      const Duration(seconds: 10),
+      (_) => _refreshDiagnostics(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _bootstrap() async {
@@ -80,7 +92,7 @@ class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
         (snapshot.packetLossPercent * 8).clamp(0, 100).toDouble();
     final upCount = snapshot.nodeUp;
     final downCount =
-      snapshot.nodeWarning + snapshot.nodeCritical + snapshot.nodeUndefined;
+        snapshot.nodeWarning + snapshot.nodeCritical + snapshot.nodeUndefined;
 
     final diskVolumes = snapshot.diskVolumes
         .map((item) => _DiskVolumeRow(
@@ -93,8 +105,9 @@ class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
 
     final topCpuBars = snapshot.topCpuSeries.map((item) {
       final color = _parseHexColor(item.colorHex);
-      final series =
-          item.series.map((point) => FlSpot(point.x, point.y)).toList(growable: false);
+      final series = item.series
+          .map((point) => FlSpot(point.x, point.y))
+          .toList(growable: false);
       return _CpuBarData(
         item.name,
         item.deviceType,
@@ -121,208 +134,210 @@ class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
         children: [
           const GlobalHeaderBar(currentRoute: '/global-diagnostics'),
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (!isMobile)
-                  const GlobalSidebarNav(currentRoute: '/global-diagnostics'),
-                if (!isMobile) const SizedBox(width: 12),
-                Expanded(
-                  child: SafeArea(
-                    child: SingleChildScrollView(
+            child: GlobalSidebarNav(
+                currentRoute: '/global-diagnostics',
+                child: SafeArea(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Container(
                       padding: const EdgeInsets.all(16),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEDF1F5),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFC7CDD4)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Expanded(
-                                  child: Text(
-                                    'Global Diagnostics',
-                                    style: TextStyle(
-                                      color: Color(0xFF2C3E50),
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                      decoration: BoxDecoration(
+                        color: Color(0xFF2C3E50).withValues(alpha: 0.24),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.12)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 30,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Global Diagnostics',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.95),
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.5,
                                   ),
                                 ),
-                                FilledButton.icon(
-                                  onPressed: (_controller.isLoading || _isRefreshing)
-                                      ? null
-                                      : _refreshDiagnostics,
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: const Color(0xFF1565C0),
-                                    foregroundColor: Colors.white,
-                                  ),
-                                  icon: (_controller.isLoading || _isRefreshing)
-                                      ? const SizedBox(
-                                          height: 14,
-                                          width: 14,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                      : const Icon(Icons.refresh),
-                                  label: const Text('Refresh'),
+                              ),
+                              FilledButton.icon(
+                                onPressed:
+                                    (_controller.isLoading || _isRefreshing)
+                                        ? null
+                                        : _refreshDiagnostics,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xFF1565C0),
+                                  foregroundColor: Colors.white,
                                 ),
-                              ],
+                                icon: (_controller.isLoading || _isRefreshing)
+                                    ? const SizedBox(
+                                        height: 14,
+                                        width: 14,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(Icons.refresh),
+                                label: const Text('Refresh'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          if (_controller.errorMessage != null) ...[
+                            _StatusBanner(
+                              message: _controller.errorMessage!,
+                              backgroundColor: const Color(0xFFFFF4E5),
+                              borderColor: const Color(0xFFFFC107),
+                              textColor: const Color(0xFF9A6700),
                             ),
-                            const SizedBox(height: 10),
-                            if (_controller.errorMessage != null) ...[
-                              _StatusBanner(
-                                message: _controller.errorMessage!,
-                                backgroundColor: const Color(0xFFFFF4E5),
-                                borderColor: const Color(0xFFFFC107),
-                                textColor: const Color(0xFF9A6700),
-                              ),
-                            ],
-                            if (_controller.isLoading) ...[
-                              const SizedBox(height: 8),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(99),
-                                child:
-                                    const LinearProgressIndicator(minHeight: 4),
-                              ),
-                            ],
-                            const SizedBox(height: 10),
-                            _SummaryMetricsBar(
-                              cpuValue: cpuValue,
-                              memoryValue: memoryValue,
-                              responseTimeMs: snapshot.responseTimeMs,
-                              packetLossPercent: snapshot.packetLossPercent,
-                              upCount: upCount,
-                              downCount: downCount,
-                            ),
-                            const SizedBox(height: 10),
-                            if (isMobile) ...[
-                              _SectionGroupCard(
-                                child: Column(
-                                  children: [
-                                    _LatencyPacketChartPanel(
-                                      latencySpots: latencySpots,
-                                      packetLossSpots: packetLossSpots,
-                                      latencyLabel:
-                                          '${snapshot.responseTimeMs.toStringAsFixed(2)} ms',
-                                      packetLossLabel:
-                                          '${snapshot.packetLossPercent.toStringAsFixed(2)} %',
-                                    ),
-                                    const SizedBox(height: 10),
-                                    _CpuAveragePanel(spots: cpuLoadSpots),
-                                    const SizedBox(height: 10),
-                                    _TopCpusPanel(bars: topCpuBars),
-                                    const SizedBox(height: 10),
-                                    _DiskUsageTrendPanel(
-                                      spotsA: diskUsageSpotsA,
-                                      spotsB: diskUsageSpotsB,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              _SectionGroupCard(
-                                child: Column(
-                                  children: [
-                                    _DiskVolumesPanel(rows: diskVolumes),
-                                    const SizedBox(height: 10),
-                                    _CpuMemoryPanel(
-                                        cpuValue: cpuValue,
-                                        memoryValue: memoryValue),
-                                    const SizedBox(height: 10),
-                                    _LatencyLossGaugePanel(
-                                      latencyValue: latencyGaugeValue,
-                                      packetLossValue: packetGaugeValue,
-                                    ),
-                                    const SizedBox(height: 10),
-                                    _HighErrorsPanel(rows: highErrorRows),
-                                  ],
-                                ),
-                              ),
-                            ] else ...[
-                              _SectionGroupCard(
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        children: [
-                                          _LatencyPacketChartPanel(
-                                            latencySpots: latencySpots,
-                                            packetLossSpots: packetLossSpots,
-                                            latencyLabel:
-                                                '${snapshot.responseTimeMs.toStringAsFixed(2)} ms',
-                                            packetLossLabel:
-                                                '${snapshot.packetLossPercent.toStringAsFixed(2)} %',
-                                          ),
-                                          const SizedBox(height: 10),
-                                          _CpuAveragePanel(spots: cpuLoadSpots),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        children: [
-                                          _TopCpusPanel(bars: topCpuBars),
-                                          const SizedBox(height: 10),
-                                          _DiskUsageTrendPanel(
-                                            spotsA: diskUsageSpotsA,
-                                            spotsB: diskUsageSpotsB,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              _SectionGroupCard(
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        children: [
-                                          _DiskVolumesPanel(rows: diskVolumes),
-                                          const SizedBox(height: 10),
-                                          _LatencyLossGaugePanel(
-                                            latencyValue: latencyGaugeValue,
-                                            packetLossValue: packetGaugeValue,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        children: [
-                                          _CpuMemoryPanel(
-                                              cpuValue: cpuValue,
-                                              memoryValue: memoryValue),
-                                          const SizedBox(height: 10),
-                                          _HighErrorsPanel(rows: highErrorRows),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
                           ],
-                        ),
+                          if (_controller.isLoading) ...[
+                            const SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(99),
+                              child:
+                                  const LinearProgressIndicator(minHeight: 4),
+                            ),
+                          ],
+                          const SizedBox(height: 10),
+                          _SummaryMetricsBar(
+                            cpuValue: cpuValue,
+                            memoryValue: memoryValue,
+                            responseTimeMs: snapshot.responseTimeMs,
+                            packetLossPercent: snapshot.packetLossPercent,
+                            upCount: upCount,
+                            downCount: downCount,
+                          ),
+                          const SizedBox(height: 10),
+                          if (isMobile) ...[
+                            _SectionGroupCard(
+                              child: Column(
+                                children: [
+                                  _LatencyPacketChartPanel(
+                                    latencySpots: latencySpots,
+                                    packetLossSpots: packetLossSpots,
+                                    latencyLabel:
+                                        '${snapshot.responseTimeMs.toStringAsFixed(2)} ms',
+                                    packetLossLabel:
+                                        '${snapshot.packetLossPercent.toStringAsFixed(2)} %',
+                                  ),
+                                  const SizedBox(height: 10),
+                                  _CpuAveragePanel(spots: cpuLoadSpots),
+                                  const SizedBox(height: 10),
+                                  _TopCpusPanel(bars: topCpuBars),
+                                  const SizedBox(height: 10),
+                                  _DiskUsageTrendPanel(
+                                    spotsA: diskUsageSpotsA,
+                                    spotsB: diskUsageSpotsB,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            _SectionGroupCard(
+                              child: Column(
+                                children: [
+                                  _DiskVolumesPanel(rows: diskVolumes),
+                                  const SizedBox(height: 10),
+                                  _CpuMemoryPanel(
+                                      cpuValue: cpuValue,
+                                      memoryValue: memoryValue),
+                                  const SizedBox(height: 10),
+                                  _LatencyLossGaugePanel(
+                                    latencyValue: latencyGaugeValue,
+                                    packetLossValue: packetGaugeValue,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  _HighErrorsPanel(rows: highErrorRows),
+                                ],
+                              ),
+                            ),
+                          ] else ...[
+                            _SectionGroupCard(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      children: [
+                                        _LatencyPacketChartPanel(
+                                          latencySpots: latencySpots,
+                                          packetLossSpots: packetLossSpots,
+                                          latencyLabel:
+                                              '${snapshot.responseTimeMs.toStringAsFixed(2)} ms',
+                                          packetLossLabel:
+                                              '${snapshot.packetLossPercent.toStringAsFixed(2)} %',
+                                        ),
+                                        const SizedBox(height: 10),
+                                        _CpuAveragePanel(spots: cpuLoadSpots),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      children: [
+                                        _TopCpusPanel(bars: topCpuBars),
+                                        const SizedBox(height: 10),
+                                        _DiskUsageTrendPanel(
+                                          spotsA: diskUsageSpotsA,
+                                          spotsB: diskUsageSpotsB,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            _SectionGroupCard(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      children: [
+                                        _DiskVolumesPanel(rows: diskVolumes),
+                                        const SizedBox(height: 10),
+                                        _LatencyLossGaugePanel(
+                                          latencyValue: latencyGaugeValue,
+                                          packetLossValue: packetGaugeValue,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      children: [
+                                        _CpuMemoryPanel(
+                                            cpuValue: cpuValue,
+                                            memoryValue: memoryValue),
+                                        const SizedBox(height: 10),
+                                        _HighErrorsPanel(rows: highErrorRows),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                )),
           ),
           const GlobalFooter(),
         ],
@@ -409,8 +424,8 @@ double _yAxisInterval(double maxY, {int targetTicks = 4}) {
 Widget _axisHintText(String yDescription) {
   return Text(
     'X: Waktu (24 jam, interval 5 jam)  |  Y: $yDescription',
-    style: const TextStyle(
-      color: Color(0xFF5E6D79),
+    style: TextStyle(
+      color: Colors.white.withValues(alpha: 0.85),
       fontSize: 11,
       fontWeight: FontWeight.w600,
     ),
@@ -430,8 +445,8 @@ Widget _bottomTimeTitleBuilder(
     space: 6,
     child: Text(
       _formatClock(time),
-      style: const TextStyle(
-        color: Color(0xFF5E6D79),
+      style: TextStyle(
+        color: Colors.white.withValues(alpha: 0.85),
         fontSize: 9,
         fontWeight: FontWeight.w600,
       ),
@@ -446,8 +461,8 @@ Widget _leftAxisTitleBuilder(double value, TitleMeta meta) {
   }
   return Text(
     value.toInt().toString(),
-    style: const TextStyle(
-      color: Color(0xFF5E6D79),
+    style: TextStyle(
+      color: Colors.white.withValues(alpha: 0.85),
       fontSize: 10,
       fontWeight: FontWeight.w600,
     ),
@@ -518,24 +533,56 @@ class _SummaryMetricsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFD3DAE1)),
-      ),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          _SummaryChip(label: 'UP', value: upCount.toString(), color: const Color(0xFF219653)),
-          _SummaryChip(label: 'DOWN', value: downCount.toString(), color: const Color(0xFFEB5757)),
-          _SummaryChip(label: 'CPU', value: '${cpuValue.toStringAsFixed(1)} %', color: const Color(0xFF2D9CDB)),
-          _SummaryChip(label: 'Memory', value: '${memoryValue.toStringAsFixed(1)} %', color: const Color(0xFF27AE60)),
-          _SummaryChip(label: 'Speed', value: '${responseTimeMs.toStringAsFixed(1)} ms', color: const Color(0xFFF2994A)),
-          _SummaryChip(label: 'Stability', value: '${packetLossPercent.toStringAsFixed(2)} % loss', color: const Color(0xFFEB5757)),
-        ],
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Color(0xFFFFFFFF).withValues(alpha: 0.6)),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0xFF87C5FF).withValues(alpha: 0.12),
+                blurRadius: 18,
+                spreadRadius: 1,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _SummaryChip(
+                  label: 'UP',
+                  value: upCount.toString(),
+                  color: const Color(0xFF219653)),
+              _SummaryChip(
+                  label: 'DOWN',
+                  value: downCount.toString(),
+                  color: const Color(0xFFEB5757)),
+              _SummaryChip(
+                  label: 'CPU',
+                  value: '${cpuValue.toStringAsFixed(1)} %',
+                  color: const Color(0xFF2D9CDB)),
+              _SummaryChip(
+                  label: 'Memory',
+                  value: '${memoryValue.toStringAsFixed(1)} %',
+                  color: const Color(0xFF27AE60)),
+              _SummaryChip(
+                  label: 'Speed',
+                  value: '${responseTimeMs.toStringAsFixed(1)} ms',
+                  color: const Color(0xFFF2994A)),
+              _SummaryChip(
+                  label: 'Stability',
+                  value: '${packetLossPercent.toStringAsFixed(2)} % loss',
+                  color: const Color(0xFFEB5757)),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -557,9 +604,9 @@ class _SummaryChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withValues(alpha: 0.32),
         borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
+        border: Border.all(color: color.withValues(alpha: 0.98), width: 1.2),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -569,15 +616,16 @@ class _SummaryChip extends StatelessWidget {
             style: TextStyle(
               color: color,
               fontSize: 12,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.15,
             ),
           ),
           Text(
             value,
             style: const TextStyle(
-              color: Color(0xFF2B3D4F),
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+              color: Colors.white, // Pure white value
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
             ),
           ),
         ],
@@ -598,19 +646,20 @@ class _SectionGroupCard extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.38),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFFFFFFF).withValues(alpha: 0.55)),
+            color: Colors.white.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(14),
+            border:
+                Border.all(color: Color(0xFFFFFFFF).withValues(alpha: 0.58)),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF6FB6FF).withValues(alpha: 0.20),
-                blurRadius: 18,
+                color: Color(0xFF87C5FF).withValues(alpha: 0.12),
+                blurRadius: 20,
                 spreadRadius: 1,
-                offset: const Offset(0, 6),
+                offset: const Offset(0, 8),
               ),
             ],
           ),
@@ -643,12 +692,13 @@ class _SolarPanel extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: _kPanelMinHeight),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.52),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFFFFFFF).withValues(alpha: 0.68)),
+              color: Colors.white.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(16),
+              border:
+                  Border.all(color: Color(0xFFFFFFFF).withValues(alpha: 0.62)),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF87C5FF).withValues(alpha: 0.22),
+                  color: Color(0xFF87C5FF).withValues(alpha: 0.15),
                   blurRadius: 22,
                   spreadRadius: 1,
                   offset: const Offset(0, 8),
@@ -659,10 +709,13 @@ class _SolarPanel extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.45),
-                    border: const Border(bottom: BorderSide(color: Color(0xFFD8DEE3))),
+                    color: Colors.white.withValues(alpha: 0.12),
+                    border: Border(
+                        bottom: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.22))),
                   ),
                   child: Row(
                     children: [
@@ -670,8 +723,8 @@ class _SolarPanel extends StatelessWidget {
                         child: Text(
                           title,
                           style: const TextStyle(
-                            color: Color(0xFF253647),
-                            fontSize: 15,
+                            color: Colors.white,
+                            fontSize: 16,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -877,8 +930,10 @@ class _GaugePainter extends CustomPainter {
 
     for (int i = 0; i <= 20; i++) {
       final angle = start + (sweep / 20) * i;
-      final p1 = Offset(center.dx + (radius - 1) * cos(angle), center.dy + (radius - 1) * sin(angle));
-      final p2 = Offset(center.dx + (radius - 12) * cos(angle), center.dy + (radius - 12) * sin(angle));
+      final p1 = Offset(center.dx + (radius - 1) * cos(angle),
+          center.dy + (radius - 1) * sin(angle));
+      final p2 = Offset(center.dx + (radius - 12) * cos(angle),
+          center.dy + (radius - 12) * sin(angle));
       canvas.drawLine(p1, p2, tickPaint);
     }
 
@@ -888,7 +943,8 @@ class _GaugePainter extends CustomPainter {
       ..strokeWidth = 3
       ..color = const Color(0xFFD9DDE2);
 
-    final needleEnd = Offset(center.dx + (radius - 24) * cos(needleAngle), center.dy + (radius - 24) * sin(needleAngle));
+    final needleEnd = Offset(center.dx + (radius - 24) * cos(needleAngle),
+        center.dy + (radius - 24) * sin(needleAngle));
     canvas.drawLine(center, needleEnd, needlePaint);
 
     final centerPaint = Paint()..color = const Color(0xFF8C9097);
@@ -922,7 +978,7 @@ class _DiskVolumesPanel extends StatelessWidget {
                 child: Text(
                   'No historical disk data',
                   style: TextStyle(
-                    color: Color(0xFF6A7480),
+                    color: Colors.white,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -963,11 +1019,19 @@ class _DiskRow extends StatelessWidget {
         : (percent >= 60 ? const Color(0xFF88B924) : const Color(0xFF41AE64));
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(8),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F8FA),
-        borderRadius: BorderRadius.circular(4),
+        color: const Color(0xFF3A4B5F).withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.8)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF87C5FF).withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -975,27 +1039,47 @@ class _DiskRow extends StatelessWidget {
           Text(
             name,
             style: const TextStyle(
-              color: Color(0xFF3B4D5D),
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Row(
             children: [
-              Expanded(child: Text('Size $size', style: const TextStyle(fontSize: 11, color: Color(0xFF607282)))),
-              Expanded(child: Text('Used $used', style: const TextStyle(fontSize: 11, color: Color(0xFF607282)))),
-              Text('$percent %', style: const TextStyle(fontSize: 11, color: Color(0xFF475666), fontWeight: FontWeight.w700)),
+              Expanded(
+                  child: Text('Size $size',
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white))),
+              Expanded(
+                  child: Text('Used $used',
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white))),
+              Text('$percent %',
+                  style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900)),
             ],
           ),
           const SizedBox(height: 6),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
-              minHeight: 8,
+              minHeight: 10,
               value: percent / 100,
-              backgroundColor: const Color(0xFFE3E9EE),
-              valueColor: AlwaysStoppedAnimation<Color>(barColor),
+              backgroundColor: const Color(0xFFE5E9EC),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                percent >= 85
+                    ? const Color(0xFFE67E22) // Warning Orange
+                    : (percent >= 60
+                        ? const Color(0xFFF1C40F) // Yellow
+                        : const Color(0xFF3498DB)), // Blue
+              ),
             ),
           ),
         ],
@@ -1079,18 +1163,24 @@ class _LatencyPacketChartPanel extends StatelessWidget {
                   gridData: FlGridData(
                     show: true,
                     drawVerticalLine: false,
-                    getDrawingHorizontalLine: (value) => const FlLine(color: Color(0xFFE7ECF1), strokeWidth: 1),
+                    getDrawingHorizontalLine: (value) => FlLine(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        strokeWidth: 1),
                   ),
                   borderData: FlBorderData(
                     show: true,
-                    border: const Border(
-                      bottom: BorderSide(color: Color(0xFFD6DEE5)),
-                      left: BorderSide(color: Color(0xFFD6DEE5)),
+                    border: Border(
+                      bottom: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.2)),
+                      left: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.2)),
                     ),
                   ),
                   titlesData: const FlTitlesData(
-                    topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles:
+                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles:
+                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   ).copyWith(
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
@@ -1105,7 +1195,9 @@ class _LatencyPacketChartPanel extends StatelessWidget {
                         showTitles: true,
                         interval: xInterval,
                         reservedSize: 28,
-                        getTitlesWidget: (value, meta) => _bottomTimeTitleBuilder(value, meta, bounds, startTime, endTime),
+                        getTitlesWidget: (value, meta) =>
+                            _bottomTimeTitleBuilder(
+                                value, meta, bounds, startTime, endTime),
                       ),
                     ),
                   ),
@@ -1150,9 +1242,13 @@ class _LatencyPacketChartPanel extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                _LegendTag(color: const Color(0xFF2C9FD6), text: '$latencyLabel  Average Response Time'),
+                _LegendTag(
+                    color: const Color(0xFF2C9FD6),
+                    text: '$latencyLabel  Average Response Time'),
                 const SizedBox(width: 8),
-                _LegendTag(color: const Color(0xFFE553B7), text: '$packetLossLabel  Packet Loss'),
+                _LegendTag(
+                    color: const Color(0xFFE553B7),
+                    text: '$packetLossLabel  Packet Loss'),
               ],
             ),
           ],
@@ -1219,18 +1315,24 @@ class _CpuAveragePanel extends StatelessWidget {
                   gridData: FlGridData(
                     show: true,
                     drawVerticalLine: false,
-                    getDrawingHorizontalLine: (value) => const FlLine(color: Color(0xFFE7ECF1), strokeWidth: 1),
+                    getDrawingHorizontalLine: (value) => FlLine(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        strokeWidth: 1),
                   ),
                   borderData: FlBorderData(
                     show: true,
-                    border: const Border(
-                      bottom: BorderSide(color: Color(0xFFD6DEE5)),
-                      left: BorderSide(color: Color(0xFFD6DEE5)),
+                    border: Border(
+                      bottom: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.2)),
+                      left: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.2)),
                     ),
                   ),
                   titlesData: const FlTitlesData(
-                    topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles:
+                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles:
+                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   ).copyWith(
                     leftTitles: const AxisTitles(
                       sideTitles: SideTitles(
@@ -1245,7 +1347,9 @@ class _CpuAveragePanel extends StatelessWidget {
                         showTitles: true,
                         interval: xInterval,
                         reservedSize: 28,
-                        getTitlesWidget: (value, meta) => _bottomTimeTitleBuilder(value, meta, bounds, startTime, endTime),
+                        getTitlesWidget: (value, meta) =>
+                            _bottomTimeTitleBuilder(
+                                value, meta, bounds, startTime, endTime),
                       ),
                     ),
                   ),
@@ -1312,16 +1416,63 @@ class _TopCpusPanel extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: items.isEmpty
-            ? const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: Text(
-                  'No historical device CPU data',
-                  style: TextStyle(
-                    color: Color(0xFF6A7480),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _axisHintText('CPU Utilization per Device (%)'),
+                  const SizedBox(height: 8),
+                  Opacity(
+                    opacity: 0,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: const [
+                        _TrendTag(
+                          label: 'CPU Load',
+                          trend: _SeriesTrend(0),
+                          unit: '%',
+                        ),
+                        _TrendTag(
+                          label: 'CPU Load',
+                          trend: _SeriesTrend(0),
+                          unit: '%',
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: _kChartHeight,
+                    child: Center(
+                      child: Text(
+                        'No historical device CPU data',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Opacity(
+                    opacity: 0,
+                    child: Row(
+                      children: const [
+                        _LegendTag(
+                          color: Color(0xFF2C9FD6),
+                          text: '0.00% Average Response Time',
+                        ),
+                        SizedBox(width: 8),
+                        _LegendTag(
+                          color: Color(0xFFE553B7),
+                          text: '0.00% Packet Loss',
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               )
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1349,11 +1500,10 @@ class _TopCpusPanel extends StatelessWidget {
                         gridData: FlGridData(
                           show: true,
                           drawVerticalLine: false,
-                          getDrawingHorizontalLine: (value) =>
-                              const FlLine(
-                                color: Color(0xFFE7ECF1),
-                                strokeWidth: 1,
-                              ),
+                          getDrawingHorizontalLine: (value) => const FlLine(
+                            color: Color(0xFFE7ECF1),
+                            strokeWidth: 1,
+                          ),
                         ),
                         borderData: FlBorderData(
                           show: true,
@@ -1363,8 +1513,10 @@ class _TopCpusPanel extends StatelessWidget {
                           ),
                         ),
                         titlesData: const FlTitlesData(
-                          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          topTitles: AxisTitles(
+                              sideTitles: SideTitles(showTitles: false)),
+                          rightTitles: AxisTitles(
+                              sideTitles: SideTitles(showTitles: false)),
                         ).copyWith(
                           leftTitles: const AxisTitles(
                             sideTitles: SideTitles(
@@ -1381,12 +1533,12 @@ class _TopCpusPanel extends StatelessWidget {
                               reservedSize: 28,
                               getTitlesWidget: (value, meta) =>
                                   _bottomTimeTitleBuilder(
-                                    value,
-                                    meta,
-                                    bounds,
-                                    startTime,
-                                    endTime,
-                                  ),
+                                value,
+                                meta,
+                                bounds,
+                                startTime,
+                                endTime,
+                              ),
                             ),
                           ),
                         ),
@@ -1530,14 +1682,14 @@ class _HighErrorsPanel extends StatelessWidget {
                     for (int i = 0; i < rows.length; i++)
                       TableRow(
                         decoration: BoxDecoration(
-                          color: i.isEven
-                              ? Colors.white
-                              : const Color(0xFFF7FAFD),
+                          color:
+                              i.isEven ? Colors.white : const Color(0xFFF7FAFD),
                         ),
                         children: [
                           _TableValueCell(text: rows[i].node, isBold: true),
                           _TableValueCell(text: rows[i].interfaceName),
-                          _TableValueCell(text: rows[i].receiveErrors.toString()),
+                          _TableValueCell(
+                              text: rows[i].receiveErrors.toString()),
                           _TableValueCell(
                             text: rows[i].receiveDiscards.toString(),
                           ),
@@ -1573,8 +1725,18 @@ class _DiskUsageTrendPanel extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _axisHintText('Disk Usage (%)'),
+            const SizedBox(height: 8),
+            Opacity(
+              opacity: 0,
+              child: _TrendTag(
+                label: 'Disk Usage',
+                trend: const _SeriesTrend(0),
+                unit: '%',
+              ),
+            ),
             const SizedBox(height: 10),
             SizedBox(
               height: _kChartHeight,
@@ -1601,18 +1763,24 @@ class _DiskUsageTrendPanel extends StatelessWidget {
                   gridData: FlGridData(
                     show: true,
                     drawVerticalLine: false,
-                    getDrawingHorizontalLine: (value) => const FlLine(color: Color(0xFFE7ECF1), strokeWidth: 1),
+                    getDrawingHorizontalLine: (value) => FlLine(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        strokeWidth: 1),
                   ),
                   borderData: FlBorderData(
                     show: true,
-                    border: const Border(
-                      bottom: BorderSide(color: Color(0xFFD6DEE5)),
-                      left: BorderSide(color: Color(0xFFD6DEE5)),
+                    border: Border(
+                      bottom: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.2)),
+                      left: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.2)),
                     ),
                   ),
                   titlesData: const FlTitlesData(
-                    topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles:
+                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles:
+                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   ).copyWith(
                     leftTitles: const AxisTitles(
                       sideTitles: SideTitles(
@@ -1627,7 +1795,9 @@ class _DiskUsageTrendPanel extends StatelessWidget {
                         showTitles: true,
                         interval: xInterval,
                         reservedSize: 28,
-                        getTitlesWidget: (value, meta) => _bottomTimeTitleBuilder(value, meta, bounds, startTime, endTime),
+                        getTitlesWidget: (value, meta) =>
+                            _bottomTimeTitleBuilder(
+                                value, meta, bounds, startTime, endTime),
                       ),
                     ),
                   ),
@@ -1746,11 +1916,18 @@ class _TrendTag extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: trendColor.withValues(alpha: 0.10),
+        color: trendColor.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: trendColor.withValues(alpha: 0.35)),
+        border: Border.all(color: trendColor.withValues(alpha: 0.45)),
+        boxShadow: [
+          BoxShadow(
+            color: trendColor.withValues(alpha: 0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1760,7 +1937,8 @@ class _TrendTag extends StatelessWidget {
           Text(
             '$label $direction ${trend.delta.abs().toStringAsFixed(2)} $unit',
             style: TextStyle(
-              color: trendColor,
+              color:
+                  Colors.white.withValues(alpha: 0.9), // Bright text on glass
               fontSize: 11,
               fontWeight: FontWeight.w700,
             ),

@@ -126,7 +126,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                 color: result['success'] ? Colors.green : Colors.red,
               ),
               const SizedBox(width: 8),
-              Text(result['success'] ? 'Connection Successful' : 'Connection Failed'),
+              Text(result['success']
+                  ? 'Connection Successful'
+                  : 'Connection Failed'),
             ],
           ),
           content: Column(
@@ -202,7 +204,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            content: const Text('Must Contain Uppercase, Lowercase, And Number'),
+            content:
+                const Text('Must Contain Uppercase, Lowercase, And Number'),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             actions: [
@@ -271,7 +274,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     Text('Success'),
                   ],
                 ),
-                content: Text(res['message'] ?? 'Password Successfully Changed'),
+                content:
+                    Text(res['message'] ?? 'Password Successfully Changed'),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
                 actions: [
@@ -345,35 +349,26 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         children: [
           const GlobalHeaderBar(currentRoute: '/change-password'),
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (!isMobile)
-                  const GlobalSidebarNav(currentRoute: '/change-password'),
-                if (!isMobile) const SizedBox(width: 12),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Padding(
-                      padding: EdgeInsets.all(isMobile ? 8 : 24.0),
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                              maxWidth: isMobile ? double.infinity : 600),
-                          child: _buildContent(),
-                        ),
+            child: GlobalSidebarNav(
+                currentRoute: '/change-password',
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: EdgeInsets.all(isMobile ? 8 : 24.0),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                            maxWidth: isMobile ? double.infinity : 600),
+                        child: _buildContent(),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                )),
           ),
           const GlobalFooter(),
         ],
       ),
     );
   }
-
 
   Widget _buildContent() {
     return Column(
@@ -669,6 +664,4 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       ),
     );
   }
-
 }
-

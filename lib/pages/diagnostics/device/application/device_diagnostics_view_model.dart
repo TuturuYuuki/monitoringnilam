@@ -50,7 +50,10 @@ class DeviceDiagnosticsViewModel {
 
   bool get isUp => status == 'UP';
 
-  bool get isAccessPoint => deviceType.contains('AP') || deviceType == 'TOWER' || deviceType == 'ACCESS_POINT';
+  bool get isAccessPoint =>
+      deviceType.contains('AP') ||
+      deviceType == 'TOWER' ||
+      deviceType == 'ACCESS_POINT';
   bool get isMmt => deviceType == 'MMT' || deviceType == 'MMTS';
 
   String get diagnosticsLabel {
