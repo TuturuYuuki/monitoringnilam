@@ -8,6 +8,7 @@ import 'package:monitoring/widgets/global_header_bar.dart';
 import 'package:monitoring/widgets/global_sidebar_nav.dart';
 import 'package:monitoring/widgets/global_footer.dart';
 import 'package:monitoring/theme/app_dropdown_style.dart';
+import 'package:monitoring/utils/location_label_utils.dart';
 
 class TowerManagementPage extends StatefulWidget {
   const TowerManagementPage({super.key});
@@ -179,6 +180,16 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
   }
 
   Future<void> _submitForm() async {
+    if (_isIdDuplicate) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Kode master sudah dipakai untuk tipe ini.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     if (_towerIdController.text.trim().isEmpty ||
         _selectedLat == null ||
         _selectedLng == null) {
@@ -301,7 +312,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
               children: [
                 DropdownButtonFormField<String>(
                   initialValue: selectedType,
-                  dropdownColor: AppDropdownStyle.menuBackground,
+                  dropdownColor: const Color.fromARGB(255, 255, 255, 255),
                   borderRadius: AppDropdownStyle.menuBorderRadius,
                   decoration: const InputDecoration(labelText: 'Location Type'),
                   items: const ['TOWER']
@@ -321,9 +332,9 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: selectedYard,
-                  dropdownColor: AppDropdownStyle.menuBackground,
+                  dropdownColor: const Color.fromARGB(255, 255, 255, 255),
                   borderRadius: AppDropdownStyle.menuBorderRadius,
-                  decoration: const InputDecoration(labelText: 'Lokasi'),
+                  decoration: const InputDecoration(labelText: 'Location'),
                   items: ['CY1', 'CY2', 'CY3', 'GATE', 'PARKING']
                       .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                       .toList(),
@@ -375,6 +386,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
 
     if (response['success'] == true) {
       await _loadTowers();
+      await _loadNonTowerMasters();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -1007,9 +1019,9 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
               children: [
                 DropdownButtonFormField<String>(
                   initialValue: selectedType,
-                  dropdownColor: AppDropdownStyle.menuBackground,
+                  dropdownColor: const Color.fromARGB(255, 255, 255, 255),
                   borderRadius: AppDropdownStyle.menuBorderRadius,
-                  decoration: const InputDecoration(labelText: 'Location Type'),
+                  decoration: const InputDecoration(labelText: 'Master Type'),
                   items: ['TOWER', 'RTG', 'RS', 'CC']
                       .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                       .toList(),
@@ -1027,7 +1039,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: selectedYard,
-                  dropdownColor: AppDropdownStyle.menuBackground,
+                  dropdownColor: const Color.fromARGB(255, 255, 255, 255),
                   borderRadius: AppDropdownStyle.menuBorderRadius,
                   decoration: const InputDecoration(labelText: 'Location'),
                   items: ['CY1', 'CY2', 'CY3', 'GATE', 'PARKING']
@@ -1049,13 +1061,14 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
             ),
             ElevatedButton(
               onPressed: () {
+                final normalizedName = nameController.text.trim();
+                final normalizedCode = normalizedName
+                    .toUpperCase()
+                    .replaceAll(' ', '_');
                 final payload = <String, dynamic>{
                   'location_type': selectedType,
-                  'location_code': codeController.text
-                      .trim()
-                      .toUpperCase()
-                      .replaceAll(' ', '_'),
-                  'location_name': nameController.text.trim(),
+                  'location_code': normalizedCode,
+                  'location_name': normalizedName,
                   'container_yard': selectedYard,
                 };
                 Navigator.pop(context, payload);
@@ -1111,18 +1124,53 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     final yard = (item['yard'] ?? item['container_yard'] ?? '-')
         .toString()
         .toUpperCase();
+    final displayName = name.trim().isNotEmpty ? name.trim() : code;
+    final targetLabel = buildMasterLocationLabel(
+      locationType: type,
+      locationCode: code,
+      locationName: name,
+      containerYard: yard,
+    );
+    final targetKey = normalizeLocationMatchKey(targetLabel);
+    final candidateKeys = <String>{
+      targetKey,
+      normalizeLocationMatchKey('$code - $yard'),
+      normalizeLocationMatchKey('$name - $yard'),
+    }.where((value) => value.isNotEmpty).toSet();
+
+    final fallbackCodeKeys = <String>{
+      normalizeLocationMatchKey(code),
+      normalizeLocationMatchKey(name),
+    }.where((value) => value.isNotEmpty).toSet();
+    final allowLooseMatch = type == 'TOWER';
+    final fallbackDigits = RegExp(r'\d+').firstMatch(code)?.group(0) ??
+        RegExp(r'\d+').firstMatch(name)?.group(0) ??
+        '';
 
     final towers = await _apiService.getAllTowers();
     final mmts = await _apiService.getAllMMTs();
     final cameras = await _apiService.getAllCameras();
 
-    bool matchByLocation(String location) {
-      final loc = location.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
-      final codeNorm = code.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
-      final nameNorm = name.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
-      final byCode = codeNorm.isNotEmpty && loc.contains(codeNorm);
-      final byName = nameNorm.isNotEmpty && loc.contains(nameNorm);
-      return byCode || byName;
+    bool matchByLocation(String location, String deviceYard) {
+      final locKey = normalizeLocationMatchKey(location);
+      if (candidateKeys.contains(locKey)) {
+        return true;
+      }
+
+      final yardMatch = deviceYard.trim().toUpperCase() == yard;
+      if (!yardMatch) {
+        return false;
+      }
+
+      if (fallbackCodeKeys.contains(locKey)) {
+        return true;
+      }
+
+      if (fallbackDigits.isNotEmpty && locKey.contains(fallbackDigits)) {
+        return true;
+      }
+
+      return allowLooseMatch && fallbackCodeKeys.contains(locKey);
     }
 
     final devices = <Map<String, String>>[];
@@ -1130,7 +1178,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     for (final tower in towers) {
       if ((type == 'TOWER' &&
               tower.towerId.toUpperCase() == code.toUpperCase()) ||
-          (type != 'TOWER' && matchByLocation(tower.location))) {
+          (type != 'TOWER' &&
+              matchByLocation(tower.location, tower.containerYard))) {
         devices.add({
           'type': 'TOWER',
           'name': tower.towerId,
@@ -1142,7 +1191,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     }
 
     for (final mmt in mmts) {
-      if (matchByLocation(mmt.location)) {
+      if (matchByLocation(mmt.location, mmt.containerYard)) {
         devices.add({
           'type': 'MMT',
           'name': mmt.mmtId,
@@ -1154,7 +1203,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     }
 
     for (final camera in cameras) {
-      if (matchByLocation(camera.location)) {
+      if (matchByLocation(camera.location, camera.containerYard)) {
         devices.add({
           'type': 'CCTV',
           'name': camera.cameraId,
@@ -1172,14 +1221,14 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Detail $type - $code'),
+        title: Text('Detail $type - $displayName'),
         content: SizedBox(
           width: 420,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Location: $yard',
+                Text('Location: $targetLabel',
                   style: const TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 10),
               Row(

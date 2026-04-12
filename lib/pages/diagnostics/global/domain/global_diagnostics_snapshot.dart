@@ -16,6 +16,7 @@ class GlobalDiagnosticsSnapshot {
   final List<GlobalChartPoint> diskSeriesA;
   final List<GlobalChartPoint> diskSeriesB;
   final List<GlobalCpuSeries> topCpuSeries;
+  final List<GlobalTelemetryRow> telemetryRows;
 
   const GlobalDiagnosticsSnapshot({
     required this.nodeName,
@@ -35,6 +36,7 @@ class GlobalDiagnosticsSnapshot {
     required this.diskSeriesA,
     required this.diskSeriesB,
     required this.topCpuSeries,
+    required this.telemetryRows,
   });
 
   factory GlobalDiagnosticsSnapshot.fromApi(Map<String, dynamic> data) {
@@ -66,6 +68,9 @@ class GlobalDiagnosticsSnapshot {
       diskSeriesB: _parseSeries(charts['disk_b']),
       topCpuSeries: _asList(charts['top_cpus'])
           .map(GlobalCpuSeries.fromApi)
+          .toList(growable: false),
+        telemetryRows: _asList(data['telemetry_rows'])
+          .map(GlobalTelemetryRow.fromApi)
           .toList(growable: false),
     );
   }
@@ -206,6 +211,7 @@ class GlobalDiagnosticsSnapshot {
             value: 32,
             colorHex: '#A74D4B'),
       ],
+      telemetryRows: const [],
     );
   }
 
@@ -228,6 +234,7 @@ class GlobalDiagnosticsSnapshot {
       diskSeriesA: <GlobalChartPoint>[],
       diskSeriesB: <GlobalChartPoint>[],
       topCpuSeries: <GlobalCpuSeries>[],
+      telemetryRows: <GlobalTelemetryRow>[],
     );
   }
 
@@ -362,6 +369,47 @@ class GlobalCpuSeries {
       value: GlobalDiagnosticsSnapshot._toDouble(json['value']),
       colorHex: json['color']?.toString() ?? '#1B9FDC',
       series: series,
+    );
+  }
+}
+
+class GlobalTelemetryRow {
+  final String sampledAt;
+  final String deviceId;
+  final String deviceType;
+  final double cpuLoadPercent;
+  final double ramUsagePercent;
+  final double responseTimeMs;
+  final double packetLossPercent;
+  final double trafficRxMbps;
+  final double trafficTxMbps;
+  final int uptimeSeconds;
+
+  const GlobalTelemetryRow({
+    required this.sampledAt,
+    required this.deviceId,
+    required this.deviceType,
+    required this.cpuLoadPercent,
+    required this.ramUsagePercent,
+    required this.responseTimeMs,
+    required this.packetLossPercent,
+    required this.trafficRxMbps,
+    required this.trafficTxMbps,
+    required this.uptimeSeconds,
+  });
+
+  factory GlobalTelemetryRow.fromApi(Map<String, dynamic> json) {
+    return GlobalTelemetryRow(
+      sampledAt: json['sampled_at']?.toString() ?? '-',
+      deviceId: json['device_id']?.toString() ?? '-',
+      deviceType: json['device_type']?.toString() ?? '-',
+      cpuLoadPercent: GlobalDiagnosticsSnapshot._toDouble(json['cpu_load_percent']),
+      ramUsagePercent: GlobalDiagnosticsSnapshot._toDouble(json['ram_usage_percent']),
+      responseTimeMs: GlobalDiagnosticsSnapshot._toDouble(json['response_time_ms']),
+      packetLossPercent: GlobalDiagnosticsSnapshot._toDouble(json['packet_loss_percent']),
+      trafficRxMbps: GlobalDiagnosticsSnapshot._toDouble(json['traffic_rx_mbps']),
+      trafficTxMbps: GlobalDiagnosticsSnapshot._toDouble(json['traffic_tx_mbps']),
+      uptimeSeconds: GlobalDiagnosticsSnapshot._toInt(json['uptime_seconds']),
     );
   }
 }

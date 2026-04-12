@@ -30,9 +30,20 @@ String buildMasterLocationLabel({
   }
 
   // Use locationName if available, otherwise locationCode
-  final mainLabel = normalizedName.isNotEmpty
+  var mainLabel = normalizedName.isNotEmpty
       ? normalizedName
       : (normalizedCode.isNotEmpty ? normalizedCode : 'UNKNOWN');
+
+  // Avoid duplicate yard suffix like "RTG01 - GATE - GATE".
+  if (cyLabel.isNotEmpty) {
+    final yardSuffixPattern = RegExp(
+      r'\s*-\s*' + RegExp.escape(cyLabel) + r'$',
+      caseSensitive: false,
+    );
+    while (yardSuffixPattern.hasMatch(mainLabel)) {
+      mainLabel = mainLabel.replaceFirst(yardSuffixPattern, '').trim();
+    }
+  }
 
   return '$normalizedType - $mainLabel - $cyLabel';
 }

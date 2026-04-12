@@ -37,7 +37,7 @@ class TelemetryInfoTable extends StatelessWidget {
             children: [
               const Text(
                 'Telemetry Details',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
                   fontSize: 15,

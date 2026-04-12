@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:monitoring/models/tower_model.dart';
 import 'package:monitoring/services/api_service.dart';
+import 'package:monitoring/services/device_storage_service.dart';
 import 'dart:ui';
 import 'package:monitoring/main.dart';
 import 'package:monitoring/utils/ui_utils.dart';
@@ -38,6 +39,11 @@ class _NetworkPageState extends State<NetworkPage> {
   DateTime? _lastRefreshTime;
   bool _isAutoRefreshEnabled = true;
   bool _isConnected = true;
+  int globalTotalDevices = 0;
+  int globalUpDevices = 0;
+  int globalDownDevices = 0;
+  bool _isLoadingGlobalSummary = true;
+  bool _isGlobalSummaryRequestInFlight = false;
 
   @override
   void initState() {
@@ -45,6 +51,7 @@ class _NetworkPageState extends State<NetworkPage> {
     apiService = ApiService();
     _checkConnection();
     _loadTowers();
+    _loadGlobalSummary(initialLoad: true);
     _startAutoRefresh();
   }
 
@@ -70,6 +77,7 @@ class _NetworkPageState extends State<NetworkPage> {
       if (mounted && _isAutoRefreshEnabled) {
         _checkConnection();
         _loadTowers();
+        _loadGlobalSummary();
       }
     });
   }
@@ -125,6 +133,52 @@ class _NetworkPageState extends State<NetworkPage> {
   Future<void> _triggerPingCheck() async {
     // This method is used by the refresh button manually
     await _triggerRealtimePing();
+  }
+
+  Future<void> _loadGlobalSummary({bool initialLoad = false}) async {
+    if (_isGlobalSummaryRequestInFlight) {
+      return;
+    }
+
+    _isGlobalSummaryRequestInFlight = true;
+    try {
+      // Show loading only on first load to avoid flicker on periodic refresh.
+      if (mounted && initialLoad) {
+        setState(() {
+          _isLoadingGlobalSummary = true;
+        });
+      }
+
+      final allTowers = await apiService.getAllTowers();
+      final allCameras = await apiService.getAllCameras();
+      final allMMTs = await apiService.getAllMMTs();
+
+      final towerUp = allTowers.where((t) => !isDownStatus(t.status)).length;
+      final cameraUp = allCameras.where((c) => c.status == 'UP').length;
+      final mmtUp = allMMTs.where((m) => m.status == 'UP').length;
+
+      final total = allTowers.length + allCameras.length + allMMTs.length;
+      final up = towerUp + cameraUp + mmtUp;
+      final down = (total - up).clamp(0, 999999);
+
+      if (mounted) {
+        setState(() {
+          globalTotalDevices = total;
+          globalUpDevices = up;
+          globalDownDevices = down;
+          _isLoadingGlobalSummary = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading network overview: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingGlobalSummary = false;
+        });
+      }
+    } finally {
+      _isGlobalSummaryRequestInFlight = false;
+    }
   }
 
   int get totalTowers => towers.length;
@@ -285,11 +339,13 @@ class _NetworkPageState extends State<NetworkPage> {
                   _buildAutoRefreshToggle(),
                 ],
               ),
+              const SizedBox(height: 8),
+              _buildHeaderOverviewMini(isMobile: true),
               Row(
                 children: [
-                  const Text(
-                    'Monitoring Real Time',
-                    style: TextStyle(
+                  Text(
+                    'Detail Area ${_selectedAreaId()} • Monitoring Real Time',
+                    style: const TextStyle(
                       color: Colors.white70,
                       fontSize: 12,
                     ),
@@ -325,45 +381,49 @@ class _NetworkPageState extends State<NetworkPage> {
                     const Icon(Icons.language, size: 32, color: Colors.white),
               ),
               const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Access Point Monitoring',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Text(
-                        'Real Time Access Point Monitoring And Diagnostics',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Access Point Monitoring',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
                       ),
-                      if (_lastRefreshTime != null) ...[
-                        const SizedBox(width: 8),
-                        const Text('•',
-                            style: TextStyle(color: Colors.white70)),
-                        const SizedBox(width: 8),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
                         Text(
-                          'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
+                          'Detail Area ${_selectedAreaId()} • Real Time Access Point Monitoring And Diagnostics',
                           style: const TextStyle(
-                            color: Colors.greenAccent,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                            color: Colors.white70,
+                            fontSize: 14,
                           ),
                         ),
+                        if (_lastRefreshTime != null) ...[
+                          const SizedBox(width: 8),
+                          const Text('•',
+                              style: TextStyle(color: Colors.white70)),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
+                            style: const TextStyle(
+                              color: Colors.greenAccent,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 12),
+              _buildHeaderOverviewMini(isMobile: false),
             ],
           ),
         const SizedBox(height: 16),
@@ -428,6 +488,165 @@ class _NetworkPageState extends State<NetworkPage> {
         // Tower List
         _buildTowerList(),
       ],
+    );
+  }
+
+  Widget _buildHeaderOverviewMini({required bool isMobile}) {
+    if (_isLoadingGlobalSummary) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.15)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Overview Data',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Loading overview...',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.8),
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final cards = [
+      _buildGlobalStatCard('ALL', '$globalTotalDevices', Colors.orange,
+          width: isMobile ? null : 86),
+      _buildGlobalStatCard('UP', '$globalUpDevices', Colors.green,
+          width: isMobile ? null : 86),
+      _buildGlobalStatCard('DOWN', '$globalDownDevices', Colors.red,
+          width: isMobile ? null : 86),
+    ];
+
+    if (isMobile) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.15)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Overview Data',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(child: cards[0]),
+                const SizedBox(width: 8),
+                Expanded(child: cards[1]),
+                const SizedBox(width: 8),
+                Expanded(child: cards[2]),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Overview Data',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              cards[0],
+              const SizedBox(width: 8),
+              cards[1],
+              const SizedBox(width: 8),
+              cards[2],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGlobalStatCard(String title, String value, Color indicatorColor,
+      {double? width}) {
+    return Container(
+      width: width,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.85),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 10,
+                ),
+              ),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: indicatorColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 18,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1211,7 +1430,7 @@ class _NetworkPageState extends State<NetworkPage> {
               DropdownButtonFormField<String>(
                 initialValue: selectedLocation,
                 isExpanded: true,
-                dropdownColor: AppDropdownStyle.menuBackground,
+                dropdownColor: const Color.fromARGB(255, 255, 255, 255),
                 borderRadius: AppDropdownStyle.menuBorderRadius,
                 decoration: const InputDecoration(labelText: 'Location'),
                 items: locationOptions
@@ -1250,6 +1469,17 @@ class _NetworkPageState extends State<NetworkPage> {
                 });
 
                 if (response['success'] == true) {
+                  // Sync local storage after backend success
+                  await DeviceStorageService.updateDeviceFields(
+                    type: 'Tower',
+                    name: tower.towerId,
+                    updates: {
+                      'ipAddress': ipController.text,
+                      'locationName': selectedLocation,
+                      'containerYard': selectedYard,
+                    },
+                  );
+                  
                   Navigator.pop(context);
                   _loadTowers();
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(

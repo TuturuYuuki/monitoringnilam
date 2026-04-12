@@ -346,13 +346,15 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                                 horizontal: 20, vertical: 18),
                                       ),
                                       validator: (value) {
-                                        if (value == null || value.isEmpty)
+                                        if (value == null || value.isEmpty) {
                                           return 'Please Enter New Password';
+                                        }
                                         if (!_hasMinLength ||
                                             !_hasUppercase ||
                                             !_hasLowercase ||
-                                            !_hasNumber)
+                                            !_hasNumber) {
                                           return 'Requirements Not Met';
+                                        }
                                         return null;
                                       },
                                     ),
@@ -448,10 +450,12 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                         horizontal: 20, vertical: 18),
                                   ),
                                   validator: (value) {
-                                    if (value == null || value.isEmpty)
+                                    if (value == null || value.isEmpty) {
                                       return 'Confirm Your Password';
-                                    if (value != _newPasswordController.text)
+                                    }
+                                    if (value != _newPasswordController.text) {
                                       return 'Password Does Not Match';
+                                    }
                                     return null;
                                   },
                                 ),

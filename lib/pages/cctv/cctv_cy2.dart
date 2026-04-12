@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'package:monitoring/main.dart';
 import 'package:monitoring/utils/ui_utils.dart';
 import 'package:monitoring/services/api_service.dart';
+import 'package:monitoring/services/device_storage_service.dart';
 import 'package:monitoring/utils/location_label_utils.dart';
 import 'package:monitoring/widgets/global_header_bar.dart';
 import 'package:monitoring/widgets/global_sidebar_nav.dart';
@@ -1277,6 +1278,17 @@ class _CCTVCy2PageState extends State<CCTVCy2Page> {
                 );
 
                 if (response['success'] == true) {
+                  // Sync local storage after backend success
+                  await DeviceStorageService.updateDeviceFields(
+                    type: 'CCTV',
+                    name: camera.cameraId,
+                    updates: {
+                      'ipAddress': ipController.text,
+                      'locationName': selectedLocation,
+                      'containerYard': selectedArea,
+                    },
+                  );
+                  
                   if (mounted) {
                     Navigator.pop(context);
                     _loadCameras();

@@ -103,8 +103,9 @@ class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
             ))
         .toList(growable: false);
 
-    final topCpuBars = snapshot.topCpuSeries.map((item) {
-      final color = _parseHexColor(item.colorHex);
+    final topCpuBars = snapshot.topCpuSeries.asMap().entries.map((entry) {
+      final item = entry.value;
+      final color = _monoPalette(entry.key);
       final series = item.series
           .map((point) => FlSpot(point.x, point.y))
           .toList(growable: false);
@@ -127,7 +128,6 @@ class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
           ),
         )
         .toList(growable: false);
-
     return Scaffold(
       backgroundColor: const Color(0xFF2C3E50),
       body: Column(
@@ -142,7 +142,7 @@ class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Color(0xFF2C3E50).withValues(alpha: 0.24),
+                        color: const Color(0xFF2C3E50).withValues(alpha: 0.24),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                             color: Colors.white.withValues(alpha: 0.12)),
@@ -159,11 +159,11 @@ class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
                         children: [
                           Row(
                             children: [
-                              Expanded(
+                              const Expanded(
                                 child: Text(
                                   'Global Diagnostics',
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.95),
+                                      color: Colors.black87,
                                     fontSize: 22,
                                     fontWeight: FontWeight.w900,
                                     letterSpacing: 0.5,
@@ -171,13 +171,25 @@ class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
                                 ),
                               ),
                               FilledButton.icon(
+                                onPressed: () {
+                                  Navigator.of(context)
+                                      .pushNamed('/device-performance');
+                                },
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xFF00D9FF),
+                                  foregroundColor: Colors.black87,
+                                ),
+                                label: const Text('Data Table'),
+                              ),
+                              const SizedBox(width: 8),
+                              FilledButton.icon(
                                 onPressed:
                                     (_controller.isLoading || _isRefreshing)
                                         ? null
                                         : _refreshDiagnostics,
                                 style: FilledButton.styleFrom(
                                   backgroundColor: const Color(0xFF1565C0),
-                                  foregroundColor: Colors.white,
+                                  foregroundColor: Colors.black87,
                                 ),
                                 icon: (_controller.isLoading || _isRefreshing)
                                     ? const SizedBox(
@@ -185,7 +197,7 @@ class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
                                         width: 14,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2,
-                                          color: Colors.white,
+                                          color: Colors.black87,
                                         ),
                                       )
                                     : const Icon(Icons.refresh),
@@ -424,8 +436,8 @@ double _yAxisInterval(double maxY, {int targetTicks = 4}) {
 Widget _axisHintText(String yDescription) {
   return Text(
     'X: Waktu (24 jam, interval 5 jam)  |  Y: $yDescription',
-    style: TextStyle(
-      color: Colors.white.withValues(alpha: 0.85),
+    style: const TextStyle(
+      color: Colors.black87,
       fontSize: 11,
       fontWeight: FontWeight.w600,
     ),
@@ -445,8 +457,8 @@ Widget _bottomTimeTitleBuilder(
     space: 6,
     child: Text(
       _formatClock(time),
-      style: TextStyle(
-        color: Colors.white.withValues(alpha: 0.85),
+      style: const TextStyle(
+        color: Colors.black87,
         fontSize: 9,
         fontWeight: FontWeight.w600,
       ),
@@ -461,22 +473,28 @@ Widget _leftAxisTitleBuilder(double value, TitleMeta meta) {
   }
   return Text(
     value.toInt().toString(),
-    style: TextStyle(
-      color: Colors.white.withValues(alpha: 0.85),
+    style: const TextStyle(
+      color: Colors.black87,
       fontSize: 10,
       fontWeight: FontWeight.w600,
     ),
   );
 }
 
-Color _parseHexColor(String hex) {
-  final normalized = hex.replaceAll('#', '');
-  final buffer = StringBuffer();
-  if (normalized.length == 6) {
-    buffer.write('ff');
-  }
-  buffer.write(normalized);
-  return Color(int.tryParse(buffer.toString(), radix: 16) ?? 0xFF1B9FDC);
+Color _monoPalette(int index) {
+  const palette = <Color>[
+    Color(0xFFFF2D95), // Neon Pink
+    Color(0xFF39FF14), // Neon Green
+    Color(0xFFFFD400), // Electric Yellow
+    Color(0xFFB000FF), // Neon Purple
+    Color(0xFFFF6A00), // Neon Orange
+    Color(0xFFFF1744), // Vivid Red
+    Color(0xFFAEEA00), // Lime
+    Color(0xFFFF4D6D), // Rose
+    Color(0xFFE040FB), // Magenta
+    Color(0xFFFF9100), // Amber
+  ];
+  return palette[index % palette.length];
 }
 
 class _StatusBanner extends StatelessWidget {
@@ -542,10 +560,11 @@ class _SummaryMetricsBar extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.14),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Color(0xFFFFFFFF).withValues(alpha: 0.6)),
+            border: Border.all(
+                color: const Color(0xFFFFFFFF).withValues(alpha: 0.6)),
             boxShadow: [
               BoxShadow(
-                color: Color(0xFF87C5FF).withValues(alpha: 0.12),
+                color: const Color(0xFF87C5FF).withValues(alpha: 0.12),
                 blurRadius: 18,
                 spreadRadius: 1,
                 offset: const Offset(0, 6),
@@ -613,8 +632,8 @@ class _SummaryChip extends StatelessWidget {
         children: [
           Text(
             '$label: ',
-            style: TextStyle(
-              color: color,
+            style: const TextStyle(
+              color: Colors.black87,
               fontSize: 12,
               fontWeight: FontWeight.w900,
               letterSpacing: 0.15,
@@ -623,7 +642,7 @@ class _SummaryChip extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(
-              color: Colors.white, // Pure white value
+              color: Colors.black87,
               fontSize: 13,
               fontWeight: FontWeight.w900,
             ),
@@ -652,11 +671,11 @@ class _SectionGroupCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.14),
             borderRadius: BorderRadius.circular(14),
-            border:
-                Border.all(color: Color(0xFFFFFFFF).withValues(alpha: 0.58)),
+            border: Border.all(
+                color: const Color(0xFFFFFFFF).withValues(alpha: 0.58)),
             boxShadow: [
               BoxShadow(
-                color: Color(0xFF87C5FF).withValues(alpha: 0.12),
+                color: const Color(0xFF87C5FF).withValues(alpha: 0.12),
                 blurRadius: 20,
                 spreadRadius: 1,
                 offset: const Offset(0, 8),
@@ -694,11 +713,11 @@ class _SolarPanel extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(16),
-              border:
-                  Border.all(color: Color(0xFFFFFFFF).withValues(alpha: 0.62)),
+              border: Border.all(
+                  color: const Color(0xFFFFFFFF).withValues(alpha: 0.62)),
               boxShadow: [
                 BoxShadow(
-                  color: Color(0xFF87C5FF).withValues(alpha: 0.15),
+                  color: const Color(0xFF87C5FF).withValues(alpha: 0.15),
                   blurRadius: 22,
                   spreadRadius: 1,
                   offset: const Offset(0, 8),
@@ -723,7 +742,7 @@ class _SolarPanel extends StatelessWidget {
                         child: Text(
                           title,
                           style: const TextStyle(
-                            color: Colors.white,
+                              color: Colors.black87,
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
                           ),
@@ -844,7 +863,7 @@ class _GaugeTile extends StatelessWidget {
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: critical ? const Color(0xFFC0262D) : const Color(0xFF30404F),
+            color: critical ? const Color(0xFFC0262D) : Colors.black87,
             fontSize: 13,
             fontWeight: FontWeight.w800,
           ),
@@ -878,7 +897,7 @@ class _AnalogGauge extends StatelessWidget {
               '${value.toStringAsFixed(0)} %',
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: Colors.white,
+                color: Colors.black87,
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
               ),
@@ -978,7 +997,7 @@ class _DiskVolumesPanel extends StatelessWidget {
                 child: Text(
                   'No historical disk data',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Colors.black87,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1014,10 +1033,6 @@ class _DiskRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final barColor = percent >= 85
-        ? const Color(0xFFDAA61A)
-        : (percent >= 60 ? const Color(0xFF88B924) : const Color(0xFF41AE64));
-
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
@@ -1039,7 +1054,7 @@ class _DiskRow extends StatelessWidget {
           Text(
             name,
             style: const TextStyle(
-              color: Colors.white,
+              color: Colors.black87,
               fontSize: 13,
               fontWeight: FontWeight.w800,
             ),
@@ -1052,17 +1067,17 @@ class _DiskRow extends StatelessWidget {
                       style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white))),
+                      color: Colors.black87))),
               Expanded(
                   child: Text('Used $used',
                       style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white))),
+                      color: Colors.black87))),
               Text('$percent %',
                   style: const TextStyle(
                       fontSize: 12,
-                      color: Colors.white,
+                    color: Colors.black87,
                       fontWeight: FontWeight.w900)),
             ],
           ),
@@ -1147,14 +1162,14 @@ class _LatencyPacketChartPanel extends StatelessWidget {
                   lineBarsData: [
                     LineChartBarData(
                       spots: latencySpots,
-                      color: const Color(0xFF2C9FD6),
+                      color: const Color(0xFFFF2D95),
                       barWidth: 2,
                       dotData: const FlDotData(show: true),
                       isCurved: false,
                     ),
                     LineChartBarData(
                       spots: packetLossSpots,
-                      color: const Color(0xFFE553B7),
+                      color: const Color(0xFF39FF14),
                       barWidth: 2,
                       dotData: const FlDotData(show: true),
                       isCurved: false,
@@ -1164,16 +1179,16 @@ class _LatencyPacketChartPanel extends StatelessWidget {
                     show: true,
                     drawVerticalLine: false,
                     getDrawingHorizontalLine: (value) => FlLine(
-                        color: Colors.white.withValues(alpha: 0.1),
+                        color: Colors.black.withValues(alpha: 0.12),
                         strokeWidth: 1),
                   ),
                   borderData: FlBorderData(
                     show: true,
                     border: Border(
                       bottom: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.2)),
+                          color: Colors.black.withValues(alpha: 0.18)),
                       left: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.2)),
+                          color: Colors.black.withValues(alpha: 0.18)),
                     ),
                   ),
                   titlesData: const FlTitlesData(
@@ -1243,11 +1258,11 @@ class _LatencyPacketChartPanel extends StatelessWidget {
             Row(
               children: [
                 _LegendTag(
-                    color: const Color(0xFF2C9FD6),
+                  color: const Color(0xFFFF2D95),
                     text: '$latencyLabel  Average Response Time'),
                 const SizedBox(width: 8),
                 _LegendTag(
-                    color: const Color(0xFFE553B7),
+                  color: const Color(0xFF39FF14),
                     text: '$packetLossLabel  Packet Loss'),
               ],
             ),
@@ -1277,6 +1292,7 @@ class _CpuAveragePanel extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _axisHintText('CPU Load (%)'),
             const SizedBox(height: 8),
@@ -1291,7 +1307,7 @@ class _CpuAveragePanel extends StatelessWidget {
                   lineBarsData: [
                     LineChartBarData(
                       spots: spots,
-                      color: const Color(0xFF36A2D8),
+                      color: const Color(0xFFB000FF),
                       barWidth: 3,
                       dotData: const FlDotData(show: true),
                       isCurved: false,
@@ -1301,13 +1317,13 @@ class _CpuAveragePanel extends StatelessWidget {
                   extraLinesData: ExtraLinesData(horizontalLines: [
                     HorizontalLine(
                       y: 85,
-                      color: const Color(0xFFB54A45),
+                      color: const Color(0xFFFF1744),
                       strokeWidth: 1,
                       dashArray: [5, 4],
                     ),
                     HorizontalLine(
                       y: 50,
-                      color: const Color(0xFF7B868F),
+                      color: const Color(0xFFFFD400),
                       strokeWidth: 1,
                       dashArray: [5, 4],
                     ),
@@ -1421,12 +1437,12 @@ class _TopCpusPanel extends StatelessWidget {
                 children: [
                   _axisHintText('CPU Utilization per Device (%)'),
                   const SizedBox(height: 8),
-                  Opacity(
+                  const Opacity(
                     opacity: 0,
                     child: Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: const [
+                      children: [
                         _TrendTag(
                           label: 'CPU Load',
                           trend: _SeriesTrend(0),
@@ -1441,14 +1457,14 @@ class _TopCpusPanel extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  SizedBox(
+                  const SizedBox(
                     height: _kChartHeight,
                     child: Center(
                       child: Text(
                         'No historical device CPU data',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
+                          color: Colors.black87,
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                         ),
@@ -1456,10 +1472,10 @@ class _TopCpusPanel extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Opacity(
+                  const Opacity(
                     opacity: 0,
                     child: Row(
-                      children: const [
+                      children: [
                         _LegendTag(
                           color: Color(0xFF2C9FD6),
                           text: '0.00% Average Response Time',
@@ -1567,7 +1583,7 @@ class _TopCpusPanel extends StatelessWidget {
                               Text(
                                 '${item.value.toStringAsFixed(2)}% ${item.name}',
                                 style: const TextStyle(
-                                  color: Color(0xFF30404F),
+                                  color: Colors.black87,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -1647,7 +1663,7 @@ class _HighErrorsPanel extends StatelessWidget {
                 child: Text(
                   'No historical interface-error data',
                   style: TextStyle(
-                    color: Color(0xFF6A7480),
+                    color: Colors.black87,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1729,11 +1745,11 @@ class _DiskUsageTrendPanel extends StatelessWidget {
           children: [
             _axisHintText('Disk Usage (%)'),
             const SizedBox(height: 8),
-            Opacity(
+            const Opacity(
               opacity: 0,
               child: _TrendTag(
                 label: 'Disk Usage',
-                trend: const _SeriesTrend(0),
+                trend: _SeriesTrend(0),
                 unit: '%',
               ),
             ),
@@ -1747,13 +1763,13 @@ class _DiskUsageTrendPanel extends StatelessWidget {
                   lineBarsData: [
                     LineChartBarData(
                       spots: spotsA,
-                      color: const Color(0xFF7E69D6),
+                      color: const Color(0xFFFF6A00),
                       barWidth: 2,
                       dotData: const FlDotData(show: true),
                     ),
                     LineChartBarData(
                       spots: spotsB,
-                      color: const Color(0xFF2B9FCE),
+                      color: const Color(0xFFAEEA00),
                       barWidth: 2,
                       dotData: const FlDotData(show: true),
                     ),
@@ -1829,7 +1845,7 @@ class _LegendTag extends StatelessWidget {
       child: Text(
         text,
         style: const TextStyle(
-          color: Colors.white,
+          color: Colors.black87,
           fontSize: 10,
           fontWeight: FontWeight.w700,
         ),
@@ -1850,7 +1866,7 @@ class _TableHeaderCell extends StatelessWidget {
       child: Text(
         text,
         style: const TextStyle(
-          color: Color(0xFF66727F),
+          color: Colors.black87,
           fontSize: 11,
           fontWeight: FontWeight.w800,
         ),
@@ -1875,7 +1891,7 @@ class _TableValueCell extends StatelessWidget {
       child: Text(
         text,
         style: TextStyle(
-          color: const Color(0xFF4F6070),
+          color: Colors.black87,
           fontSize: 12,
           fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
         ),
@@ -1936,9 +1952,8 @@ class _TrendTag extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             '$label $direction ${trend.delta.abs().toStringAsFixed(2)} $unit',
-            style: TextStyle(
-              color:
-                  Colors.white.withValues(alpha: 0.9), // Bright text on glass
+            style: const TextStyle(
+              color: Colors.black87,
               fontSize: 11,
               fontWeight: FontWeight.w700,
             ),

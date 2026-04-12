@@ -109,6 +109,134 @@ class DeviceStorageService {
     }
   }
 
+  // Update device fields by type and name (for edit operations)
+  static Future<bool> updateDeviceFields({
+    required String type,
+    required String name,
+    required Map<String, dynamic> updates,
+  }) async {
+    try {
+      final normalizedType = type.trim().toLowerCase();
+      final normalizedName = name.trim().toLowerCase();
+
+      final devicesList = await getDevices();
+      bool found = false;
+
+      for (var i = 0; i < devicesList.length; i++) {
+        final device = devicesList[i];
+        if (device.type.trim().toLowerCase() == normalizedType &&
+            device.name.trim().toLowerCase() == normalizedName) {
+          final updated = AddedDevice(
+            id: device.id,
+            type: device.type,
+            name: device.name,
+            ipAddress: updates.containsKey('ipAddress')
+                ? (updates['ipAddress']?.toString() ?? device.ipAddress)
+                : device.ipAddress,
+            locationName: updates.containsKey('location') ||
+                    updates.containsKey('locationName')
+                ? (updates['location']?.toString() ??
+                    updates['locationName']?.toString() ??
+                    device.locationName)
+                : device.locationName,
+            latitude: device.latitude,
+            longitude: device.longitude,
+            containerYard: updates.containsKey('containerYard')
+                ? (updates['containerYard']?.toString() ?? device.containerYard)
+                : device.containerYard,
+            createdAt: device.createdAt,
+            status: updates.containsKey('status')
+                ? (updates['status']?.toString() ?? device.status)
+                : device.status,
+          );
+
+          devicesList[i] = updated;
+          found = true;
+          break;
+        }
+      }
+
+      if (found) {
+        await _saveDevices(devicesList);
+        print('✓ Updated device in local storage: $type / $name');
+      }
+
+      return found;
+    } catch (e) {
+      print('Warning: Could not update device fields: $e');
+      return false;
+    }
+  }
+
+  static Future<int> updateDevicesByLocationRename({
+    required String oldLocation,
+    required String newLocation,
+    required String oldContainerYard,
+    required String newContainerYard,
+    String oldCode = '',
+    String newCode = '',
+  }) async {
+    try {
+      final oldLocationKey = _normalizeLocationKey(oldLocation);
+      final oldCodeKey = _normalizeLocationKey(oldCode);
+      final newLocationLabel = newLocation.trim();
+      final oldYard = oldContainerYard.trim().toUpperCase();
+      final newYard = newContainerYard.trim().toUpperCase();
+
+      final devicesList = await getDevices();
+      var updatedCount = 0;
+
+      for (var i = 0; i < devicesList.length; i++) {
+        final device = devicesList[i];
+        final deviceLocationKey = _normalizeLocationKey(device.locationName);
+        final deviceYard = device.containerYard.trim().toUpperCase();
+
+        final sameYard = oldYard.isEmpty || deviceYard == oldYard;
+        final matchesOldLocation = deviceLocationKey == oldLocationKey ||
+            deviceLocationKey.contains(oldLocationKey) ||
+            oldLocationKey.contains(deviceLocationKey);
+        final matchesOldCode = oldCodeKey.isNotEmpty &&
+          (deviceLocationKey == oldCodeKey ||
+            deviceLocationKey.contains(oldCodeKey) ||
+            oldCodeKey.contains(deviceLocationKey));
+
+        if (sameYard && (matchesOldLocation || matchesOldCode)) {
+          devicesList[i] = AddedDevice(
+            id: device.id,
+            type: device.type,
+            name: device.name,
+            ipAddress: device.ipAddress,
+          locationName: newLocationLabel.isNotEmpty
+            ? newLocationLabel
+            : (newCode.isNotEmpty ? newCode : device.locationName),
+            latitude: device.latitude,
+            longitude: device.longitude,
+            containerYard: newYard.isNotEmpty ? newYard : device.containerYard,
+            createdAt: device.createdAt,
+            status: device.status,
+          );
+          updatedCount++;
+        }
+      }
+
+      if (updatedCount > 0) {
+        await _saveDevices(devicesList);
+      }
+
+      return updatedCount;
+    } catch (e) {
+      print('Warning: Could not update devices by location rename: $e');
+      return 0;
+    }
+  }
+
+  static String _normalizeLocationKey(String value) {
+    return value
+        .trim()
+        .toUpperCase()
+        .replaceAll(RegExp(r'[^A-Z0-9]'), '');
+  }
+
   // Bersihkan semua device
   static Future<void> clearAllDevices() async {
     try {

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:monitoring/main.dart';
 import 'package:monitoring/utils/ui_utils.dart';
 import 'package:monitoring/services/api_service.dart';
+import 'package:monitoring/services/device_storage_service.dart';
 import 'package:monitoring/models/tower_model.dart';
 import 'package:monitoring/utils/tower_status_override.dart';
 import 'package:monitoring/utils/location_label_utils.dart';
@@ -1235,11 +1236,22 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                 });
 
                 if (response['success'] == true) {
+                  // Sync local storage after backend success
+                  await DeviceStorageService.updateDeviceFields(
+                    type: 'Tower',
+                    name: tower.towerId,
+                    updates: {
+                      'ipAddress': ipController.text,
+                      'locationName': selectedLocation,
+                      'containerYard': selectedYard,
+                    },
+                  );
+                  
                   if (mounted) {
                     Navigator.pop(context);
                     _loadTowers();
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Successfully Updated'),
+                        content: Text('CY2 Updated Successfully'),
                         backgroundColor: Colors.green));
                   }
                 }
@@ -1318,6 +1330,13 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
   }
 
   void _showTowerDetails(Map<String, dynamic> tower) {
+    final locationLabel = buildMasterLocationLabel(
+      locationType: (tower['location_type'] ?? '').toString(),
+      locationCode: (tower['location_code'] ?? '').toString(),
+      locationName: (tower['location_name'] ?? tower['location'] ?? '').toString(),
+      containerYard: (tower['container_yard'] ?? '').toString(),
+    );
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1326,7 +1345,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Location: ${tower['location']}'),
+            Text('Location: $locationLabel'),
             const SizedBox(height: 8),
             Text('Status: ${tower['status']}'),
             const SizedBox(height: 8),

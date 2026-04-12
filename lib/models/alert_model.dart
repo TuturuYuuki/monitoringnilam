@@ -99,4 +99,33 @@ class Alert {
       'device_type': deviceType,
     };
   }
+
+  /// Sync alert data with current device/master type changes
+  /// Updates lokasi and deviceType if they have changed
+  Alert syncWithCurrentDeviceData(
+      {String? newLocation, String? newDeviceType}) {
+    return Alert(
+      id: id,
+      alertKey: alertKey,
+      title: title,
+      description: description,
+      severity: severity,
+      timestamp: timestamp,
+      route: route,
+      isRead: isRead,
+      createdAt: createdAt,
+      category: category,
+      source: source,
+      tanggal: tanggal,
+      waktu: waktu,
+      lokasi: newLocation != null
+          ? normalizeLocationLabel(newLocation)
+          : lokasi,
+      alertStatus: alertStatus,
+      resolvedAt: resolvedAt,
+      acknowledgedAt: acknowledgedAt,
+      deviceId: deviceId,
+      deviceType: newDeviceType ?? deviceType,
+    );
+  }
 }

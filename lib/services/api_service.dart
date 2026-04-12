@@ -1859,22 +1859,33 @@ class ApiService {
   Future<Map<String, dynamic>> getDevicePerformance({
     required String deviceType,
     required String deviceId,
+    int? hours,
   }) async {
     try {
-      final type = deviceType.trim().toLowerCase();
+      var type = deviceType.trim().toLowerCase();
       final id = deviceId.trim();
 
-      if (id.isEmpty || (type != 'tower' && type != 'camera')) {
+      if (type == 'tower' || type == 'ap' || type == 'accesspoint') {
+        type = 'access_point';
+      } else if (type == 'cctv') {
+        type = 'camera';
+      }
+
+      if (id.isEmpty ||
+          (type != 'access_point' && type != 'camera' && type != 'mmt')) {
         return {
           'success': false,
           'message': 'Invalid performance request parameter'
         };
       }
 
+      final safeHours = (hours ?? 12).clamp(1, 720);
+
       return _requestPerformanceWithFallback(
         queryParameters: {
           'device_type': type,
           'device_id': id,
+          'hours': safeHours.toString(),
         },
         timeoutMessage: 'Performance API timeout',
         defaultMessage: 'Failed to fetch performance telemetry',
@@ -1887,10 +1898,14 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> getGlobalDiagnostics() async {
+  Future<Map<String, dynamic>> getGlobalDiagnostics({int? hours}) async {
     try {
+      final safeHours = (hours ?? 12).clamp(1, 720);
       return _requestPerformanceWithFallback(
-        queryParameters: const {'scope': 'global'},
+        queryParameters: {
+          'scope': 'global',
+          'hours': safeHours.toString(),
+        },
         timeoutMessage: 'Global diagnostics API timeout',
         defaultMessage: 'Failed to fetch global diagnostics',
       );

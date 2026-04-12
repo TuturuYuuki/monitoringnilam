@@ -302,33 +302,26 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                 cornerRadius: 24,
                 borderWidth: 1.5,
                 borderColor: Colors.white30),
-            child: Center(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24.0, vertical: 40.0),
-                  child: Container(
-                    constraints: BoxConstraints(
-                      maxWidth: glassWidth,
-                    ),
-                    padding: const EdgeInsets.all(40),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Back Button & Icon
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: IconButton(
-                              icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                                  color: Colors.white, size: 24),
-                              onPressed: () => Navigator.pop(context),
-                            ),
-                          ),
+            child: Stack(
+              children: [
+                Center(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24.0, vertical: 40.0),
+                      child: Container(
+                        constraints: BoxConstraints(
+                          maxWidth: glassWidth,
+                        ),
+                        padding: const EdgeInsets.all(40),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
                           const SizedBox(height: 10),
                           const Icon(
                             Icons.mark_email_read_rounded,
@@ -515,12 +508,26 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                               ),
                             ),
                           ),
-                        ],
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
+                Positioned(
+                  top: 14,
+                  left: 12,
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

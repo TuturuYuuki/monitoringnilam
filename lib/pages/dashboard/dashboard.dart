@@ -1449,20 +1449,30 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
         runSpacing: 12,
         children: [
           SizedBox(
-              width: double.infinity,
-              child: NetworkStatusCard(
-                  totalOnline: totalOnlineTowers, totalDown: totalDownTowers)),
+            width: double.infinity,
+            child: NetworkStatusCard(
+              totalOnline: totalOnlineTowers,
+              totalDown: totalDownTowers,
+            ),
+          ),
           SizedBox(
-              width: double.infinity,
-              child: CCTVMonitoringCard(
-                  totalUp: totalUpCameras, totalDown: totalDownCameras)),
+            width: double.infinity,
+            child: CCTVMonitoringCard(
+              totalUp: totalUpCameras,
+              totalDown: totalDownCameras,
+            ),
+          ),
           SizedBox(
-              width: double.infinity,
-              child: MMTMonitoringCard(
-                  totalUp: totalUpMMT, totalDown: totalDownMMT)),
+            width: double.infinity,
+            child: MMTMonitoringCard(
+              totalUp: totalUpMMT,
+              totalDown: totalDownMMT,
+            ),
+          ),
           SizedBox(
-              width: double.infinity,
-              child: ActiveAlertsCard(totalWarnings: totalWarnings)),
+            width: double.infinity,
+            child: ActiveAlertsCard(totalWarnings: totalWarnings),
+          ),
         ],
       );
     }
@@ -1476,19 +1486,29 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                  child: NetworkStatusCard(
-                      totalOnline: totalOnlineTowers,
-                      totalDown: totalDownTowers)),
+                child: NetworkStatusCard(
+                  totalOnline: totalOnlineTowers,
+                  totalDown: totalDownTowers,
+                ),
+              ),
               const SizedBox(width: 12),
               Expanded(
-                  child: CCTVMonitoringCard(
-                      totalUp: totalUpCameras, totalDown: totalDownCameras)),
+                child: CCTVMonitoringCard(
+                  totalUp: totalUpCameras,
+                  totalDown: totalDownCameras,
+                ),
+              ),
               const SizedBox(width: 12),
               Expanded(
-                  child: MMTMonitoringCard(
-                      totalUp: totalUpMMT, totalDown: totalDownMMT)),
+                child: MMTMonitoringCard(
+                  totalUp: totalUpMMT,
+                  totalDown: totalDownMMT,
+                ),
+              ),
               const SizedBox(width: 12),
-              Expanded(child: ActiveAlertsCard(totalWarnings: totalWarnings)),
+              Expanded(
+                child: ActiveAlertsCard(totalWarnings: totalWarnings),
+              ),
             ],
           );
         }
@@ -1499,21 +1519,30 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           runSpacing: 12,
           children: [
             SizedBox(
-                width: cardWidth,
-                child: NetworkStatusCard(
-                    totalOnline: totalOnlineTowers,
-                    totalDown: totalDownTowers)),
+              width: cardWidth,
+              child: NetworkStatusCard(
+                totalOnline: totalOnlineTowers,
+                totalDown: totalDownTowers,
+              ),
+            ),
             SizedBox(
-                width: cardWidth,
-                child: CCTVMonitoringCard(
-                    totalUp: totalUpCameras, totalDown: totalDownCameras)),
+              width: cardWidth,
+              child: CCTVMonitoringCard(
+                totalUp: totalUpCameras,
+                totalDown: totalDownCameras,
+              ),
+            ),
             SizedBox(
-                width: cardWidth,
-                child: MMTMonitoringCard(
-                    totalUp: totalUpMMT, totalDown: totalDownMMT)),
+              width: cardWidth,
+              child: MMTMonitoringCard(
+                totalUp: totalUpMMT,
+                totalDown: totalDownMMT,
+              ),
+            ),
             SizedBox(
-                width: cardWidth,
-                child: ActiveAlertsCard(totalWarnings: totalWarnings)),
+              width: cardWidth,
+              child: ActiveAlertsCard(totalWarnings: totalWarnings),
+            ),
           ],
         );
       },
@@ -1536,6 +1565,21 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
     String route = '/cctv-gate';
     if (locationId == 'PARKING') {
       route = '/cctv-parking';
+    }
+    navigateWithLoading(context, route);
+  }
+
+  // Navigate to MMT page based on Container Yard ID
+  void _navigateToMMT(BuildContext context, String cyId) {
+    String route = '/mmt-monitoring';
+    if (cyId == 'CY2') {
+      route = '/mmt-monitoring-cy2';
+    } else if (cyId == 'CY3') {
+      route = '/mmt-monitoring-cy3';
+    } else if (cyId == 'GATE') {
+      route = '/mmt-monitoring-gate';
+    } else if (cyId == 'PARKING') {
+      route = '/mmt-monitoring-parking';
     }
     navigateWithLoading(context, route);
   }

@@ -37,12 +37,18 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
   DateTime? _lastRefreshTime;
   bool _isAutoRefreshEnabled = true;
   bool _isConnected = true;
+  int globalTotalMMTs = 0;
+  int globalUpMMTs = 0;
+  int globalDownMMTs = 0;
+  bool _isLoadingGlobalSummary = true;
+  bool _isGlobalSummaryRequestInFlight = false;
 
   @override
   void initState() {
     super.initState();
     _checkConnection();
     _loadMMTs();
+    _loadGlobalSummary(initialLoad: true);
     _startAutoRefresh();
   }
 
@@ -67,6 +73,7 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
       if (mounted && _isAutoRefreshEnabled) {
         _checkConnection();
         _loadMMTs();
+        _loadGlobalSummary();
       }
     });
   }
@@ -80,6 +87,43 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
       }
     } catch (e) {
       // Silent error
+    }
+  }
+
+  Future<void> _loadGlobalSummary({bool initialLoad = false}) async {
+    if (_isGlobalSummaryRequestInFlight) {
+      return;
+    }
+
+    _isGlobalSummaryRequestInFlight = true;
+    try {
+      if (mounted && initialLoad) {
+        setState(() {
+          _isLoadingGlobalSummary = true;
+        });
+      }
+
+      final mmts = await _apiService.getAllMMTs();
+      final up = mmts.where((m) => m.status == 'UP').length;
+      final down = mmts.length - up;
+
+      if (mounted) {
+        setState(() {
+          globalTotalMMTs = mmts.length;
+          globalUpMMTs = up;
+          globalDownMMTs = down;
+          _isLoadingGlobalSummary = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading MMT overview: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingGlobalSummary = false;
+        });
+      }
+    } finally {
+      _isGlobalSummaryRequestInFlight = false;
     }
   }
 
@@ -181,7 +225,13 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  _buildConnectionStatusBadge(),
+                  Row(
+                    children: [
+                      _buildHeaderOverviewMini(isMobile: true),
+                      const SizedBox(width: 8),
+                      _buildConnectionStatusBadge(),
+                    ],
+                  ),
                 ],
               ),
               Row(
@@ -226,13 +276,17 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'MMT Monitoring',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  const Row(
+                    children: [
+                      Text(
+                        'MMT Monitoring',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Row(
@@ -263,6 +317,7 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
                 ],
               ),
               const Spacer(),
+              _buildHeaderOverviewMini(isMobile: false),
             ],
           ),
         const SizedBox(height: 16),
@@ -325,6 +380,122 @@ class _MMTMonitoringPageState extends State<MMTMonitoringPage> {
         // MMT List
         _buildMMTList(context),
       ],
+    );
+  }
+
+  Widget _buildHeaderOverviewMini({required bool isMobile}) {
+    Widget content;
+    if (_isLoadingGlobalSummary) {
+      content = Text(
+        'Loading overview...',
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.8),
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+    } else {
+      final cards = [
+        _buildGlobalStatCard('ALL', '$globalTotalMMTs', Colors.orange,
+            width: isMobile ? null : 86),
+        _buildGlobalStatCard('UP', '$globalUpMMTs', Colors.green,
+            width: isMobile ? null : 86),
+        _buildGlobalStatCard('DOWN', '$globalDownMMTs', Colors.red,
+            width: isMobile ? null : 86),
+      ];
+
+      content = isMobile
+          ? Row(
+              children: [
+                Expanded(child: cards[0]),
+                const SizedBox(width: 8),
+                Expanded(child: cards[1]),
+                const SizedBox(width: 8),
+                Expanded(child: cards[2]),
+              ],
+            )
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                cards[0],
+                const SizedBox(width: 8),
+                cards[1],
+                const SizedBox(width: 8),
+                cards[2],
+              ],
+            );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Overview Data',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          content,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGlobalStatCard(String title, String value, Color indicatorColor,
+      {double? width}) {
+    return Container(
+      width: width,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 10,
+                ),
+              ),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: indicatorColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 18,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

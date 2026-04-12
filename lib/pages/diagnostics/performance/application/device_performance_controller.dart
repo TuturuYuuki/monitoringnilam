@@ -19,6 +19,7 @@ class DevicePerformanceController extends ChangeNotifier {
 
   String _selectedType = 'access_point';
   String _selectedDeviceId = '';
+  String _selectedRange = 'all';
 
   List<Tower> _towers = [];
   List<Camera> _cameras = [];
@@ -30,6 +31,7 @@ class DevicePerformanceController extends ChangeNotifier {
   DateTime? _lastUpdated;
 
   Map<String, dynamic>? _telemetry;
+  List<Map<String, dynamic>> _telemetryRows = const [];
   Timer? _refreshTimer;
 
   final List<FlSpot> _rxSpots = [];
@@ -40,6 +42,20 @@ class DevicePerformanceController extends ChangeNotifier {
 
   String get selectedType => _selectedType;
   String get selectedDeviceId => _selectedDeviceId;
+  String get selectedRange => _selectedRange;
+  int get selectedRangeHours {
+    switch (_selectedRange) {
+      case '24h':
+        return 24;
+      case '7d':
+        return 24 * 7;
+      case '30d':
+        return 24 * 30;
+      case 'all':
+      default:
+        return 24 * 30;
+    }
+  }
   List<Tower> get towers => _towers;
   List<Camera> get cameras => _cameras;
   List<MMT> get mmts => _mmts;
@@ -48,6 +64,8 @@ class DevicePerformanceController extends ChangeNotifier {
   String? get error => _error;
   DateTime? get lastUpdated => _lastUpdated;
   Map<String, dynamic>? get telemetry => _telemetry;
+  List<Map<String, dynamic>> get telemetryRows =>
+      List.unmodifiable(_telemetryRows);
   List<FlSpot> get rxSpots => List.unmodifiable(_rxSpots);
   List<FlSpot> get txSpots => List.unmodifiable(_txSpots);
   bool get didBootstrap => _didBootstrap;
@@ -131,6 +149,15 @@ class DevicePerformanceController extends ChangeNotifier {
     refreshTelemetry(force: true);
   }
 
+  void updateSelectedRange(String range) {
+    if (range == _selectedRange) {
+      return;
+    }
+    _selectedRange = range;
+    notifyListeners();
+    refreshTelemetry(force: true);
+  }
+
   void _startRefreshTimer() {
     _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(refreshInterval, (_) {
@@ -141,6 +168,7 @@ class DevicePerformanceController extends ChangeNotifier {
   Future<void> refreshTelemetry({bool force = false}) async {
     if (_selectedDeviceId.isEmpty) {
       _telemetry = null;
+      _telemetryRows = const [];
       _error = 'Pilih device Access Point, CCTV, atau MMT terlebih dahulu.';
       notifyListeners();
       return;
@@ -157,11 +185,22 @@ class DevicePerformanceController extends ChangeNotifier {
     final response = await _repository.getDevicePerformance(
       deviceType: _selectedType,
       deviceId: _selectedDeviceId,
+      hours: selectedRangeHours,
     );
 
     if (response['success'] == true &&
         response['data'] is Map<String, dynamic>) {
       final data = response['data'] as Map<String, dynamic>;
+      final rawRows = data['telemetry_rows'];
+      if (rawRows is List) {
+        _telemetryRows = rawRows
+            .whereType<Map>()
+            .map((row) => Map<String, dynamic>.from(row))
+            .toList(growable: false);
+      } else {
+        _telemetryRows = const [];
+      }
+
       _pushTrafficSample(
         rx: toDouble(data['traffic_rx_mbps']),
         tx: toDouble(data['traffic_tx_mbps']),
@@ -175,6 +214,7 @@ class DevicePerformanceController extends ChangeNotifier {
     }
 
     _isRefreshing = false;
+    _telemetryRows = const [];
     _error =
         response['message']?.toString() ?? 'Gagal mengambil data telemetry.';
     notifyListeners();

@@ -18,10 +18,16 @@ class DevicePerformanceRepository {
   Future<Map<String, dynamic>> getDevicePerformance({
     required String deviceType,
     required String deviceId,
+    int? hours,
   }) {
     return _apiService.getDevicePerformance(
       deviceType: deviceType,
       deviceId: deviceId,
+      hours: hours,
     );
+  }
+
+  Future<Map<String, dynamic>> getGlobalDiagnostics({int? hours}) {
+    return _apiService.getGlobalDiagnostics(hours: hours);
   }
 }

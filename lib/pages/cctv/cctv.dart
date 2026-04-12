@@ -31,6 +31,11 @@ class _CCTVPageState extends State<CCTVPage> {
   final bool _isAutoRefreshEnabled = true;
   bool _isConnected = true;
   final ApiService apiService = ApiService();
+  int globalTotalCameras = 0;
+  int globalUpCameras = 0;
+  int globalDownCameras = 0;
+  bool _isLoadingGlobalSummary = true;
+  bool _isGlobalSummaryRequestInFlight = false;
 
   int _resolveCamerasPerPage({
     required int crossAxisCount,
@@ -133,6 +138,7 @@ class _CCTVPageState extends State<CCTVPage> {
     super.initState();
     _checkConnection();
     _loadCameras();
+    _loadGlobalSummary(initialLoad: true);
     _startAutoRefresh();
   }
 
@@ -158,6 +164,7 @@ class _CCTVPageState extends State<CCTVPage> {
       if (mounted && _isAutoRefreshEnabled) {
         _checkConnection();
         _loadCameras();
+        _loadGlobalSummary();
       }
     });
   }
@@ -229,6 +236,43 @@ class _CCTVPageState extends State<CCTVPage> {
     }
   }
 
+  Future<void> _loadGlobalSummary({bool initialLoad = false}) async {
+    if (_isGlobalSummaryRequestInFlight) {
+      return;
+    }
+
+    _isGlobalSummaryRequestInFlight = true;
+    try {
+      if (mounted && initialLoad) {
+        setState(() {
+          _isLoadingGlobalSummary = true;
+        });
+      }
+
+      final cameras = await apiService.getAllCameras();
+      final up = cameras.where((c) => c.status == 'UP').length;
+      final down = cameras.length - up;
+
+      if (mounted) {
+        setState(() {
+          globalTotalCameras = cameras.length;
+          globalUpCameras = up;
+          globalDownCameras = down;
+          _isLoadingGlobalSummary = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading CCTV overview: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingGlobalSummary = false;
+        });
+      }
+    } finally {
+      _isGlobalSummaryRequestInFlight = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
@@ -247,7 +291,12 @@ class _CCTVPageState extends State<CCTVPage> {
                       child: LayoutBuilder(
                         builder: (context, constraints) {
                           return Padding(
-                            padding: EdgeInsets.all(isMobile ? 12 : 24),
+                            padding: EdgeInsets.fromLTRB(
+                              isMobile ? 12 : 24,
+                              isMobile ? 8 : 10,
+                              isMobile ? 12 : 24,
+                              isMobile ? 12 : 24,
+                            ),
                             child: _buildContent(context, constraints),
                           );
                         },
@@ -285,13 +334,19 @@ class _CCTVPageState extends State<CCTVPage> {
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'CCTV',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                children: [
+                  const Text(
+                    'CCTV',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  _buildHeaderOverviewMini(isMobile: true),
+                ],
               ),
               const Text(
                 'Live Monitoring',
@@ -302,7 +357,7 @@ class _CCTVPageState extends State<CCTVPage> {
               ),
             ],
           ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         Row(
           children: [
             Container(
@@ -321,18 +376,18 @@ class _CCTVPageState extends State<CCTVPage> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
-                  children: [
-                    Text(
-                      'CCTV Monitoring',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
+                  const Row(
+                    children: [
+                      Text(
+                        'CCTV Monitoring',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -361,6 +416,7 @@ class _CCTVPageState extends State<CCTVPage> {
               ],
             ),
             const Spacer(),
+            _buildHeaderOverviewMini(isMobile: false),
             const SizedBox(width: 16),
             // Fullscreen Button
             MouseRegion(
@@ -465,6 +521,122 @@ class _CCTVPageState extends State<CCTVPage> {
           child: _buildPagination(),
         ),
       ],
+    );
+  }
+
+  Widget _buildHeaderOverviewMini({required bool isMobile}) {
+    Widget content;
+    if (_isLoadingGlobalSummary) {
+      content = Text(
+        'Loading overview...',
+        style: TextStyle(
+          color: Colors.white.withOpacity(0.8),
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+    } else {
+      final cards = [
+        _buildGlobalStatCard('ALL', '$globalTotalCameras', Colors.orange,
+            width: isMobile ? null : 86),
+        _buildGlobalStatCard('UP', '$globalUpCameras', Colors.green,
+            width: isMobile ? null : 86),
+        _buildGlobalStatCard('DOWN', '$globalDownCameras', Colors.red,
+            width: isMobile ? null : 86),
+      ];
+
+      content = isMobile
+          ? Row(
+              children: [
+                Expanded(child: cards[0]),
+                const SizedBox(width: 8),
+                Expanded(child: cards[1]),
+                const SizedBox(width: 8),
+                Expanded(child: cards[2]),
+              ],
+            )
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                cards[0],
+                const SizedBox(width: 8),
+                cards[1],
+                const SizedBox(width: 8),
+                cards[2],
+              ],
+            );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Overview Data',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          content,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGlobalStatCard(String title, String value, Color indicatorColor,
+      {double? width}) {
+    return Container(
+      width: width,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.85),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 10,
+                ),
+              ),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: indicatorColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 18,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

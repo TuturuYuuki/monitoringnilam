@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:monitoring/main.dart';
 import 'package:monitoring/utils/ui_utils.dart';
 import 'package:monitoring/services/api_service.dart';
+import 'package:monitoring/services/device_storage_service.dart';
 import 'package:monitoring/models/tower_model.dart';
 import 'package:monitoring/utils/tower_status_override.dart';
 import 'package:monitoring/utils/location_label_utils.dart';
@@ -1201,6 +1202,17 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
                 });
 
                 if (response['success'] == true) {
+                  // Sync local storage after backend success
+                  await DeviceStorageService.updateDeviceFields(
+                    type: 'Tower',
+                    name: tower.towerId,
+                    updates: {
+                      'ipAddress': ipController.text,
+                      'locationName': selectedLocation,
+                      'containerYard': selectedYard,
+                    },
+                  );
+                  
                   if (mounted) {
                     Navigator.pop(context);
                     _loadTowers();

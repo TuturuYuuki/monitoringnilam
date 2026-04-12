@@ -4,6 +4,7 @@ import 'package:monitoring/main.dart';
 import 'package:monitoring/utils/ui_utils.dart';
 import 'package:monitoring/services/api_service.dart';
 import 'package:monitoring/models/alert_model.dart';
+import 'package:monitoring/models/tower_model.dart';
 import 'package:monitoring/widgets/global_header_bar.dart';
 import 'package:monitoring/widgets/global_sidebar_nav.dart';
 import 'package:monitoring/widgets/global_footer.dart';
@@ -56,8 +57,11 @@ class _AlertsPageState extends State<AlertsPage> {
           }
         }
 
+        // Sync alerts with current device/master data
+        final synced = await _syncAlertsWithDeviceData(loaded);
+
         setState(() {
-          _alerts = loaded;
+          _alerts = synced;
           _isLoading = false;
           _lastRefreshTime = DateTime.now();
         });
@@ -65,6 +69,69 @@ class _AlertsPageState extends State<AlertsPage> {
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  /// Sync alert data with current device/master type information
+  /// Returns alerts with updated lokasi and deviceType if changed
+  Future<List<Alert>> _syncAlertsWithDeviceData(List<Alert> alerts) async {
+    try {
+      // Fetch current device master data
+      final towers = await apiService.getAllTowers();
+      final cameras = await apiService.getAllCameras();
+      final mmts = await apiService.getAllMMTs();
+      // Build lookup maps using model fields that actually exist.
+      final Map<String, Tower> towerMap = {};
+      for (final t in towers) {
+        towerMap[_deviceKey(t.towerId)] = t;
+        towerMap[_deviceKey('AP ${t.towerNumber}')] = t;
+        towerMap[_deviceKey('AP${t.towerNumber}')] = t;
+      }
+      final cameraMap = {for (var c in cameras) _deviceKey(c.cameraId): c};
+      final mmtMap = {for (var m in mmts) _deviceKey(m.mmtId): m};
+
+      // Sync each alert
+      return alerts.map((alert) {
+        String? newLocation = alert.lokasi;
+        String? newDeviceType = alert.deviceType;
+
+        // Try to match device name to find current location and type
+        final searchName = _deviceKey(alert.title.split(' is ')[0]);
+
+        // Check towers
+        if (towerMap.containsKey(searchName)) {
+          final tower = towerMap[searchName]!;
+          newLocation = tower.location;
+          newDeviceType = 'Tower';
+        }
+        // Check cameras
+        else if (cameraMap.containsKey(searchName)) {
+          final camera = cameraMap[searchName]!;
+          newLocation = camera.location;
+          newDeviceType = 'CCTV';
+        }
+        // Check MMTs
+        else if (mmtMap.containsKey(searchName)) {
+          final mmt = mmtMap[searchName]!;
+          newLocation = mmt.location;
+          newDeviceType = 'MMT';
+        }
+
+        // Sync with new data if found
+        return alert.syncWithCurrentDeviceData(
+          newLocation: newLocation,
+          newDeviceType: newDeviceType,
+        );
+      }).toList();
+    } catch (e) {
+      // If sync fails, return original alerts
+      print('Alert sync error: $e');
+      return alerts;
+    }
+  }
+
+  String _deviceKey(String raw) {
+    final s = raw.trim().toLowerCase();
+    return s.replaceAll(RegExp(r'[^a-z0-9]'), '');
   }
 
   bool _isDeviceDown(String status) {

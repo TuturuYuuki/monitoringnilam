@@ -582,6 +582,22 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     return null;
   }
 
+  String _displayTowerLocationLabel(Tower tower) {
+    final matched = _findAnyMasterLocationForTower(tower);
+    if (matched != null) {
+      return buildMasterLocationLabel(
+        locationType: (matched['location_type'] ?? '').toString(),
+        locationCode: (matched['location_code'] ?? '').toString(),
+        locationName: (matched['location_name'] ?? '').toString(),
+        containerYard:
+            (matched['container_yard'] ?? tower.containerYard).toString(),
+      );
+    }
+
+    final fallback = normalizeLocationLabel(tower.location);
+    return fallback.isEmpty ? '-' : fallback;
+  }
+
   Map<String, double>? _resolveTowerPosition(Tower tower) {
     final preview = _dragPreview[tower.towerId];
     if (preview != null) {
@@ -738,6 +754,11 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
         _normalizeMatchKey((location['location_code'] ?? '').toString());
     final nameKey =
         _normalizeMatchKey((location['location_name'] ?? '').toString());
+    final yardKey =
+      _normalizeAreaId((location['container_yard'] ?? '').toString());
+    final digitKey = RegExp(r'\d+').firstMatch(codeKey)?.group(0) ??
+      RegExp(r'\d+').firstMatch(nameKey)?.group(0) ??
+      '';
 
     // Debug logging for RTG matching
     if (kDebugMode && locType == 'RTG') {
@@ -777,16 +798,23 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     final matches = widget.devices.where((device) {
       final deviceLocKey = _normalizeMatchKey(device.locationName);
       final typeKey = _normalizeMatchKey(device.type);
+      final deviceYardKey = _normalizeAreaId(device.containerYard);
+      final sameYard = yardKey.isEmpty || deviceYardKey == yardKey;
 
       // Match by exact location
       final locationMatch = _isKeyRelated(deviceLocKey, codeKey) ||
           _isKeyRelated(deviceLocKey, nameKey);
 
+      // Fallback for renamed type/name that still shares numeric identity in same yard.
+      final numericFallback = digitKey.isNotEmpty &&
+          sameYard &&
+          deviceLocKey.contains(digitKey);
+
       // Also check if device type contains the location type (e.g., CCTV at RTG02)
       final typeMatch = typeKey.contains(locType) &&
           (deviceLocKey.contains(codeKey) || codeKey.contains(deviceLocKey));
 
-      return locationMatch || typeMatch;
+      return locationMatch || typeMatch || numericFallback;
     }).toList(growable: false);
 
     if (kDebugMode && locType == 'RTG') {
@@ -1959,11 +1987,23 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text(
-                        '${tower.towerId} • ${tower.containerYard}',
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w700),
-                        overflow: TextOverflow.ellipsis,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tower.towerId,
+                            style: const TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.w700),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            _displayTowerLocationLabel(tower),
+                            style: const TextStyle(
+                                fontSize: 11, color: Colors.black54),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
+                          ),
+                        ],
                       ),
                     ),
                     IconButton(
@@ -1975,7 +2015,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text('Location: ${tower.location}',
+                Text('Location: ${_displayTowerLocationLabel(tower)}',
                     style: const TextStyle(fontSize: 12)),
                 const SizedBox(height: 8),
                 Container(

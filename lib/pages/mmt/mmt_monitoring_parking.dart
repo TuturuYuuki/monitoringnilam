@@ -791,109 +791,153 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
       );
     }
 
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4))
-        ],
-      ),
-      child: Column(
-        children: [
-          // Header biru — MMT List + pagination
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            width: double.infinity,
-            color: const Color(0xFF1976D2),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('MMT List',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800)),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10)),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.chevron_left, size: 20),
-                        onPressed: currentPage > 0
-                            ? () => setState(() => currentPage--)
-                            : null,
-                        constraints: const BoxConstraints(),
-                        padding: EdgeInsets.zero,
-                      ),
-                      const SizedBox(width: 8),
-                      ...List.generate(totalPages, (index) {
-                        final isCurrentPage = index == currentPage;
-                        return GestureDetector(
-                          onTap: () => setState(() => currentPage = index),
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: isCurrentPage
-                                  ? const Color(0xFF1976D2)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                color: isCurrentPage
-                                    ? Colors.white
-                                    : const Color(0xFF1976D2),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.chevron_right, size: 20),
-                        onPressed: currentPage < totalPages - 1
-                            ? () => setState(() => currentPage++)
-                            : null,
-                        constraints: const BoxConstraints(),
-                        padding: EdgeInsets.zero,
-                      ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(0.12),
+                Colors.white.withOpacity(0.02),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.2),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Header biru — MMT List + pagination
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF1976D2).withOpacity(0.8),
+                      const Color(0xFF1976D2).withOpacity(0.4),
                     ],
                   ),
                 ),
-              ],
-            ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'MMT List',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border:
+                            Border.all(color: Colors.white.withOpacity(0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.chevron_left_rounded,
+                                size: 20, color: Colors.white),
+                            onPressed: currentPage > 0
+                                ? () => setState(() => currentPage--)
+                                : null,
+                            constraints: const BoxConstraints(),
+                            padding: EdgeInsets.zero,
+                          ),
+                          const SizedBox(width: 8),
+                          ...List.generate(totalPages, (index) {
+                            final isCurrentPage = index == currentPage;
+                            return GestureDetector(
+                              onTap: () => setState(() => currentPage = index),
+                              child: Container(
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: isCurrentPage
+                                      ? Colors.white
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '${index + 1}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 13,
+                                    color: isCurrentPage
+                                        ? const Color(0xFF1976D2)
+                                        : Colors.white,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.chevron_right_rounded,
+                                size: 20, color: Colors.white),
+                            onPressed: currentPage < totalPages - 1
+                                ? () => setState(() => currentPage++)
+                                : null,
+                            constraints: const BoxConstraints(),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Header kolom kuning
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFFC6B430).withOpacity(0.8),
+                      const Color(0xFFC6B430).withOpacity(0.4),
+                    ],
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    _buildHeaderCell('MMT ID', flex: 2),
+                    _buildHeaderCell('Location', flex: 3),
+                    _buildHeaderCell('IP Address', flex: 2),
+                    _buildHeaderCell('Status', flex: 1),
+                    _buildHeaderCell('Action', flex: 2, isLast: true),
+                  ],
+                ),
+              ),
+              ...paginatedData.map((mmt) => _buildMMTTableRow(mmt)),
+            ],
           ),
-          // Header kolom kuning
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            width: double.infinity,
-            color: const Color(0xFFC6B430),
-            child: Row(
-              children: [
-                _buildHeaderCell('MMT ID', flex: 2),
-                _buildHeaderCell('Location', flex: 3),
-                _buildHeaderCell('IP Address', flex: 2),
-                _buildHeaderCell('Status', flex: 1),
-                _buildHeaderCell('Action', flex: 2, isLast: true),
-              ],
-            ),
-          ),
-          ...paginatedData.map((mmt) => _buildMMTTableRow(mmt)),
-        ],
+        ),
       ),
     );
   }
@@ -912,20 +956,27 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
   Widget _buildMMTTableRow(MMT mmt) {
     final isDown = mmt.status != 'UP';
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFE8D5C4),
-        border: Border(bottom: BorderSide(color: Colors.grey[300]!, width: 1)),
+        color: Colors.white.withOpacity(0.05),
+        border: Border(
+          bottom: BorderSide(color: Colors.white.withOpacity(0.05), width: 1),
+        ),
       ),
       child: Row(
         children: [
-          _buildTableCell(mmt.mmtId, flex: 2, fontWeight: FontWeight.w800),
-          _buildTableCell(mmt.location, flex: 3, fontWeight: FontWeight.w800),
-          _buildTableCell(mmt.ipAddress, flex: 2),
+          _buildTableCell(mmt.mmtId,
+              flex: 2, fontWeight: FontWeight.w800, color: Colors.white),
+          _buildTableCell(mmt.location,
+              flex: 3,
+              fontWeight: FontWeight.w800,
+              color: Colors.white.withOpacity(0.9)),
+          _buildTableCell(mmt.ipAddress,
+              flex: 2, color: Colors.white.withOpacity(0.7)),
           _buildTableCell(
             isDown ? 'DOWN' : mmt.status,
             flex: 1,
-            color: isDown ? Colors.red : Colors.black87,
+            color: isDown ? Colors.redAccent : Colors.greenAccent,
             fontWeight: FontWeight.w800,
           ),
           Expanded(
@@ -934,14 +985,18 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
+                  icon: const Icon(Icons.edit,
+                      color: Colors.blueAccent, size: 20),
                   onPressed: () => _editMMT(mmt),
+                  padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                  icon: const Icon(Icons.delete,
+                      color: Colors.redAccent, size: 20),
                   onPressed: () => _confirmDeleteMMT(mmt),
+                  padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
               ],

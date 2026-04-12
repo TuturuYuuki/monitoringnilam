@@ -16,6 +16,7 @@ import 'package:monitoring/utils/ui_utils.dart'
         appGlassFieldDecoration;
 import 'package:monitoring/services/api_service.dart';
 import 'package:monitoring/models/alert_model.dart';
+import 'package:monitoring/models/tower_model.dart';
 import 'package:monitoring/pages/dashboard/dashboard.dart';
 import 'package:monitoring/pages/network/network.dart';
 import 'package:monitoring/pages/cctv/cctv.dart';
@@ -38,7 +39,10 @@ class ReportPage extends StatefulWidget {
 class _ReportPageState extends State<ReportPage> {
   final ApiService apiService = ApiService();
   List<Alert> reportAlerts = [];
+  List<Alert> _allReportAlerts = [];
   bool isLoading = false;
+  Set<String> _activeDeviceKeys = {};
+  bool _deviceInventoryLoaded = false;
 
   DateTimeRange _selectedRange = DateTimeRange(
     start: DateTime.now().subtract(const Duration(days: 30)),
@@ -59,18 +63,84 @@ class _ReportPageState extends State<ReportPage> {
   Future<void> _fetchReportData() async {
     setState(() => isLoading = true);
     try {
-      final results = await apiService.getAlertsReport(
+      final resultsFuture = apiService.getAlertsReport(
         startDate: _selectedRange.start,
         endDate: _selectedRange.end,
         status: _statusFilter,
       );
+      final activeDeviceKeysFuture = _loadActiveDeviceKeys();
+
+      final results = await resultsFuture;
+      final activeDeviceKeys = await activeDeviceKeysFuture;
+    final syncedResults = await _syncReportAlertsWithDeviceData(results);
+
+      final normalized =
+      _latestAlertPerDevice(
+        _filterByActiveDevices(syncedResults, activeDeviceKeys));
+
       setState(() {
-        reportAlerts = results;
+        _activeDeviceKeys = activeDeviceKeys;
+        _deviceInventoryLoaded = true;
+        _allReportAlerts = normalized;
+        reportAlerts = normalized;
         isLoading = false;
       });
     } catch (e) {
       print("Fetch Report Error: $e");
       setState(() => isLoading = false);
+    }
+  }
+
+  Future<List<Alert>> _syncReportAlertsWithDeviceData(List<Alert> alerts) async {
+    try {
+      final towers = await apiService.getAllTowers();
+      final cameras = await apiService.getAllCameras();
+      final mmts = await apiService.getAllMMTs();
+
+      final Map<String, Tower> towerMap = {};
+      for (final tower in towers) {
+        if (tower.towerId.trim().isEmpty) continue;
+        towerMap[_deviceKey('AP ${tower.towerNumber}')] = tower;
+        towerMap[_deviceKey('AP${tower.towerNumber}')] = tower;
+        towerMap[_deviceKey(tower.towerId)] = tower;
+      }
+
+      final cameraMap = {
+        for (final camera in cameras)
+          if (camera.cameraId.trim().isNotEmpty) _deviceKey(camera.cameraId): camera
+      };
+      final mmtMap = {
+        for (final mmt in mmts)
+          if (mmt.mmtId.trim().isNotEmpty) _deviceKey(mmt.mmtId): mmt
+      };
+
+      return alerts.map((alert) {
+        var newLocation = alert.lokasi;
+        var newDeviceType = alert.deviceType;
+        final searchName = _deviceKey(_cleanDeviceName(alert.title));
+
+        if (towerMap.containsKey(searchName)) {
+          final tower = towerMap[searchName]!;
+          newLocation = tower.location;
+          newDeviceType = 'Tower';
+        } else if (cameraMap.containsKey(searchName)) {
+          final camera = cameraMap[searchName]!;
+          newLocation = camera.location;
+          newDeviceType = 'CCTV';
+        } else if (mmtMap.containsKey(searchName)) {
+          final mmt = mmtMap[searchName]!;
+          newLocation = mmt.location;
+          newDeviceType = 'MMT';
+        }
+
+        return alert.syncWithCurrentDeviceData(
+          newLocation: newLocation,
+          newDeviceType: newDeviceType,
+        );
+      }).toList(growable: false);
+    } catch (e) {
+      debugPrint('Report alert sync failed: $e');
+      return alerts;
     }
   }
 
@@ -253,6 +323,11 @@ class _ReportPageState extends State<ReportPage> {
     return cleaned.trim();
   }
 
+  String _deviceKey(String raw) {
+    final s = raw.trim().toLowerCase();
+    return s.replaceAll(RegExp(r'[^a-z0-9]'), '');
+  }
+
   String _extractIpFromDescription(String description) {
     // Description format: "DeviceId, IP, Location, Date, Time"
     final parts = description.split(',');
@@ -263,9 +338,12 @@ class _ReportPageState extends State<ReportPage> {
   String _extractDeviceType(Alert alert) {
     if (alert.deviceType != null && alert.deviceType!.isNotEmpty) {
       final dt = alert.deviceType!.toLowerCase();
-      if (dt.contains('tower') || dt.contains('ap')) return 'AP';
+      if (dt.contains('tower') || dt.contains('ap') || dt.contains('access')) {
+        return 'AP';
+      }
       if (dt.contains('camera') || dt.contains('cctv')) return 'CCTV';
       if (dt.contains('mmt')) return 'MMT';
+      if (dt.contains('cc')) return 'CC';
     }
 
     final src = '${alert.title} ${alert.description} ${alert.lokasi ?? ''}'
@@ -273,6 +351,7 @@ class _ReportPageState extends State<ReportPage> {
     if (RegExp(r'\b(AP|TOWER)\b').hasMatch(src)) return 'AP';
     if (RegExp(r'\b(CAM|CCTV)\b').hasMatch(src)) return 'CCTV';
     if (RegExp(r'\bMMT\b').hasMatch(src)) return 'MMT';
+    if (RegExp(r'\bCC\d*\b').hasMatch(src)) return 'CC';
     return 'Other';
   }
 
@@ -281,6 +360,109 @@ class _ReportPageState extends State<ReportPage> {
     return list
         .where((a) => _extractDeviceType(a) == _selectedDeviceType)
         .toList();
+  }
+
+  Future<Set<String>> _loadActiveDeviceKeys() async {
+    try {
+      final towersFuture = apiService.getAllTowers();
+      final camerasFuture = apiService.getAllCameras();
+      final mmtsFuture = apiService.getAllMMTs();
+
+      final towers = await towersFuture;
+      final cameras = await camerasFuture;
+      final mmts = await mmtsFuture;
+
+      final keys = <String>{};
+
+      for (final t in towers) {
+        if (t.towerId.trim().isNotEmpty) {
+          keys.add(_buildDeviceKey('AP', t.towerId));
+        }
+      }
+
+      for (final c in cameras) {
+        if (c.cameraId.trim().isEmpty) continue;
+        final camType = c.type.toUpperCase().contains('CC') ? 'CC' : 'CCTV';
+        keys.add(_buildDeviceKey(camType, c.cameraId));
+        // Keep compatibility if historical rows use CCTV while inventory device is CC.
+        keys.add(_buildDeviceKey('CCTV', c.cameraId));
+        keys.add(_buildDeviceKey('CC', c.cameraId));
+      }
+
+      for (final m in mmts) {
+        if (m.mmtId.trim().isNotEmpty) {
+          keys.add(_buildDeviceKey('MMT', m.mmtId));
+        }
+      }
+
+      return keys;
+    } catch (e) {
+      debugPrint('Active device inventory load failed: $e');
+      return <String>{};
+    }
+  }
+
+  String _normalizeDeviceTypeLabel(String raw) {
+    final t = raw.trim().toUpperCase();
+    if (t.contains('TOWER') || t == 'AP' || t.contains('ACCESS')) return 'AP';
+    if (t.contains('CAM') || t.contains('CCTV')) return 'CCTV';
+    if (t == 'CC' || t.contains(' CC')) return 'CC';
+    if (t.contains('MMT')) return 'MMT';
+    return t;
+  }
+
+  String _buildDeviceKey(String type, String id) {
+    return '${_normalizeDeviceTypeLabel(type)}:${id.trim().toUpperCase()}';
+  }
+
+  String _resolveAlertDeviceId(Alert alert) {
+    if (alert.deviceId != null && alert.deviceId!.trim().isNotEmpty) {
+      return alert.deviceId!.trim();
+    }
+
+    final src = '${alert.title} ${alert.description}';
+    final regex = RegExp(r'\b(?:AP|TOWER|CCTV|CAM|CC|MMT)[-_]?\d+\b',
+        caseSensitive: false);
+    final match = regex.firstMatch(src);
+    if (match != null) {
+      return match.group(0)!.toUpperCase();
+    }
+
+    final cleaned = _cleanDeviceName(alert.title);
+    return cleaned.isEmpty ? '-' : cleaned;
+  }
+
+  String _alertDeviceKey(Alert alert) {
+    final resolvedType = _extractDeviceType(alert);
+    final resolvedId = _resolveAlertDeviceId(alert);
+    return _buildDeviceKey(resolvedType, resolvedId);
+  }
+
+  List<Alert> _filterByActiveDevices(List<Alert> list, Set<String> activeKeys) {
+    if (activeKeys.isEmpty) return list;
+    return list.where((a) => activeKeys.contains(_alertDeviceKey(a))).toList();
+  }
+
+  List<Alert> _latestAlertPerDevice(List<Alert> list) {
+    final sorted = list.toList()
+      ..sort((a, b) {
+        final aTime = DateTime.tryParse(a.timestamp);
+        final bTime = DateTime.tryParse(b.timestamp);
+        if (aTime == null && bTime == null) return 0;
+        if (aTime == null) return 1;
+        if (bTime == null) return -1;
+        return bTime.compareTo(aTime);
+      });
+
+    final seen = <String>{};
+    final latest = <Alert>[];
+    for (final alert in sorted) {
+      final key = _alertDeviceKey(alert);
+      if (seen.contains(key)) continue;
+      seen.add(key);
+      latest.add(alert);
+    }
+    return latest;
   }
 
   bool _isDownAlert(Alert alert) {
@@ -762,18 +944,10 @@ class _ReportPageState extends State<ReportPage> {
       );
     }
 
-    // Sort by timestamp (newest first)
-    final sortedAlerts = reportAlerts.toList()
-      ..sort((a, b) {
-        final aTime = DateTime.tryParse(a.timestamp);
-        final bTime = DateTime.tryParse(b.timestamp);
-        if (aTime == null && bTime == null) return 0;
-        if (aTime == null) return 1;
-        if (bTime == null) return -1;
-        return bTime.compareTo(aTime); // Descending (newest first)
-      });
-
-    final filteredAlerts = _filterByDeviceType(sortedAlerts);
+    final filteredAlerts = _latestAlertPerDevice(
+      _filterByActiveDevices(
+          _filterByDeviceType(_allReportAlerts), _activeDeviceKeys),
+    );
 
     // Deduplicate to count unique UP/DOWN devices to match Dashboard
     final uniqueDevices = <String, Alert>{};
@@ -818,6 +992,18 @@ class _ReportPageState extends State<ReportPage> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (_deviceInventoryLoaded && _activeDeviceKeys.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 10),
+                        child: Text(
+                          'Inventory unavailable',
+                          style: TextStyle(
+                            color: Colors.orange.shade100,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                     _buildHeaderFilters(),
                     const SizedBox(width: 24),
                     _buildHeaderPagination(totalCount),
@@ -1126,7 +1312,7 @@ class _ReportPageState extends State<ReportPage> {
   }
 
   Widget _buildHeaderFilters() {
-    final filterOptions = ['ALL', 'AP', 'CCTV', 'MMT'];
+    final filterOptions = ['ALL', 'AP', 'CCTV', 'MMT', 'CC'];
     return Wrap(
       spacing: 8,
       runSpacing: 8,
