@@ -86,9 +86,9 @@ class _CCTVPageState extends State<CCTVPage> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
+                      color: Colors.red.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -127,7 +127,7 @@ class _CCTVPageState extends State<CCTVPage> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
+              child: const Text('Close'),
         ),
       ],
     );
@@ -262,7 +262,7 @@ class _CCTVPageState extends State<CCTVPage> {
         });
       }
     } catch (e) {
-      print('Error loading CCTV overview: $e');
+      debugPrint('Error loading CCTV overview: $e');
       if (mounted) {
         setState(() {
           _isLoadingGlobalSummary = false;
@@ -426,10 +426,10 @@ class _CCTVPageState extends State<CCTVPage> {
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
+                    color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.3),
+                      color: Colors.white.withValues(alpha: 0.3),
                       width: 1,
                     ),
                   ),
@@ -530,7 +530,7 @@ class _CCTVPageState extends State<CCTVPage> {
       content = Text(
         'Loading overview...',
         style: TextStyle(
-          color: Colors.white.withOpacity(0.8),
+          color: Colors.white.withValues(alpha: 0.8),
           fontSize: 10,
           fontWeight: FontWeight.w600,
         ),
@@ -570,9 +570,9 @@ class _CCTVPageState extends State<CCTVPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
+        color: Colors.white.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.15)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -598,9 +598,9 @@ class _CCTVPageState extends State<CCTVPage> {
       width: width,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
+        color: Colors.white.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.15)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -611,7 +611,7 @@ class _CCTVPageState extends State<CCTVPage> {
               Text(
                 title,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.85),
+                  color: Colors.white.withValues(alpha: 0.85),
                   fontWeight: FontWeight.w700,
                   fontSize: 10,
                 ),
@@ -655,18 +655,18 @@ class _CCTVPageState extends State<CCTVPage> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.white.withOpacity(0.2),
-                  Colors.white.withOpacity(0.05),
+                  Colors.white.withValues(alpha: 0.2),
+                  Colors.white.withValues(alpha: 0.05),
                 ],
               ),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -684,7 +684,7 @@ class _CCTVPageState extends State<CCTVPage> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           letterSpacing: 0.5,
                         ),
                       ),
@@ -697,7 +697,7 @@ class _CCTVPageState extends State<CCTVPage> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: indicatorColor.withOpacity(0.5),
+                            color: indicatorColor.withValues(alpha: 0.5),
                             blurRadius: 8,
                             spreadRadius: 2,
                           ),
@@ -722,7 +722,7 @@ class _CCTVPageState extends State<CCTVPage> {
                   width: 40,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [indicatorColor, indicatorColor.withOpacity(0)],
+                      colors: [indicatorColor, indicatorColor.withValues(alpha: 0)],
                     ),
                     borderRadius: BorderRadius.circular(2),
                   ),
@@ -756,13 +756,13 @@ class _CCTVPageState extends State<CCTVPage> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.white.withOpacity(0.12),
-                Colors.white.withOpacity(0.02),
+                Colors.white.withValues(alpha: 0.12),
+                Colors.white.withValues(alpha: 0.02),
               ],
             ),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: Colors.white.withOpacity(0.25),
+              color: Colors.white.withValues(alpha: 0.25),
               width: 1.5,
             ),
           ),
@@ -771,7 +771,7 @@ class _CCTVPageState extends State<CCTVPage> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Icon(Icons.location_on_rounded,
@@ -786,7 +786,7 @@ class _CCTVPageState extends State<CCTVPage> {
                     Text(
                       'AREA',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
+                        color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 2.0,
@@ -865,13 +865,13 @@ class _CCTVPageState extends State<CCTVPage> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                const Color(0xFF1976D2).withOpacity(0.12),
-                const Color(0xFF1976D2).withOpacity(0.02),
+                const Color(0xFF1976D2).withValues(alpha: 0.12),
+                const Color(0xFF1976D2).withValues(alpha: 0.02),
               ],
             ),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: const Color(0xFF1976D2).withOpacity(0.25),
+              color: const Color(0xFF1976D2).withValues(alpha: 0.25),
               width: 1.5,
             ),
           ),
@@ -880,7 +880,7 @@ class _CCTVPageState extends State<CCTVPage> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1976D2).withOpacity(0.2),
+                  color: const Color(0xFF1976D2).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Icon(Icons.business_rounded,
@@ -895,7 +895,7 @@ class _CCTVPageState extends State<CCTVPage> {
                     Text(
                       'YARD',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
+                        color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 2.0,
@@ -927,17 +927,17 @@ class _CCTVPageState extends State<CCTVPage> {
       child: GestureDetector(
         onTap: () async {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Checking Status...'),
-              duration: Duration(seconds: 2),
-            ),
+              const SnackBar(
+                content: Text('Memeriksa status...'),
+                duration: Duration(seconds: 2),
+              ),
           );
           await _triggerPingCheck();
           await _loadCameras();
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('✓ Status updated!'),
+                content: Text('✓ Status berhasil diperbarui!'),
                 backgroundColor: Colors.green,
                 duration: Duration(seconds: 2),
               ),
@@ -956,13 +956,13 @@ class _CCTVPageState extends State<CCTVPage> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    const Color(0xFF4CAF50).withOpacity(0.12),
-                    const Color(0xFF4CAF50).withOpacity(0.02),
+                    const Color(0xFF4CAF50).withValues(alpha: 0.12),
+                    const Color(0xFF4CAF50).withValues(alpha: 0.02),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: const Color(0xFF4CAF50).withOpacity(0.25),
+                  color: const Color(0xFF4CAF50).withValues(alpha: 0.25),
                   width: 1.5,
                 ),
               ),
@@ -971,7 +971,7 @@ class _CCTVPageState extends State<CCTVPage> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: const Icon(Icons.refresh_rounded,
@@ -984,24 +984,24 @@ class _CCTVPageState extends State<CCTVPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'ACTION',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.6),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 2.0,
+                            'AKSI',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.6),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 2.0,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
+                          const SizedBox(height: 4),
                         const Text(
-                          'CHECK STATUS',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 15,
-                            letterSpacing: 0.5,
+                            'CEK STATUS',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 15,
+                              letterSpacing: 0.5,
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -1028,13 +1028,13 @@ class _CCTVPageState extends State<CCTVPage> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.white.withOpacity(0.12),
-                  Colors.white.withOpacity(0.02),
+                  Colors.white.withValues(alpha: 0.12),
+                  Colors.white.withValues(alpha: 0.02),
                 ],
               ),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 width: 1.5,
               ),
             ),
@@ -1075,13 +1075,13 @@ class _CCTVPageState extends State<CCTVPage> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.white.withOpacity(0.12),
-                  Colors.white.withOpacity(0.02),
+                  Colors.white.withValues(alpha: 0.12),
+                  Colors.white.withValues(alpha: 0.02),
                 ],
               ),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 width: 1.5,
               ),
             ),
@@ -1175,18 +1175,18 @@ class _CCTVPageState extends State<CCTVPage> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Colors.white.withOpacity(0.15),
-                    Colors.white.withOpacity(0.04),
+                    Colors.white.withValues(alpha: 0.15),
+                    Colors.white.withValues(alpha: 0.04),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.25),
+                  color: Colors.white.withValues(alpha: 0.25),
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     blurRadius: 15,
                     offset: const Offset(0, 8),
                   ),
@@ -1202,7 +1202,7 @@ class _CCTVPageState extends State<CCTVPage> {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Colors.white.withOpacity(0.08),
+                            Colors.white.withValues(alpha: 0.08),
                             Colors.transparent,
                           ],
                         ),
@@ -1214,23 +1214,23 @@ class _CCTVPageState extends State<CCTVPage> {
                           decoration: BoxDecoration(
                             gradient: RadialGradient(
                               colors: [
-                                statusColor.withOpacity(0.3),
-                                statusColor.withOpacity(0.1),
+                                statusColor.withValues(alpha: 0.3),
+                                statusColor.withValues(alpha: 0.1),
                               ],
                             ),
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: statusColor.withOpacity(0.6),
+                              color: statusColor.withValues(alpha: 0.6),
                               width: 2,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: statusColor.withOpacity(0.4),
+                                color: statusColor.withValues(alpha: 0.4),
                                 blurRadius: 15,
                                 spreadRadius: 2,
                               ),
                               BoxShadow(
-                                color: Colors.white.withOpacity(0.3),
+                                color: Colors.white.withValues(alpha: 0.3),
                                 blurRadius: 4,
                                 spreadRadius: 0.5,
                               ),
@@ -1249,10 +1249,10 @@ class _CCTVPageState extends State<CCTVPage> {
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       border: Border(
                         top: BorderSide(
-                          color: Colors.white.withOpacity(0.08),
+                          color: Colors.white.withValues(alpha: 0.08),
                           width: 1,
                         ),
                       ),
@@ -1283,7 +1283,7 @@ class _CCTVPageState extends State<CCTVPage> {
               filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: PopupMenuButton<String>(
@@ -1304,7 +1304,7 @@ class _CCTVPageState extends State<CCTVPage> {
                         children: [
                           Icon(Icons.edit, color: Colors.blueAccent, size: 18),
                           SizedBox(width: 8),
-                          Text('Edit', style: TextStyle(color: Colors.white)),
+                          Text('Ubah', style: TextStyle(color: Colors.white)),
                         ],
                       ),
                     ),
@@ -1336,10 +1336,10 @@ class _CCTVPageState extends State<CCTVPage> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.12),
+            color: Colors.white.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               width: 1.5,
             ),
           ),
@@ -1347,11 +1347,11 @@ class _CCTVPageState extends State<CCTVPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Showing ${(currentPage * camerasPerPage) + 1}-${(currentPage * camerasPerPage) + paginatedCameras.length} Of ${allCameras.length} Camera',
+                      'Menampilkan ${(currentPage * camerasPerPage) + 1}-${(currentPage * camerasPerPage) + paginatedCameras.length} dari ${allCameras.length} kamera',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white.withOpacity(0.7),
+                  color: Colors.white.withValues(alpha: 0.7),
                 ),
               ),
               Row(
@@ -1381,13 +1381,13 @@ class _CCTVPageState extends State<CCTVPage> {
                           height: 38,
                           decoration: BoxDecoration(
                             color: isCurrent
-                                ? const Color(0xFF1976D2).withOpacity(0.8)
-                                : Colors.white.withOpacity(0.05),
+                                ? const Color(0xFF1976D2).withValues(alpha: 0.8)
+                                : Colors.white.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
                               color: isCurrent
-                                  ? Colors.white.withOpacity(0.5)
-                                  : Colors.white.withOpacity(0.2),
+                                  ? Colors.white.withValues(alpha: 0.5)
+                                  : Colors.white.withValues(alpha: 0.2),
                             ),
                           ),
                           child: Center(
@@ -1456,13 +1456,13 @@ class _CCTVPageState extends State<CCTVPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setLocalState) => AlertDialog(
-          title: Text('Edit ${camera.cameraId}'),
+          title: Text('Ubah ${camera.cameraId}'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: ipController,
-                decoration: const InputDecoration(labelText: 'IP Address'),
+                decoration: const InputDecoration(labelText: 'Alamat IP'),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
@@ -1470,7 +1470,7 @@ class _CCTVPageState extends State<CCTVPage> {
                 isExpanded: true,
                 dropdownColor: AppDropdownStyle.menuBackground,
                 borderRadius: AppDropdownStyle.menuBorderRadius,
-                decoration: const InputDecoration(labelText: 'Location'),
+                decoration: const InputDecoration(labelText: 'Lokasi'),
                 items: locationOptions
                     .map((option) => DropdownMenuItem<String>(
                           value: option['label'],
@@ -1513,8 +1513,8 @@ class _CCTVPageState extends State<CCTVPage> {
                     Navigator.pop(context);
                     _loadCameras();
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Updated Successfully'),
-                        backgroundColor: Colors.green));
+                      content: Text('Berhasil diperbarui'),
+                      backgroundColor: Colors.green));
                   }
                 }
               },
@@ -1531,8 +1531,8 @@ class _CCTVPageState extends State<CCTVPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Camera'),
-        content: Text('Are You Sure Want To Delete Camera ${camera.cameraId}?'),
+        title: const Text('Konfirmasi hapus'),
+        content: Text('Hapus kamera ${camera.cameraId}?'),
         actions: [
           // Tombol Cancel
           TextButton(
@@ -1550,7 +1550,7 @@ class _CCTVPageState extends State<CCTVPage> {
                   Navigator.of(context).pop(); // Menutup dialog
                   _loadCameras(); // Refresh data
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Deleted Successfully'),
+                      content: Text('Data berhasil dihapus'),
                       backgroundColor: Colors.red));
                 }
               }
@@ -1562,3 +1562,4 @@ class _CCTVPageState extends State<CCTVPage> {
     );
   }
 }
+

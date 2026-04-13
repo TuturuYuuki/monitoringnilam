@@ -23,6 +23,7 @@ class Alert {
   final String? acknowledgedAt;
   final String? deviceId;
   final String? deviceType;
+  final bool isDeviceDeleted;
 
   Alert({
     required this.id,
@@ -44,6 +45,7 @@ class Alert {
     this.acknowledgedAt,
     this.deviceId,
     this.deviceType,
+    this.isDeviceDeleted = false,
   });
 
   factory Alert.fromJson(Map<String, dynamic> json) {
@@ -73,6 +75,10 @@ class Alert {
     acknowledgedAt: json['acknowledged_at']?.toString(),
     deviceId: json['device_id']?.toString(),
     deviceType: json['device_type']?.toString(),
+    isDeviceDeleted: ((json['is_device_deleted'] ?? json['device_deleted'] ?? 0)
+            .toString() ==
+        '1') ||
+        ((json['device_status'] ?? '').toString().toLowerCase() == 'deleted'),
   );
 }
 
@@ -97,13 +103,14 @@ class Alert {
       'acknowledged_at': acknowledgedAt,
       'device_id': deviceId,
       'device_type': deviceType,
+      'is_device_deleted': isDeviceDeleted ? 1 : 0,
     };
   }
 
   /// Sync alert data with current device/master type changes
   /// Updates lokasi and deviceType if they have changed
   Alert syncWithCurrentDeviceData(
-      {String? newLocation, String? newDeviceType}) {
+      {String? newLocation, String? newDeviceType, bool? isDeviceDeleted}) {
     return Alert(
       id: id,
       alertKey: alertKey,
@@ -126,6 +133,7 @@ class Alert {
       acknowledgedAt: acknowledgedAt,
       deviceId: deviceId,
       deviceType: newDeviceType ?? deviceType,
+      isDeviceDeleted: isDeviceDeleted ?? this.isDeviceDeleted,
     );
   }
 }

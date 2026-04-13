@@ -836,7 +836,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           onTap: () {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Master Location: $locName ($locType)'),
+                content: Text('Lokasi master: $locName ($locType)'),
                 duration: const Duration(seconds: 2),
                 backgroundColor: markerColor,
               ),
@@ -1188,19 +1188,19 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
 
       if (!result['success']) {
         print(
-            '⚠️ Warning: Failed to save position to database: ${result['message']}');
+            '⚠️ Peringatan: gagal menyimpan posisi ke database: ${result['message']}');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(
-                  'Position updated locally but DB save failed: ${result['message']}')),
+                  'Posisi sudah diperbarui secara lokal, tetapi gagal menyimpan ke database: ${result['message']}')),
         );
       } else {
-        print('✓ Tower position updated and saved to database');
+        print('✓ Posisi tower berhasil diperbarui dan disimpan ke database');
       }
     } catch (e) {
-      print('Error handling tower position update: $e');
+      print('Error saat memproses pembaruan posisi tower: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating tower position: $e')),
+        SnackBar(content: Text('Gagal memperbarui posisi tower: $e')),
       );
     }
   }
@@ -1958,23 +1958,22 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                         'Add New Device', const AddDevicePage()),
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton(
-                        'Master Data', const TowerManagementPage()),
+                      'Data Master', const TowerManagementPage()),
                     const SizedBox(width: 12),
-                    _buildHeaderOpenButton('Dashboard', const DashboardPage(),
+                    _buildHeaderOpenButton('Dasbor', const DashboardPage(),
                         isActive: true),
                     const SizedBox(width: 12),
-                    _buildHeaderOpenButton('Access Point', const NetworkPage()),
+                    _buildHeaderOpenButton('Titik Akses', const NetworkPage()),
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('CCTV', const CCTVPage()),
                     const SizedBox(width: 12),
                     _buildHeaderOpenButton('MMT', const MMTMonitoringPage()),
                     const SizedBox(width: 12),
-                    _buildHeaderOpenButton('Alert', const AlertsPage()),
+                    _buildHeaderOpenButton('Peringatan', const AlertsPage()),
                     const SizedBox(width: 12),
-                    _buildHeaderOpenButton('Alert Report', const ReportPage()),
+                    _buildHeaderOpenButton('Laporan Alert', const ReportPage()),
                     const SizedBox(width: 12),
-                    _buildHeaderButton(
-                        'Logout', () => _showLogoutDialog(context)),
+                    _buildHeaderButton('Logout', () => _showLogoutDialog(context)),
                     const SizedBox(width: 12),
                     // Profile Icon
                     GestureDetector(
@@ -2204,7 +2203,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                   ),
                   const SizedBox(width: 12),
                   const Text(
-                    'Activity Timeline',
+                    'Linimasa Aktivitas',
                     style: TextStyle(
                       color: Colors.white, // Changed to white
                       fontSize: 22,
@@ -2267,13 +2266,13 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Logout', style: TextStyle(color: Colors.black87)),
-        content: const Text('Are You Sure To Logout?',
+        content: const Text('Are you sure you want to exit?',
             style: TextStyle(color: Colors.black87)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child:
-                const Text('Cancel', style: TextStyle(color: Colors.black87)),
+          child:
+            const Text('Cancel', style: TextStyle(color: Colors.black87)),
           ),
           ElevatedButton(
             onPressed: () {

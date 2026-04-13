@@ -666,7 +666,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
         onTap: () async {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Checking Status...'),
+              content: Text('Memeriksa status...'),
               duration: Duration(seconds: 2),
             ),
           );
@@ -675,7 +675,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('✓ Status updated!'),
+                content: Text('✓ Status berhasil diperbarui!'),
                 backgroundColor: Colors.green,
                 duration: Duration(seconds: 2),
               ),
@@ -722,7 +722,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'ACTION',
+                          'AKSI',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.6),
                             fontSize: 10,
@@ -732,7 +732,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                         ),
                         const SizedBox(height: 4),
                         const Text(
-                          'CHECK STATUS',
+                          'CEK STATUS',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w900,
@@ -1007,7 +1007,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                     _buildHeaderCell('Location', flex: 2),
                     _buildHeaderCell('IP Address', flex: 2),
                     _buildHeaderCell('Status', flex: 1),
-                    _buildHeaderCell('Action', flex: 1, isLast: true),
+                    _buildHeaderCell('Aksi', flex: 1, isLast: true),
                   ],
                 ),
               ),
@@ -1251,7 +1251,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                     Navigator.pop(context);
                     _loadTowers();
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('CY2 Updated Successfully'),
+                        content: Text('CY2 berhasil diperbarui'),
                         backgroundColor: Colors.green));
                   }
                 }
@@ -1269,12 +1269,12 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: Text('Are you sure you want to delete ${tower.towerId}?'),
+          title: const Text('Konfirmasi hapus'),
+          content: Text('Hapus ${tower.towerId}?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel')),
+            child: const Text('Cancel')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
@@ -1283,8 +1283,8 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                 if (mounted) {
                   Navigator.pop(context);
                   _loadTowers(); // Refresh data CY2
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Data Has Been Successfully Deleted'),
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Data berhasil dihapus'),
                       backgroundColor: Colors.red));
                 }
               }

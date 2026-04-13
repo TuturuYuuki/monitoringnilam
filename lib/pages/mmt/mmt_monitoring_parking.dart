@@ -581,7 +581,7 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
         onTap: () async {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Checking Status...'),
+              content: Text('Memeriksa status...'),
               duration: Duration(seconds: 2),
             ),
           );
@@ -589,7 +589,7 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('✓ Status updated!'),
+                content: Text('✓ Status berhasil diperbarui!'),
                 backgroundColor: Colors.green,
                 duration: Duration(seconds: 2),
               ),
@@ -636,7 +636,7 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'ACTION',
+                          'AKSI',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.6),
                             fontSize: 10,
@@ -646,7 +646,7 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
                         ),
                         const SizedBox(height: 4),
                         const Text(
-                          'CHECK STATUS',
+                          'CEK STATUS',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w900,
@@ -927,10 +927,10 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
                 child: Row(
                   children: [
                     _buildHeaderCell('MMT ID', flex: 2),
-                    _buildHeaderCell('Location', flex: 3),
-                    _buildHeaderCell('IP Address', flex: 2),
+                    _buildHeaderCell('Lokasi', flex: 3),
+                    _buildHeaderCell('Alamat IP', flex: 2),
                     _buildHeaderCell('Status', flex: 1),
-                    _buildHeaderCell('Action', flex: 2, isLast: true),
+                    _buildHeaderCell('Aksi', flex: 2, isLast: true),
                   ],
                 ),
               ),
@@ -1059,20 +1059,20 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setLocalState) => AlertDialog(
-          title: Text('Edit ${mmt.mmtId}'),
+          title: Text('Ubah ${mmt.mmtId}'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                   controller: ipController,
-                  decoration: const InputDecoration(labelText: 'IP Address')),
+                  decoration: const InputDecoration(labelText: 'Alamat IP')),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: selectedLocation,
                 isExpanded: true,
                 dropdownColor: AppDropdownStyle.menuBackground,
                 borderRadius: AppDropdownStyle.menuBorderRadius,
-                decoration: const InputDecoration(labelText: 'Location'),
+                decoration: const InputDecoration(labelText: 'Lokasi'),
                 items: locationOptions
                     .map((option) => DropdownMenuItem<String>(
                           value: option['label'],
@@ -1111,7 +1111,7 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
                     await _loadMMTs();
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                          content: Text('Successfully Updated'),
+                          content: Text('Data berhasil diperbarui'),
                           backgroundColor: Colors.green));
                     }
                   }
@@ -1120,7 +1120,7 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
                     Navigator.pop(context);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                          content: Text('Failed to update'),
+                          content: Text('Gagal memperbarui data'),
                           backgroundColor: Colors.red));
                     }
                   }
@@ -1138,8 +1138,8 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: Text('Are You Sure Want To Delete ${mmt.mmtId}?'),
+        title: const Text('Konfirmasi hapus'),
+        content: Text('Hapus ${mmt.mmtId}?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
@@ -1154,7 +1154,7 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
                   await _loadMMTs();
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Data Has Been Successfully Deleted'),
+                        content: Text('Data berhasil dihapus'),
                         backgroundColor: Colors.red));
                   }
                 }
@@ -1163,7 +1163,7 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
                   Navigator.pop(context);
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Failed to delete'),
+                        content: Text('Gagal menghapus'),
                         backgroundColor: Colors.red));
                   }
                 }
@@ -1195,18 +1195,18 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('MMT Details - ${mmt.mmtId}'),
+        title: Text('Detail MMT - ${mmt.mmtId}'),
         content: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildDetailRow('Location', mmt.location, Icons.location_on),
+            _buildDetailRow('Lokasi', mmt.location, Icons.location_on),
             const SizedBox(height: 12),
-            _buildDetailRow('IP Address', mmt.ipAddress, Icons.router),
+            _buildDetailRow('Alamat IP', mmt.ipAddress, Icons.router),
             const SizedBox(height: 12),
-            _buildDetailRow('Container Yard', mmt.containerYard, Icons.domain),
+            _buildDetailRow('Area kontainer', mmt.containerYard, Icons.domain),
             const SizedBox(height: 12),
-            _buildDetailRow('Type', mmt.type, Icons.category),
+            _buildDetailRow('Tipe', mmt.type, Icons.category),
             const SizedBox(height: 12),
             _buildDetailRow('Status', mmt.status, Icons.info),
           ],
@@ -1224,8 +1224,8 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete MMT?'),
-        content: Text('Are you sure you want to delete ${mmt.mmtId}?'),
+        title: const Text('Konfirmasi hapus'),
+        content: Text('Hapus ${mmt.mmtId}?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
@@ -1234,7 +1234,7 @@ class _MMTMonitoringParkingPageState extends State<MMTMonitoringParkingPage> {
             onPressed: () {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${mmt.mmtId} deleted')));
+                  SnackBar(content: Text('${mmt.mmtId} dihapus')));
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Delete', style: TextStyle(color: Colors.white)),

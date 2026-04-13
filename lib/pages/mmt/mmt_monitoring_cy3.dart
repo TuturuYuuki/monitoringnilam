@@ -319,18 +319,18 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.white.withOpacity(0.12),
-                  Colors.white.withOpacity(0.02),
+                  Colors.white.withValues(alpha: 0.12),
+                  Colors.white.withValues(alpha: 0.02),
                 ],
               ),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: Colors.white.withOpacity(0.25),
+                color: Colors.white.withValues(alpha: 0.25),
                 width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.15),
+                  color: Colors.black.withValues(alpha: 0.15),
                   blurRadius: 15,
                   spreadRadius: 2,
                 ),
@@ -348,7 +348,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w900,
-                          color: Colors.white.withOpacity(0.6),
+                          color: Colors.white.withValues(alpha: 0.6),
                           letterSpacing: 1.2,
                         ),
                       ),
@@ -361,7 +361,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: indicatorColor.withOpacity(0.5),
+                            color: indicatorColor.withValues(alpha: 0.5),
                             blurRadius: 6,
                             spreadRadius: 1,
                           ),
@@ -386,7 +386,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
                   width: 40,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [indicatorColor, indicatorColor.withOpacity(0)],
+                      colors: [indicatorColor, indicatorColor.withValues(alpha: 0)],
                     ),
                     borderRadius: BorderRadius.circular(2),
                   ),
@@ -412,13 +412,13 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                const Color(0xFF1976D2).withOpacity(0.12),
-                const Color(0xFF1976D2).withOpacity(0.02),
+                const Color(0xFF1976D2).withValues(alpha: 0.12),
+                const Color(0xFF1976D2).withValues(alpha: 0.02),
               ],
             ),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: const Color(0xFF1976D2).withOpacity(0.25),
+              color: const Color(0xFF1976D2).withValues(alpha: 0.25),
               width: 1.5,
             ),
           ),
@@ -427,7 +427,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1976D2).withOpacity(0.2),
+                  color: const Color(0xFF1976D2).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Icon(Icons.location_on_rounded,
@@ -442,7 +442,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
                     Text(
                       'AREA',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
+                        color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 2.0,
@@ -481,13 +481,13 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.white.withOpacity(0.12),
-                Colors.white.withOpacity(0.02),
+                Colors.white.withValues(alpha: 0.12),
+                Colors.white.withValues(alpha: 0.02),
               ],
             ),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: Colors.white.withOpacity(0.25),
+              color: Colors.white.withValues(alpha: 0.25),
               width: 1.5,
             ),
           ),
@@ -496,7 +496,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Icon(Icons.location_on_rounded,
@@ -511,7 +511,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
                     Text(
                       'AREA',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
+                        color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 2.0,
@@ -612,13 +612,13 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    const Color(0xFF4CAF50).withOpacity(0.12),
-                    const Color(0xFF4CAF50).withOpacity(0.02),
+                    const Color(0xFF4CAF50).withValues(alpha: 0.12),
+                    const Color(0xFF4CAF50).withValues(alpha: 0.02),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: const Color(0xFF4CAF50).withOpacity(0.25),
+                  color: const Color(0xFF4CAF50).withValues(alpha: 0.25),
                   width: 1.5,
                 ),
               ),
@@ -627,7 +627,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: const Icon(Icons.refresh_rounded,
@@ -640,9 +640,9 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'ACTION',
+                          'AKSI',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.6),
+                            color: Colors.white.withValues(alpha: 0.6),
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 2.0,
@@ -650,7 +650,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
                         ),
                         const SizedBox(height: 4),
                         const Text(
-                          'CHECK STATUS',
+                          'CEK STATUS',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w900,
@@ -711,7 +711,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -755,13 +755,13 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.white.withOpacity(0.12),
-                  Colors.white.withOpacity(0.02),
+                  Colors.white.withValues(alpha: 0.12),
+                  Colors.white.withValues(alpha: 0.02),
                 ],
               ),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 width: 1.5,
               ),
             ),
@@ -798,7 +798,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1104,12 +1104,12 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: Text('Are You Sure Want To Delete ${mmt.mmtId}?'),
+          title: const Text('Konfirmasi hapus'),
+          content: Text('Hapus ${mmt.mmtId}?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel')),
+            child: const Text('Cancel')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
@@ -1120,7 +1120,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
                   await _loadMMTs(); // REFRESH DATA DARI DATABASE
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Data Has Been Successfully Deleted'),
+                          content: Text('Data berhasil dihapus'),
                         backgroundColor: Colors.red));
                   }
                 }
@@ -1129,7 +1129,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
                   Navigator.pop(context);
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Failed to delete'),
+                          content: Text('Gagal menghapus'),
                         backgroundColor: Colors.red));
                   }
                 }
@@ -1193,8 +1193,8 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete MMT?'),
-        content: Text('Are you sure you want to delete ${mmt.mmtId}?'),
+        title: const Text('Konfirmasi hapus'),
+        content: Text('Hapus ${mmt.mmtId}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -1204,7 +1204,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
             onPressed: () {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${mmt.mmtId} deleted')),
+                SnackBar(content: Text('${mmt.mmtId} dihapus')),
               );
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
@@ -1215,3 +1215,5 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
     );
   }
 }
+
+

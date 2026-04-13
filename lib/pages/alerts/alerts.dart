@@ -93,6 +93,7 @@ class _AlertsPageState extends State<AlertsPage> {
       return alerts.map((alert) {
         String? newLocation = alert.lokasi;
         String? newDeviceType = alert.deviceType;
+        var isDeletedDevice = alert.isDeviceDeleted;
 
         // Try to match device name to find current location and type
         final searchName = _deviceKey(alert.title.split(' is ')[0]);
@@ -102,24 +103,31 @@ class _AlertsPageState extends State<AlertsPage> {
           final tower = towerMap[searchName]!;
           newLocation = tower.location;
           newDeviceType = 'Tower';
+          isDeletedDevice = false;
         }
         // Check cameras
         else if (cameraMap.containsKey(searchName)) {
           final camera = cameraMap[searchName]!;
           newLocation = camera.location;
           newDeviceType = 'CCTV';
+          isDeletedDevice = false;
         }
         // Check MMTs
         else if (mmtMap.containsKey(searchName)) {
           final mmt = mmtMap[searchName]!;
           newLocation = mmt.location;
           newDeviceType = 'MMT';
+          isDeletedDevice = false;
+        } else {
+          // Keep alert row visible but mark as deleted device in UI.
+          isDeletedDevice = true;
         }
 
         // Sync with new data if found
         return alert.syncWithCurrentDeviceData(
           newLocation: newLocation,
           newDeviceType: newDeviceType,
+          isDeviceDeleted: isDeletedDevice,
         );
       }).toList();
     } catch (e) {
@@ -388,7 +396,7 @@ class _AlertsPageState extends State<AlertsPage> {
                         color: Colors.lightGreenAccent.shade200, size: 48),
                     const SizedBox(height: 12),
                     Text(
-                      'No Alert',
+                      'Belum ada alert',
                       style: TextStyle(
                           color: Colors.white.withOpacity(0.75), fontSize: 16),
                     ),
@@ -462,6 +470,30 @@ class _AlertsPageState extends State<AlertsPage> {
                         fontSize: 14,
                         color: Colors.white),
                     overflow: TextOverflow.ellipsis),
+                if (alert.isDeviceDeleted) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.22),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: Colors.orange.withOpacity(0.75),
+                        width: 1,
+                      ),
+                    ),
+                                        child: const Text(
+                                          'Deleted Device',
+                      style: TextStyle(
+                        color: Colors.orangeAccent,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 10,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 4),
                 Wrap(
                   spacing: 16,

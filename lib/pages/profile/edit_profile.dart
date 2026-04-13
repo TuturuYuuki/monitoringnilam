@@ -71,12 +71,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
     try {
       final userId = _userId;
       if (userId != null) {
-        print('Loading Profile From Database For user_id: $userId');
+        debugPrint('Loading Profile From Database For user_id: $userId');
         final response = await apiService.getUserProfile(userId);
 
         if (response['success'] == true && response['data'] != null) {
           final profileData = response['data'];
-          print('Profile Data Loaded From API: $profileData');
+          debugPrint('Profile Data Loaded From API: $profileData');
 
           if (!mounted) return;
           setState(() {
@@ -96,7 +96,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         }
       }
     } catch (e) {
-      print('Error Loading Profile From API: $e');
+      debugPrint('Error Loading Profile From API: $e');
     }
   }
 
@@ -156,16 +156,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
       _isLoading = true;
     });
 
-    print('=== REQUEST OTP ===');
-    print('User ID: $_userId');
-    print('New Email: $newEmail');
+    debugPrint('=== REQUEST OTP ===');
+    debugPrint('User ID: $_userId');
+    debugPrint('New Email: $newEmail');
 
     try {
       final response =
           await apiService.requestEmailChangeOtp(_userId!, newEmail);
 
-      print('=== OTP RESPONSE ===');
-      print('Response: $response');
+      debugPrint('=== OTP RESPONSE ===');
+      debugPrint('Response: $response');
 
       if (response['success'] == true) {
         setState(() {
@@ -173,7 +173,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           _isLoading = false;
         });
 
-        print('OTP Sent Successfully To $newEmail');
+        debugPrint('OTP Sent Successfully To $newEmail');
 
         // Show OTP input dialog
         if (mounted) {
@@ -184,7 +184,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           _isLoading = false;
         });
 
-        print('OTP Request Failed: ${response['message']}');
+        debugPrint('OTP Request Failed: ${response['message']}');
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -240,123 +240,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  Future<void> _showOtpInputDialogOld(String newEmail, String? debugOtp) async {
-    final otpController = TextEditingController();
-
-    return showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF34495E),
-        title: const Text(
-          'Email Verification',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Verification Code Has Been Sent To:',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2C3E50),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                newEmail,
-                style: const TextStyle(
-                  color: Color(0xFF1976D2),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Please Enter The OTP Code You Received:',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: otpController,
-              style: const TextStyle(color: Colors.white),
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              textAlign: TextAlign.center,
-              decoration: InputDecoration(
-                labelText: 'OTP Code (6 Digits)',
-                labelStyle: const TextStyle(color: Colors.white70),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: const BorderSide(color: Colors.white30),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: const BorderSide(color: Color(0xFF1976D2)),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                counterStyle: const TextStyle(color: Colors.white70),
-              ),
-            ),
-            if (debugOtp != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.2),
-                    border: Border.all(color: Colors.orange),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'Demo OTP: $debugOtp',
-                    style: const TextStyle(color: Colors.orange, fontSize: 12),
-                  ),
-                ),
-              ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              otpController.dispose();
-              Navigator.pop(context);
-              setState(() {
-                _emailVerified = false;
-              });
-            },
-            child:
-                const Text('Cancel', style: TextStyle(color: Colors.white70)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final otp = otpController.text.trim();
-              if (otp.isEmpty || otp.length != 6) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please Enter 6 Digit OTP Code'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                return;
-              }
-
-              Navigator.pop(context);
-              otpController.dispose();
-              await _verifyOtpAndMarkEmail(newEmail, otp);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1976D2),
-            ),
-            child: const Text('Verify'),
-          ),
-        ],
-      ),
-    );
-  }
 
   Future<void> _verifyOtpAndMarkEmail(String email, String otp) async {
     setState(() {
@@ -450,158 +333,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
-  void _showOtpDialog(String newEmail) async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // Request OTP
-      final response =
-          await apiService.requestEmailChangeOtp(_userId!, newEmail);
-
-      setState(() {
-        _isLoading = false;
-      });
-
-      if (response['success'] == true) {
-        // Show OTP input dialog
-        if (mounted) {
-          final otpController = TextEditingController();
-
-          // For demo purposes, show OTP in snackbar (remove in production)
-          if (response['debug_otp'] != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('OTP Code (Demo): ${response['debug_otp']}'),
-                duration: const Duration(seconds: 10),
-              ),
-            );
-          }
-
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => AlertDialog(
-              backgroundColor: const Color(0xFF34495E),
-              title: const Text(
-                'Email Verification',
-                style: TextStyle(color: Colors.white),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Verification Code Has Been Sent To $newEmail',
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: otpController,
-                    style: const TextStyle(color: Colors.white),
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
-                    decoration: InputDecoration(
-                      labelText: 'OTP Code',
-                      labelStyle: const TextStyle(color: Colors.white70),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Colors.white30),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Color(0xFF1976D2)),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    final otp = otpController.text.trim();
-                    if (otp.isEmpty) return;
-
-                    Navigator.pop(context); // Close dialog
-                    _verifyOtpAndSave(newEmail, otp);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1976D2),
-                  ),
-                  child: const Text('Verify'),
-                ),
-              ],
-            ),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(response['message'] ?? 'Failed to send OTP'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  void _verifyOtpAndSave(String newEmail, String otp) async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final response =
-          await apiService.verifyEmailChangeOtp(_userId!, newEmail, otp);
-
-      if (response['success'] == true) {
-        // Email verified and updated, now update other fields
-        _performUpdate();
-      } else {
-        setState(() {
-          _isLoading = false;
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(response['message'] ?? 'Verification Failed'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 
   void _performUpdate() async {
     setState(() {
@@ -625,22 +356,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
         'division': finalDivision,
       };
 
-      print('=== Update Profile Request ===');
-      print('User ID: $_userId');
-      print('Update Data: $updateData');
+      debugPrint('=== Update Profile Request ===');
+      debugPrint('User ID: $_userId');
+      debugPrint('Update Data: $updateData');
 
       // Call API to update profile
       dynamic response = await apiService.updateProfile(_userId!, updateData);
 
-      print('=== Primary Update Response ===');
-      print('Response: $response');
+      debugPrint('=== Primary Update Response ===');
+      debugPrint('Response: $response');
 
       // If primary method fails, try field-by-field approach
       if (response['success'] != true && response['success'] != 1) {
-        print('Primary Method Failed, Trying Field-By-Field Approach...');
+        debugPrint('Primary Method Failed, Trying Field-By-Field Approach...');
         response =
             await apiService.updateProfileFieldByField(_userId!, updateData);
-        print('Field-By-Field Response: $response');
+        debugPrint('Field-By-Field Response: $response');
       }
 
       setState(() {
@@ -648,7 +379,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       });
 
       if (response['success'] == true || response['success'] == 1) {
-        print('Update Successfully, Saving To SharedPreferences');
+        debugPrint('Update Successfully, Saving To SharedPreferences');
 
         // Update SharedPreferences with new data
         final currentData = await AuthHelper.getUserData();
@@ -667,17 +398,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
         // Save to SharedPreferences
         await AuthHelper.saveUserData(updatedData);
-        print('Data Saved To SharedPreferences: $updatedData');
+        debugPrint('Data Saved To SharedPreferences: $updatedData');
 
         // Fetch fresh profile from backend to confirm persistence and update cache
         try {
           final profile = await apiService.getProfile(_userId!);
           if (profile != null) {
-            print('Fresh Profile From Backend: ${profile.toJson()}');
+            debugPrint('Fresh Profile From Backend: ${profile.toJson()}');
             await AuthHelper.saveUserData(profile.toJson());
           }
         } catch (e) {
-          print('Failed To Fetch Fresh Profile: $e');
+          debugPrint('Failed To Fetch Fresh Profile: $e');
           // Tetap lanjut karena data sudah disimpan di SharedPreferences
         }
 
@@ -696,8 +427,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
           Navigator.pop(context, updatedData);
         }
       } else {
-        print('Update Failed: ${response['message'] ?? 'Unknown error'}');
-        print('Response keys: ${response.keys}');
+        debugPrint('Update Failed: ${response['message'] ?? 'Unknown error'}');
+        debugPrint('Response keys: ${response.keys}');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -711,8 +442,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
       setState(() {
         _isLoading = false;
       });
-      print('=== Exception saat update ===');
-      print('Error: $e');
+      debugPrint('=== Exception saat update ===');
+      debugPrint('Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -773,17 +504,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
           style: TextStyle(
             color: Colors.white70,
             fontSize: 14,
+            fontWeight: FontWeight.w400,
           ),
         ),
-        const SizedBox(height: 32),
-        // Form
+        const SizedBox(height: 24),
         Container(
-          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               width: 1,
             ),
           ),
@@ -896,7 +625,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                       Colors.white),
                                 ),
                               )
-                            : const Text('Save Changes'),
+                            : const Text('Save'),
                       ),
                     ),
                   ],
@@ -1567,7 +1296,7 @@ class _OtpDialogState extends State<_OtpDialog> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text(
-                                      'Please Enter A 6 Digit OTP Code',
+                                      'Please Enter 6-Digit OTP Code',
                                     ),
                                     backgroundColor: Colors.red,
                                   ),
@@ -1604,9 +1333,9 @@ class _OtpDialogState extends State<_OtpDialog> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.1),
+                          color: Colors.orange.withValues(alpha: 0.1),
                           border: Border.all(
-                            color: Colors.orange.withOpacity(0.3),
+                            color: Colors.orange.withValues(alpha: 0.3),
                             width: 1,
                           ),
                           borderRadius: BorderRadius.circular(8),
@@ -1643,3 +1372,4 @@ class _OtpDialogState extends State<_OtpDialog> {
     );
   }
 }
+

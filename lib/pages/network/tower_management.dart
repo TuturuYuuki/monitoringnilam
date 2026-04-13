@@ -274,8 +274,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: Text('Delete ${tower.towerId}?'),
+        title: const Text('Konfirmasi hapus'),
+        content: Text('Hapus ${tower.towerId}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -968,6 +968,11 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
   }
 
   Future<void> _deleteNonTowerMaster(Map<String, dynamic> item) async {
+    final canDelete = await _ensureNoLinkedDevicesBeforeDelete(item);
+    if (!canDelete) {
+      return;
+    }
+
     final id = int.tryParse((item['item_id'] ?? '').toString());
     if (id == null) return;
 
@@ -992,6 +997,92 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
         ),
       );
     }
+  }
+
+  Future<bool> _ensureNoLinkedDevicesBeforeDelete(
+    Map<String, dynamic> item,
+  ) async {
+    final type = (item['location_type'] ?? '').toString().toUpperCase().trim();
+    final code = (item['location_code'] ?? '').toString().trim();
+    final name = (item['location_name'] ?? '').toString().trim();
+    final yard = (item['container_yard'] ?? '').toString().toUpperCase().trim();
+
+    try {
+      final cameras = await _apiService.getAllCameras();
+      final mmts = await _apiService.getAllMMTs();
+
+      final candidateKeys = <String>{
+        normalizeLocationMatchKey(code),
+        normalizeLocationMatchKey(name),
+        normalizeLocationMatchKey('$code - $yard'),
+        normalizeLocationMatchKey('$name - $yard'),
+      }.where((v) => v.isNotEmpty).toSet();
+
+      bool matchByLocation(String location, String deviceYard) {
+        final locKey = normalizeLocationMatchKey(location);
+        if (candidateKeys.contains(locKey)) {
+          return true;
+        }
+
+        final sameYard = deviceYard.trim().toUpperCase() == yard;
+        if (!sameYard) {
+          return false;
+        }
+
+        for (final key in candidateKeys) {
+          if (key.isEmpty) continue;
+          if (locKey == key || locKey.contains(key) || key.contains(locKey)) {
+            return true;
+          }
+        }
+
+        return false;
+      }
+
+      var linkedDevices = 0;
+
+      for (final camera in cameras) {
+        final cameraType = camera.type.toUpperCase().trim();
+        final sameType = cameraType == type;
+        if (sameType || matchByLocation(camera.location, camera.containerYard)) {
+          linkedDevices++;
+        }
+      }
+
+      for (final mmt in mmts) {
+        final mmtType = mmt.type.toUpperCase().trim();
+        final sameType = mmtType == type;
+        if (sameType || matchByLocation(mmt.location, mmt.containerYard)) {
+          linkedDevices++;
+        }
+      }
+
+      if (linkedDevices > 0) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Master type tidak bisa dihapus karena masih dipakai $linkedDevices device. Hapus device terkait terlebih dahulu.',
+              ),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return false;
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memvalidasi relasi device: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return false;
+    }
+
+    return true;
   }
 
   Future<void> _showEditNonTowerDialog(Map<String, dynamic> item) async {
@@ -1428,7 +1519,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                                           letterSpacing: 1))),
                               Expanded(
                                   flex: 2,
-                                  child: Text('LOCATION',
+                                  child: Text('LOKASI',
                                       style: TextStyle(
                                           color: Colors.white,
                                           fontWeight: FontWeight.bold,
@@ -1437,7 +1528,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                               Expanded(
                                   flex: 2,
                                   child: Center(
-                                      child: Text('ACTIONS',
+                                      child: Text('AKSI',
                                           style: TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.bold,
@@ -1496,14 +1587,26 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                                                 width: 1,
                                               ),
                                             ),
-                                            child: Text(
-                                              item['type'].toString(),
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w800,
-                                                color: Colors.white,
-                                                fontSize: 11,
-                                                letterSpacing: 0.4,
-                                              ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  DeviceIconResolver.iconForType(
+                                                      item['type'].toString()),
+                                                  color: Colors.white,
+                                                  size: 14,
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  item['type'].toString(),
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w800,
+                                                    color: Colors.white,
+                                                    fontSize: 11,
+                                                    letterSpacing: 0.4,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
                                         ),
@@ -1676,8 +1779,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: Text('Delete ${item['location_code'] ?? '-'}?'),
+        title: const Text('Konfirmasi hapus'),
+        content: Text('Hapus ${item['location_code'] ?? '-'}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),

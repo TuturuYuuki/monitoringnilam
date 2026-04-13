@@ -721,11 +721,7 @@ class ApiService {
           name: towerId,
           ipAddress: ipAddress,
         );
-        await _deleteAlertsByDevice(
-          deviceType: 'ACCESS_POINT',
-          deviceId: towerId,
-          ipAddress: ipAddress,
-        );
+        // Alert history preserved - alerts remain after device deletion
       }
 
       return result;
@@ -1142,11 +1138,7 @@ class ApiService {
           name: cameraId,
           ipAddress: ipAddress,
         );
-        await _deleteAlertsByDevice(
-          deviceType: 'CCTV',
-          deviceId: cameraId,
-          ipAddress: ipAddress,
-        );
+        // Alert history preserved - alerts remain after device deletion
       }
 
       return result;
@@ -1364,6 +1356,7 @@ class ApiService {
         '$baseUrl?endpoint=alerts'
         '&source=${Uri.encodeQueryComponent(source)}'
         '&status=${Uri.encodeQueryComponent(status)}'
+        '&window_days=30&archive_older=1'
         '&limit=$limit&offset=$offset',
       );
       final response = await http.get(uri);
@@ -1422,7 +1415,7 @@ class ApiService {
 
     final response = await http.get(
       Uri.parse(
-          '$baseUrl?endpoint=alerts&action=report&start=$start&end=$end&status=$status'),
+          '$baseUrl?endpoint=alerts&action=report&source=ARCHIVE&start=$start&end=$end&status=$status'),
     );
 
     if (response.statusCode == 200) {
@@ -1770,11 +1763,7 @@ class ApiService {
           name: mmtId,
           ipAddress: ipAddress,
         );
-        await _deleteAlertsByDevice(
-          deviceType: 'MMT',
-          deviceId: mmtId,
-          ipAddress: ipAddress,
-        );
+        // Alert history preserved - alerts remain after device deletion
       }
 
       return result;

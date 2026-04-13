@@ -924,7 +924,7 @@ class _GateCCTVPageState extends State<GateCCTVPage> {
         onTap: () async {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Checking Status...'),
+              content: Text('Memeriksa status...'),
               duration: Duration(seconds: 2),
             ),
           );
@@ -933,7 +933,7 @@ class _GateCCTVPageState extends State<GateCCTVPage> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('✓ Status updated!'),
+                content: Text('✓ Status berhasil diperbarui!'),
                 backgroundColor: Colors.green,
                 duration: Duration(seconds: 2),
               ),
@@ -980,7 +980,7 @@ class _GateCCTVPageState extends State<GateCCTVPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'ACTION',
+                          'AKSI',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.6),
                             fontSize: 10,
@@ -990,7 +990,7 @@ class _GateCCTVPageState extends State<GateCCTVPage> {
                         ),
                         const SizedBox(height: 4),
                         const Text(
-                          'CHECK STATUS',
+                          'CEK STATUS',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w900,
@@ -1275,7 +1275,7 @@ class _GateCCTVPageState extends State<GateCCTVPage> {
                         children: [
                           Icon(Icons.edit, color: Colors.blueAccent, size: 18),
                           SizedBox(width: 8),
-                          Text('Edit', style: TextStyle(color: Colors.white)),
+                          Text('Ubah', style: TextStyle(color: Colors.white)),
                         ],
                       ),
                     ),
@@ -1318,7 +1318,7 @@ class _GateCCTVPageState extends State<GateCCTVPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Showing ${(currentPage * camerasPerPage) + 1}-${(currentPage * camerasPerPage) + paginatedCameras.length} Of ${allCameras.length} Camera',
+                'Menampilkan ${(currentPage * camerasPerPage) + 1}-${(currentPage * camerasPerPage) + paginatedCameras.length} dari ${allCameras.length} kamera',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -1483,7 +1483,7 @@ class _GateCCTVPageState extends State<GateCCTVPage> {
                     Navigator.pop(context); // Menutup dialog
                     _loadCameras(); // Refresh data
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Updated Successfully'),
+                        content: Text('Data berhasil diperbarui'),
                         backgroundColor: Colors.green));
                   }
                 }
@@ -1500,8 +1500,8 @@ class _GateCCTVPageState extends State<GateCCTVPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Camera'),
-        content: Text('Are You Sure Want To Delete Camera ${camera.cameraId}?'),
+        title: const Text('Konfirmasi hapus'),
+        content: Text('Hapus kamera ${camera.cameraId}?'),
         actions: [
           // Tombol Cancel
           TextButton(
@@ -1519,7 +1519,7 @@ class _GateCCTVPageState extends State<GateCCTVPage> {
                   Navigator.pop(context); // Menutup dialog
                   _loadCameras(); // Refresh data
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Deleted Successfully'),
+                      content: Text('Data berhasil dihapus'),
                       backgroundColor: Colors.red));
                 }
               }
@@ -1536,13 +1536,13 @@ class _GateCCTVPageState extends State<GateCCTVPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Logout', style: TextStyle(color: Colors.black87)),
-        content: const Text('Are You Sure To Logout?',
+        content: const Text('Are you sure you want to exit?',
             style: TextStyle(color: Colors.black87)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child:
-                const Text('Cancel', style: TextStyle(color: Colors.black87)),
+              const Text('Cancel', style: TextStyle(color: Colors.black87)),
           ),
           ElevatedButton(
             onPressed: () {

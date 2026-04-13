@@ -321,7 +321,7 @@ class _ProfilePageState extends State<ProfilePage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Logout', style: TextStyle(color: Colors.black87)),
-        content: const Text('Are You Sure To Logout?',
+        content: const Text('Are you sure you want to exit?',
             style: TextStyle(color: Colors.black87)),
         actions: [
           TextButton(

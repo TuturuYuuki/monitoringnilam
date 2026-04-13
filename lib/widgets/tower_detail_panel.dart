@@ -357,7 +357,7 @@ class _TowerDetailPanelState extends State<TowerDetailPanel> {
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(context),
-                                child: const Text('Batal'),
+                                child: const Text('Cancel'),
                               ),
                               ElevatedButton(
                                 onPressed: () {

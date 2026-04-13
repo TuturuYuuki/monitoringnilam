@@ -275,7 +275,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   ],
                 ),
                 content:
-                    Text(res['message'] ?? 'Password Successfully Changed'),
+                    Text(res['message'] ?? 'Kata sandi berhasil diubah'),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
                 actions: [
@@ -291,7 +291,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           }
         } else {
           // Show specific error message from backend
-          final errorMessage = res['message'] ?? 'Failed to Change Password';
+          final errorMessage = res['message'] ?? 'Gagal mengubah kata sandi';
           print('Error Message: $errorMessage');
 
           if (mounted) {
@@ -302,7 +302,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   children: [
                     Icon(Icons.error, color: Colors.red),
                     SizedBox(width: 8),
-                    Text('Failed'),
+                    Text('Gagal'),
                   ],
                 ),
                 content: Text(errorMessage),
@@ -376,7 +376,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       children: [
         // Title
         const Text(
-          'Change Password',
+          'Ubah kata sandi',
           style: TextStyle(
             color: Colors.white,
             fontSize: 28,
@@ -385,7 +385,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Update Your password',
+          'Perbarui kata sandi Anda',
           style: TextStyle(
             color: Colors.white70,
             fontSize: 14,

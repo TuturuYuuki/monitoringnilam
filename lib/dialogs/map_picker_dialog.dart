@@ -199,7 +199,7 @@ class _MapPickerDialogState extends State<MapPickerDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Batal'),
+          child: const Text('Cancel'),
         ),
         ElevatedButton(
           onPressed: () => Navigator.pop(

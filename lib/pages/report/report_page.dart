@@ -72,11 +72,9 @@ class _ReportPageState extends State<ReportPage> {
 
       final results = await resultsFuture;
       final activeDeviceKeys = await activeDeviceKeysFuture;
-    final syncedResults = await _syncReportAlertsWithDeviceData(results);
+      final syncedResults = await _syncReportAlertsWithDeviceData(results);
 
-      final normalized =
-      _latestAlertPerDevice(
-        _filterByActiveDevices(syncedResults, activeDeviceKeys));
+      final normalized = syncedResults;
 
       setState(() {
         _activeDeviceKeys = activeDeviceKeys;
@@ -117,25 +115,32 @@ class _ReportPageState extends State<ReportPage> {
       return alerts.map((alert) {
         var newLocation = alert.lokasi;
         var newDeviceType = alert.deviceType;
+        var isDeletedDevice = alert.isDeviceDeleted;
         final searchName = _deviceKey(_cleanDeviceName(alert.title));
 
         if (towerMap.containsKey(searchName)) {
           final tower = towerMap[searchName]!;
           newLocation = tower.location;
           newDeviceType = 'Tower';
+          isDeletedDevice = false;
         } else if (cameraMap.containsKey(searchName)) {
           final camera = cameraMap[searchName]!;
           newLocation = camera.location;
           newDeviceType = 'CCTV';
+          isDeletedDevice = false;
         } else if (mmtMap.containsKey(searchName)) {
           final mmt = mmtMap[searchName]!;
           newLocation = mmt.location;
           newDeviceType = 'MMT';
+          isDeletedDevice = false;
+        } else {
+          isDeletedDevice = true;
         }
 
         return alert.syncWithCurrentDeviceData(
           newLocation: newLocation,
           newDeviceType: newDeviceType,
+          isDeviceDeleted: isDeletedDevice,
         );
       }).toList(growable: false);
     } catch (e) {
@@ -148,7 +153,7 @@ class _ReportPageState extends State<ReportPage> {
     if (reportAlerts.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text("No Data Found"), backgroundColor: Colors.orange),
+          content: Text("Belum ada data"), backgroundColor: Colors.orange),
       );
       return;
     }
@@ -167,18 +172,8 @@ class _ReportPageState extends State<ReportPage> {
 
       final filteredAlerts = _filterByDeviceType(sortedAlerts);
 
-      final uniqueDevices = <String, Alert>{};
-      for (final a in filteredAlerts) {
-        final devName = _cleanDeviceName(a.title);
-        if (!uniqueDevices.containsKey(devName)) {
-          uniqueDevices[devName] = a;
-        }
-      }
-
-      final upAlerts =
-          uniqueDevices.values.where((a) => !_isDownAlert(a)).toList();
-      final downAlerts =
-          uniqueDevices.values.where((a) => _isDownAlert(a)).toList();
+      final upAlerts = filteredAlerts.where((a) => !_isDownAlert(a)).toList();
+      final downAlerts = filteredAlerts.where((a) => _isDownAlert(a)).toList();
       final upCount = upAlerts.length;
       final downCount = downAlerts.length;
 
@@ -438,31 +433,14 @@ class _ReportPageState extends State<ReportPage> {
     return _buildDeviceKey(resolvedType, resolvedId);
   }
 
-  List<Alert> _filterByActiveDevices(List<Alert> list, Set<String> activeKeys) {
-    if (activeKeys.isEmpty) return list;
-    return list.where((a) => activeKeys.contains(_alertDeviceKey(a))).toList();
-  }
-
-  List<Alert> _latestAlertPerDevice(List<Alert> list) {
-    final sorted = list.toList()
-      ..sort((a, b) {
-        final aTime = DateTime.tryParse(a.timestamp);
-        final bTime = DateTime.tryParse(b.timestamp);
-        if (aTime == null && bTime == null) return 0;
-        if (aTime == null) return 1;
-        if (bTime == null) return -1;
-        return bTime.compareTo(aTime);
-      });
-
-    final seen = <String>{};
-    final latest = <Alert>[];
-    for (final alert in sorted) {
-      final key = _alertDeviceKey(alert);
-      if (seen.contains(key)) continue;
-      seen.add(key);
-      latest.add(alert);
+  bool _isDeletedDevice(Alert alert) {
+    if (alert.isDeviceDeleted) {
+      return true;
     }
-    return latest;
+    if (!_deviceInventoryLoaded || _activeDeviceKeys.isEmpty) {
+      return false;
+    }
+    return !_activeDeviceKeys.contains(_alertDeviceKey(alert));
   }
 
   bool _isDownAlert(Alert alert) {
@@ -936,7 +914,7 @@ class _ReportPageState extends State<ReportPage> {
       return const Padding(
         padding: EdgeInsets.only(top: 100),
         child: Center(
-            child: Text("No Data Found",
+            child: Text("Belum ada data",
                 style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -944,19 +922,7 @@ class _ReportPageState extends State<ReportPage> {
       );
     }
 
-    final filteredAlerts = _latestAlertPerDevice(
-      _filterByActiveDevices(
-          _filterByDeviceType(_allReportAlerts), _activeDeviceKeys),
-    );
-
-    // Deduplicate to count unique UP/DOWN devices to match Dashboard
-    final uniqueDevices = <String, Alert>{};
-    for (final a in filteredAlerts) {
-      final devName = _cleanDeviceName(a.title);
-      if (!uniqueDevices.containsKey(devName)) {
-        uniqueDevices[devName] = a;
-      }
-    }
+    final filteredAlerts = _filterByDeviceType(_allReportAlerts);
 
     final totalCount = filteredAlerts.length;
     final isMobile = isMobileScreen(context);
@@ -981,7 +947,7 @@ class _ReportPageState extends State<ReportPage> {
               runSpacing: 12,
               children: [
                 const Text(
-                  'Alert Report List',
+                  'Daftar laporan alert',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -996,7 +962,7 @@ class _ReportPageState extends State<ReportPage> {
                       Padding(
                         padding: const EdgeInsets.only(right: 10),
                         child: Text(
-                          'Inventory unavailable',
+                          'Inventori tidak tersedia',
                           style: TextStyle(
                             color: Colors.orange.shade100,
                             fontSize: 11,
@@ -1037,11 +1003,11 @@ class _ReportPageState extends State<ReportPage> {
                                     color: Colors.black87)),
                             Expanded(
                                 flex: 4,
-                                child: _ReportHeaderText('LOCATION',
+                                child: _ReportHeaderText('LOKASI',
                                     color: Colors.black87)),
                             Expanded(
                                 flex: 3,
-                                child: _ReportHeaderText('IP ADDRESS',
+                                child: _ReportHeaderText('ALAMAT IP',
                                     color: Colors.black87)),
                             Expanded(
                                 flex: 2,
@@ -1053,7 +1019,7 @@ class _ReportPageState extends State<ReportPage> {
                                     color: Colors.black87)),
                             Expanded(
                                 flex: 2,
-                                child: _ReportHeaderText('ACTION',
+                                child: _ReportHeaderText('AKSI',
                                     color: Colors.black87)),
                           ],
                         ),
@@ -1081,12 +1047,45 @@ class _ReportPageState extends State<ReportPage> {
                           ),
                           child: Row(
                             children: [
-                              _buildReportValueCell(
-                                _cleanDeviceName(a.title),
+                              Expanded(
                                 flex: 3,
-                                fontWeight: FontWeight.w800,
-                                align: TextAlign.center,
-                                color: Colors.white,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      _cleanDeviceName(a.title),
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    if (_isDeletedDevice(a))
+                                      Container(
+                                        margin: const EdgeInsets.only(top: 4),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.orange.withOpacity(0.2),
+                                          borderRadius:
+                                              BorderRadius.circular(999),
+                                          border: Border.all(
+                                            color:
+                                                Colors.orange.withOpacity(0.75),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Deleted Device',
+                                          style: TextStyle(
+                                            color: Colors.orangeAccent,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
                               _buildReportValueCell(
                                 a.lokasi?.isNotEmpty == true ? a.lokasi! : '-',
@@ -1283,16 +1282,16 @@ class _ReportPageState extends State<ReportPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Delete'),
+        title: const Text('Konfirmasi hapus'),
         content: Text('Hapus report log untuk ${alert.title}?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Batal')),
+              child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -1312,7 +1311,7 @@ class _ReportPageState extends State<ReportPage> {
   }
 
   Widget _buildHeaderFilters() {
-    final filterOptions = ['ALL', 'AP', 'CCTV', 'MMT', 'CC'];
+    final filterOptions = ['Semua', 'AP', 'CCTV', 'MMT', 'CC'];
     return Wrap(
       spacing: 8,
       runSpacing: 8,

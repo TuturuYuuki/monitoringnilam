@@ -666,7 +666,7 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
         onTap: () async {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Checking Status...'),
+              content: Text('Memeriksa status...'),
               duration: Duration(seconds: 2),
             ),
           );
@@ -675,7 +675,7 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('✓ Status updated!'),
+                content: Text('✓ Status berhasil diperbarui!'),
                 backgroundColor: Colors.green,
                 duration: Duration(seconds: 2),
               ),
@@ -722,7 +722,7 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'ACTION',
+                          'AKSI',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.6),
                             fontSize: 10,
@@ -732,7 +732,7 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
                         ),
                         const SizedBox(height: 4),
                         const Text(
-                          'CHECK STATUS',
+                          'CEK STATUS',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w900,
@@ -998,7 +998,7 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
                     _buildHeaderCell('Location', flex: 2),
                     _buildHeaderCell('IP Address', flex: 2),
                     _buildHeaderCell('Status', flex: 1),
-                    _buildHeaderCell('Action', flex: 1, isLast: true),
+                    _buildHeaderCell('Aksi', flex: 1, isLast: true),
                   ],
                 ),
               ),
@@ -1234,8 +1234,8 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: Text('Are you sure you want to delete ${tower.towerId}?'),
+        title: const Text('Konfirmasi hapus'),
+        content: Text('Hapus ${tower.towerId}?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
@@ -1249,7 +1249,7 @@ class _NetworkGatePageState extends State<NetworkGatePage> {
                   Navigator.pop(context);
                   _loadTowers();
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Data Has Been Successfully Deleted'),
+                      content: Text('Data berhasil dihapus'),
                       backgroundColor: Colors.red));
                 }
               }

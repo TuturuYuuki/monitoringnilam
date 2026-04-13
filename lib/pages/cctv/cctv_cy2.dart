@@ -724,7 +724,7 @@ class _CCTVCy2PageState extends State<CCTVCy2Page> {
         onTap: () async {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Checking Status...'),
+              content: Text('Memeriksa status...'),
               duration: Duration(seconds: 2),
             ),
           );
@@ -733,7 +733,7 @@ class _CCTVCy2PageState extends State<CCTVCy2Page> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('✓ Status updated!'),
+                content: Text('✓ Status berhasil diperbarui!'),
                 backgroundColor: Colors.green,
                 duration: Duration(seconds: 2),
               ),
@@ -780,7 +780,7 @@ class _CCTVCy2PageState extends State<CCTVCy2Page> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'ACTION',
+                          'AKSI',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.6),
                             fontSize: 10,
@@ -790,7 +790,7 @@ class _CCTVCy2PageState extends State<CCTVCy2Page> {
                         ),
                         const SizedBox(height: 4),
                         const Text(
-                          'CHECK STATUS',
+                          'CEK STATUS',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w900,
@@ -1075,7 +1075,7 @@ class _CCTVCy2PageState extends State<CCTVCy2Page> {
                         children: [
                           Icon(Icons.edit, color: Colors.blueAccent, size: 18),
                           SizedBox(width: 8),
-                          Text('Edit', style: TextStyle(color: Colors.white)),
+                          Text('Ubah', style: TextStyle(color: Colors.white)),
                         ],
                       ),
                     ),
@@ -1118,7 +1118,7 @@ class _CCTVCy2PageState extends State<CCTVCy2Page> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Showing ${(currentPage * camerasPerPage) + 1}-${(currentPage * camerasPerPage) + paginatedCameras.length} Of ${allCameras.length} Camera',
+                'Menampilkan ${(currentPage * camerasPerPage) + 1}-${(currentPage * camerasPerPage) + paginatedCameras.length} dari ${allCameras.length} kamera',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -1293,7 +1293,7 @@ class _CCTVCy2PageState extends State<CCTVCy2Page> {
                     Navigator.pop(context);
                     _loadCameras();
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Updated Successfully'),
+                        content: Text('Berhasil diperbarui'),
                         backgroundColor: Colors.green));
                   }
                 }
@@ -1310,8 +1310,8 @@ class _CCTVCy2PageState extends State<CCTVCy2Page> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Camera'),
-        content: Text('Are You Sure Want To Delete Camera ${camera.cameraId}?'),
+        title: const Text('Konfirmasi hapus'),
+        content: Text('Hapus kamera ${camera.cameraId}?'),
         actions: [
           // Tombol Cancel
           TextButton(
@@ -1329,7 +1329,7 @@ class _CCTVCy2PageState extends State<CCTVCy2Page> {
                   Navigator.pop(context);
                   _loadCameras();
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Deleted Successfully'),
+                      content: Text('Data berhasil dihapus'),
                       backgroundColor: Colors.green));
                 }
               }
@@ -1346,7 +1346,7 @@ class _CCTVCy2PageState extends State<CCTVCy2Page> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Logout', style: TextStyle(color: Colors.black87)),
-        content: const Text('Are You Sure To Logout?',
+        content: const Text('Are you sure you want to exit?',
             style: TextStyle(color: Colors.black87)),
         actions: [
           TextButton(

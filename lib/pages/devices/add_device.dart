@@ -614,7 +614,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Device Successfully Added!'),
+            title: const Text('Perangkat berhasil ditambahkan'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -633,7 +633,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Device Saved!',
+                            'Perangkat tersimpan',
                             style:
                                 TextStyle(fontSize: 12, color: Colors.black87),
                           ),
@@ -668,7 +668,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                   Navigator.pop(context);
                   _resetForm();
                 },
-                child: const Text('Add Another Device'),
+                child: const Text('Tambah perangkat lain'),
               ),
               ElevatedButton(
                 onPressed: () async {
@@ -711,7 +711,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                   backgroundColor: const Color(0xFF1976D2),
                   foregroundColor: Colors.white,
                 ),
-                child: const Text('Back to Dashboard'),
+                child: const Text('Kembali ke dashboard'),
               ),
             ],
           ),
@@ -918,13 +918,12 @@ class _AddDevicePageState extends State<AddDevicePage> {
       builder: (context) => AlertDialog(
         title: const Text('Logout',
             style: TextStyle(color: Colors.black87, fontSize: 20)),
-        content: const Text('Are You Sure To Logout?',
+        content: const Text('Are you sure you want to exit?',
             style: TextStyle(color: Colors.black87)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child:
-                const Text('Cancel', style: TextStyle(color: Colors.black87)),
+                child: const Text('Cancel', style: TextStyle(color: Colors.black87)),
           ),
           ElevatedButton(
             onPressed: () async {
