@@ -102,7 +102,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
 
   Future<void> _triggerPingCheck() async {
     try {
-      const baseUrl = 'http://localhost/monitoring_api/index.php';
+      final baseUrl = ApiService.baseUrl;
 
       // Call realtime ping endpoint yang update semua towers sekaligus
       final response = await http

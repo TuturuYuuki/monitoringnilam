@@ -104,6 +104,7 @@ class TerminalLayoutStatic extends StatefulWidget {
   final bool isFreeroamEditEnabled;
   final bool isPickMode;
   final String? pickYardFilter;
+  final String? forcedAreaId;
   final void Function(String areaId, double relX, double relY)? onAreaPicked;
 
   const TerminalLayoutStatic({
@@ -118,8 +119,12 @@ class TerminalLayoutStatic extends StatefulWidget {
     this.isFreeroamEditEnabled = false,
     this.isPickMode = false,
     this.pickYardFilter,
+    this.forcedAreaId,
     this.onAreaPicked,
+    this.isZoomed = true,
   });
+
+  final bool isZoomed;
 
   @override
   State<TerminalLayoutStatic> createState() => _TerminalLayoutStaticState();
@@ -271,10 +276,12 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       builder: (context, constraints) {
         final w = constraints.maxWidth;
         final h = constraints.maxHeight;
-        final effectiveZoomAreaId =
-            (widget.isPickMode && widget.pickYardFilter != null)
-                ? widget.pickYardFilter
-                : _zoomedAreaId;
+        final effectiveZoomAreaId = widget.forcedAreaId ??
+          ((widget.isPickMode && widget.pickYardFilter != null)
+            ? widget.pickYardFilter
+            : _zoomedAreaId);
+        final bool showZoomedDetail = effectiveZoomAreaId != null && widget.isZoomed;
+
         return Stack(
           children: [
             Container(
@@ -283,14 +290,18 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                 borderRadius: BorderRadius.circular(15),
               ),
             ),
-            if (effectiveZoomAreaId == null) ...[
-              ...areas.map((area) => _buildAreaBox(area, w, h)),
+            if (!showZoomedDetail) ...[
+              ...areas
+                  .where((a) =>
+                      widget.forcedAreaId == null ||
+                      a.id == widget.forcedAreaId)
+                  .map((area) => _buildAreaBox(area, w, h)),
               ..._buildMasterLocationMarkers(w, h),
               ..._buildAllMarkers(w, h),
               ..._buildTowerMarkers(w, h),
             ] else ...[
-              _buildZoomedArea(w, h, effectiveZoomAreaId),
-            ],
+            _buildZoomedArea(w, h, effectiveZoomAreaId),
+          ],
           ],
         );
       },
@@ -431,7 +442,9 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
             ? null
             : () {
                 // Use onTap (not onTapDown) so drag gestures on markers can win.
-                setState(() => _zoomedAreaId = null);
+                if (widget.forcedAreaId == null) {
+                  setState(() => _zoomedAreaId = null);
+                }
               },
         child: Container(
           decoration: BoxDecoration(
@@ -1036,7 +1049,12 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
   List<Widget> _buildTowerMarkers(double w, double h) {
     final markers = <Widget>[];
 
-    for (final tower in _uniqueTowersForRender()) {
+    final filteredTowers = _uniqueTowersForRender().where((t) {
+      if (widget.forcedAreaId == null) return true;
+      return _normalizeAreaId(t.containerYard) == widget.forcedAreaId;
+    });
+
+    for (final tower in filteredTowers) {
       if (_isHiddenCy3Tower(tower)) continue;
 
       // Skip tower if it matches with non-TOWER master location (RTG/RS/CC)
@@ -1191,7 +1209,13 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     final markers = <Widget>[];
     if (widget.masterLocations.isEmpty) return markers;
 
-    for (final location in widget.masterLocations) {
+    final filteredLocations = widget.masterLocations.where((loc) {
+      if (widget.forcedAreaId == null) return true;
+      return _normalizeAreaId(loc['container_yard']?.toString() ?? '') ==
+          widget.forcedAreaId;
+    });
+
+    for (final location in filteredLocations) {
       final locType = (location['location_type'] ?? '').toString().toUpperCase();
 
       // Tower dilewati karena punya fungsi builder sendiri (_buildTowerMarkers)
@@ -1533,7 +1557,12 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
 
     // Group devices by parent location (Tower/Location)
     final devicesByLocation = <String, List<AddedDevice>>{};
-    for (final device in widget.devices) {
+    final filteredDevices = widget.devices.where((d) {
+      if (widget.forcedAreaId == null) return true;
+      return _normalizeAreaId(d.containerYard) == widget.forcedAreaId;
+    });
+
+    for (final device in filteredDevices) {
       final locationKey = normalizeLocationLabel(device.locationName);
       devicesByLocation.putIfAbsent(locationKey, () => []).add(device);
     }

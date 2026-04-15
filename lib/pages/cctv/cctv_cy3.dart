@@ -170,7 +170,7 @@ class _CCTVCy3PageState extends State<CCTVCy3Page> {
 
   Future<void> _triggerPingCheck() async {
     try {
-      const baseUrl = 'http://localhost/monitoring_api/index.php';
+      final baseUrl = ApiService.baseUrl;
       await http
           .get(
         Uri.parse('$baseUrl?endpoint=realtime&action=all'),

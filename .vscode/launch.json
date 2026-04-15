@@ -2,6 +2,11 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Flutter (Selected Device)",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
             "name": "Flutter Web (Chrome)",
             "request": "launch",
             "type": "dart",

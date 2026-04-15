@@ -948,6 +948,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
   @override
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
+    final isNarrowMobile = MediaQuery.of(context).size.width < 420;
     return Scaffold(
       backgroundColor: const Color(0xFF2C3E50),
       body: Stack(
@@ -959,7 +960,11 @@ class _AddDevicePageState extends State<AddDevicePage> {
                 child: GlobalSidebarNav(
                     currentRoute: '/add-device',
                     child: SingleChildScrollView(
-                      padding: EdgeInsets.all(isMobile ? 12 : 32),
+                      padding: EdgeInsets.fromLTRB(
+                          isMobile ? 10 : 32,
+                          isMobile ? 10 : 32,
+                          isMobile ? 10 : 32,
+                          isMobile ? 18 : 32),
                       child: Center(
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(24),
@@ -967,7 +972,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                             filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
                             child: Container(
                               constraints: const BoxConstraints(maxWidth: 600),
-                              padding: const EdgeInsets.all(32),
+                              padding: EdgeInsets.all(isMobile ? 16 : 32),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.10),
                                 borderRadius: BorderRadius.circular(24),
@@ -1026,29 +1031,37 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Container(
                                             width: 5,
-                                            height: 28,
+                                            height: isMobile ? 24 : 28,
                                             decoration: BoxDecoration(
                                               color: const Color(0xFF1976D2),
                                               borderRadius:
                                                   BorderRadius.circular(2),
                                             ),
                                           ),
-                                          const SizedBox(width: 14),
-                                          const Text(
+                                          SizedBox(
+                                              width: isMobile ? 10 : 14),
+                                          Expanded(
+                                            child: Text(
                                             'Add New Device',
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
-                                              fontSize: 24,
+                                              fontSize:
+                                                  isNarrowMobile ? 20 : 24,
                                               fontWeight: FontWeight.w800,
                                               color: Colors.white,
                                               letterSpacing: 0.5,
                                             ),
                                           ),
+                                          ),
                                         ],
                                       ),
-                                      const SizedBox(height: 32),
+                                      SizedBox(height: isMobile ? 20 : 32),
 
                                       // ===== TIPE DEVICE =====
                                       DropdownButtonFormField<String>(
@@ -1096,7 +1109,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                           );
                                         }).toList(),
                                       ),
-                                      const SizedBox(height: 24),
+                                      SizedBox(height: isMobile ? 18 : 24),
 
                                       // ===== NAMA DEVICE =====
                                       TextFormField(
@@ -1160,6 +1173,8 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                       const SizedBox(height: 8),
                                       if (_isLoadingUsedNames)
                                         Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             const SizedBox(
                                               width: 14,
@@ -1169,12 +1184,14 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                               ),
                                             ),
                                             const SizedBox(width: 8),
-                                            Text(
-                                              'Loading Used Name For $_selectedDeviceType...',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.white
-                                                    .withOpacity(0.65),
+                                            Expanded(
+                                              child: Text(
+                                                'Loading Used Name For $_selectedDeviceType...',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.white
+                                                      .withOpacity(0.65),
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -1185,25 +1202,31 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                               CrossAxisAlignment.start,
                                           children: [
                                             Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
                                               children: [
-                                                Text(
-                                                  'Used Names For This Type',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: Colors.white
-                                                        .withOpacity(0.75),
+                                                Expanded(
+                                                  child: Text(
+                                                    'Used Names For This Type',
+                                                    maxLines: 2,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: Colors.white
+                                                          .withOpacity(0.75),
+                                                    ),
                                                   ),
                                                 ),
+                                                const SizedBox(width: 8),
                                                 TextButton(
                                                   onPressed: _showAllUsedNames,
                                                   style: TextButton.styleFrom(
                                                     visualDensity:
                                                         VisualDensity.compact,
-                                                    padding: EdgeInsets.zero,
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                            horizontal: 4),
                                                     foregroundColor:
                                                         const Color(0xFF90CAF9),
                                                   ),
@@ -1268,7 +1291,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                                 Colors.white.withOpacity(0.55),
                                           ),
                                         ),
-                                      const SizedBox(height: 24),
+                                      SizedBox(height: isMobile ? 18 : 24),
 
                                       // ===== IP ADDRESS =====
                                       TextFormField(
@@ -1278,15 +1301,16 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                           fontWeight: FontWeight.w600,
                                         ),
                                         cursorColor: Colors.white,
-                                        decoration: const InputDecoration(
+                                        decoration: InputDecoration(
                                           labelText: 'IP Address',
                                           hintText: 'Entry An IP Address',
-                                          helperText:
-                                              'Format: xxx.xxx.xxx.xxx (Example: 10.2.71.60)',
-                                          prefixIcon: Icon(Icons.router,
+                                          helperText: isMobile
+                                              ? 'Example: 10.2.71.60'
+                                              : 'Example: 10.2.71.60',
+                                          prefixIcon: const Icon(Icons.router,
                                               color: Color(0xFF90CAF9)),
-                                          border: OutlineInputBorder(),
-                                          contentPadding: EdgeInsets.symmetric(
+                                          border: const OutlineInputBorder(),
+                                          contentPadding: const EdgeInsets.symmetric(
                                             horizontal: 16,
                                             vertical: 16,
                                           ),
@@ -1303,7 +1327,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                           return null;
                                         },
                                       ),
-                                      const SizedBox(height: 24),
+                                      SizedBox(height: isMobile ? 18 : 24),
 
                                       // ===== LOKASI =====
                                       DropdownButtonFormField<String>(
@@ -1311,6 +1335,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                                 .containsKey(_selectedLocation)
                                             ? _selectedLocation
                                             : null,
+                                        isExpanded: true,
                                         style: const TextStyle(
                                           color: Colors.white,
                                           fontWeight: FontWeight.w600,
@@ -1333,9 +1358,25 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                           contentPadding:
                                               const EdgeInsets.symmetric(
                                                   horizontal: 16, vertical: 16),
-                                          hintText:
-                                              'Select location from master tower',
+                                          hintText: 'Select location',
                                         ),
+                                        selectedItemBuilder: (context) {
+                                          return _locationData.keys
+                                              .map(
+                                                (value) => Text(
+                                                  value,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 13,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              )
+                                              .toList();
+                                        },
                                         onChanged: (String? newValue) {
                                           if (newValue != null) {
                                             setState(() {
@@ -1348,11 +1389,15 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                                 (String value) {
                                           return DropdownMenuItem<String>(
                                             value: value,
-                                            child: Text(value,
-                                                style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 13,
-                                                    color: Colors.white)),
+                                            child: Text(
+                                              value,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 13,
+                                                  color: Colors.white),
+                                            ),
                                           );
                                         }).toList(),
                                       ),
@@ -1368,7 +1413,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                                     .withOpacity(0.55)),
                                           ),
                                         ),
-                                      const SizedBox(height: 40),
+                                      SizedBox(height: isMobile ? 26 : 40),
                                       // ===== SUBMIT BUTTON =====
                                       SizedBox(
                                         width: double.infinity,

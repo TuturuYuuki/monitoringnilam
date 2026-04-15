@@ -27,6 +27,8 @@ class GlobalSidebarNav extends StatefulWidget {
   /// The width of the collapsed sidebar strip.
   static const double collapsedWidth = 52;
 
+  static final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
+
   @override
   State<GlobalSidebarNav> createState() => _GlobalSidebarNavState();
 }
@@ -108,9 +110,67 @@ class _GlobalSidebarNavState extends State<GlobalSidebarNav> {
 
   @override
   Widget build(BuildContext context) {
-    // When disabled (mobile), just show content full-width
-    if (!widget.enabled) {
-      return widget.child;
+    final isMobile = MediaQuery.of(context).size.width < 900;
+
+    // Mobile mode: keep edge-mounted icon rail (web-like), no floating menu.
+    if (!widget.enabled || isMobile) {
+      return Scaffold(
+        key: GlobalSidebarNav.scaffoldKey,
+        drawer: Drawer(
+          backgroundColor: _bgColor,
+          child: Column(
+            children: [
+              const DrawerHeader(
+                decoration: BoxDecoration(color: _bgColor),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.warehouse, color: Colors.white, size: 40),
+                      SizedBox(height: 10),
+                      Text(
+                        'TPK Nilam',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  children: _navItems.map((item) {
+                    final isActive =
+                        _isActiveRoute(widget.currentRoute, item.route);
+                    return ListTile(
+                      leading: Icon(item.icon,
+                          color: isActive ? _activeColor : Colors.white54),
+                      title: Text(
+                        item.label,
+                        style: TextStyle(
+                            color: isActive ? Colors.white : Colors.white70,
+                            fontWeight: isActive
+                                ? FontWeight.bold
+                                : FontWeight.normal),
+                      ),
+                      selected: isActive,
+                      selectedTileColor: _activeColor.withOpacity(0.12),
+                      onTap: () {
+                        Navigator.pop(context); // Close drawer
+                        _navigate(item.route);
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        body: widget.child,
+      );
     }
 
     return Stack(

@@ -9,173 +9,179 @@ import 'package:monitoring/models/device_model.dart';
 import 'package:monitoring/services/device_storage_service.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
-
 import 'package:monitoring/utils/tower_utils.dart';
 import 'package:monitoring/utils/tower_status_override.dart';
+import 'package:flutter/foundation.dart';
 
 class ApiService {
-  static const String baseUrl =
-      'http://localhost/monitoring_api/index.php'; // Pakai 10.0.2.2 jika Emulator
-  static const String alertsUrl = 'http://localhost/monitoring_api/alerts.php';
-  static const String performanceUrl =
-      'http://localhost/monitoring_api/performance.php';
-  static const String performanceUrlFallback =
-      'http://localhost/monitoring_api/performance.php';
+  static const String _apiRootOverride =
+      String.fromEnvironment('API_ROOT', defaultValue: '');
+  static String? _activeApiRoot;
+
+  static String get _defaultApiRoot {
+    if (kIsWeb) {
+      return 'http://localhost/monitoring_api';
+    }
+    // For Android physical device via adb reverse, localhost:8080 is most reliable.
+    return 'http://localhost:8080/monitoring_api';
+  }
+
+  static String get _apiRoot {
+    if (_activeApiRoot != null && _activeApiRoot!.isNotEmpty) {
+      return _activeApiRoot!;
+    }
+    if (_apiRootOverride.isNotEmpty) {
+      return _apiRootOverride;
+    }
+    return _defaultApiRoot;
+  }
+
+  static String get baseUrl => '$_apiRoot/index.php';
+  static String get alertsUrl => '$_apiRoot/alerts.php';
+  static String get performanceUrl => '$_apiRoot/performance.php';
+  static String get performanceUrlFallback => '$_apiRoot/performance.php';
+
+  static List<String> get _rootCandidates {
+    final values = <String>[];
+    void add(String v) {
+      if (v.isNotEmpty && !values.contains(v)) {
+        values.add(v);
+      }
+    }
+
+    add(_activeApiRoot ?? '');
+    if (_apiRootOverride.isNotEmpty) {
+      add(_apiRootOverride);
+    }
+    add(_defaultApiRoot);
+
+    if (!kIsWeb) {
+      // Keep localhost without port as fallback, but prefer :8080.
+      add('http://localhost/monitoring_api');
+    }
+
+    return values;
+  }
+
+  static List<String> get _authRootCandidates => _rootCandidates;
+
+  static void _setActiveRoot(String root) {
+    if (root.isEmpty) return;
+    _activeApiRoot = root;
+    debugPrint('ApiService active root => $root');
+  }
 
   // ==================== CONNECTION TEST ====================
 
   /// Test if Flutter can connect to the backend API
   Future<Map<String, dynamic>> testConnection() async {
-    try {
-      print('\\n=== Testing Backend Connection ===');
-      print('Target URL: $baseUrl');
-      print('Attempting Connection...');
+    dynamic lastError;
+    for (final root in _rootCandidates) {
+      try {
+        final startTime = DateTime.now();
+        final response = await http.get(
+          Uri.parse('$root/index.php?endpoint=ping'),
+        ).timeout(const Duration(seconds: 5));
 
-      final startTime = DateTime.now();
-      final response = await http
-          .get(
-        Uri.parse('$baseUrl?endpoint=ping'),
-      )
-          .timeout(
-        const Duration(seconds: 5),
-        onTimeout: () {
-          print('❌ Connection Test TIMEOUT After 5 Seconds');
-          return http.Response(
-            '{"success":false,"message":"Cannot Reach Backend - Timeout"}',
-            408,
-          );
-        },
-      );
-
-      final duration = DateTime.now().difference(startTime);
-      print('✓ Response Received in ${duration.inMilliseconds}ms');
-      print('Status Code: ${response.statusCode}');
-
-      if (response.statusCode == 200 || response.statusCode == 404) {
-        // 200 or 404 means we reached the server
-        print('✓ Backend is REACHABLE');
-        print('=== Connection Test: SUCCESS ===\\n');
-        return {
-          'success': true,
-          'message': 'Backend reachable',
-          'responseTime': duration.inMilliseconds,
-        };
-      } else {
-        print('⚠️ Unexpected status: ${response.statusCode}');
-        print('=== Connection Test: UNEXPECTED ===\\n');
-        return {
-          'success': false,
-          'message': 'Unexpected response: ${response.statusCode}',
-        };
+        final duration = DateTime.now().difference(startTime);
+        if (response.statusCode == 200 || response.statusCode == 404) {
+          _setActiveRoot(root);
+          return {
+            'success': true,
+            'message': 'Backend reachable',
+            'responseTime': duration.inMilliseconds,
+            'root': root,
+          };
+        }
+        lastError = 'Status: ${response.statusCode} @ $root';
+      } catch (e) {
+        lastError = '$e @ $root';
       }
-    } catch (e, stackTrace) {
-      print('❌❌❌ Connection test FAILED ❌❌❌');
-      print('Error: $e');
-      print('Stack: $stackTrace');
-      print('=== Connection Test: FAILED ===\\n');
-      return {
-        'success': false,
-        'message': 'Cannot connect: $e',
-      };
     }
+
+    return {
+      'success': false,
+      'message': 'Cannot connect: $lastError',
+    };
   }
 
   // ==================== AUTH ENDPOINTS ====================
 
   Future<Map<String, dynamic>> login(String username, String password) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl?endpoint=auth&action=login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'username': username, 'password': password}),
-      );
+    dynamic lastError;
+    for (final root in _authRootCandidates) {
+      try {
+        final response = await http.post(
+          Uri.parse('$root/index.php?endpoint=auth&action=login'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'username': username, 'password': password}),
+        );
 
-      if (response.statusCode == 200) {
-        try {
-          return jsonDecode(response.body);
-        } catch (e) {
-          // Response bukan JSON valid (kemungkinan HTML error dari backend)
-          print('JSON Parse Error: $e');
-          print('Response body: ${response.body}');
-          return {
-            'success': false,
-            'message':
-                'Server error: Invalid response format. Check backend logs.'
-          };
+        if (response.statusCode == 200) {
+          try {
+            final decoded = jsonDecode(response.body);
+            _setActiveRoot(root);
+            return decoded;
+          } catch (e) {
+            lastError = e;
+            continue;
+          }
         }
-      } else {
-        return {
-          'success': false,
-          'message': 'Login failed (Status: ${response.statusCode})'
-        };
+        lastError = 'Status: ${response.statusCode}';
+      } catch (e) {
+        lastError = e;
       }
-    } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
     }
+
+    return {
+      'success': false,
+      'message':
+          'Network error: $lastError. For physical Android use adb reverse tcp:8080 tcp:80, or set API_ROOT.'
+    };
   }
 
   Future<Map<String, dynamic>> register(
       String username, String email, String password, String fullname) async {
-    try {
-      print('=== Registration Request ===');
-      print('Username: $username');
-      print('Email: $email');
-      print('Fullname: $fullname');
-
-      final response = await http.post(
-        Uri.parse('$baseUrl?endpoint=auth&action=register'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'username': username,
-          'email': email,
-          'password': password,
-          'fullname': fullname,
-        }),
-      );
-
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
-      // Parse response body untuk semua status code
+    dynamic lastError;
+    for (final root in _authRootCandidates) {
       try {
-        final result = jsonDecode(response.body);
+        final response = await http.post(
+          Uri.parse('$root/index.php?endpoint=auth&action=register'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'username': username,
+            'email': email,
+            'password': password,
+            'fullname': fullname,
+          }),
+        );
 
-        if (response.statusCode == 200) {
-          // Success
-          return result;
-        } else if (response.statusCode == 409) {
-          // Conflict - username atau email sudah ada
-          print('Conflict: ${result['message']}');
-          return {
-            'success': false,
-            'message':
-                result['message'] ?? 'Username atau email sudah terdaftar'
-          };
-        } else if (response.statusCode == 400) {
-          // Bad request - data tidak lengkap
-          return {
-            'success': false,
-            'message': result['message'] ?? 'Data tidak lengkap'
-          };
-        } else {
-          // Other errors
-          return {
-            'success': false,
-            'message': result['message'] ??
-                'Registration failed with status: ${response.statusCode}'
-          };
+        try {
+          final result = jsonDecode(response.body);
+          if (response.statusCode == 200) {
+            _setActiveRoot(root);
+            return result;
+          }
+          if (response.statusCode == 409 || response.statusCode == 400) {
+            return {
+              'success': false,
+              'message': result['message'] ?? 'Registration failed',
+            };
+          }
+          lastError = result['message'] ?? 'Status: ${response.statusCode}';
+        } catch (e) {
+          lastError = e;
         }
       } catch (e) {
-        print('JSON decode error: $e');
-        return {
-          'success': false,
-          'message': 'Server error. Response: ${response.body}'
-        };
+        lastError = e;
       }
-    } catch (e) {
-      print('Registration error: $e');
-      return {'success': false, 'message': 'Error: $e'};
     }
+
+    return {
+      'success': false,
+      'message':
+          'Network error: $lastError. For physical Android use adb reverse tcp:8080 tcp:80, or set API_ROOT.'
+    };
   }
 
   Future<User?> getProfile(int userId) async {
@@ -360,7 +366,6 @@ class ApiService {
 
       final duration = DateTime.now().difference(startTime);
       print('✓ HTTP Request completed in ${duration.inMilliseconds}ms');
-
       print('Change Password Response Status: ${response.statusCode}');
       print('Change Password Response Body: ${response.body}');
       print('Response Content-Type: ${response.headers["content-type"]}');
@@ -423,7 +428,7 @@ class ApiService {
 
       final response = await http
           .post(
-        Uri.parse('http://localhost/monitoring_api/forgot_password.php'),
+        Uri.parse(alertsUrl.replaceAll('alerts.php', 'forgot_password.php')),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': normalizedEmail}),
       )
@@ -466,7 +471,7 @@ class ApiService {
 
       final response = await http
           .post(
-        Uri.parse('http://localhost/monitoring_api/verify_reset_otp.php'),
+        Uri.parse(alertsUrl.replaceAll('alerts.php', 'verify_reset_otp.php')),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'otp': otp}),
       )
@@ -510,7 +515,7 @@ class ApiService {
 
       final response = await http
           .post(
-        Uri.parse('http://localhost/monitoring_api/reset_password.php'),
+        Uri.parse(alertsUrl.replaceAll('alerts.php', 'reset_password.php')),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': email,

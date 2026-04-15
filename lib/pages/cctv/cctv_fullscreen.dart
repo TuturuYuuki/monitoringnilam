@@ -129,7 +129,7 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
 
   Future<void> _triggerPingCheck() async {
     try {
-      const baseUrl = 'http://localhost/monitoring_api/index.php';
+      final baseUrl = ApiService.baseUrl;
       await http
           .get(
         Uri.parse('$baseUrl?endpoint=realtime&action=all'),

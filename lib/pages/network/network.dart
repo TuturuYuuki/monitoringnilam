@@ -37,7 +37,6 @@ class _NetworkPageState extends State<NetworkPage> {
   bool isLoading = true;
   Timer? _refreshTimer;
   DateTime? _lastRefreshTime;
-  bool _isAutoRefreshEnabled = true;
   bool _isConnected = true;
   int globalTotalDevices = 0;
   int globalUpDevices = 0;
@@ -52,7 +51,6 @@ class _NetworkPageState extends State<NetworkPage> {
     _checkConnection();
     _loadTowers();
     _loadGlobalSummary(initialLoad: true);
-    _startAutoRefresh();
   }
 
   @override
@@ -68,18 +66,6 @@ class _NetworkPageState extends State<NetworkPage> {
         _isConnected = result['success'] == true;
       });
     }
-  }
-
-  void _startAutoRefresh() {
-    _refreshTimer?.cancel();
-    // Refresh setiap 2 detik untuk monitoring realtime
-    _refreshTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (mounted && _isAutoRefreshEnabled) {
-        _checkConnection();
-        _loadTowers();
-        _loadGlobalSummary();
-      }
-    });
   }
 
   String _selectedAreaId() {
@@ -215,9 +201,9 @@ class _NetworkPageState extends State<NetworkPage> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
+                      color: Colors.red.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -315,44 +301,44 @@ class _NetworkPageState extends State<NetworkPage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.language,
-                    size: 24, color: Color(0xFF1976D2)),
-              ),
-              const SizedBox(height: 8),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Access Point',
-                    style: TextStyle(
+                  Container(
+                    padding: const EdgeInsets.all(9),
+                    decoration: BoxDecoration(
                       color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.language,
+                        size: 20, color: Color(0xFF1976D2)),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'Access Point Monitoring',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  _buildAutoRefreshToggle(),
                 ],
               ),
-              const SizedBox(height: 8),
-              _buildHeaderOverviewMini(isMobile: true),
+              const SizedBox(height: 4),
               Row(
                 children: [
-                  Text(
-                    'Detail Area ${_selectedAreaId()} • Monitoring Real Time',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
+                  Expanded(
+                    child: Text(
+                      'Live camera feeds and surveillance status per area',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.72),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                   if (_lastRefreshTime != null) ...[
-                    const SizedBox(width: 8),
-                    const Text('•', style: TextStyle(color: Colors.white70)),
                     const SizedBox(width: 8),
                     Text(
                       'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
@@ -365,7 +351,7 @@ class _NetworkPageState extends State<NetworkPage> {
                   ],
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
             ],
           )
         else
@@ -396,9 +382,9 @@ class _NetworkPageState extends State<NetworkPage> {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Text(
-                          'Detail Area ${_selectedAreaId()} • Real Time Access Point Monitoring And Diagnostics',
-                          style: const TextStyle(
+                        const Text(
+                          'Real Time Access Point Monitoring And Diagnostics',
+                          style: TextStyle(
                             color: Colors.white70,
                             fontSize: 14,
                           ),
@@ -440,22 +426,35 @@ class _NetworkPageState extends State<NetworkPage> {
             return isMobile
                 ? Column(
                     children: [
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            _buildStatCard('Total Access Point', '$totalTowers',
-                                Colors.orange,
-                                width: cardWidth),
-                            SizedBox(width: isMobile ? 8 : 16),
-                            _buildStatCard('UP', '$onlineTowers', Colors.green,
-                                width: cardWidth),
-                            SizedBox(width: isMobile ? 8 : 16),
-                            _buildStatCard(
-                                'DOWN', '$warningTowers', Colors.blue,
-                                onTap: _showWarningList, width: cardWidth),
-                          ],
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildGlobalStatCard(
+                              'TOTAL',
+                              '$totalTowers',
+                              Colors.orange,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildGlobalStatCard(
+                              'UP',
+                              '$onlineTowers',
+                              Colors.green,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: _showWarningList,
+                              child: _buildGlobalStatCard(
+                                'DOWN',
+                                '$warningTowers',
+                                Colors.red,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 12),
                       _buildNetworkDropdown(constraints.maxWidth),
@@ -486,7 +485,7 @@ class _NetworkPageState extends State<NetworkPage> {
         const SizedBox(height: 16),
 
         // Tower List
-        _buildTowerList(),
+        _buildTowerList(constraints),
       ],
     );
   }
@@ -496,9 +495,9 @@ class _NetworkPageState extends State<NetworkPage> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.08),
+          color: Colors.white.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withOpacity(0.15)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -652,6 +651,7 @@ class _NetworkPageState extends State<NetworkPage> {
 
   Widget _buildStatCard(String title, String value, Color indicatorColor,
       {VoidCallback? onTap, double? width}) {
+    final isMobile = isMobileScreen(context);
     return GestureDetector(
       onTap: onTap,
       child: ClipRRect(
@@ -660,7 +660,7 @@ class _NetworkPageState extends State<NetworkPage> {
           filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
             width: width,
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(isMobile ? 14 : 20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -731,8 +731,8 @@ class _NetworkPageState extends State<NetworkPage> {
                 const SizedBox(height: 12),
                 Text(
                   value,
-                  style: const TextStyle(
-                    fontSize: 32,
+                  style: TextStyle(
+                    fontSize: isMobile ? 28 : 32,
                     fontWeight: FontWeight.w900,
                     color: Colors.white,
                     letterSpacing: -1,
@@ -1028,7 +1028,7 @@ class _NetworkPageState extends State<NetworkPage> {
     );
   }
 
-  Widget _buildTowerList() {
+  Widget _buildTowerList(BoxConstraints constraints) {
     // Show loading indicator
     if (isLoading) {
       return ClipRRect(
@@ -1133,131 +1133,154 @@ class _NetworkPageState extends State<NetworkPage> {
       );
     }
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withOpacity(0.12),
-                Colors.white.withOpacity(0.02),
-              ],
-            ),
+    return Row(
+      children: [
+        Expanded(
+          child: ClipRRect(
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.2),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 30,
-                offset: const Offset(0, 15),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                width: double.infinity,
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                     colors: [
-                      const Color(0xFF1976D2).withOpacity(0.8),
-                      const Color(0xFF1976D2).withOpacity(0.4),
+                      Colors.white.withOpacity(0.12),
+                      Colors.white.withOpacity(0.02),
                     ],
                   ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Access Point List',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.0,
-                      ),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.2),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 30,
+                      offset: const Offset(0, 15),
                     ),
+                  ],
+                ),
+                child: Column(
+                  children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                      width: double.infinity,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
-                        border:
-                            Border.all(color: Colors.white.withOpacity(0.2)),
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFF1976D2).withOpacity(0.8),
+                            const Color(0xFF1976D2).withOpacity(0.4),
+                          ],
+                        ),
                       ),
                       child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.chevron_left_rounded,
-                                size: 22, color: Colors.white),
-                            onPressed: currentPage > 0
-                                ? () => setState(() => currentPage--)
-                                : null,
-                            constraints: const BoxConstraints(),
-                            padding: EdgeInsets.zero,
+                          const Text(
+                            'Access Point List',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.0,
+                            ),
                           ),
-                          const SizedBox(width: 8),
-                          ...List.generate(totalPages, (index) {
-                            bool isCurrentPage = index == currentPage;
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  currentPage = index;
-                                });
-                              },
-                              child: Container(
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 4),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: isCurrentPage
-                                      ? Colors.white
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(10),
+                              border:
+                                  Border.all(color: Colors.white.withOpacity(0.2)),
+                            ),
+                            child: Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.chevron_left_rounded,
+                                      size: 20, color: Colors.white),
+                                  onPressed: currentPage > 0
+                                      ? () => setState(() => currentPage--)
+                                      : null,
+                                  constraints: const BoxConstraints(),
+                                  padding: EdgeInsets.zero,
                                 ),
-                                child: Text(
-                                  '${index + 1}',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 14,
-                                    color: isCurrentPage
-                                        ? const Color(0xFF1976D2)
-                                        : Colors.white,
-                                  ),
+                                const SizedBox(width: 4),
+                                ...List.generate(totalPages, (index) {
+                                  bool isCurrentPage = index == currentPage;
+                                  return GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        currentPage = index;
+                                      });
+                                    },
+                                    child: Container(
+                                      margin:
+                                          const EdgeInsets.symmetric(horizontal: 2),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: isCurrentPage
+                                            ? Colors.white
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        '${index + 1}',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 12,
+                                          color: isCurrentPage
+                                              ? const Color(0xFF1976D2)
+                                              : Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }),
+                                const SizedBox(width: 4),
+                                IconButton(
+                                  icon: const Icon(Icons.chevron_right_rounded,
+                                      size: 20, color: Colors.white),
+                                  onPressed: currentPage < totalPages - 1
+                                      ? () => setState(() => currentPage++)
+                                      : null,
+                                  constraints: const BoxConstraints(),
+                                  padding: EdgeInsets.zero,
                                 ),
-                              ),
-                            );
-                          }),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: const Icon(Icons.chevron_right_rounded,
-                                size: 22, color: Colors.white),
-                            onPressed: currentPage < totalPages - 1
-                                ? () => setState(() => currentPage++)
-                                : null,
-                            constraints: const BoxConstraints(),
-                            padding: EdgeInsets.zero,
+                              ],
+                            ),
                           ),
                         ],
                       ),
                     ),
+                    _buildTableContent(constraints),
                   ],
                 ),
               ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTableContent(BoxConstraints constraints) {
+    return Scrollbar(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minWidth: isMobileScreen(context) ? 750 : constraints.maxWidth,
+          ),
+          child: Column(
+            children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 width: double.infinity,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -1480,6 +1503,7 @@ class _NetworkPageState extends State<NetworkPage> {
                     },
                   );
                   
+                  if (!mounted) return;
                   Navigator.pop(context);
                   _loadTowers();
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -1510,6 +1534,7 @@ class _NetworkPageState extends State<NetworkPage> {
             onPressed: () async {
               final response = await apiService.deleteTower(tower.id);
               if (response['success'] == true) {
+                if (!mounted) return;
                 Navigator.pop(context); // Tutup dialog
                 _loadTowers(); // REFRESH DATA DARI DATABASE
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -1524,62 +1549,18 @@ class _NetworkPageState extends State<NetworkPage> {
     );
   }
 
-  Widget _buildAutoRefreshToggle() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.sync, color: Colors.white70, size: 16),
-          const SizedBox(width: 8),
-          const Text(
-            'Auto Refresh',
-            style: TextStyle(
-                color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(width: 4),
-          Transform.scale(
-            scale: 0.8,
-            child: Switch(
-              value: _isAutoRefreshEnabled,
-              onChanged: (value) {
-                setState(() {
-                  _isAutoRefreshEnabled = value;
-                  if (_isAutoRefreshEnabled) {
-                    _startAutoRefresh();
-                  } else {
-                    _refreshTimer?.cancel();
-                  }
-                });
-              },
-              activeThumbColor: Colors.blueAccent,
-              activeTrackColor: Colors.blueAccent.withOpacity(0.3),
-              inactiveThumbColor: Colors.white54,
-              inactiveTrackColor: Colors.white12,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildConnectionStatusBadge() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: _isConnected
-            ? Colors.greenAccent.withOpacity(0.1)
-            : Colors.redAccent.withOpacity(0.1),
+            ? Colors.greenAccent.withValues(alpha: 0.1)
+            : Colors.redAccent.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: _isConnected
-              ? Colors.greenAccent.withOpacity(0.3)
-              : Colors.redAccent.withOpacity(0.3),
+              ? Colors.greenAccent.withValues(alpha: 0.3)
+              : Colors.redAccent.withValues(alpha: 0.3),
           width: 1,
         ),
       ),

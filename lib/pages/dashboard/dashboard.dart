@@ -498,8 +498,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       // The realtime ping check has already updated all statuses in the database
       // So we just read the current status from database without individual pings
       final response = await http.get(
-        Uri.parse(
-            'http://localhost/monitoring_api/index.php?endpoint=mmt&action=all'),
+        Uri.parse('${ApiService.baseUrl}?endpoint=mmt&action=all'),
       );
 
       if (response.statusCode == 200) {
@@ -585,7 +584,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
     _lastPingCheckAt = now;
 
     try {
-      const baseUrl = 'http://localhost/monitoring_api/index.php';
+      final baseUrl = ApiService.baseUrl;
 
       // Call realtime ping endpoint yang update semua towers dan cameras sekaligus
       final response = await http
@@ -812,14 +811,23 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
     }
 
     return masterLocations.map((location) {
-      final locType =
-          (location['location_type'] ?? '').toString().toUpperCase();
-      final locCode = (location['location_code'] ?? '').toString();
-      final locName = (location['location_name'] ?? '').toString();
-      final lat =
-          double.tryParse((location['latitude'] ?? '0').toString()) ?? 0.0;
-      final lng =
-          double.tryParse((location['longitude'] ?? '0').toString()) ?? 0.0;
+      final locType = DeviceIconResolver.normalizeType(
+        (location['location_type'] ?? location['type'] ?? '')
+            .toString()
+            .toUpperCase(),
+      );
+      final locCode =
+          (location['location_code'] ?? location['code'] ?? '').toString();
+      final locName =
+          (location['location_name'] ?? location['name'] ?? '').toString();
+      final lat = double.tryParse(
+            (location['latitude'] ?? location['lat'] ?? '0').toString(),
+          ) ??
+          0.0;
+      final lng = double.tryParse(
+            (location['longitude'] ?? location['lng'] ?? '0').toString(),
+          ) ??
+          0.0;
 
       // Static icon color based on location type
       final markerColor = DeviceIconResolver.colorForType(locType);
@@ -1160,7 +1168,9 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
         // Keep master location point in sync immediately so grouped devices follow tower drag in UI.
         final towerCode = tower.towerId.toUpperCase();
         final masterIdx = masterLocations.indexWhere((m) {
-          final type = (m['location_type'] ?? '').toString().toUpperCase();
+          final type = DeviceIconResolver.normalizeType(
+            (m['location_type'] ?? m['type'] ?? '').toString().toUpperCase(),
+          );
           final code = (m['location_code'] ?? '').toString().toUpperCase();
           final name = (m['location_name'] ?? '').toString().toUpperCase();
           return type == 'TOWER' && (code == towerCode || name == towerCode);
@@ -1228,7 +1238,9 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       return;
     }
 
-    final locType = (master['location_type'] ?? '').toString().toUpperCase();
+    final locType = DeviceIconResolver.normalizeType(
+      (master['location_type'] ?? master['type'] ?? '').toString(),
+    );
     final codeKey =
         _normalizeMasterKey((master['location_code'] ?? '').toString());
     final nameKey =
@@ -1372,29 +1384,33 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
     final isMobile = isMobileScreen(context);
 
     if (isMobile) {
-      return SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Column(
-            children: [
-              SizedBox(
-                height: 500,
-                child: LiveTerminalMap(
-                  devices: _buildLayoutDevices(),
-                  towers: towers,
-                  masterLocations: masterLocations,
-                  isPickMode: _isPickTowerMode,
-                  pickYardFilter: _pickTowerYard,
-                  onAreaPicked: _handleAreaPickedForTower,
-                  onTowerMoved: _handleTowerPositionUpdate,
-                  onMasterMoved: _handleMasterPositionUpdate,
-                  onTriggerPingCheck: _triggerPingCheck,
-                  onLoadDashboardData: _loadDashboardData,
+      return GlobalSidebarNav(
+        currentRoute: '/dashboard',
+        enabled: false,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 560,
+                  child: LiveTerminalMap(
+                    devices: _buildLayoutDevices(),
+                    towers: towers,
+                    masterLocations: masterLocations,
+                    isPickMode: _isPickTowerMode,
+                    pickYardFilter: _pickTowerYard,
+                    onAreaPicked: _handleAreaPickedForTower,
+                    onTowerMoved: _handleTowerPositionUpdate,
+                    onMasterMoved: _handleMasterPositionUpdate,
+                    onTriggerPingCheck: _triggerPingCheck,
+                    onLoadDashboardData: _loadDashboardData,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              _buildDashboardStatsBottom(context, isMobile: true),
-            ],
+                const SizedBox(height: 16),
+                _buildDashboardStatsBottom(context, isMobile: true),
+              ],
+            ),
           ),
         ),
       );

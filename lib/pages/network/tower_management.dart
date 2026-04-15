@@ -445,20 +445,21 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
   }
 
   Widget _buildInventoryStats() {
+    final isMobile = isMobileScreen(context);
     final counts = _countMastersByLocation();
     final items = [
       {
-        'label': 'Container Yard 1',
+        'label': isMobile ? 'CY 1' : 'Container Yard 1',
         'value': '${counts['CY1'] ?? 0}',
         'color': const Color(0xFF1976D2)
       },
       {
-        'label': 'Container Yard 2',
+        'label': isMobile ? 'CY 2' : 'Container Yard 2',
         'value': '${counts['CY2'] ?? 0}',
         'color': Colors.orange
       },
       {
-        'label': 'Container Yard 3',
+        'label': isMobile ? 'CY 3' : 'Container Yard 3',
         'value': '${counts['CY3'] ?? 0}',
         'color': Colors.teal
       },
@@ -508,7 +509,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
         return Container(
           child: Container(
             width: cardWidth,
-            height: 110,
+            height: 104,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.1),
               borderRadius: BorderRadius.circular(16),
@@ -516,7 +517,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                   Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
             ),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -569,19 +570,21 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
   }
 
   Widget _buildAddTowerForm() {
+    final isMobile = isMobileScreen(context);
     return LayoutBuilder(
       builder: (context, constraints) {
+        final sectionGap = isMobile ? 10.0 : 12.0;
+        final actionGap = isMobile ? 10.0 : 12.0;
         return Container(
           child: Container(
             width: constraints.maxWidth,
-            height: 380, // Estimated height for the form
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.1),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.white30, width: 1.5),
             ),
             child: Container(
-              padding: const EdgeInsets.all(22),
+              padding: EdgeInsets.all(isMobile ? 14 : 22),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -596,131 +599,36 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Text(
-                        _selectedMasterType == 'TOWER'
-                            ? 'Register New Master Data'
-                            : 'Register New Master ${_selectedMasterType.toLowerCase()}',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
                       Expanded(
-                        child: Theme(
-                          data: Theme.of(context).copyWith(
-                            canvasColor: AppDropdownStyle.menuBackground,
-                          ),
-                          child: DropdownButtonFormField<String>(
-                            initialValue: _selectedMasterType,
-                            dropdownColor: AppDropdownStyle.menuBackground,
-                            borderRadius: AppDropdownStyle.menuBorderRadius,
-                            style: const TextStyle(color: Colors.white),
-                            decoration: InputDecoration(
-                              labelText: 'Master Type',
-                              labelStyle:
-                                  const TextStyle(color: Colors.white70),
-                              border: const OutlineInputBorder(),
-                              enabledBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                      color: Colors.white.withOpacity(0.3))),
-                              prefixIcon: const Icon(Icons.category_outlined,
-                                  color: Colors.white70),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 16),
-                            ),
-                            items: const ['TOWER', 'RTG', 'RS', 'CC']
-                                .map((e) => DropdownMenuItem(
-                                      value: e,
-                                      child: Text(e,
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white)),
-                                    ))
-                                .toList(),
-                            onChanged: (val) {
-                              if (val != null) {
-                                setState(() {
-                                  _selectedMasterType = val;
-                                  _idCheckListener();
-                                });
-                              }
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildTextField(
-                              'ID',
-                              _towerIdController,
-                              _getIconForType(_selectedMasterType),
-                              hint: _getExampleForType(_selectedMasterType),
-                              isDuplicate: _isIdDuplicate,
-                            ),
-                            const SizedBox(height: 6),
-                            _buildUsedCodesForType(_selectedMasterType),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Theme(
-                          data: Theme.of(context).copyWith(
-                            canvasColor: AppDropdownStyle.menuBackground,
-                          ),
-                          child: DropdownButtonFormField<String>(
-                            initialValue: _selectedYard,
-                            dropdownColor: AppDropdownStyle.menuBackground,
-                            borderRadius: AppDropdownStyle.menuBorderRadius,
-                            style: const TextStyle(color: Colors.white),
-                            decoration: InputDecoration(
-                              labelText: 'Yard Area',
-                              labelStyle:
-                                  const TextStyle(color: Colors.white70),
-                              border: const OutlineInputBorder(),
-                              enabledBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                      color: Colors.white.withOpacity(0.3))),
-                              prefixIcon: const Icon(Icons.grid_view,
-                                  color: Colors.white70),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 16),
-                            ),
-                            items: ['CY1', 'CY2', 'CY3', 'GATE', 'PARKING']
-                                .map((e) => DropdownMenuItem(
-                                    value: e,
-                                    child: Text(e,
-                                        style: const TextStyle(
-                                            color: Colors.white))))
-                                .toList(),
-                            onChanged: (val) {
-                              if (val != null) {
-                                setState(() => _selectedYard = val);
-                              }
-                            },
+                        child: Text(
+                          _selectedMasterType == 'TOWER'
+                              ? 'Register New Master Data'
+                              : 'Register New Master ${_selectedMasterType.toLowerCase()}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: isMobile ? 16 : 18,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            letterSpacing: 0.2,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(child: _buildPositionStatus()),
-                      const SizedBox(width: 16),
-                      ElevatedButton.icon(
+                  SizedBox(height: isMobile ? 14 : 24),
+                  if (isMobile) ...[
+                    _buildMasterTypeDropdown(),
+                    SizedBox(height: sectionGap),
+                    _buildMasterIdBlock(),
+                    SizedBox(height: sectionGap),
+                    _buildYardDropdown(),
+                    SizedBox(height: sectionGap),
+                    _buildPositionStatus(),
+                    SizedBox(height: actionGap),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
                         onPressed: () => _openPositionPicker(),
                         icon: const Icon(Icons.place_rounded, size: 20),
                         label: const Text('Pick Position'),
@@ -729,15 +637,18 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                           foregroundColor: Colors.white,
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 20),
+                              horizontal: 20, vertical: 16),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                               side: BorderSide(
                                   color: Colors.white.withOpacity(0.3))),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      ElevatedButton(
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
                         onPressed: _submitForm,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blueAccent,
@@ -745,7 +656,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                           elevation: 2,
                           shadowColor: Colors.blueAccent.withOpacity(0.4),
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 40, vertical: 20),
+                              horizontal: 20, vertical: 16),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
                         ),
@@ -754,14 +665,161 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 0.8)),
                       ),
-                    ],
-                  ),
+                    ),
+                  ] else ...[
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: _buildMasterTypeDropdown()),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: _buildMasterIdBlock(),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(child: _buildYardDropdown()),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(child: _buildPositionStatus()),
+                        const SizedBox(width: 16),
+                        ElevatedButton.icon(
+                          onPressed: () => _openPositionPicker(),
+                          icon: const Icon(Icons.place_rounded, size: 20),
+                          label: const Text('Pick Position'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white.withOpacity(0.2),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 20),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(
+                                    color: Colors.white.withOpacity(0.3))),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed: _submitForm,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blueAccent,
+                            foregroundColor: Colors.white,
+                            elevation: 2,
+                            shadowColor: Colors.blueAccent.withOpacity(0.4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 40, vertical: 20),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text('SAVE DATA',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.8)),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildMasterTypeDropdown() {
+    return Theme(
+      data: Theme.of(context).copyWith(
+        canvasColor: AppDropdownStyle.menuBackground,
+      ),
+      child: DropdownButtonFormField<String>(
+        initialValue: _selectedMasterType,
+        dropdownColor: AppDropdownStyle.menuBackground,
+        borderRadius: AppDropdownStyle.menuBorderRadius,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          labelText: 'Master Type',
+          labelStyle: const TextStyle(color: Colors.white70),
+          border: const OutlineInputBorder(),
+          enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.3))),
+          prefixIcon:
+              const Icon(Icons.category_outlined, color: Colors.white70),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+        items: const ['TOWER', 'RTG', 'RS', 'CC']
+            .map((e) => DropdownMenuItem(
+                  value: e,
+                  child: Text(e,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, color: Colors.white)),
+                ))
+            .toList(),
+        onChanged: (val) {
+          if (val != null) {
+            setState(() {
+              _selectedMasterType = val;
+              _idCheckListener();
+            });
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildMasterIdBlock() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTextField(
+          'ID',
+          _towerIdController,
+          _getIconForType(_selectedMasterType),
+          hint: _getExampleForType(_selectedMasterType),
+          isDuplicate: _isIdDuplicate,
+        ),
+        const SizedBox(height: 6),
+        _buildUsedCodesForType(_selectedMasterType),
+      ],
+    );
+  }
+
+  Widget _buildYardDropdown() {
+    return Theme(
+      data: Theme.of(context).copyWith(
+        canvasColor: AppDropdownStyle.menuBackground,
+      ),
+      child: DropdownButtonFormField<String>(
+        initialValue: _selectedYard,
+        dropdownColor: AppDropdownStyle.menuBackground,
+        borderRadius: AppDropdownStyle.menuBorderRadius,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          labelText: 'Yard Area',
+          labelStyle: const TextStyle(color: Colors.white70),
+          border: const OutlineInputBorder(),
+          enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.3))),
+          prefixIcon: const Icon(Icons.grid_view, color: Colors.white70),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+        items: ['CY1', 'CY2', 'CY3', 'GATE', 'PARKING']
+            .map((e) => DropdownMenuItem(
+                value: e,
+                child: Text(e, style: const TextStyle(color: Colors.white))))
+            .toList(),
+        onChanged: (val) {
+          if (val != null) {
+            setState(() => _selectedYard = val);
+          }
+        },
+      ),
     );
   }
 
@@ -1433,6 +1491,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
 
   Widget _buildUnifiedMasterTable() {
     final unified = _getUnifiedMasterList();
+    final isMobile = isMobileScreen(context);
 
     final totalPages = (unified.length / itemsPerPage).ceil();
     if (totalPages > 0 && _currentPage > totalPages) {
@@ -1484,7 +1543,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                 builder: (context, constraints) {
                   return Container(
                     width: constraints.maxWidth,
-                    height: 600,
+                    height: isMobile ? 560 : 600,
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.1),
                       borderRadius: const BorderRadius.vertical(
@@ -1492,51 +1551,52 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                     ),
                     child: Column(
                       children: [
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 14),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
+                        if (!isMobile)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                            ),
+                            child: const Row(
+                              children: [
+                                Expanded(
+                                    flex: 2,
+                                    child: Text('TYPE',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                            letterSpacing: 1))),
+                                Expanded(
+                                    flex: 4,
+                                    child: Text('NAME',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                            letterSpacing: 1))),
+                                Expanded(
+                                    flex: 2,
+                                    child: Text('LOKASI',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                            letterSpacing: 1))),
+                                Expanded(
+                                    flex: 2,
+                                    child: Center(
+                                        child: Text('AKSI',
+                                            style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                                letterSpacing: 1)))),
+                              ],
+                            ),
                           ),
-                          child: const Row(
-                            children: [
-                              Expanded(
-                                  flex: 2,
-                                  child: Text('TYPE',
-                                      style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 13,
-                                          letterSpacing: 1))),
-                              Expanded(
-                                  flex: 4,
-                                  child: Text('NAME',
-                                      style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 13,
-                                          letterSpacing: 1))),
-                              Expanded(
-                                  flex: 2,
-                                  child: Text('LOKASI',
-                                      style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 13,
-                                          letterSpacing: 1))),
-                              Expanded(
-                                  flex: 2,
-                                  child: Center(
-                                      child: Text('AKSI',
-                                          style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 13,
-                                              letterSpacing: 1)))),
-                            ],
-                          ),
-                        ),
 
                         if (data.isEmpty)
                           const Padding(
@@ -1545,13 +1605,128 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                                 style: TextStyle(color: Colors.white54)),
                           )
                         else
-                          // BODY TABEL
                           Expanded(
                             child: ListView.builder(
                               itemCount: data.length,
                               itemBuilder: (context, index) {
                                 final item = data[index];
                                 final bool isLast = index == data.length - 1;
+
+                                if (isMobile) {
+                                  return Container(
+                                    margin: const EdgeInsets.fromLTRB(10, 10, 10, 0),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.05),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.white12),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 5),
+                                              decoration: BoxDecoration(
+                                                color: _getTypeColor(
+                                                        item['type'].toString())
+                                                    .withOpacity(0.88),
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                                border: Border.all(
+                                                  color: Colors.white
+                                                      .withOpacity(0.35),
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    DeviceIconResolver
+                                                        .iconForType(item[
+                                                                'type']
+                                                            .toString()),
+                                                    color: Colors.white,
+                                                    size: 14,
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  Text(
+                                                    item['type'].toString(),
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      color: Colors.white,
+                                                      fontSize: 11,
+                                                      letterSpacing: 0.4,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          (item['location_name'] ??
+                                                  item['code'] ??
+                                                  '-')
+                                              .toString(),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                              color: Colors.white),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.grid_view_rounded,
+                                                size: 14,
+                                                color: Colors.white54),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              (item['yard'] ?? '-').toString(),
+                                              style: const TextStyle(
+                                                  fontSize: 13,
+                                                  color: Colors.white70,
+                                                  fontWeight: FontWeight.w500),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 10),
+                                        Row(
+                                          children: [
+                                            _buildActionBtn(
+                                                Icons.info_outline,
+                                                Colors.tealAccent,
+                                                () => _showMasterDetailDialog(
+                                                    item)),
+                                            const SizedBox(width: 8),
+                                            _buildActionBtn(
+                                                Icons.edit_outlined,
+                                                Colors.blueAccent,
+                                                () => _showEditNonTowerDialog(
+                                                    item)),
+                                            const SizedBox(width: 8),
+                                            _buildActionBtn(
+                                                Icons.delete_outline,
+                                                Colors.redAccent,
+                                                () => _showDeleteNonTowerDialog(
+                                                    item)),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+
                                 return Container(
                                   decoration: BoxDecoration(
                                     border: Border(
@@ -1567,7 +1742,6 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                                       vertical: 12, horizontal: 20),
                                   child: Row(
                                     children: [
-                                      // Kolom Type dengan Badge
                                       Expanded(
                                         flex: 2,
                                         child: Align(
@@ -1611,7 +1785,6 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                                           ),
                                         ),
                                       ),
-                                      // Kolom Name
                                       Expanded(
                                         flex: 4,
                                         child: Text(
@@ -1625,7 +1798,6 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                                               color: Colors.white),
                                         ),
                                       ),
-                                      // Kolom Yard
                                       Expanded(
                                         flex: 2,
                                         child: Row(
@@ -1644,7 +1816,6 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                                           ],
                                         ),
                                       ),
-                                      // Kolom Action
                                       Expanded(
                                         flex: 2,
                                         child: Row(
@@ -1689,35 +1860,68 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                               border: const Border(
                                   top: BorderSide(color: Colors.white10)),
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Page $_currentPage of $totalPages  •  Total ${unified.length} items',
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.white70,
-                                      fontWeight: FontWeight.w500),
-                                ),
-                                Row(
-                                  children: [
-                                    _buildPageBtn(
-                                        Icons.chevron_left,
-                                        _currentPage > 1
-                                            ? () =>
-                                                setState(() => _currentPage--)
-                                            : null),
-                                    const SizedBox(width: 12),
-                                    _buildPageBtn(
-                                        Icons.chevron_right,
-                                        _currentPage < totalPages
-                                            ? () =>
-                                                setState(() => _currentPage++)
-                                            : null),
-                                  ],
-                                ),
-                              ],
-                            ),
+                            child: isMobile
+                                ? Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Page $_currentPage of $totalPages • Total ${unified.length} items',
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.white70,
+                                            fontWeight: FontWeight.w500),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Row(
+                                        children: [
+                                          _buildPageBtn(
+                                              Icons.chevron_left,
+                                              _currentPage > 1
+                                                  ? () => setState(
+                                                      () => _currentPage--)
+                                                  : null),
+                                          const SizedBox(width: 12),
+                                          _buildPageBtn(
+                                              Icons.chevron_right,
+                                              _currentPage < totalPages
+                                                  ? () => setState(
+                                                      () => _currentPage++)
+                                                  : null),
+                                        ],
+                                      ),
+                                    ],
+                                  )
+                                : Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Page $_currentPage of $totalPages  •  Total ${unified.length} items',
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.white70,
+                                            fontWeight: FontWeight.w500),
+                                      ),
+                                      Row(
+                                        children: [
+                                          _buildPageBtn(
+                                              Icons.chevron_left,
+                                              _currentPage > 1
+                                                  ? () => setState(
+                                                      () => _currentPage--)
+                                                  : null),
+                                          const SizedBox(width: 12),
+                                          _buildPageBtn(
+                                              Icons.chevron_right,
+                                              _currentPage < totalPages
+                                                  ? () => setState(
+                                                      () => _currentPage++)
+                                                  : null),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                           ),
                       ],
                     ),

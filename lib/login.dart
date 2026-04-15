@@ -180,7 +180,9 @@ class _LoginPageState extends State<LoginPage> {
                 borderWidth: 1.5,
                 borderColor: Colors.white30),
             child: Center(
-              child: Padding(
+              child: SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.symmetric(
                     horizontal: 24.0, vertical: 20.0),
                 child: Container(
@@ -195,7 +197,7 @@ class _LoginPageState extends State<LoginPage> {
                   child: Form(
                     key: _formKey,
                     child: Column(
-                      mainAxisSize: MainAxisSize.min, // Added to fix height
+                      mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         // Ikon Gembok sebagai aksen modern
@@ -404,8 +406,11 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 24), // Reduced from 32
 
                         // Sign Up Section (Text Link instead of giant button)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 4,
+                          runSpacing: 2,
                           children: [
                             const Text(
                               "Don't have an account?",
@@ -415,9 +420,16 @@ class _LoginPageState extends State<LoginPage> {
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            InkWell(
-                              onTap: _handleSignUp,
+                            TextButton(
+                              onPressed: _handleSignUp,
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                  vertical: 0,
+                                ),
+                                minimumSize: const Size(0, 0),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
                               child: const Text(
                                 'Sign Up',
                                 style: TextStyle(
