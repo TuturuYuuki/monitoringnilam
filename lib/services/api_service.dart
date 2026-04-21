@@ -22,8 +22,8 @@ class ApiService {
     if (kIsWeb) {
       return 'http://localhost/monitoring_api';
     }
-    // For Android physical device via adb reverse, localhost:8080 is most reliable.
-    return 'http://localhost:8080/monitoring_api';
+    // Since user confirmed Apache is on port 80, we use that as default.
+    return 'http://localhost/monitoring_api';
   }
 
   static String get _apiRoot {
@@ -58,6 +58,11 @@ class ApiService {
     if (!kIsWeb) {
       // Keep localhost without port as fallback, but prefer :8080.
       add('http://localhost/monitoring_api');
+      // Android emulator default host mapping.
+      add('http://10.0.2.2/monitoring_api');
+      add('http://10.0.2.2:8080/monitoring_api');
+      add('http://127.0.0.1/monitoring_api');
+      add('http://127.0.0.1:8080/monitoring_api');
     }
 
     return values;
@@ -111,23 +116,36 @@ class ApiService {
     dynamic lastError;
     for (final root in _authRootCandidates) {
       try {
+        debugPrint('Trying Login Root: $root');
         final response = await http.post(
           Uri.parse('$root/index.php?endpoint=auth&action=login'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'username': username, 'password': password}),
-        );
+        ).timeout(const Duration(seconds: 5));
 
-        if (response.statusCode == 200) {
           try {
             final decoded = jsonDecode(response.body);
-            _setActiveRoot(root);
-            return decoded;
+            if (response.statusCode == 200) {
+              _setActiveRoot(root);
+              return decoded;
+            }
+            // If server reached but returned 401/400 etc, stop and return its message
+            if (response.statusCode == 401 ||
+                response.statusCode == 400 ||
+                response.statusCode == 403) {
+              return {
+                'success': false,
+                'message': decoded['message'] ?? 'Login failed (${response.statusCode})'
+              };
+            }
+            lastError = decoded['message'] ?? 'Status: ${response.statusCode}';
           } catch (e) {
-            lastError = e;
-            continue;
+            lastError = 'Status: ${response.statusCode} - $e';
+            if (response.statusCode == 401) {
+              return {'success': false, 'message': 'Username atau password salah'};
+            }
           }
-        }
-        lastError = 'Status: ${response.statusCode}';
+          continue;
       } catch (e) {
         lastError = e;
       }
@@ -145,6 +163,7 @@ class ApiService {
     dynamic lastError;
     for (final root in _authRootCandidates) {
       try {
+        debugPrint('Trying Register Root: $root');
         final response = await http.post(
           Uri.parse('$root/index.php?endpoint=auth&action=register'),
           headers: {'Content-Type': 'application/json'},
@@ -154,7 +173,7 @@ class ApiService {
             'password': password,
             'fullname': fullname,
           }),
-        );
+        ).timeout(const Duration(seconds: 5));
 
         try {
           final result = jsonDecode(response.body);
@@ -162,16 +181,20 @@ class ApiService {
             _setActiveRoot(root);
             return result;
           }
-          if (response.statusCode == 409 || response.statusCode == 400) {
+          // If server reached but returned error, stop and return its message
+          if (response.statusCode == 409 ||
+              response.statusCode == 400 ||
+              response.statusCode == 401) {
             return {
               'success': false,
-              'message': result['message'] ?? 'Registration failed',
+              'message': result['message'] ?? 'Registration failed (${response.statusCode})',
             };
           }
           lastError = result['message'] ?? 'Status: ${response.statusCode}';
         } catch (e) {
-          lastError = e;
+          lastError = 'Status: ${response.statusCode} - $e';
         }
+        continue;
       } catch (e) {
         lastError = e;
       }
@@ -180,7 +203,7 @@ class ApiService {
     return {
       'success': false,
       'message':
-          'Network error: $lastError. For physical Android use adb reverse tcp:8080 tcp:80, or set API_ROOT.'
+          'Network error: $lastError. \n\nTips:\n1. Pastikan XAMPP/Apache (MySQL) sudah Aktif.\n2. Jika HP Fisik, jalankan: adb reverse tcp:80 tcp:80 (atau port 8080).\n3. Terakhir gagal di: $lastError'
     };
   }
 
@@ -342,15 +365,23 @@ class ApiService {
       print('Full URL: $baseUrl?endpoint=auth&action=change-password');
       print('About to send HTTP POST request...');
 
+      final requestBody = {
+        'user_id': userId,
+        'old_password': oldPassword,
+        'current_password': oldPassword,
+        'password': oldPassword,
+        'new_password': newPassword,
+        'password_new': newPassword,
+        'confirm_password': newPassword,
+      };
+
+      print('Request Body: $requestBody');
+
       final response = await http
           .post(
         Uri.parse('$baseUrl?endpoint=auth&action=change-password'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'user_id': userId,
-          'old_password': oldPassword,
-          'new_password': newPassword,
-        }),
+        body: jsonEncode(requestBody),
       )
           .timeout(
         const Duration(seconds: 12),
@@ -785,6 +816,49 @@ class ApiService {
             finalResult['success'] = false;
             print('✗ Failed to update $key with any field name variation');
           }
+        }
+      }
+
+      if (finalResult['success'] == true) {
+        final profile = await getProfile(userId);
+        if (profile == null) {
+          return {
+            'success': false,
+            'message': 'Update sent, but backend profile could not be verified'
+          };
+        }
+
+        final profileJson = profile.toJson();
+
+        bool matches(String field, dynamic expected) {
+          final actual = profileJson[field]?.toString().trim() ?? '';
+          final wanted = expected?.toString().trim() ?? '';
+          return actual == wanted;
+        }
+
+        final verified =
+            (!data.containsKey('fullname') || matches('fullname', data['fullname'])) &&
+            (!data.containsKey('email') || matches('email', data['email'])) &&
+            (!data.containsKey('username') || matches('username', data['username'])) &&
+            (!data.containsKey('phone') ||
+                matches('phone', data['phone']) ||
+                matches('phone_number', data['phone']) ||
+                matches('no_telp', data['phone']) ||
+                matches('telp', data['phone'])) &&
+            (!data.containsKey('location') ||
+                matches('location', data['location']) ||
+                matches('lokasi', data['location']) ||
+                matches('address', data['location'])) &&
+            (!data.containsKey('division') ||
+                matches('division', data['division']) ||
+                matches('divisi', data['division']));
+
+        if (!verified) {
+          print('✗ Backend verification failed after update: $profileJson');
+          return {
+            'success': false,
+            'message': 'Update response received, but backend data was not persisted'
+          };
         }
       }
 
@@ -1914,31 +1988,53 @@ class ApiService {
   List<Uri> _buildPerformanceCandidateUris({
     required Map<String, String> queryParameters,
   }) {
-    final orderedCandidates = <String>[];
-    void addCandidate(String value) {
-      if (!orderedCandidates.contains(value)) {
-        orderedCandidates.add(value);
+    final orderedUris = <Uri>[];
+    final seen = <String>{};
+
+    void addUri(Uri? uri) {
+      if (uri == null) {
+        return;
+      }
+      final key = uri.toString();
+      if (seen.add(key)) {
+        orderedUris.add(uri);
       }
     }
 
-    // Primary endpoint - all endpoints consolidated in /monitoring_api
-    addCandidate(performanceUrl);
+    Uri? buildPerformanceUriFromRoot(String root) {
+      final parsed = Uri.tryParse(root);
+      if (parsed == null) {
+        return null;
+      }
+      final basePath = parsed.path.endsWith('/')
+          ? parsed.path.substring(0, parsed.path.length - 1)
+          : parsed.path;
+      final performancePath = '$basePath/performance.php';
+      return parsed.replace(
+        path: performancePath,
+        queryParameters: queryParameters,
+      );
+    }
 
-    // Fallback if primary fails
-    addCandidate(performanceUrlFallback);
+    for (final root in _rootCandidates) {
+      addUri(buildPerformanceUriFromRoot(root));
+    }
 
-    // Final fallback: try from baseUrl by replacing path
+    // Keep legacy candidates for compatibility.
+    addUri(Uri.tryParse(performanceUrl)?.replace(queryParameters: queryParameters));
+    addUri(Uri.tryParse(performanceUrlFallback)
+        ?.replace(queryParameters: queryParameters));
+
+    // Final fallback: explicit canonical path.
     final configuredBase = Uri.tryParse(baseUrl);
     if (configuredBase != null) {
-      final fallbackUri = configuredBase.replace(path: '/monitoring_api/performance.php').toString();
-      if (!orderedCandidates.contains(fallbackUri)) {
-        addCandidate(fallbackUri);
-      }
+      addUri(configuredBase.replace(
+        path: '/monitoring_api/performance.php',
+        queryParameters: queryParameters,
+      ));
     }
 
-    return orderedCandidates
-        .map((base) => Uri.parse(base).replace(queryParameters: queryParameters))
-        .toList(growable: false);
+    return orderedUris;
   }
 
   Future<Map<String, dynamic>> _requestPerformanceWithFallback({
@@ -1968,20 +2064,40 @@ class ApiService {
 
         final decoded = jsonDecode(body) as Map<String, dynamic>;
         if (response.statusCode == 200 && decoded['success'] == true) {
+          _setActiveRoot(_rootFromPerformanceUri(uri));
           return decoded;
         }
 
         lastMessage = decoded['message']?.toString();
       } catch (e) {
-        lastMessage = e.toString();
+        lastMessage = _friendlyPerformanceError(e, defaultMessage);
       }
     }
 
     return {
       'success': false,
-      'message':
-          lastMessage ?? '$defaultMessage. Check backend URL and PHP server.',
+      'message': lastMessage ??
+          '$defaultMessage. Periksa koneksi API backend (localhost/adb reverse/API_ROOT).',
     };
+  }
+
+  String _rootFromPerformanceUri(Uri uri) {
+    return uri.replace(path: '/monitoring_api', queryParameters: null).toString();
+  }
+
+  String _friendlyPerformanceError(Object error, String defaultMessage) {
+    final raw = error.toString();
+    final lowered = raw.toLowerCase();
+
+    if (lowered.contains('connection refused') ||
+        lowered.contains('clientexception') ||
+        lowered.contains('socketexception') ||
+        lowered.contains('failed host lookup')) {
+      return '$defaultMessage: tidak bisa terhubung ke API. '
+          'Jika pakai Android device fisik, jalankan adb reverse tcp:8080 tcp:80 atau set API_ROOT.';
+    }
+
+    return '$defaultMessage: $raw';
   }
 
   bool _looksLikeJson(String body) {

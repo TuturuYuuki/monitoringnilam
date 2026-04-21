@@ -1,21 +1,18 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:monitoring/main.dart';
-import 'package:monitoring/utils/ui_utils.dart';
+import 'package:monitoring/models/tower_model.dart';
 import 'package:monitoring/services/api_service.dart';
 import 'package:monitoring/services/device_storage_service.dart';
-import 'package:monitoring/models/tower_model.dart';
+import 'dart:ui';
+import 'package:monitoring/main.dart';
 import 'package:monitoring/utils/tower_status_override.dart';
 import 'package:monitoring/utils/location_label_utils.dart';
-import 'package:monitoring/widgets/expandable_fab_nav.dart';
 import 'package:monitoring/widgets/global_header_bar.dart';
 import 'package:monitoring/widgets/global_sidebar_nav.dart';
 import 'package:monitoring/widgets/global_footer.dart';
 import 'package:monitoring/theme/app_dropdown_style.dart';
 
-// Network Page CY 2
+// Network Page
 class NetworkCY2Page extends StatefulWidget {
   const NetworkCY2Page({super.key});
 
@@ -39,13 +36,19 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
   bool isLoading = true;
   Timer? _refreshTimer;
   DateTime? _lastRefreshTime;
+  int globalTotalDevices = 0;
+  int globalUpDevices = 0;
+  int globalDownDevices = 0;
+  bool _isLoadingGlobalSummary = true;
+  bool _isGlobalSummaryRequestInFlight = false;
 
   @override
   void initState() {
     super.initState();
     apiService = ApiService();
+    _checkConnection();
     _loadTowers();
-    _startAutoRefresh();
+    _loadGlobalSummary(initialLoad: true);
   }
 
   @override
@@ -54,18 +57,25 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     super.dispose();
   }
 
-  void _startAutoRefresh() {
-    // Refresh setiap 2 detik untuk monitoring realtime
-    _refreshTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (mounted) {
-        _loadTowers();
-      }
-    });
+  Future<void> _checkConnection() async {
+    // Check connection but _isConnected is currently not used in UI
+    await apiService.testConnection();
+  }
+
+  String _selectedAreaId() {
+    final normalized = selectedArea.toUpperCase().replaceAll(' ', '');
+    if (normalized == 'CY1') return 'CY1';
+    if (normalized == 'CY2') return 'CY2';
+    if (normalized == 'CY3') return 'CY3';
+    if (normalized == 'GATE') return 'GATE';
+    if (normalized == 'PARKING') return 'PARKING';
+    return 'CY1';
   }
 
   Future<void> _loadTowers() async {
     try {
-      final fetchedTowers = await apiService.getValidatedTowersByYard('CY2');
+      final fetchedTowers =
+          await apiService.getValidatedTowersByYard(_selectedAreaId());
 
       if (mounted) {
         setState(() {
@@ -77,65 +87,68 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
 
       _triggerRealtimePing();
     } catch (e) {
-      print('Error Loading Tower CY2: $e');
       if (mounted) setState(() => isLoading = false);
     }
   }
 
   Future<void> _triggerRealtimePing() async {
     try {
-      print('=== Starting Realtime Ping For All Towers (CY2) ===');
-
-      // Trigger backend realtime ping untuk semua devices
       final pingResult = await apiService.triggerRealtimePing();
 
       if (pingResult['success'] == true) {
-        print('Realtime Ping Completed: ${pingResult['message']}');
-        print('IP Checked: ${pingResult['ips_checked']}');
       }
-
-      print('=== Realtime Ping Completed (CY2) ===');
     } catch (e) {
-      print('Error Triggering Realtime Ping: $e');
+      // ignore: empty_catches
     }
   }
 
   Future<void> _triggerPingCheck() async {
+    await _triggerRealtimePing();
+  }
+
+  Future<void> _loadGlobalSummary({bool initialLoad = false}) async {
+    if (_isGlobalSummaryRequestInFlight) {
+      return;
+    }
+
+    _isGlobalSummaryRequestInFlight = true;
     try {
-      final baseUrl = ApiService.baseUrl;
+      if (mounted && initialLoad) {
+        setState(() {
+          _isLoadingGlobalSummary = true;
+        });
+      }
 
-      // Call realtime ping endpoint yang update semua towers sekaligus
-      final response = await http
-          .get(
-        Uri.parse('$baseUrl?endpoint=realtime&action=all'),
-      )
-          .timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          print('Realtime Ping Timed Out');
-          return http.Response('{"success":false}', 408);
-        },
-      );
+      final allTowers = await apiService.getAllTowers();
+      final allCameras = await apiService.getAllCameras();
+      final allMMTs = await apiService.getAllMMTs();
 
-      if (response.statusCode == 200) {
-        // Wait a moment for database to update
-        await Future.delayed(const Duration(milliseconds: 500));
-        print('Realtime Ping Check Completed');
+      final towerUp = allTowers.where((t) => !isDownStatus(t.status)).length;
+      final cameraUp = allCameras.where((c) => c.status == 'UP').length;
+      final mmtUp = allMMTs.where((m) => m.status == 'UP').length;
+
+      final total = allTowers.length + allCameras.length + allMMTs.length;
+      final up = towerUp + cameraUp + mmtUp;
+      final down = (total - up).clamp(0, 999999);
+
+      if (mounted) {
+        setState(() {
+          globalTotalDevices = total;
+          globalUpDevices = up;
+          globalDownDevices = down;
+          _isLoadingGlobalSummary = false;
+        });
       }
     } catch (e) {
-      print('Error Triggering Ping Check (Ignored): $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingGlobalSummary = false;
+        });
+      }
+    } finally {
+      _isGlobalSummaryRequestInFlight = false;
     }
   }
-
-  List<Tower> get paginatedData {
-    int start = currentPage * itemsPerPage;
-    int end = (start + itemsPerPage > towers.length)
-        ? towers.length
-        : start + itemsPerPage;
-    return towers.sublist(start, end);
-  }
-
-  int get totalPages => (towers.length / itemsPerPage).ceil();
 
   int get totalTowers => towers.length;
   int get onlineTowers => towers.where((t) => !isDownStatus(t.status)).length;
@@ -159,7 +172,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                 const Padding(
                   padding: EdgeInsets.all(12.0),
                   child: Text(
-                    'All Towers Are In UP Status.',
+                    'All Towers Are In UP Condition',
                     style: TextStyle(fontSize: 13, color: Colors.black54),
                     textAlign: TextAlign.center,
                   ),
@@ -171,9 +184,9 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
+                      color: Colors.red.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -212,10 +225,137 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            if (context.mounted) Navigator.of(context).pop();
+          },
           child: const Text('Close'),
         ),
       ],
+    );
+  }
+
+  List<Tower> get paginatedData {
+    int start = currentPage * itemsPerPage;
+    int end = (start + itemsPerPage > towers.length)
+        ? towers.length
+        : start + itemsPerPage;
+    return towers.sublist(start, end);
+  }
+
+  int get totalPages => (towers.length / itemsPerPage).ceil();
+
+  Widget _buildPagination() {
+    final int displayPages = totalPages > 0 ? totalPages : 1;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Center(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildPaginationButton(
+                label: 'Previous',
+                onTap: currentPage > 0
+                    ? () => setState(() => currentPage--)
+                    : null,
+                color: const Color(0xFFE53935),
+                isFirst: true,
+              ),
+
+              ...List.generate(displayPages, (index) {
+                if (displayPages > 7) {
+                  if (index != 0 &&
+                      index != displayPages - 1 &&
+                      (index < currentPage - 1 || index > currentPage + 1)) {
+                    if (index == 1 && currentPage > 3) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 4),
+                        child: Text('...',
+                            style: TextStyle(color: Colors.white70)),
+                      );
+                    }
+                    if (index == displayPages - 2 &&
+                        currentPage < displayPages - 4) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 4),
+                        child: Text('...',
+                            style: TextStyle(color: Colors.white70)),
+                      );
+                    }
+                    if (index > 1 && index < displayPages - 2) {
+                      return const SizedBox.shrink();
+                    }
+                  }
+                }
+
+                return _buildPaginationButton(
+                  label: '${index + 1}',
+                  onTap: (towers.isNotEmpty && currentPage != index)
+                      ? () => setState(() => currentPage = index)
+                      : null,
+                  color: currentPage == index
+                      ? const Color(0xFF1565C0)
+                      : const Color(0xFF2196F3),
+                  isSquare: true,
+                );
+              }),
+
+              _buildPaginationButton(
+                label: 'Next',
+                onTap: currentPage < displayPages - 1 && towers.isNotEmpty
+                    ? () => setState(() => currentPage++)
+                    : null,
+                color: const Color(0xFFE53935),
+                isLast: true,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaginationButton({
+    required String label,
+    VoidCallback? onTap,
+    required Color color,
+    bool isFirst = false,
+    bool isLast = false,
+    bool isSquare = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: isSquare ? 12 : 16,
+            vertical: 8,
+          ),
+          decoration: BoxDecoration(
+            color: onTap == null ? color.withValues(alpha: 0.3) : color,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              if (onTap != null)
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+            ],
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: onTap == null ? Colors.white54 : Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -223,30 +363,26 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF2C3E50),
-      body: Stack(
+      backgroundColor: AppDropdownStyle.standardPageBackground,
+      body: Column(
         children: [
-          Column(
-            children: [
-              const GlobalHeaderBar(currentRoute: '/network-cy2'),
-              Expanded(
-                child: GlobalSidebarNav(
-                    currentRoute: '/network-cy2',
-                    child: SingleChildScrollView(
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          return Padding(
-                            padding: EdgeInsets.all(isMobile ? 8 : 20.0),
-                            child: _buildContent(context, constraints),
-                          );
-                        },
-                      ),
-                    )),
+          const GlobalHeaderBar(currentRoute: '/network-cy2'),
+          Expanded(
+            child: GlobalSidebarNav(
+              currentRoute: '/network-cy2',
+              child: SingleChildScrollView(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return Padding(
+                      padding: EdgeInsets.all(isMobile ? 12 : 24),
+                      child: _buildContent(context, constraints),
+                    );
+                  },
+                ),
               ),
-              const GlobalFooter(),
-            ],
+            ),
           ),
-          const ExpandableFabNav(currentRoute: '/network-cy2'),
+          const GlobalFooter(),
         ],
       ),
     );
@@ -254,161 +390,330 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
 
   Widget _buildContent(BuildContext context, BoxConstraints constraints) {
     final isMobile = isMobileScreen(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Title Section
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1976D2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.language, size: 32, color: Colors.white),
-            ),
-            const SizedBox(width: 16),
+    return SizedBox(
+      width: constraints.maxWidth,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Title Section
+          isMobile ? _buildMobileHeader() : _buildDesktopHeader(),
+          const SizedBox(height: 24),
+          if (isMobile) ...[
+            _buildHeaderOverviewMini(isMobile: true),
+            const SizedBox(height: 16),
+          ],
+          if (!isMobile)
             Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Access Point Monitoring',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Text(
-                      'Real Time Access Point Monitoring And Diagnostics',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
+                    Expanded(
+                      child: _buildStatCard(
+                        'Total AP',
+                        '$totalTowers',
+                        Colors.blue,
+                        compact: false,
                       ),
                     ),
-                    if (_lastRefreshTime != null) ...[
-                      const SizedBox(width: 8),
-                      const Text('•', style: TextStyle(color: Colors.white70)),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
-                        style: const TextStyle(
-                          color: Colors.greenAccent,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildStatCard(
+                        'UP',
+                        '$onlineTowers',
+                        Colors.green,
+                        compact: false,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildStatCard(
+                        'DOWN',
+                        '$warningTowers',
+                        Colors.red,
+                        onTap: warningTowers > 0 ? _showWarningList : null,
+                        compact: false,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildAreaButton(constraints.maxWidth),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildActionCard(
+                        title: 'AREA', // Back to original title
+                        icon: Icons.map_rounded,
+                        iconColor: Colors.blue,
+                        content: Text(
+                          selectedArea,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 15,
+                          ),
                         ),
                       ),
-                    ],
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildActionCard(
+                        title: 'ACTION',
+                        icon: Icons.refresh_rounded,
+                        iconColor: Colors.green,
+                        onTap: () async {
+                          setState(() => isLoading = true);
+                          await _triggerPingCheck();
+                          await _loadTowers();
+                        },
+                        content: const Text(
+                          "CHECK STATUS",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            )
+          else
+            Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatCard(
+                        'Total AP',
+                        '$totalTowers',
+                        Colors.blue,
+                        compact: true,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildStatCard(
+                        'UP',
+                        '$onlineTowers',
+                        Colors.green,
+                        compact: true,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildStatCard(
+                        'DOWN',
+                        '$warningTowers',
+                        Colors.red,
+                        onTap: warningTowers > 0 ? _showWarningList : null,
+                        compact: true,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildAreaButton(constraints.maxWidth),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildCheckStatusButton(constraints.maxWidth),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildActionCard(
+                        title: 'AREA',
+                        icon: Icons.map_rounded,
+                        iconColor: Colors.blue,
+                        content: Text(
+                          selectedArea,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
-          ],
+          const SizedBox(height: 16),
+          _buildTowerList(constraints),
+          _buildPagination(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderOverviewMini({required bool isMobile}) {
+    final Widget content;
+
+    if (_isLoadingGlobalSummary) {
+      content = Text(
+        'Loading overview...',
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.2),
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
         ),
-        const SizedBox(height: 24),
+      );
+    } else {
+      final cards = [
+        _buildGlobalStatCard('ALL', '$globalTotalDevices', Colors.orange,
+            width: isMobile ? null : 86),
+        _buildGlobalStatCard('UP', '$globalUpDevices', Colors.green,
+            width: isMobile ? null : 86),
+        _buildGlobalStatCard('DOWN', '$globalDownDevices', Colors.red,
+            width: isMobile ? null : 86),
+      ];
 
-        // Stats Cards Row with Dropdown
-        LayoutBuilder(
-          builder: (context, constraints) {
-            double cardWidth = isMobile
-                ? (constraints.maxWidth - 16) / 1.5
-                : constraints.maxWidth > 1400
-                    ? (constraints.maxWidth - 100) / 5
-                    : (constraints.maxWidth - 80) / 3;
+      content = isMobile
+          ? Row(
+              children: [
+                Expanded(child: cards[0]),
+                const SizedBox(width: 8),
+                Expanded(child: cards[1]),
+                const SizedBox(width: 8),
+                Expanded(child: cards[2]),
+              ],
+            )
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                cards[0],
+                const SizedBox(width: 8),
+                cards[1],
+                const SizedBox(width: 8),
+                cards[2],
+              ],
+            );
+    }
 
-            return isMobile
-                ? Column(
-                    children: [
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            _buildStatCard('Total Access Point', '$totalTowers',
-                                Colors.orange,
-                                width: cardWidth),
-                            SizedBox(width: isMobile ? 8 : 16),
-                            _buildStatCard('UP', '$onlineTowers', Colors.green,
-                                width: cardWidth),
-                            SizedBox(width: isMobile ? 8 : 16),
-                            _buildStatCard(
-                                'DOWN', '$warningTowers', Colors.blue,
-                                onTap: _showWarningList, width: cardWidth),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildNetworkDropdown(constraints.maxWidth),
-                      const SizedBox(height: 12),
-                      _buildAreaButton(constraints.maxWidth),
-                      const SizedBox(height: 12),
-                      _buildCheckStatusButton(constraints.maxWidth),
-                    ],
-                  )
-                : Wrap(
-                    spacing: 16,
-                    runSpacing: 16,
-                    children: [
-                      _buildStatCard(
-                          'Total Access Point', '$totalTowers', Colors.orange,
-                          width: cardWidth),
-                      _buildStatCard('UP', '$onlineTowers', Colors.green,
-                          width: cardWidth),
-                      _buildStatCard('DOWN', '$warningTowers', Colors.red,
-                          onTap: _showWarningList, width: cardWidth),
-                      _buildNetworkDropdown(cardWidth),
-                      _buildAreaButton(cardWidth),
-                      _buildCheckStatusButton(cardWidth),
-                    ],
-                  );
-          },
-        ),
-        const SizedBox(height: 16),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Overview Data All Area',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: isMobile ? 12 : 14,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          content,
+        ],
+      ),
+    );
+  }
 
-        // Tower List
-        _buildTowerList(),
-      ],
+  Widget _buildGlobalStatCard(String title, String value, Color indicatorColor,
+      {double? width}) {
+    return Container(
+      width: width,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 10,
+                ),
+              ),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: indicatorColor,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: indicatorColor.withValues(alpha: 0.4),
+                      blurRadius: 4,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 18,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildStatCard(String title, String value, Color indicatorColor,
-      {VoidCallback? onTap, double? width}) {
+      {VoidCallback? onTap, double? width, bool compact = false}) {
     return GestureDetector(
       onTap: onTap,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Container(
             width: width,
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(compact ? 12 : 20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.white.withOpacity(0.15),
-                  Colors.white.withOpacity(0.05),
+                  Colors.white.withValues(alpha: 0.2),
+                  Colors.white.withValues(alpha: 0.05),
                 ],
               ),
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-                BoxShadow(
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 10,
-                  offset: const Offset(-5, -5),
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
@@ -419,33 +724,35 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
-                      child: Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.white.withOpacity(0.8),
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
+                      child: SizedBox(
+                        height: compact ? 32 : 20,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: compact ? 11 : 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white.withValues(alpha: 0.9),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     Container(
-                      width: 12,
-                      height: 12,
+                      width: compact ? 10 : 12,
+                      height: compact ? 10 : 12,
                       decoration: BoxDecoration(
                         color: indicatorColor,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: indicatorColor.withOpacity(0.6),
-                            blurRadius: 12,
+                            color: indicatorColor.withValues(alpha: 0.5),
+                            blurRadius: 8,
                             spreadRadius: 2,
-                          ),
-                          BoxShadow(
-                            color: Colors.white.withOpacity(0.4),
-                            blurRadius: 4,
-                            spreadRadius: 0.5,
                           ),
                         ],
                       ),
@@ -455,20 +762,23 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                 const SizedBox(height: 12),
                 Text(
                   value,
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w900,
+                  style: TextStyle(
+                    fontSize: compact ? 24 : 32,
+                    fontWeight: FontWeight.bold,
                     color: Colors.white,
-                    letterSpacing: -1,
+                    letterSpacing: -0.5,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Container(
                   height: 2,
-                  width: 40,
+                  width: compact ? 30 : 40,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [indicatorColor, indicatorColor.withOpacity(0)],
+                      colors: [
+                        indicatorColor,
+                        indicatorColor.withValues(alpha: 0)
+                      ],
                     ),
                     borderRadius: BorderRadius.circular(2),
                   ),
@@ -481,269 +791,128 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     );
   }
 
-  Widget _buildNetworkDropdown(double width) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          width: width,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withOpacity(0.12),
-                Colors.white.withOpacity(0.02),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.25),
-              width: 1.5,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(Icons.location_on_rounded,
-                    color: Colors.white, size: 20),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'AREA',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 2.0,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: null,
-                        hint: const Text(
-                          "SELECT AREA",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 14,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        dropdownColor: AppDropdownStyle.menuBackground,
-                        borderRadius: AppDropdownStyle.menuBorderRadius,
-                        isExpanded: true,
-                        icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                            color: Colors.white, size: 20),
-                        items: _areaOptions.map((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(
-                              value,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          if (newValue == null) return;
-
-                          if (newValue == 'CY 1') {
-                            Navigator.pushReplacementNamed(context, '/network');
-                          } else if (newValue == 'CY 2') {
-                            Navigator.pushReplacementNamed(
-                                context, '/network-cy2');
-                          } else if (newValue == 'CY 3') {
-                            Navigator.pushReplacementNamed(
-                                context, '/network-cy3');
-                          } else if (newValue == 'GATE') {
-                            Navigator.pushReplacementNamed(
-                                context, '/network-gate');
-                          } else if (newValue == 'PARKING') {
-                            Navigator.pushReplacementNamed(
-                                context, '/network-parking');
-                          }
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildAreaButton(double width) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          width: width,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFF1976D2).withOpacity(0.12),
-                const Color(0xFF1976D2).withOpacity(0.02),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: const Color(0xFF1976D2).withOpacity(0.25),
-              width: 1.5,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1976D2).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(Icons.location_on_rounded,
-                    color: Colors.white, size: 20),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'AREA',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 2.0,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      selectedArea,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 15,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+    return _buildActionCard(
+      title: 'AREA',
+      icon: Icons.location_on_rounded,
+      iconColor: Colors.white,
+      content: AnimatedDropdownButton(
+        value: "Select Area",
+        items: _areaOptions,
+        backgroundColor: AppDropdownStyle.menuBackground,
+        onChanged: (String? newValue) {
+          if (newValue == null) return;
+          if (newValue == 'CY 1') {
+            Navigator.pushReplacementNamed(context, '/network');
+          } else if (newValue == 'CY 2') {
+            Navigator.pushReplacementNamed(context, '/network-cy2');
+          } else if (newValue == 'CY 3') {
+            Navigator.pushReplacementNamed(context, '/network-cy3');
+          } else if (newValue == 'GATE') {
+            Navigator.pushReplacementNamed(context, '/network-gate');
+          } else if (newValue == 'PARKING') {
+            Navigator.pushReplacementNamed(context, '/network-parking');
+          }
+        },
       ),
     );
   }
 
   Widget _buildCheckStatusButton(double width) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: () async {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Memeriksa status...'),
-              duration: Duration(seconds: 2),
-            ),
-          );
-          await _triggerPingCheck();
-          await _loadTowers();
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('✓ Status berhasil diperbarui!'),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 2),
-              ),
-            );
-          }
-        },
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              width: width,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    const Color(0xFF4CAF50).withOpacity(0.12),
-                    const Color(0xFF4CAF50).withOpacity(0.02),
+    if (MediaQuery.of(context).size.width >= 600) {
+      return const SizedBox.shrink();
+    }
+    return _buildActionCard(
+      title: 'ACTION',
+      icon: Icons.refresh_rounded,
+      iconColor: Colors.green,
+      onTap: () async {
+        setState(() => isLoading = true);
+        await _triggerPingCheck();
+        await _loadTowers();
+      },
+      content: Text(
+        "CHECK STATUS",
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w900,
+          fontSize: isMobileScreen(context) ? 13 : 15,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionCard({
+    required String title,
+    required IconData icon,
+    required Color iconColor,
+    required Widget content,
+    VoidCallback? onTap,
+  }) {
+    final bool isMobile = MediaQuery.of(context).size.width < 600;
+
+    return Container(
+      constraints: BoxConstraints(minHeight: isMobile ? 45 : 50),
+      child: MouseRegion(
+        cursor:
+            onTap != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
+        child: GestureDetector(
+          onTap: onTap,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 12 : 16,
+                    vertical: isMobile ? 10 : 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.12),
+                      Colors.white.withValues(alpha: 0.02),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(isMobile ? 8 : 10),
+                      decoration: BoxDecoration(
+                        color: iconColor.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(icon, color: Colors.white, size: isMobile ? 18 : 20),
+                    ),
+                    SizedBox(width: isMobile ? 12 : 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            title,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.6),
+                              fontSize: isMobile ? 10 : 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          content,
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: const Color(0xFF4CAF50).withOpacity(0.25),
-                  width: 1.5,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF4CAF50).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(Icons.refresh_rounded,
-                        color: Colors.white, size: 20),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'AKSI',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.6),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 2.0,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'CEK STATUS',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 15,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
               ),
             ),
           ),
@@ -752,11 +921,10 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     );
   }
 
-  Widget _buildTowerList() {
-    // Show loading indicator
+  Widget _buildTowerList(BoxConstraints constraints) {
     if (isLoading) {
       return ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
@@ -767,13 +935,13 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.white.withOpacity(0.12),
-                  Colors.white.withOpacity(0.02),
+                  Colors.white.withValues(alpha: 0.2),
+                  Colors.white.withValues(alpha: 0.05),
                 ],
               ),
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 width: 1.5,
               ),
             ),
@@ -791,7 +959,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                   ),
                   SizedBox(height: 20),
                   Text(
-                    'Loading Access Point Data...',
+                    'Loading Access Point data...',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -807,10 +975,9 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
       );
     }
 
-    // Show empty state if no data
     if (towers.isEmpty) {
       return ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
@@ -821,13 +988,13 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.white.withOpacity(0.12),
-                  Colors.white.withOpacity(0.02),
+                  Colors.white.withValues(alpha: 0.12),
+                  Colors.white.withValues(alpha: 0.02),
                 ],
               ),
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 width: 1.5,
               ),
             ),
@@ -836,16 +1003,16 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    Icons.signal_wifi_off_rounded,
+                    Icons.router_outlined,
                     size: 64,
                     color: Colors.white38,
                   ),
                   SizedBox(height: 20),
                   Text(
-                    'NO DATA ACCESS POINT',
+                    'No AP data available',
                     style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
@@ -857,9 +1024,10 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
       );
     }
 
-    // Show data table when towers exist
+    final isMobile = isMobileScreen(context);
+
     return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(20),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: Container(
@@ -868,42 +1036,40 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.white.withOpacity(0.12),
-                Colors.white.withOpacity(0.02),
+                Colors.white.withValues(alpha: 0.2),
+                Colors.white.withValues(alpha: 0.05),
               ],
             ),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 30,
-                offset: const Offset(0, 15),
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
           child: Column(
             children: [
-              // Header
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 width: double.infinity,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      const Color(0xFF1976D2).withOpacity(0.8),
-                      const Color(0xFF1976D2).withOpacity(0.4),
+                      const Color(0xFF1976D2).withValues(alpha: 0.8),
+                      const Color(0xFF1976D2).withValues(alpha: 0.4),
                     ],
                   ),
                 ),
-                child: Row(
+                child: const Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Access Point List',
                       style: TextStyle(
                         color: Colors.white,
@@ -912,201 +1078,46 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                         letterSpacing: 1.0,
                       ),
                     ),
-                    // Pagination Controls
+                  ],
+                ),
+              ),
+              Builder(builder: (context) {
+                const double minTableWidth = 500;
+                final tableContent = Column(
+                  children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
+                          horizontal: 24, vertical: 14),
+                      width: double.infinity,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
-                        border:
-                            Border.all(color: Colors.white.withOpacity(0.2)),
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFF1976D2).withValues(alpha: 0.8),
+                            const Color(0xFF1976D2).withValues(alpha: 0.4),
+                          ],
+                        ),
                       ),
                       child: Row(
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.chevron_left_rounded,
-                                size: 22, color: Colors.white),
-                            onPressed: currentPage > 0
-                                ? () => setState(() => currentPage--)
-                                : null,
-                            constraints: const BoxConstraints(),
-                            padding: EdgeInsets.zero,
-                          ),
-                          const SizedBox(width: 8),
-
-                          // LIST ANGKA HALAMAN
-                          // Kita generate angka berdasarkan totalPages
-                          ...List.generate(totalPages, (index) {
-                            bool isCurrentPage = index == currentPage;
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  currentPage = index;
-                                });
-                              },
-                              child: Container(
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 4),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  // Beri warna background jika halaman sedang aktif
-                                  color: isCurrentPage
-                                      ? const Color(0xFF1976D2)
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  '${index + 1}',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                    // Beri warna teks putih jika aktif, biru jika tidak aktif
-                                    color: isCurrentPage
-                                        ? Colors.white
-                                        : const Color(0xFF1976D2),
-                                  ),
-                                ),
-                              ),
-                            );
-                          }),
-
-                          const SizedBox(width: 8),
-                          // Tombol Next
-                          IconButton(
-                            icon: const Icon(Icons.chevron_right, size: 20),
-                            onPressed: currentPage < totalPages - 1
-                                ? () => setState(() => currentPage++)
-                                : null,
-                            constraints: const BoxConstraints(),
-                            padding: EdgeInsets.zero,
-                          ),
+                          _buildHeaderCell('AP ID', flex: 2),
+                          _buildHeaderCell('IP Address', flex: 3),
+                          _buildHeaderCell('Status', flex: 2, isLast: true),
                         ],
                       ),
                     ),
+                    ...paginatedData.map((tower) => _buildTowerTableRow(tower)),
                   ],
-                ),
-              ),
-              // Table Header
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFFC6B430).withOpacity(0.8),
-                      const Color(0xFFC6B430).withOpacity(0.4),
-                    ],
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    _buildHeaderCell('Access Point ID', flex: 1),
-                    _buildHeaderCell('Location', flex: 2),
-                    _buildHeaderCell('IP Address', flex: 2),
-                    _buildHeaderCell('Status', flex: 1),
-                    _buildHeaderCell('Aksi', flex: 1, isLast: true),
-                  ],
-                ),
-              ),
-
-              // Table Rows
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: paginatedData.length,
-                itemBuilder: (context, index) {
-                  return _buildTableRow(paginatedData[index]);
-                },
-              ),
+                );
+                if (isMobile) {
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(width: minTableWidth, child: tableContent),
+                  );
+                }
+                return tableContent;
+              }),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTableRow(Tower tower) {
-    bool isWarning = isDownStatus(tower.status);
-    String statusLabel = isWarning ? 'DOWN' : tower.status;
-    Color statusColor = isWarning ? Colors.redAccent : Colors.greenAccent;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.02),
-        border: Border(
-          bottom: BorderSide(color: Colors.white.withOpacity(0.05), width: 1),
-        ),
-      ),
-      child: Row(
-        children: [
-          _tableCell(tower.towerId, flex: 1, fontWeight: FontWeight.bold),
-          _tableCell(tower.location, flex: 2),
-          _tableCell(tower.ipAddress, flex: 2),
-          _tableCell(
-            statusLabel,
-            flex: 1,
-            color: statusColor,
-            fontWeight: FontWeight.bold,
-          ),
-          Expanded(
-            flex: 1,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildActionButton(Icons.edit_rounded, Colors.blueAccent,
-                    () => _showEditForm(tower)),
-                const SizedBox(width: 12),
-                _buildActionButton(Icons.delete_rounded, Colors.redAccent,
-                    () => _confirmDelete(tower)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButton(IconData icon, Color color, VoidCallback onTap) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: color.withOpacity(0.2)),
-          ),
-          child: Icon(icon, color: color, size: 18),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPagerIcon(IconData icon, VoidCallback? onPressed) {
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: Colors.black87.withOpacity(onPressed == null ? 0.2 : 0.6),
-            width: 1.2,
-          ),
-        ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: onPressed == null ? Colors.black26 : Colors.black87,
         ),
       ),
     );
@@ -1119,248 +1130,194 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
       child: Text(
         label,
         textAlign: TextAlign.center,
-        style: TextStyle(
-          color: Colors.white.withOpacity(0.9),
-          fontWeight: FontWeight.w900,
-          fontSize: 12,
-          letterSpacing: 1.0,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+          fontSize: 14,
         ),
       ),
     );
   }
 
-  Widget _tableCell(String text,
+  Widget _buildTowerTableRow(Tower tower) {
+    final bool isDown = isDownStatus(tower.status);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        border: Border(
+          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05), width: 1),
+        ),
+      ),
+      child: Row(
+        children: [
+          _buildTableCell(tower.towerId,
+              flex: 2, fontWeight: FontWeight.w800, color: Colors.white),
+          _buildTableCell(tower.ipAddress,
+              flex: 3, color: Colors.white.withValues(alpha: 0.7)),
+          _buildTableCell(
+            isDown ? 'DOWN' : 'UP',
+            flex: 2,
+            color: isDown ? Colors.redAccent : Colors.greenAccent,
+            fontWeight: FontWeight.w800,
+            isLast: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTableCell(String text,
       {required int flex,
-      Color color = Colors.white,
-      FontWeight fontWeight = FontWeight.w500}) {
+      FontWeight fontWeight = FontWeight.w700,
+      Color color = Colors.black,
+      TextAlign align = TextAlign.center,
+      bool isLast = false}) {
     return Expanded(
       flex: flex,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
           border: Border(
-            right: BorderSide(
-              color: Colors.white.withOpacity(0.05),
-              width: 1,
-            ),
+            right: isLast
+                ? BorderSide.none
+                : BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.8),
           ),
         ),
         child: Text(
           text,
-          textAlign: TextAlign.center,
           style: TextStyle(
-            color: color.withOpacity(0.9),
-            fontSize: 13,
+            color: color,
             fontWeight: fontWeight,
+            fontSize: 14,
           ),
+          textAlign: align,
         ),
       ),
     );
   }
 
-// --- FUNGSI UNTUK MODAL EDIT ---
-  Future<void> _showEditForm(Tower tower) async {
-    final ipController = TextEditingController(text: tower.ipAddress);
-    var locationOptions = buildMasterLocationOptions(
-      await apiService.getAllMasterLocations(),
-    );
-    if (locationOptions.isEmpty) {
-      locationOptions = [
-        {
-          'label': normalizeLocationLabel(tower.location),
-          'container_yard': tower.containerYard,
-          'location_type': 'TOWER',
-          'location_code': tower.towerId,
-          'location_name': tower.location,
-        }
-      ];
-    }
-    final matchedOption = matchMasterLocationOption(
-      locationOptions,
-      tower.location,
-      currentContainerYard: tower.containerYard,
-    );
-    var selectedLocation =
-        matchedOption?['label'] ?? normalizeLocationLabel(tower.location);
-    var selectedYard = matchedOption?['container_yard'] ?? tower.containerYard;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setLocalState) => AlertDialog(
-          title: Text('Edit ${tower.towerId}'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
+  Widget _buildMobileHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    blurRadius: 10,
+                  )
+                ],
+              ),
+              child: const Icon(
+                Icons.router_rounded,
+                size: 30,
+                color: Color(0xFF1976D2),
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Access Point Monitoring',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Monitoring View of Access Point',
+          style: TextStyle(
+            color: Colors.white70,
+            fontSize: 13,
+          ),
+        ),
+        if (_lastRefreshTime != null)
+          Row(
             children: [
-              TextField(
-                  controller: ipController,
-                  decoration: const InputDecoration(labelText: 'IP Address')),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: selectedLocation,
-                isExpanded: true,
-                dropdownColor: AppDropdownStyle.menuBackground,
-                borderRadius: AppDropdownStyle.menuBorderRadius,
-                decoration: const InputDecoration(labelText: 'Location'),
-                items: locationOptions
-                    .map((option) => DropdownMenuItem<String>(
-                          value: option['label'],
-                          child: Text(option['label'] ?? ''),
-                        ))
-                    .toList(),
-                onChanged: (value) {
-                  if (value == null) return;
-                  final option = locationOptions.firstWhere(
-                    (item) => item['label'] == value,
-                    orElse: () => locationOptions.first,
-                  );
-                  setLocalState(() {
-                    selectedLocation = value;
-                    selectedYard =
-                        option['container_yard'] ?? tower.containerYard;
-                  });
-                },
+              const Text('•', style: TextStyle(color: Colors.greenAccent)),
+              const SizedBox(width: 6),
+              Text(
+                'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
+                style: const TextStyle(
+                  color: Colors.greenAccent,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: () async {
-                final response = await apiService.updateTower(tower.id, {
-                  'ip_address': ipController.text,
-                  'location': selectedLocation,
-                  'container_yard': selectedYard,
-                });
+      ],
+    );
+  }
 
-                if (response['success'] == true) {
-                  // Sync local storage after backend success
-                  await DeviceStorageService.updateDeviceFields(
-                    type: 'Tower',
-                    name: tower.towerId,
-                    updates: {
-                      'ipAddress': ipController.text,
-                      'locationName': selectedLocation,
-                      'containerYard': selectedYard,
-                    },
-                  );
-                  
-                  if (mounted) {
-                    Navigator.pop(context);
-                    _loadTowers();
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('CY2 berhasil diperbarui'),
-                        backgroundColor: Colors.green));
-                  }
-                }
-              },
-              child: const Text('Save'),
-            ),
-          ],
+  Widget _buildDesktopHeader() {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1976D2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(
+            Icons.router_rounded,
+            size: 32,
+            color: Colors.white,
+          ),
         ),
-      ),
-    );
-  }
-
-  // --- FUNGSI UNTUK KONFIRMASI HAPUS ---
-  void _confirmDelete(Tower tower) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-          title: const Text('Konfirmasi hapus'),
-          content: Text('Hapus ${tower.towerId}?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () async {
-              final response = await apiService.deleteTower(tower.id);
-              if (response['success'] == true) {
-                if (mounted) {
-                  Navigator.pop(context);
-                  _loadTowers(); // Refresh data CY2
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Data berhasil dihapus'),
-                      backgroundColor: Colors.red));
-                }
-              }
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout', style: TextStyle(color: Colors.black87)),
-        content: const Text('Are You Sure To Logout?',
-            style: TextStyle(color: Colors.black87)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child:
-                const Text('Cancel', style: TextStyle(color: Colors.black87)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                '/login',
-                (route) => false,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showTowerDetails(Map<String, dynamic> tower) {
-    final locationLabel = buildMasterLocationLabel(
-      locationType: (tower['location_type'] ?? '').toString(),
-      locationCode: (tower['location_code'] ?? '').toString(),
-      locationName: (tower['location_name'] ?? tower['location'] ?? '').toString(),
-      containerYard: (tower['container_yard'] ?? '').toString(),
-    );
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Access Point ${tower['id']} Details'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+        const SizedBox(width: 16),
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Location: $locationLabel'),
-            const SizedBox(height: 8),
-            Text('Status: ${tower['status']}'),
-            const SizedBox(height: 8),
-            Text('Traffic: ${tower['traffic']}'),
-            const SizedBox(height: 8),
-            Text('Uptime: ${tower['uptime']}'),
+            const Text(
+              'Access Point Monitoring',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Text(
+                  'Monitoring View of Access Point',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                  ),
+                ),
+                if (_lastRefreshTime != null) ...[
+                  const SizedBox(width: 12),
+                  const Text('•', style: TextStyle(color: Colors.greenAccent)),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
+                    style: const TextStyle(
+                      color: Colors.greenAccent,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
+        const Spacer(),
+        _buildHeaderOverviewMini(isMobile: false),
+      ],
     );
   }
 }

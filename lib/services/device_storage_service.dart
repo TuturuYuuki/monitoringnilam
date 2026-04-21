@@ -11,7 +11,7 @@ class DeviceStorageService {
     await prefs.setStringList(_storageKey, jsonList);
   }
 
-  // Simpan device baru
+  // Save device baru
   static Future<void> addDevice(AddedDevice device) async {
     try {
       final devicesList = await getDevices();

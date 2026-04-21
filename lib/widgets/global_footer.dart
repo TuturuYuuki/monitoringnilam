@@ -5,12 +5,12 @@ class GlobalFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 768;
+    final isMobile = MediaQuery.of(context).size.width < 600;
 
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(isMobile ? 10 : 16),
-      color: Colors.black.withOpacity(0.8),
+      color: Colors.black.withValues(alpha: 0.8),
       child: Align(
         alignment: isMobile ? Alignment.center : Alignment.centerLeft,
         child: Text(

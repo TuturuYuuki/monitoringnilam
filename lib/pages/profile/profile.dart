@@ -8,6 +8,7 @@ import 'package:monitoring/services/api_service.dart';
 import 'package:monitoring/widgets/global_header_bar.dart';
 import 'package:monitoring/widgets/global_sidebar_nav.dart';
 import 'package:monitoring/widgets/global_footer.dart';
+import 'package:monitoring/theme/app_dropdown_style.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -42,7 +43,7 @@ class _ProfilePageState extends State<ProfilePage> {
           userData['username']!.isEmpty ? 'No Username' : userData['username']!;
       email = userData['email']!.isEmpty ? 'No Email' : userData['email']!;
       division = userData['division']!.isEmpty
-          ? (userData['role']!.isEmpty ? 'Divisi' : userData['role']!)
+          ? (userData['role']!.isEmpty ? 'Division' : userData['role']!)
           : userData['division']!;
       phone = userData['phone']!.isEmpty ? '-' : userData['phone']!;
       location = userData['location']!.isEmpty ? '-' : userData['location']!;
@@ -76,7 +77,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF2C3E50),
+      backgroundColor: AppDropdownStyle.standardPageBackground,
       body: Stack(
         children: [
           Column(
@@ -87,13 +88,16 @@ class _ProfilePageState extends State<ProfilePage> {
                     currentRoute: '/profile',
                     child: SingleChildScrollView(
                       child: Padding(
-                        padding: EdgeInsets.all(isMobile ? 8 : 24.0),
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                                maxWidth: isMobile ? double.infinity : 800),
-                            child: _buildContent(context),
-                          ),
+                        padding: EdgeInsets.all(isMobile ? 12 : 24),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ConstrainedBox(
+                              constraints: BoxConstraints(
+                                  maxWidth: isMobile ? double.infinity : 800),
+                              child: _buildContent(context),
+                            ),
+                          ],
                         ),
                       ),
                     )),
@@ -139,11 +143,11 @@ class _ProfilePageState extends State<ProfilePage> {
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                             borderRadius: BorderRadius.circular(50),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
+                                color: Colors.black.withValues(alpha: 0.1),
                                 blurRadius: 8,
                                 spreadRadius: 1,
                               ),
@@ -175,7 +179,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         _buildHeaderOpenButton('Dashboard', '/dashboard',
                             isActive: false),
                         const SizedBox(width: 8),
-                        _buildHeaderOpenButton('Access Point', '/network',
+                        _buildHeaderOpenButton('AP', '/network',
                             isActive: false),
                         const SizedBox(width: 8),
                         _buildHeaderOpenButton('CCTV', '/cctv',
@@ -237,7 +241,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           _buildHeaderOpenButton('Dashboard', '/dashboard',
                               isActive: false),
                           const SizedBox(width: 12),
-                          _buildHeaderOpenButton('Access Point', '/network',
+                          _buildHeaderOpenButton('AP', '/network',
                               isActive: false),
                           const SizedBox(width: 12),
                           _buildHeaderOpenButton('CCTV', '/cctv',
@@ -261,11 +265,11 @@ class _ProfilePageState extends State<ProfilePage> {
                               child: Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: Colors.white.withValues(alpha: 0.9),
                                   borderRadius: BorderRadius.circular(50),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
+                                      color: Colors.black.withValues(alpha: 0.1),
                                       blurRadius: 8,
                                       spreadRadius: 1,
                                     ),
@@ -321,7 +325,7 @@ class _ProfilePageState extends State<ProfilePage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Logout', style: TextStyle(color: Colors.black87)),
-        content: const Text('Are you sure you want to exit?',
+        content: const Text('Are you sure you want to logout?',
             style: TextStyle(color: Colors.black87)),
         actions: [
           TextButton(
@@ -373,15 +377,15 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha: 0.2),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -400,7 +404,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 borderRadius: BorderRadius.circular(60),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF1976D2).withOpacity(0.4),
+                    color: const Color(0xFF1976D2).withValues(alpha: 0.4),
                     blurRadius: 16,
                     spreadRadius: 4,
                   ),
@@ -448,12 +452,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildProfileInfoSection() {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: Colors.white.withOpacity(0.1),
+          color: Colors.white.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -468,25 +472,62 @@ class _ProfilePageState extends State<ProfilePage> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 20),
-          _buildInfoRow('Full Name', fullname),
-          const SizedBox(height: 16),
-          _buildInfoRow('Username', username),
-          const SizedBox(height: 16),
-          _buildInfoRow('Division', division),
+          const SizedBox(height: 24),
+          Table(
+            columnWidths: const {
+              0: FixedColumnWidth(28), // Icon
+              1: FixedColumnWidth(85), // Diperkecil agar value bergeser ke kiri
+              2: FlexColumnWidth(), // Value
+            },
+            defaultVerticalAlignment: TableCellVerticalAlignment.top,
+            children: [
+              _buildContactTableRow(Icons.badge_outlined, 'Full Name', fullname),
+              _buildContactTableRow(Icons.alternate_email, 'Username', username),
+              _buildContactTableRow(Icons.business_center_outlined, 'Division', division),
+            ],
+          ),
         ],
       ),
     );
   }
 
+  TableRow _buildTableRow(String label, String value) {
+    return TableRow(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16.0),
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16.0),
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildContactInfoSection() {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: Colors.white.withOpacity(0.1),
+          color: Colors.white.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -501,35 +542,41 @@ class _ProfilePageState extends State<ProfilePage> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 20),
-          _buildContactRow(
-            icon: Icons.email,
-            label: 'Email',
-            value: email,
-          ),
-          const SizedBox(height: 16),
-          _buildContactRow(
-            icon: Icons.phone,
-            label: 'Phone Number',
-            value: phone,
-          ),
-          const SizedBox(height: 16),
-          _buildContactRow(
-            icon: Icons.location_on,
-            label: 'Location',
-            value: location,
+          const SizedBox(height: 24),
+          Table(
+            columnWidths: const {
+              0: FixedColumnWidth(28), // Icon
+              1: FixedColumnWidth(85), // Diperkecil agar value bergeser ke kiri
+              2: FlexColumnWidth(), // Value
+            },
+            defaultVerticalAlignment: TableCellVerticalAlignment.top,
+            children: [
+              _buildContactTableRow(Icons.email, 'Email', email),
+              _buildContactTableRow(Icons.phone, 'Phone Number', phone),
+              _buildContactTableRow(Icons.location_on, 'Location', location),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  TableRow _buildContactTableRow(IconData icon, String label, String value) {
+    return TableRow(
       children: [
-        SizedBox(
-          width: 150,
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16.0),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Icon(
+              icon,
+              color: const Color(0xFF1976D2),
+              size: 20,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16.0),
           child: Text(
             label,
             style: const TextStyle(
@@ -539,7 +586,8 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
         ),
-        Expanded(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16.0),
           child: Text(
             value,
             style: const TextStyle(
@@ -553,90 +601,65 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildContactRow({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          icon,
-          color: const Color(0xFF1976D2),
-          size: 20,
-        ),
-        const SizedBox(width: 16),
-        SizedBox(
-          width: 120,
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildActionButtons(BuildContext context) {
     final isMobile = isMobileScreen(context);
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: 16,
-      runSpacing: 12,
-      children: [
-        ElevatedButton.icon(
-          onPressed: () async {
-            final result = await Navigator.pushNamed(context, '/edit-profile');
-            // Refresh data jika user berhasil mengubah profil
-            // result bisa berupa true atau Map dengan data baru
-            if (result != null && mounted) {
-              _loadUserData();
-            }
-          },
-          icon: const Icon(Icons.edit),
-          label: const Text('Edit Profile'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF1976D2),
-            foregroundColor: Colors.white,
-            padding: EdgeInsets.symmetric(
-                horizontal: isMobile ? 20 : 32, vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 0 : 20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                final result =
+                    await Navigator.pushNamed(context, '/edit-profile');
+                if (result != null && mounted) {
+                  _loadUserData();
+                }
+              },
+              icon: const Icon(Icons.edit, size: 20),
+              label: Text(
+                'Edit Profile',
+                style: TextStyle(fontSize: isMobile ? 13 : 14),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1976D2),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 4,
+              ),
             ),
           ),
-        ),
-        ElevatedButton.icon(
-          onPressed: () {
-            Navigator.pushNamed(context, '/change-password');
-          },
-          icon: const Icon(Icons.security),
-          label: const Text('Change Password'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF27AE60),
-            foregroundColor: Colors.white,
-            padding: EdgeInsets.symmetric(
-                horizontal: isMobile ? 20 : 32, vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+          const SizedBox(width: 16),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pushNamed(context, '/change-password');
+              },
+              icon: const Icon(Icons.security, size: 20),
+              label: Text(
+                'Change Password',
+                style: TextStyle(fontSize: isMobile ? 12 : 14),
+                overflow: TextOverflow.ellipsis,
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF27AE60),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 4,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -660,7 +683,7 @@ class _ProfilePageState extends State<ProfilePage> {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.4),
+                  color: Colors.black.withValues(alpha: 0.4),
                   blurRadius: 16,
                   spreadRadius: 2,
                   offset: const Offset(0, 6),
@@ -697,7 +720,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       borderRadius: BorderRadius.circular(100),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF1976D2).withOpacity(0.4),
+                          color: const Color(0xFF1976D2).withValues(alpha: 0.4),
                           blurRadius: 20,
                           spreadRadius: 4,
                           offset: const Offset(0, 6),
@@ -743,7 +766,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 24, vertical: 12),
-                    backgroundColor: Colors.white.withOpacity(0.08),
+                    backgroundColor: Colors.white.withValues(alpha: 0.08),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),

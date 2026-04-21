@@ -132,6 +132,7 @@ class DevicePerformanceController extends ChangeNotifier {
     _mmts = mmts;
     _selectedDeviceId =
         resolveInitialDeviceId(_selectedType, _selectedDeviceId);
+    _error = null;
     notifyListeners();
   }
 
@@ -166,12 +167,19 @@ class DevicePerformanceController extends ChangeNotifier {
   }
 
   Future<void> refreshTelemetry({bool force = false}) async {
-    if (_selectedDeviceId.isEmpty) {
+    final availableDevices = deviceOptions(_selectedType);
+    if (availableDevices.isEmpty) {
       _telemetry = null;
       _telemetryRows = const [];
-      _error = 'Pilih device Access Point, CCTV, atau MMT terlebih dahulu.';
+      _error =
+          'Device data for this category is currently unavailable. Please ensure master device data is populated.';
       notifyListeners();
       return;
+    }
+
+    if (_selectedDeviceId.isEmpty ||
+        !availableDevices.contains(_selectedDeviceId)) {
+      _selectedDeviceId = availableDevices.first;
     }
 
     if (_isRefreshing && !force) {
@@ -216,7 +224,7 @@ class DevicePerformanceController extends ChangeNotifier {
     _isRefreshing = false;
     _telemetryRows = const [];
     _error =
-        response['message']?.toString() ?? 'Gagal mengambil data telemetry.';
+        response['message']?.toString() ?? 'Failed to fetch telemetry data.';
     notifyListeners();
   }
 

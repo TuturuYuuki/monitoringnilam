@@ -174,8 +174,16 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
     final screenSize = MediaQuery.of(context).size;
-    final glassWidth = (screenSize.width * 0.9).clamp(320.0, 500.0);
-    final glassHeight = (screenSize.height * 0.9).clamp(650.0, 750.0);
+    final topPadding = MediaQuery.of(context).padding.top;
+    
+    // Adjusted dimensions for mobile
+    final glassWidth = isMobile 
+        ? (screenSize.width * 0.92).clamp(300.0, 420.0)
+        : (screenSize.width * 0.42).clamp(400.0, 500.0);
+        
+    final glassHeight = isMobile
+        ? (screenSize.height * 0.85).clamp(580.0, 720.0)
+        : (screenSize.height * 0.9).clamp(650.0, 750.0);
 
     return Scaffold(
       body: LiquidGlassView(
@@ -193,30 +201,36 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 
             // Dark Overlay
             Container(
-              color: Colors.black.withOpacity(0.4),
+              color: Colors.black.withValues(alpha: 0.45),
             ),
 
-            // Logo Danantara Indonesia - Kiri Atas
+            // Logos in a responsive Row with SafeArea consideration
             Positioned(
-              left: isMobile ? 10 : 20,
-              top: isMobile ? 10 : 20,
-              child: Image.asset(
-                'assets/images/logo_danantara.png',
-                width: isMobile ? 140 : 180,
-                height: isMobile ? 50 : 70,
-                fit: BoxFit.contain,
-              ),
-            ),
-
-            // Logo Pelindo - Kanan Atas
-            Positioned(
-              right: 20,
-              top: 20,
-              child: Image.asset(
-                'assets/images/logo_nilam.png',
-                width: isMobile ? 140 : 180,
-                height: isMobile ? 50 : 70,
-                fit: BoxFit.contain,
+              top: topPadding + (isMobile ? 8 : 20),
+              left: 0,
+              right: 0,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 32),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Logo Danantara
+                    Image.asset(
+                      'assets/images/logo_danantara.png',
+                      width: isMobile ? 110 : 180,
+                      height: isMobile ? 40 : 70,
+                      fit: BoxFit.contain,
+                    ),
+                    // Logo Pelindo/Nilam
+                    Image.asset(
+                      'assets/images/logo_nilam.png',
+                      width: isMobile ? 140 : 240,
+                      height: isMobile ? 55 : 100,
+                      fit: BoxFit.contain,
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -232,7 +246,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
             distortionWidth: 45,
             refractionMode: LiquidGlassRefractionMode.shapeRefraction,
             blur: const LiquidGlassBlur(sigmaX: 15, sigmaY: 15),
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
             shape: const RoundedRectangleShape(
                 cornerRadius: 24,
                 borderWidth: 1.5,
@@ -240,23 +254,26 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
             child: Center(
               child: SingleChildScrollView(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24.0, vertical: 40.0),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: isMobile ? 24.0 : 40.0, 
+                      vertical: isMobile ? 28.0 : 40.0),
                   child: Container(
                     constraints: BoxConstraints(
                       maxWidth: glassWidth,
                     ),
+                    padding: EdgeInsets.all(isMobile ? 24 : 40),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(24),
                     ),
                     child: Stack(
                       children: [
                         Positioned(
-                          top: 16,
-                          left: 16,
+                          top: isMobile ? 0 : 16,
+                          left: isMobile ? 0 : 16,
                           child: IconButton(
-                            icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                                color: Colors.white, size: 24),
+                            icon: Icon(Icons.arrow_back_ios_new_rounded,
+                                color: Colors.white, 
+                                size: isMobile ? 22 : 24),
                             onPressed: () => Navigator.pop(context),
                           ),
                         ),
@@ -273,14 +290,14 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                   color: Colors.white,
                                 ),
                                 const SizedBox(height: 16),
-                                const Text(
+                                Text(
                                   'Reset Password',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    fontSize: 32,
+                                    fontSize: isMobile ? 26 : 32,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.white,
-                                    shadows: [
+                                    shadows: const [
                                       Shadow(
                                           color: Colors.black38,
                                           blurRadius: 4,
@@ -289,11 +306,11 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                const Text(
+                                Text(
                                   'Create a strong new password to secure your account',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    fontSize: isMobile ? 13 : 14,
                                     color: Colors.white70,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -320,7 +337,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                             color: Colors.white70),
                                         filled: true,
                                         fillColor:
-                                            Colors.black.withOpacity(0.45),
+                                            Colors.black.withValues(alpha: 0.45),
                                         border: OutlineInputBorder(
                                             borderRadius:
                                                 BorderRadius.circular(16),
@@ -343,7 +360,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                         ),
                                         contentPadding:
                                             const EdgeInsets.symmetric(
-                                                horizontal: 20, vertical: 18),
+                                                horizontal: 24, vertical: 18),
                                       ),
                                       validator: (value) {
                                         if (value == null || value.isEmpty) {
@@ -379,7 +396,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                             ],
                                             border: Border.all(
                                                 color: Colors.blue
-                                                    .withOpacity(0.5),
+                                                    .withValues(alpha: 0.5),
                                                 width: 1.5),
                                           ),
                                           child: Column(
@@ -428,7 +445,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                         Icons.lock_reset_outlined,
                                         color: Colors.white70),
                                     filled: true,
-                                    fillColor: Colors.black.withOpacity(0.45),
+                                    fillColor: Colors.black.withValues(alpha: 0.45),
                                     border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(16),
                                         borderSide: BorderSide.none),
@@ -447,7 +464,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                               !_obscureConfirmPassword),
                                     ),
                                     contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 20, vertical: 18),
+                                        horizontal: 24, vertical: 18),
                                   ),
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
@@ -477,7 +494,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                     boxShadow: [
                                       BoxShadow(
                                         color: const Color(0xFF1976D2)
-                                            .withOpacity(0.5),
+                                            .withValues(alpha: 0.5),
                                         blurRadius: 15,
                                         offset: const Offset(0, 5),
                                       ),

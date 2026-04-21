@@ -219,7 +219,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       ContainerYardArea(
         id: 'CY1',
         label: 'CY 1',
-        bgColor: const Color(0xFFF5DEB3).withOpacity(0.7),
+        bgColor: const Color(0xFFF5DEB3).withValues(alpha: 0.7),
         borderColor: const Color(0xFFD2B48C),
         left: 0.02,
         top: 0.04,
@@ -229,7 +229,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       ContainerYardArea(
         id: 'CY2',
         label: 'CY 2',
-        bgColor: const Color(0xFFC8E6C9).withOpacity(0.7),
+        bgColor: const Color(0xFFC8E6C9).withValues(alpha: 0.7),
         borderColor: const Color(0xFF66BB6A),
         left: 0.60,
         top: 0.04,
@@ -238,8 +238,8 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       ),
       ContainerYardArea(
         id: 'PARKING',
-        label: 'PARKING AREA',
-        bgColor: const Color(0xFFBBDEFB).withOpacity(0.7),
+        label: 'PARKING',
+        bgColor: const Color(0xFFBBDEFB).withValues(alpha: 0.7),
         borderColor: const Color(0xFF2196F3),
         left: 0.60,
         top: 0.52,
@@ -249,7 +249,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       ContainerYardArea(
         id: 'CY3',
         label: 'CY 3',
-        bgColor: const Color(0xFFF8BBBB).withOpacity(0.7),
+        bgColor: const Color(0xFFF8BBBB).withValues(alpha: 0.7),
         borderColor: const Color(0xFFE57373),
         left: 0.02,
         top: 0.52,
@@ -258,8 +258,8 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
       ),
       ContainerYardArea(
         id: 'GATE',
-        label: 'GATE IN/OUT',
-        bgColor: const Color(0xFFFFF9C4).withOpacity(0.7),
+        label: 'GATE',
+        bgColor: const Color(0xFFFFF9C4).withValues(alpha: 0.7),
         borderColor: const Color(0xFFFBC02D),
         left: 0.80,
         top: 0.52,
@@ -296,9 +296,11 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                       widget.forcedAreaId == null ||
                       a.id == widget.forcedAreaId)
                   .map((area) => _buildAreaBox(area, w, h)),
-              ..._buildMasterLocationMarkers(w, h),
-              ..._buildAllMarkers(w, h),
-              ..._buildTowerMarkers(w, h),
+              if (widget.forcedAreaId == null) ...[
+                ..._buildMasterLocationMarkers(w, h),
+                ..._buildAllMarkers(w, h),
+                ..._buildTowerMarkers(w, h),
+              ]
             ] else ...[
             _buildZoomedArea(w, h, effectiveZoomAreaId),
           ],
@@ -313,51 +315,50 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     final canPickThisArea =
         widget.pickYardFilter == null || widget.pickYardFilter == area.id;
 
+    final bool isForced = widget.forcedAreaId == area.id;
+    final double posLeft = isForced ? 10.0 : area.left * w;
+    final double posTop = isForced ? 10.0 : area.top * h;
+    final double posWidth = isForced ? w - 20.0 : area.width * w;
+    final double posHeight = isForced ? h - 20.0 : area.height * h;
+
     return Positioned(
-      left: area.left * w,
-      top: area.top * h,
-      width: area.width * w,
-      height: area.height * h,
+      left: posLeft,
+      top: posTop,
+      width: posWidth,
+      height: posHeight,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
-          onTapDown: (TapDownDetails details) {
-            if (widget.isPickMode) {
-              if (canPickThisArea && widget.onAreaPicked != null) {
-                // ═══════════════════════════════════════════════════════════
-                // PRECISE POSITION PICKING
-                // Return the exact click coordinates within the area
-                // ═══════════════════════════════════════════════════════════
-                final areaLeft = area.left * w;
-                final areaTop = area.top * h;
-                final areaWidth = area.width * w;
-                final areaHeight = area.height * h;
+          onTapDown: widget.isPickMode
+              ? (TapDownDetails details) {
+                  if (canPickThisArea && widget.onAreaPicked != null) {
+                    final areaLeft = area.left * w;
+                    final areaTop = area.top * h;
+                    final areaWidth = area.width * w;
+                    final areaHeight = area.height * h;
 
-                // Local position relative to area
-                final relX =
-                    (details.localPosition.dx / areaWidth).clamp(0.0, 1.0);
-                final relY =
-                    (details.localPosition.dy / areaHeight).clamp(0.0, 1.0);
+                    final relX = (details.localPosition.dx / areaWidth).clamp(0.0, 1.0);
+                    final relY = (details.localPosition.dy / areaHeight).clamp(0.0, 1.0);
 
-                // Store picked position for tower update
-                _pickedCx = relX;
-                _pickedCy = relY;
+                    _pickedCx = relX;
+                    _pickedCy = relY;
 
-                print(
-                    '✓ Precise pick: Area=${area.id} RelPos=(${relX.toStringAsFixed(3)}, ${relY.toStringAsFixed(3)})');
+                    print('✓ Precise pick: Area=${area.id} RelPos=(${relX.toStringAsFixed(3)}, ${relY.toStringAsFixed(3)})');
 
-                widget.onAreaPicked!(area.id, relX, relY);
-              }
-              return;
-            }
-            setState(() => _zoomedAreaId = area.id);
-          },
+                    widget.onAreaPicked!(area.id, relX, relY);
+                  }
+                }
+              : (widget.forcedAreaId == null
+                  ? (TapDownDetails details) {
+                      setState(() => _zoomedAreaId = area.id);
+                    }
+                  : null), // Let tap bubble up to parent ListView item
           child: Container(
             decoration: BoxDecoration(
               color: widget.isPickMode
                   ? (canPickThisArea
-                      ? area.bgColor.withOpacity(0.95)
-                      : Colors.grey.shade300.withOpacity(0.65))
+                      ? area.bgColor.withValues(alpha: 0.95)
+                      : Colors.grey.shade300.withValues(alpha: 0.65))
                   : area.bgColor,
               border: Border.all(
                 color: widget.isPickMode
@@ -377,9 +378,9 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                   Expanded(
                     child: Text(
                       area.label,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w900,
-                        fontSize: 13,
+                        fontSize: (MediaQuery.of(context).size.width < 600) ? 13 : 11,
                         color: Colors.black54,
                       ),
                     ),
@@ -440,12 +441,11 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
             : null,
         onTap: widget.isPickMode
             ? null
-            : () {
-                // Use onTap (not onTapDown) so drag gestures on markers can win.
-                if (widget.forcedAreaId == null) {
-                  setState(() => _zoomedAreaId = null);
-                }
-              },
+            : (widget.forcedAreaId == null
+                ? () {
+                    setState(() => _zoomedAreaId = null);
+                  }
+                : null), // Let tap bubble up to parent ListView item
         child: Container(
           decoration: BoxDecoration(
             color: area.bgColor,
@@ -472,7 +472,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                         : 'Tap Area For Zoom Out',
                     style: TextStyle(
                         fontSize: 11,
-                        color: Colors.black.withOpacity(0.55),
+                        color: Colors.black.withValues(alpha: 0.55),
                         fontWeight: FontWeight.w600)),
               ),
               ..._buildZoomedMasterLocationMarkers(area, w - 20, h - 20),
@@ -497,7 +497,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.9),
+                          color: Colors.red.withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(color: Colors.white, width: 2),
                         ),
@@ -868,7 +868,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
         border: Border.all(color: Colors.white, width: zoomed ? 1.2 : 1.0),
         boxShadow: [
           BoxShadow(
-            color: statusColor.withOpacity(0.5),
+            color: statusColor.withValues(alpha: 0.5),
             blurRadius: zoomed ? 4.0 : 3.0,
             spreadRadius: 0.5,
           )
@@ -918,14 +918,14 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.12),
+                  color: Colors.black.withValues(alpha: 0.12),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
               ],
             ),
             child: Center(
-              child: _buildTowerIcon(size: innerIconSize, fallbackColor: color.withOpacity(0.8)),
+              child: _buildTowerIcon(size: innerIconSize, fallbackColor: color.withValues(alpha: 0.8)),
             ),
           ),
         ),
@@ -949,12 +949,12 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [color, color.withOpacity(0.8)],
+              colors: [color, color.withValues(alpha: 0.8)],
             ),
             border: Border.all(color: Colors.white, width: 2.0),
             boxShadow: [
               BoxShadow(
-                color: color.withOpacity(0.5),
+                color: color.withValues(alpha: 0.5),
                 blurRadius: 8,
                 spreadRadius: 1,
               )
@@ -992,7 +992,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.12),
+                color: Colors.black.withValues(alpha: 0.12),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
@@ -1022,13 +1022,13 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
             end: Alignment.bottomRight,
             colors: [
               color,
-              const Color(0xFF607D8B).withOpacity(0.85),
+              const Color(0xFF607D8B).withValues(alpha: 0.85),
             ],
           ),
           border: Border.all(color: Colors.white, width: 2.0),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF607D8B).withOpacity(0.55),
+              color: const Color(0xFF607D8B).withValues(alpha: 0.55),
               blurRadius: 8,
               spreadRadius: 1,
             )
@@ -1226,7 +1226,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
 
       if (resolved == null) continue;
 
-      // Cari area yard untuk kalkulasi posisi
+      // Search area yard untuk kalkulasi posisi
       final area = areas.firstWhere(
         (a) => a.id == _normalizeAreaId(containerYard),
         orElse: () => areas.first,
@@ -1349,7 +1349,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.18),
+                    color: Colors.black.withValues(alpha: 0.18),
                     blurRadius: 8,
                     spreadRadius: 1,
                     offset: const Offset(0, 2),
@@ -1375,10 +1375,10 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
         padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.white.withOpacity(0.9),
+          color: Colors.white.withValues(alpha: 0.9),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.12),
+              color: Colors.black.withValues(alpha: 0.12),
               blurRadius: 3,
               offset: const Offset(0, 1),
             ),
@@ -1662,7 +1662,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
               border: Border.all(color: Colors.white, width: 1.5),
               boxShadow: [
                 BoxShadow(
-                  color: statusColor.withOpacity(0.4),
+                  color: statusColor.withValues(alpha: 0.4),
                   blurRadius: 3,
                   spreadRadius: 1,
                 ),
@@ -1911,7 +1911,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
+                      color: Colors.black.withValues(alpha: 0.15),
                       blurRadius: 4,
                       offset: const Offset(0, 1),
                     ),
@@ -2327,10 +2327,10 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.12),
+                          color: statusColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(10),
                           border:
-                              Border.all(color: statusColor.withOpacity(0.5)),
+                              Border.all(color: statusColor.withValues(alpha: 0.5)),
                         ),
                         child: Text(isUp ? 'UP' : 'DOWN',
                             style: TextStyle(

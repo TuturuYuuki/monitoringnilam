@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:monitoring/main.dart';
-import 'package:monitoring/utils/ui_utils.dart';
 import 'package:monitoring/models/tower_model.dart';
 import 'package:monitoring/services/api_service.dart';
 import 'package:monitoring/utils/device_icon_resolver.dart';
@@ -88,7 +87,6 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
         _masterLocations = all;
       });
     } catch (_) {
-      // keep silent to avoid noisy UX when optional data fails
     }
   }
 
@@ -190,17 +188,15 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
       return;
     }
 
-    if (_towerIdController.text.trim().isEmpty ||
-        _selectedLat == null ||
-        _selectedLng == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${_selectedMasterType == 'TOWER' ? 'Tower ID' : 'Location code'} dan posisi wajib diisi.',
-          ),
-          backgroundColor: Colors.orange,
-        ),
-      );
+    final String label = _selectedMasterType == 'TOWER' ? 'Tower ID' : 'Type ID';
+
+    if (_towerIdController.text.trim().isEmpty) {
+      _showSimpleDialog('Check ID', 'Please enter a $label before saving.');
+      return;
+    }
+
+    if (_selectedLat == null || _selectedLng == null) {
+      _showSimpleDialog('Pick Area', 'Please pick an area in yard before saving.');
       return;
     }
 
@@ -228,8 +224,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
         SnackBar(
           content: Text(
             _selectedMasterType == 'TOWER'
-                ? 'Master Tower berhasil disimpan.'
-                : 'Master $_selectedMasterType berhasil disimpan.',
+                ? 'Master Tower successfully saved.'
+                : 'Master $_selectedMasterType successfully saved.',
           ),
           backgroundColor: Colors.green,
         ),
@@ -238,11 +234,38 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(response['message']?.toString() ??
-              'Gagal menyimpan master location.'),
+              'Failed to save master location.'),
           backgroundColor: Colors.red,
         ),
       );
     }
+  }
+
+  void _showSimpleDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Colors.white12),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 24),
+            const SizedBox(width: 10),
+            Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(message, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK', style: TextStyle(color: Color(0xFF1976D2), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _deleteTower(Tower tower) async {
@@ -255,7 +278,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Tower berhasil dihapus.'),
+          content: Text('Tower successfully deleted.'),
           backgroundColor: Colors.green,
         ),
       );
@@ -263,7 +286,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content:
-              Text(response['message']?.toString() ?? 'Gagal menghapus tower.'),
+              Text(response['message']?.toString() ?? 'Failed to delete tower.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -274,7 +297,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Konfirmasi hapus'),
+        title: const Text('Delete confirmation'),
         content: Text('Hapus ${tower.towerId}?'),
         actions: [
           TextButton(
@@ -314,7 +337,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                   initialValue: selectedType,
                   dropdownColor: const Color.fromARGB(255, 255, 255, 255),
                   borderRadius: AppDropdownStyle.menuBorderRadius,
-                  decoration: const InputDecoration(labelText: 'Location Type'),
+                  decoration: const InputDecoration(labelText: 'Location type'),
                   items: const ['TOWER']
                       .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                       .toList(),
@@ -327,7 +350,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: idController,
-                  decoration: const InputDecoration(labelText: 'Nama'),
+                  decoration: const InputDecoration(labelText: 'Name'),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
@@ -336,8 +359,12 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                   borderRadius: AppDropdownStyle.menuBorderRadius,
                   decoration: const InputDecoration(labelText: 'Location'),
                   items: ['CY1', 'CY2', 'CY3', 'GATE', 'PARKING']
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                      .toList(),
+                    .map((e) => DropdownMenuItem(value: e,
+                        child: Text(e, style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                        ))))
+                    .toList(),
                   onChanged: (value) {
                     if (value != null) {
                       setLocalState(() => selectedYard = value);
@@ -364,7 +391,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
               },
               style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1976D2)),
-              child: const Text('Save', style: TextStyle(color: Colors.white)),
+              child: const Text('Save Changes', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -390,14 +417,14 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Tower berhasil diupdate.'),
+            content: Text('Tower successfully updated.'),
             backgroundColor: Colors.green),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content:
-              Text(response['message']?.toString() ?? 'Gagal update tower.'),
+              Text(response['message']?.toString() ?? 'Failed to update tower.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -408,7 +435,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF2C3E50),
+      backgroundColor: AppDropdownStyle.standardPageBackground,
       body: Column(
         children: [
           const GlobalHeaderBar(currentRoute: '/tower-management'),
@@ -416,7 +443,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
             child: GlobalSidebarNav(
                 currentRoute: '/tower-management',
                 child: SingleChildScrollView(
-                  padding: EdgeInsets.all(isMobile ? 10 : 24),
+                  padding: EdgeInsets.all(isMobile ? 12 : 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -449,17 +476,17 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     final counts = _countMastersByLocation();
     final items = [
       {
-        'label': isMobile ? 'CY 1' : 'Container Yard 1',
+        'label': isMobile ? 'CY 1' : 'Container Area 1',
         'value': '${counts['CY1'] ?? 0}',
         'color': const Color(0xFF1976D2)
       },
       {
-        'label': isMobile ? 'CY 2' : 'Container Yard 2',
+        'label': isMobile ? 'CY 2' : 'Container Area 2',
         'value': '${counts['CY2'] ?? 0}',
         'color': Colors.orange
       },
       {
-        'label': isMobile ? 'CY 3' : 'Container Yard 3',
+        'label': isMobile ? 'CY 3' : 'Container Area 3',
         'value': '${counts['CY3'] ?? 0}',
         'color': Colors.teal
       },
@@ -469,7 +496,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
         'color': Colors.purple
       },
       {
-        'label': 'Parking',
+        'label': isMobile ? 'Parking' : 'Parking',
         'value': '${counts['PARKING'] ?? 0}',
         'color': Colors.pink
       },
@@ -477,11 +504,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
-        final perRow = w < 400
-            ? 2
-            : w < 780
-                ? 3
-                : 5;
+        final perRow = w < 780 ? 3 : 5;
         const spacing = 16.0;
         final boxWidth = (w - spacing * (perRow - 1)) / perRow;
         return Wrap(
@@ -507,62 +530,56 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
       builder: (context, constraints) {
         final cardWidth = constraints.maxWidth;
         return Container(
-          child: Container(
-            width: cardWidth,
-            height: 104,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-              border:
-                  Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
-            ),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 4,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: color,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
+          width: cardWidth,
+          height: 72,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+            border:
+                Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.5),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 3,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.4,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.5,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 16),
-                    child: Text(
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
                       value,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 22,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+            ],
           ),
         );
       },
@@ -579,12 +596,12 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
           child: Container(
             width: constraints.maxWidth,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.white30, width: 1.5),
             ),
             child: Container(
-              padding: EdgeInsets.all(isMobile ? 14 : 22),
+              padding: EdgeInsets.all(isMobile ? 14 : 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -592,7 +609,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                     children: [
                       Container(
                         width: 4,
-                        height: 24,
+                        height: 16,
                         decoration: BoxDecoration(
                           color: const Color(0xFF1976D2),
                           borderRadius: BorderRadius.circular(2),
@@ -607,7 +624,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: isMobile ? 16 : 18,
+                            fontSize: isMobile ? 16 : 15,
                             fontWeight: FontWeight.w800,
                             color: Colors.white,
                             letterSpacing: 0.2,
@@ -616,7 +633,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                       ),
                     ],
                   ),
-                  SizedBox(height: isMobile ? 14 : 24),
+                  SizedBox(height: isMobile ? 14 : 12),
                   if (isMobile) ...[
                     _buildMasterTypeDropdown(),
                     SizedBox(height: sectionGap),
@@ -631,9 +648,9 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                       child: ElevatedButton.icon(
                         onPressed: () => _openPositionPicker(),
                         icon: const Icon(Icons.place_rounded, size: 20),
-                        label: const Text('Pick Position'),
+                        label: const Text('Pick Area'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white.withOpacity(0.2),
+                          backgroundColor: Colors.white.withValues(alpha: 0.2),
                           foregroundColor: Colors.white,
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(
@@ -641,7 +658,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                               side: BorderSide(
-                                  color: Colors.white.withOpacity(0.3))),
+                                  color: Colors.white.withValues(alpha: 0.3))),
                         ),
                       ),
                     ),
@@ -654,13 +671,13 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                           backgroundColor: Colors.blueAccent,
                           foregroundColor: Colors.white,
                           elevation: 2,
-                          shadowColor: Colors.blueAccent.withOpacity(0.4),
+                          shadowColor: Colors.blueAccent.withValues(alpha: 0.4),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 20, vertical: 16),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: const Text('SAVE DATA',
+                        child: const Text('Save Data',
                             style: TextStyle(
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 0.8)),
@@ -671,16 +688,15 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(child: _buildMasterTypeDropdown()),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Expanded(
-                          flex: 2,
                           child: _buildMasterIdBlock(),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Expanded(child: _buildYardDropdown()),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(child: _buildPositionStatus()),
@@ -690,15 +706,15 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                           icon: const Icon(Icons.place_rounded, size: 20),
                           label: const Text('Pick Position'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white.withOpacity(0.2),
+                            backgroundColor: Colors.white.withValues(alpha: 0.2),
                             foregroundColor: Colors.white,
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 20),
+                                horizontal: 20, vertical: 16),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 side: BorderSide(
-                                    color: Colors.white.withOpacity(0.3))),
+                                    color: Colors.white.withValues(alpha: 0.3))),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -708,14 +724,15 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                             backgroundColor: Colors.blueAccent,
                             foregroundColor: Colors.white,
                             elevation: 2,
-                            shadowColor: Colors.blueAccent.withOpacity(0.4),
+                            shadowColor: Colors.blueAccent.withValues(alpha: 0.4),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 40, vertical: 20),
+                                horizontal: 16, vertical: 14),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                                borderRadius: BorderRadius.circular(10)),
                           ),
-                          child: const Text('SAVE DATA',
+                          child: const Text('Save Data',
                               style: TextStyle(
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 0.8)),
                         ),
@@ -732,42 +749,58 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
   }
 
   Widget _buildMasterTypeDropdown() {
-    return Theme(
-      data: Theme.of(context).copyWith(
-        canvasColor: AppDropdownStyle.menuBackground,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
       ),
-      child: DropdownButtonFormField<String>(
-        initialValue: _selectedMasterType,
-        dropdownColor: AppDropdownStyle.menuBackground,
-        borderRadius: AppDropdownStyle.menuBorderRadius,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          labelText: 'Master Type',
-          labelStyle: const TextStyle(color: Colors.white70),
-          border: const OutlineInputBorder(),
-          enabledBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: Colors.white.withOpacity(0.3))),
-          prefixIcon:
-              const Icon(Icons.category_outlined, color: Colors.white70),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
-        items: const ['TOWER', 'RTG', 'RS', 'CC']
-            .map((e) => DropdownMenuItem(
-                  value: e,
-                  child: Text(e,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, color: Colors.white)),
-                ))
-            .toList(),
-        onChanged: (val) {
-          if (val != null) {
-            setState(() {
-              _selectedMasterType = val;
-              _idCheckListener();
-            });
-          }
-        },
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.category_outlined,
+              color: Color(0xFF90CAF9),
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'MASTER TYPE',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                AnimatedDropdownButton(
+                  value: _selectedMasterType,
+                  items: const ['TOWER', 'RTG', 'RS', 'CC'],
+                  backgroundColor: AppDropdownStyle.menuBackground,
+                  onChanged: (String? val) {
+                    if (val != null) {
+                      setState(() {
+                        _selectedMasterType = val;
+                        _idCheckListener();
+                      });
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -790,35 +823,55 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
   }
 
   Widget _buildYardDropdown() {
-    return Theme(
-      data: Theme.of(context).copyWith(
-        canvasColor: AppDropdownStyle.menuBackground,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
       ),
-      child: DropdownButtonFormField<String>(
-        initialValue: _selectedYard,
-        dropdownColor: AppDropdownStyle.menuBackground,
-        borderRadius: AppDropdownStyle.menuBorderRadius,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          labelText: 'Yard Area',
-          labelStyle: const TextStyle(color: Colors.white70),
-          border: const OutlineInputBorder(),
-          enabledBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: Colors.white.withOpacity(0.3))),
-          prefixIcon: const Icon(Icons.grid_view, color: Colors.white70),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
-        items: ['CY1', 'CY2', 'CY3', 'GATE', 'PARKING']
-            .map((e) => DropdownMenuItem(
-                value: e,
-                child: Text(e, style: const TextStyle(color: Colors.white))))
-            .toList(),
-        onChanged: (val) {
-          if (val != null) {
-            setState(() => _selectedYard = val);
-          }
-        },
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.grid_view,
+              color: Color(0xFF90CAF9),
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'AREA',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                AnimatedDropdownButton(
+                  value: _selectedYard,
+                  items: const ['CY1', 'CY2', 'CY3', 'GATE', 'PARKING'],
+                  backgroundColor: AppDropdownStyle.menuBackground,
+                  onChanged: (String? val) {
+                    if (val != null) {
+                      setState(() => _selectedYard = val);
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -853,7 +906,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
         enabledBorder: OutlineInputBorder(
           borderSide: BorderSide(
             color: isEmpty
-                ? Colors.white.withOpacity(0.3)
+                ? Colors.white.withValues(alpha: 0.3)
                 : (isDuplicate ? Colors.redAccent : Colors.greenAccent),
           ),
         ),
@@ -864,7 +917,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
           ),
         ),
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
     );
   }
@@ -936,9 +989,9 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.blueGrey.withOpacity(0.08),
+                  color: Colors.blueGrey.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blueGrey.withOpacity(0.15)),
+                  border: Border.all(color: Colors.blueGrey.withValues(alpha: 0.15)),
                 ),
                 child: Center(
                   child: Text(
@@ -967,8 +1020,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: hasPos
-              ? const Color(0xFF81C784).withOpacity(0.4)
-              : const Color(0xFFFFB74D).withOpacity(0.4),
+              ? const Color(0xFF81C784).withValues(alpha: 0.4)
+              : const Color(0xFFFFB74D).withValues(alpha: 0.4),
           width: 1,
         ),
       ),
@@ -978,8 +1031,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: hasPos
-                  ? Colors.green.withOpacity(0.1)
-                  : Colors.orange.withOpacity(0.1),
+                  ? Colors.green.withValues(alpha: 0.1)
+                  : Colors.orange.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -995,7 +1048,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  hasPos ? 'Position Selected' : 'No Position Selected',
+                  hasPos ? 'Area Selected' : 'No Area Selected',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
@@ -1008,13 +1061,13 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                 Text(
                   hasPos
                       ? '${_selectedLat!.toStringAsFixed(6)}, ${_selectedLng!.toStringAsFixed(6)}'
-                      : 'Please pick a position in the CY area',
+                      : 'Please pick an area in the yard',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                     color: hasPos
-                        ? const Color(0xFF2E7D32).withOpacity(0.7)
-                        : const Color(0xFFE65100).withOpacity(0.7),
+                        ? const Color(0xFF2E7D32).withValues(alpha: 0.7)
+                        : const Color(0xFFE65100).withValues(alpha: 0.7),
                   ),
                 ),
               ],
@@ -1024,6 +1077,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
       ),
     );
   }
+
 
   Future<void> _deleteNonTowerMaster(Map<String, dynamic> item) async {
     final canDelete = await _ensureNoLinkedDevicesBeforeDelete(item);
@@ -1042,7 +1096,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Master Location berhasil dihapus.'),
+          content: Text('Master Location successfully deleted.'),
           backgroundColor: Colors.green,
         ),
       );
@@ -1102,7 +1156,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
       for (final camera in cameras) {
         final cameraType = camera.type.toUpperCase().trim();
         final sameType = cameraType == type;
-        if (sameType || matchByLocation(camera.location, camera.containerYard)) {
+        if (sameType ||
+            matchByLocation(camera.location, camera.containerYard)) {
           linkedDevices++;
         }
       }
@@ -1170,7 +1225,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                   initialValue: selectedType,
                   dropdownColor: const Color.fromARGB(255, 255, 255, 255),
                   borderRadius: AppDropdownStyle.menuBorderRadius,
-                  decoration: const InputDecoration(labelText: 'Master Type'),
+                  decoration: const InputDecoration(labelText: 'Master type'),
                   items: ['TOWER', 'RTG', 'RS', 'CC']
                       .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                       .toList(),
@@ -1183,14 +1238,14 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Location Name'),
+                  decoration: const InputDecoration(labelText: 'Location name'),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: selectedYard,
                   dropdownColor: const Color.fromARGB(255, 255, 255, 255),
                   borderRadius: AppDropdownStyle.menuBorderRadius,
-                  decoration: const InputDecoration(labelText: 'Location'),
+                  decoration: const InputDecoration(labelText: 'Area'),
                   items: ['CY1', 'CY2', 'CY3', 'GATE', 'PARKING']
                       .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                       .toList(),
@@ -1211,9 +1266,8 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
             ElevatedButton(
               onPressed: () {
                 final normalizedName = nameController.text.trim();
-                final normalizedCode = normalizedName
-                    .toUpperCase()
-                    .replaceAll(' ', '_');
+                final normalizedCode =
+                    normalizedName.toUpperCase().replaceAll(' ', '_');
                 final payload = <String, dynamic>{
                   'location_type': selectedType,
                   'location_code': normalizedCode,
@@ -1224,7 +1278,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
               },
               style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1976D2)),
-              child: const Text('Save', style: TextStyle(color: Colors.white)),
+              child: const Text('Save Changes', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -1252,7 +1306,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(response['message']?.toString() ??
-              'Gagal update master location.'),
+              'Failed to update master location.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -1377,7 +1431,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-                Text('Location: $targetLabel',
+              Text('Location: $targetLabel',
                   style: const TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 10),
               Row(
@@ -1430,7 +1484,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                                   ),
                                   Text('IP: ${d['ip'] ?? '-'}',
                                       style: const TextStyle(fontSize: 11)),
-                                  Text('Lokasi: ${d['location'] ?? '-'}',
+                                  Text('Location: ${d['location'] ?? '-'}',
                                       style: const TextStyle(fontSize: 11)),
                                 ],
                               ),
@@ -1440,7 +1494,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                                   horizontal: 6, vertical: 3),
                               decoration: BoxDecoration(
                                 color: (isUp ? Colors.green : Colors.red)
-                                    .withOpacity(0.12),
+                                    .withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(6),
                                 border: Border.all(
                                     color: isUp ? Colors.green : Colors.red),
@@ -1477,9 +1531,9 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.6)),
+        border: Border.all(color: color.withValues(alpha: 0.6)),
       ),
       child: Text(
         '$label: $value',
@@ -1507,7 +1561,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
         return Container(
           width: constraints.maxWidth,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
+            color: Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.white24, width: 1.5),
           ),
@@ -1545,7 +1599,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                     width: constraints.maxWidth,
                     height: isMobile ? 560 : 600,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                       borderRadius: const BorderRadius.vertical(
                           bottom: Radius.circular(16)),
                     ),
@@ -1557,7 +1611,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 20, vertical: 14),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
+                              color: Colors.white.withValues(alpha: 0.1),
                             ),
                             child: const Row(
                               children: [
@@ -1579,7 +1633,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                                             letterSpacing: 1))),
                                 Expanded(
                                     flex: 2,
-                                    child: Text('LOKASI',
+                                    child: Text('LOCATION',
                                         style: TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.bold,
@@ -1588,7 +1642,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                                 Expanded(
                                     flex: 2,
                                     child: Center(
-                                        child: Text('AKSI',
+                                        child: Text('ACTION',
                                             style: TextStyle(
                                                 color: Colors.white,
                                                 fontWeight: FontWeight.bold,
@@ -1601,7 +1655,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                         if (data.isEmpty)
                           const Padding(
                             padding: EdgeInsets.all(40),
-                            child: Text('Belum ada data Master.',
+                            child: Text('No data available',
                                 style: TextStyle(color: Colors.white54)),
                           )
                         else
@@ -1614,10 +1668,11 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
 
                                 if (isMobile) {
                                   return Container(
-                                    margin: const EdgeInsets.fromLTRB(10, 10, 10, 0),
+                                    margin: const EdgeInsets.fromLTRB(
+                                        10, 10, 10, 0),
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.05),
+                                      color: Colors.white.withValues(alpha: 0.05),
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(color: Colors.white12),
                                     ),
@@ -1635,12 +1690,12 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                                               decoration: BoxDecoration(
                                                 color: _getTypeColor(
                                                         item['type'].toString())
-                                                    .withOpacity(0.88),
+                                                    .withValues(alpha: 0.88),
                                                 borderRadius:
                                                     BorderRadius.circular(20),
                                                 border: Border.all(
                                                   color: Colors.white
-                                                      .withOpacity(0.35),
+                                                      .withValues(alpha: 0.35),
                                                   width: 1,
                                                 ),
                                               ),
@@ -1649,9 +1704,9 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                                                 children: [
                                                   Icon(
                                                     DeviceIconResolver
-                                                        .iconForType(item[
-                                                                'type']
-                                                            .toString()),
+                                                        .iconForType(
+                                                            item['type']
+                                                                .toString()),
                                                     color: Colors.white,
                                                     size: 14,
                                                   ),
@@ -1752,12 +1807,12 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                                             decoration: BoxDecoration(
                                               color: _getTypeColor(
                                                       item['type'].toString())
-                                                  .withOpacity(0.88),
+                                                  .withValues(alpha: 0.88),
                                               borderRadius:
                                                   BorderRadius.circular(20),
                                               border: Border.all(
                                                 color: Colors.white
-                                                    .withOpacity(0.35),
+                                                    .withValues(alpha: 0.35),
                                                 width: 1,
                                               ),
                                             ),
@@ -1765,8 +1820,9 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 Icon(
-                                                  DeviceIconResolver.iconForType(
-                                                      item['type'].toString()),
+                                                  DeviceIconResolver
+                                                      .iconForType(item['type']
+                                                          .toString()),
                                                   color: Colors.white,
                                                   size: 14,
                                                 ),
@@ -1854,7 +1910,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.05),
+                              color: Colors.white.withValues(alpha: 0.05),
                               borderRadius: const BorderRadius.vertical(
                                   bottom: Radius.circular(16)),
                               border: const Border(
@@ -1944,7 +2000,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
         child: Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, color: color, size: 18),
@@ -1983,7 +2039,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Konfirmasi hapus'),
+        title: const Text('Delete confirmation'),
         content: Text('Hapus ${item['location_code'] ?? '-'}?'),
         actions: [
           TextButton(
@@ -2036,7 +2092,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
 
                 return Container(
                   margin: const EdgeInsets.symmetric(vertical: 8),
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(8),
@@ -2133,11 +2189,11 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                             borderRadius: BorderRadius.circular(50),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
+                                color: Colors.black.withValues(alpha: 0.1),
                                 blurRadius: 8,
                                 spreadRadius: 1,
                               ),

@@ -98,7 +98,7 @@ class _TowerDetailPanelState extends State<TowerDetailPanel> {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 10,
               spreadRadius: 2,
             )
@@ -135,7 +135,7 @@ class _TowerDetailPanelState extends State<TowerDetailPanel> {
                       Text(
                         widget.tower.location,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 12,
                         ),
                       ),
@@ -352,8 +352,8 @@ class _TowerDetailPanelState extends State<TowerDetailPanel> {
                         showDialog(
                           context: context,
                           builder: (context) => AlertDialog(
-                            title: const Text('Hapus Tower?'),
-                            content: const Text('Aksi ini tidak dapat dibatalkan.'),
+                            title: const Text('Delete Tower?'),
+                            content: const Text('This action cannot be undone.'),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(context),
@@ -368,7 +368,7 @@ class _TowerDetailPanelState extends State<TowerDetailPanel> {
                                   backgroundColor: Colors.red,
                                 ),
                                 child: const Text(
-                                  'Hapus',
+                                  'Delete',
                                   style: TextStyle(color: Colors.white),
                                 ),
                               ),

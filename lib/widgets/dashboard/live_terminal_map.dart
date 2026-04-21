@@ -52,11 +52,11 @@ class _LiveTerminalMapState extends State<LiveTerminalMap> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isMobile = MediaQuery.of(context).size.width < 768;
+        final isMobile = MediaQuery.of(context).size.width < 600;
         return Container(
           width: constraints.maxWidth,
           height: constraints.maxHeight,
-          padding: EdgeInsets.all(isMobile ? 12 : 24),
+          padding: EdgeInsets.all(isMobile ? 12 : 16),
           decoration: BoxDecoration(
             color: const Color(0xFF3B4D63).withValues(alpha: 0.92),
             borderRadius: BorderRadius.circular(24),

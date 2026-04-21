@@ -39,11 +39,11 @@ class TowerStatusTile extends StatelessWidget {
             width: iconBoxSize,
             height: iconBoxSize,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.85),
+              color: color.withValues(alpha: 0.85),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: color.withOpacity(0.3),
+                  color: color.withValues(alpha: 0.3),
                   blurRadius: 8,
                   spreadRadius: 1,
                 ),
@@ -63,7 +63,7 @@ class TowerStatusTile extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
               fontSize: labelFontSize,
               fontWeight: FontWeight.w600,
               letterSpacing: 1.0,
@@ -81,7 +81,7 @@ class _DashboardCardShell extends StatelessWidget {
 
   const _DashboardCardShell({
     required this.child,
-    this.padding = const EdgeInsets.all(20),
+    this.padding = const EdgeInsets.all(16),
   });
 
   @override
@@ -89,9 +89,8 @@ class _DashboardCardShell extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: const Color(0xFF3B4D63).withOpacity(0.92),
+        color: const Color(0xFF3B4D63).withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white24, width: 1.2),
         boxShadow: const [
           BoxShadow(
             color: Color(0x22000000),
@@ -118,7 +117,7 @@ class _StatusCardFrame extends StatelessWidget {
     required this.headerIcon,
     required this.title,
     required this.tiles,
-    this.padding = const EdgeInsets.all(20),
+    this.padding = const EdgeInsets.all(16),
     this.maxTitleLines = 2,
   });
 
@@ -131,15 +130,15 @@ class _StatusCardFrame extends StatelessWidget {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final compact = constraints.maxWidth < 320 || constraints.maxHeight < 220;
-            final iconPad = compact ? 10.0 : 12.0;
-            final headerFont = compact ? 14.0 : 18.0;
-            final topGap = compact ? 20.0 : 28.0;
-            final tileGap = compact ? 10.0 : 16.0;
+            final iconPad = compact ? 8.0 : 10.0;
+            final headerFont = compact ? 12.0 : 15.0;
+            final topGap = compact ? 8.0 : 14.0;
+            final tileGap = compact ? 6.0 : 16.0;
 
             return SizedBox(
               width: constraints.maxWidth,
               height: constraints.maxHeight == double.infinity
-                  ? 240
+                  ? (compact ? 150 : 170)
                   : constraints.maxHeight,
               child: _DashboardCardShell(
                 padding: padding,
@@ -150,7 +149,7 @@ class _StatusCardFrame extends StatelessWidget {
                         Container(
                           padding: EdgeInsets.all(iconPad),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1976D2).withOpacity(0.8),
+                            color: const Color(0xFF1976D2).withValues(alpha: 0.8),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Icon(
@@ -169,7 +168,8 @@ class _StatusCardFrame extends StatelessWidget {
                               color: Colors.white,
                               fontSize: headerFont,
                               fontWeight: FontWeight.bold,
-                              letterSpacing: 0.3,
+                              letterSpacing: 0.1,
+                              height: 1.15,
                             ),
                           ),
                         ),
@@ -227,11 +227,11 @@ class NetworkStatusCard extends StatelessWidget {
                 label: 'UP',
                 color: Colors.green,
                 icon: Icons.wifi,
-                iconBoxSize: compact ? 52 : 60,
-                iconSize: compact ? 24 : 30,
-                countFontSize: compact ? 24 : 28,
+                iconBoxSize: compact ? 46 : 52,
+                iconSize: compact ? 22 : 26,
+                countFontSize: compact ? 22 : 26,
                 labelFontSize: compact ? 11 : 12,
-                spacing: compact ? 8 : 12,
+                spacing: compact ? 6 : 8,
               );
             },
           ),
@@ -245,11 +245,11 @@ class NetworkStatusCard extends StatelessWidget {
                 label: 'DOWN',
                 color: Colors.red,
                 icon: Icons.wifi_off,
-                iconBoxSize: compact ? 52 : 60,
-                iconSize: compact ? 24 : 30,
-                countFontSize: compact ? 24 : 28,
+                iconBoxSize: compact ? 46 : 52,
+                iconSize: compact ? 22 : 26,
+                countFontSize: compact ? 22 : 26,
                 labelFontSize: compact ? 11 : 12,
-                spacing: compact ? 8 : 12,
+                spacing: compact ? 6 : 8,
               );
             },
           ),
@@ -288,11 +288,11 @@ class CCTVMonitoringCard extends StatelessWidget {
                 label: 'UP',
                 color: Colors.green,
                 icon: Icons.videocam,
-                iconBoxSize: compact ? 52 : 60,
-                iconSize: compact ? 24 : 30,
-                countFontSize: compact ? 24 : 28,
+                iconBoxSize: compact ? 46 : 52,
+                iconSize: compact ? 22 : 26,
+                countFontSize: compact ? 22 : 26,
                 labelFontSize: compact ? 11 : 12,
-                spacing: compact ? 8 : 12,
+                spacing: compact ? 6 : 8,
               );
             },
           ),
@@ -306,11 +306,11 @@ class CCTVMonitoringCard extends StatelessWidget {
                 label: 'DOWN',
                 color: Colors.red,
                 icon: Icons.videocam_off,
-                iconBoxSize: compact ? 52 : 60,
-                iconSize: compact ? 24 : 30,
-                countFontSize: compact ? 24 : 28,
+                iconBoxSize: compact ? 46 : 52,
+                iconSize: compact ? 22 : 26,
+                countFontSize: compact ? 22 : 26,
                 labelFontSize: compact ? 11 : 12,
-                spacing: compact ? 8 : 12,
+                spacing: compact ? 6 : 8,
               );
             },
           ),
@@ -339,7 +339,6 @@ class MMTMonitoringCard extends StatelessWidget {
       ),
       headerIcon: Icons.tablet_mac,
       title: 'MMT Monitoring',
-      maxTitleLines: 1,
       tiles: [
         Builder(
           builder: (context) => LayoutBuilder(
@@ -350,11 +349,11 @@ class MMTMonitoringCard extends StatelessWidget {
                 label: 'UP',
                 color: Colors.green,
                 icon: Icons.tablet_mac,
-                iconBoxSize: compact ? 52 : 60,
-                iconSize: compact ? 24 : 30,
-                countFontSize: compact ? 24 : 28,
+                iconBoxSize: compact ? 46 : 52,
+                iconSize: compact ? 22 : 26,
+                countFontSize: compact ? 22 : 26,
                 labelFontSize: compact ? 11 : 12,
-                spacing: compact ? 8 : 12,
+                spacing: compact ? 6 : 8,
               );
             },
           ),
@@ -368,11 +367,11 @@ class MMTMonitoringCard extends StatelessWidget {
                 label: 'DOWN',
                 color: Colors.red,
                 icon: Icons.tablet_mac,
-                iconBoxSize: compact ? 52 : 60,
-                iconSize: compact ? 24 : 30,
-                countFontSize: compact ? 24 : 28,
+                iconBoxSize: compact ? 46 : 52,
+                iconSize: compact ? 22 : 26,
+                countFontSize: compact ? 22 : 26,
                 labelFontSize: compact ? 11 : 12,
-                spacing: compact ? 8 : 12,
+                spacing: compact ? 6 : 8,
               );
             },
           ),
@@ -399,8 +398,6 @@ class ActiveAlertsCard extends StatelessWidget {
       ),
       headerIcon: Icons.warning_amber_rounded,
       title: 'Alert Monitoring',
-      maxTitleLines: 1,
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
       tiles: [
         Builder(
           builder: (context) => LayoutBuilder(
@@ -411,11 +408,11 @@ class ActiveAlertsCard extends StatelessWidget {
                 label: 'DOWN',
                 color: Colors.red,
                 icon: Icons.report_problem,
-                iconBoxSize: compact ? 56 : 64,
-                iconSize: compact ? 28 : 34,
-                countFontSize: compact ? 24 : 28,
+                iconBoxSize: compact ? 48 : 56,
+                iconSize: compact ? 24 : 28,
+                countFontSize: compact ? 22 : 26,
                 labelFontSize: compact ? 11 : 12,
-                spacing: compact ? 8 : 12,
+                spacing: compact ? 6 : 8,
               );
             },
           ),

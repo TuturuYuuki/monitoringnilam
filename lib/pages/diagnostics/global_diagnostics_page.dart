@@ -7,6 +7,8 @@ import 'package:monitoring/pages/diagnostics/global/application/global_diagnosti
 import 'package:monitoring/widgets/global_footer.dart';
 import 'package:monitoring/widgets/global_header_bar.dart';
 import 'package:monitoring/widgets/global_sidebar_nav.dart';
+import 'package:monitoring/theme/app_dropdown_style.dart';
+import 'package:monitoring/utils/ui_utils.dart';
 
 class GlobalDiagnosticsPage extends StatefulWidget {
   const GlobalDiagnosticsPage({super.key});
@@ -66,7 +68,7 @@ class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 1100;
+    final isMobile = isMobileScreen(context);
     final snapshot = _controller.snapshot;
     final latencySpots = snapshot.latencySeries
         .map((point) => FlSpot(point.x, point.y))
@@ -128,8 +130,41 @@ class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
           ),
         )
         .toList(growable: false);
+
+    final dataTableButton = FilledButton.icon(
+      onPressed: () {
+        Navigator.of(context).pushNamed('/device-performance');
+      },
+      style: FilledButton.styleFrom(
+        backgroundColor: const Color(0xFF00D9FF),
+        foregroundColor: Colors.black87,
+      ),
+      icon: const Icon(Icons.table_chart_outlined),
+      label: const Text('Data Table'),
+    );
+
+    final refreshButton = FilledButton.icon(
+      onPressed: (_controller.isLoading || _isRefreshing)
+          ? null
+          : _refreshDiagnostics,
+      style: FilledButton.styleFrom(
+        backgroundColor: const Color(0xFF00D9FF),
+        foregroundColor: Colors.black87,
+      ),
+      icon: (_controller.isLoading || _isRefreshing)
+          ? const SizedBox(
+              height: 14,
+              width: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+              ),
+            )
+          : const Icon(Icons.refresh),
+      label: const Text('Refresh'),
+    );
+
     return Scaffold(
-      backgroundColor: const Color(0xFF2C3E50),
+      backgroundColor: AppDropdownStyle.standardPageBackground,
       body: Column(
         children: [
           const GlobalHeaderBar(currentRoute: '/global-diagnostics'),
@@ -138,7 +173,7 @@ class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
                 currentRoute: '/global-diagnostics',
                 child: SafeArea(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(isMobile ? 12 : 24),
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -157,54 +192,44 @@ class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              const Expanded(
-                                child: Text(
-                                  'Global Diagnostics',
-                                  style: TextStyle(
-                                      color: Colors.black87,
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 0.5,
+                          if (isMobile) ...[
+                            const Text(
+                              'Global Diagnostics',
+                              style: TextStyle(
+                                color: Color.fromARGB(221, 255, 255, 255),
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(child: dataTableButton),
+                                const SizedBox(width: 8),
+                                Expanded(child: refreshButton),
+                              ],
+                            ),
+                          ] else ...[
+                            Row(
+                              children: [
+                                const Expanded(
+                                  child: Text(
+                                    'Global Diagnostics',
+                                    style: TextStyle(
+                                      color: Color.fromARGB(221, 255, 255, 255),
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.5,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              FilledButton.icon(
-                                onPressed: () {
-                                  Navigator.of(context)
-                                      .pushNamed('/device-performance');
-                                },
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xFF00D9FF),
-                                  foregroundColor: Colors.black87,
-                                ),
-                                label: const Text('Data Table'),
-                              ),
-                              const SizedBox(width: 8),
-                              FilledButton.icon(
-                                onPressed:
-                                    (_controller.isLoading || _isRefreshing)
-                                        ? null
-                                        : _refreshDiagnostics,
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xFF1565C0),
-                                  foregroundColor: Colors.black87,
-                                ),
-                                icon: (_controller.isLoading || _isRefreshing)
-                                    ? const SizedBox(
-                                        height: 14,
-                                        width: 14,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.black87,
-                                        ),
-                                      )
-                                    : const Icon(Icons.refresh),
-                                label: const Text('Refresh'),
-                              ),
-                            ],
-                          ),
+                                dataTableButton,
+                                const SizedBox(width: 8),
+                                refreshButton,
+                              ],
+                            ),
+                          ],
                           const SizedBox(height: 10),
                           if (_controller.errorMessage != null) ...[
                             _StatusBanner(
@@ -1060,24 +1085,24 @@ class _DiskRow extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Row(
+          Wrap(
+            spacing: 12,
+            runSpacing: 4,
             children: [
-              Expanded(
-                  child: Text('Size $size',
-                      style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                      color: Colors.black87))),
-              Expanded(
-                  child: Text('Used $used',
-                      style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                      color: Colors.black87))),
+              Text('Size $size',
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87)),
+              Text('Used $used',
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87)),
               Text('$percent %',
                   style: const TextStyle(
                       fontSize: 12,
-                    color: Colors.black87,
+                      color: Colors.black87,
                       fontWeight: FontWeight.w900)),
             ],
           ),
@@ -1255,15 +1280,18 @@ class _LatencyPacketChartPanel extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 _LegendTag(
                   color: const Color(0xFFFF2D95),
-                    text: '$latencyLabel  Average Response Time'),
-                const SizedBox(width: 8),
+                  text: '$latencyLabel  Average Response Time',
+                ),
                 _LegendTag(
                   color: const Color(0xFF39FF14),
-                    text: '$packetLossLabel  Packet Loss'),
+                  text: '$packetLossLabel  Packet Loss',
+                ),
               ],
             ),
           ],
@@ -1669,49 +1697,56 @@ class _HighErrorsPanel extends StatelessWidget {
                   ),
                 ),
               )
-            : Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF9FBFC),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFD8E0E7)),
-                ),
-                child: Table(
-                  columnWidths: const {
-                    0: FlexColumnWidth(3),
-                    1: FlexColumnWidth(2),
-                    2: FlexColumnWidth(2),
-                    3: FlexColumnWidth(2),
-                  },
-                  border: const TableBorder.symmetric(
-                    inside: BorderSide(color: Color(0xFFE5EBF0)),
-                  ),
-                  children: [
-                    const TableRow(
-                      decoration: BoxDecoration(color: Color(0xFFEFF4F8)),
+            : SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 560),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9FBFC),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFD8E0E7)),
+                    ),
+                    child: Table(
+                      columnWidths: const {
+                        0: FlexColumnWidth(3),
+                        1: FlexColumnWidth(2),
+                        2: FlexColumnWidth(2),
+                        3: FlexColumnWidth(2),
+                      },
+                      border: const TableBorder.symmetric(
+                        inside: BorderSide(color: Color(0xFFE5EBF0)),
+                      ),
                       children: [
-                        _TableHeaderCell(text: 'DEVICE'),
-                        _TableHeaderCell(text: 'CATEGORY'),
-                        _TableHeaderCell(text: 'ERROR COUNT'),
-                        _TableHeaderCell(text: 'WARNING/DISCARD'),
+                        const TableRow(
+                          decoration: BoxDecoration(color: Color(0xFFEFF4F8)),
+                          children: [
+                            _TableHeaderCell(text: 'DEVICE'),
+                            _TableHeaderCell(text: 'CATEGORY'),
+                            _TableHeaderCell(text: 'ERROR COUNT'),
+                            _TableHeaderCell(text: 'WARNING/DISCARD'),
+                          ],
+                        ),
+                        for (int i = 0; i < rows.length; i++)
+                          TableRow(
+                            decoration: BoxDecoration(
+                              color: i.isEven
+                                  ? Colors.white
+                                  : const Color(0xFFF7FAFD),
+                            ),
+                            children: [
+                              _TableValueCell(text: rows[i].node, isBold: true),
+                              _TableValueCell(text: rows[i].interfaceName),
+                              _TableValueCell(
+                                  text: rows[i].receiveErrors.toString()),
+                              _TableValueCell(
+                                text: rows[i].receiveDiscards.toString(),
+                              ),
+                            ],
+                          ),
                       ],
                     ),
-                    for (int i = 0; i < rows.length; i++)
-                      TableRow(
-                        decoration: BoxDecoration(
-                          color:
-                              i.isEven ? Colors.white : const Color(0xFFF7FAFD),
-                        ),
-                        children: [
-                          _TableValueCell(text: rows[i].node, isBold: true),
-                          _TableValueCell(text: rows[i].interfaceName),
-                          _TableValueCell(
-                              text: rows[i].receiveErrors.toString()),
-                          _TableValueCell(
-                            text: rows[i].receiveDiscards.toString(),
-                          ),
-                        ],
-                      ),
-                  ],
+                  ),
                 ),
               ),
       ),
@@ -1890,6 +1925,8 @@ class _TableValueCell extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       child: Text(
         text,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: Colors.black87,
           fontSize: 12,

@@ -125,13 +125,6 @@ class _AnimatedDropdownButtonState extends State<AnimatedDropdownButton>
                 decoration: BoxDecoration(
                   color: widget.backgroundColor,
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.5),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -158,18 +151,16 @@ class _AnimatedDropdownButtonState extends State<AnimatedDropdownButton>
                           ),
                           decoration: BoxDecoration(
                             color: _hoveredItem == item
-                                ? Colors.blue.withOpacity(0.6)
+                                ? Colors.blue.withValues(alpha: 0.6)
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             item,
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: item == widget.value
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
                             ),
                           ),
                         ),
@@ -205,9 +196,9 @@ class _AnimatedDropdownButtonState extends State<AnimatedDropdownButton>
       child: InkWell(
         onTap: _toggleDropdown,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 4),
           decoration: BoxDecoration(
-            color: widget.backgroundColor,
+            color: Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -217,8 +208,8 @@ class _AnimatedDropdownButtonState extends State<AnimatedDropdownButton>
                 widget.value,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
               const Icon(
@@ -245,11 +236,13 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         fontFamily: 'Arial',
         canvasColor: AppDropdownStyle.menuBackground,
+        shadowColor: Colors.transparent,
         popupMenuTheme: PopupMenuThemeData(
           color: AppDropdownStyle.menuBackground,
+          elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: AppDropdownStyle.menuBorderRadius,
-            side: BorderSide(color: Colors.white.withOpacity(0.22)),
+            side: BorderSide(color: Colors.white.withValues(alpha: 0.22)),
           ),
           textStyle: const TextStyle(
             color: Colors.white,
@@ -265,7 +258,7 @@ class MyApp extends StatelessWidget {
             shape: WidgetStateProperty.all(
               RoundedRectangleBorder(
                 borderRadius: AppDropdownStyle.menuBorderRadius,
-                side: BorderSide(color: Colors.white.withOpacity(0.22)),
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.22)),
               ),
             ),
           ),
@@ -342,7 +335,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
             body: Center(
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(
-                  const Color(0xFF1976D2).withOpacity(0.7),
+                  const Color(0xFF1976D2).withValues(alpha: 0.7),
                 ),
               ),
             ),

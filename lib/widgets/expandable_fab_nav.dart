@@ -119,7 +119,7 @@ class _ExpandableFabNavState extends State<ExpandableFabNav>
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
+                          color: Colors.black.withValues(alpha: 0.3),
                           blurRadius: 15,
                           offset: const Offset(0, 8),
                         ),
@@ -130,7 +130,7 @@ class _ExpandableFabNavState extends State<ExpandableFabNav>
                       child: BackdropFilter(
                         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                         child: Container(
-                          color: const Color(0xFF1E293B).withOpacity(0.8),
+                          color: const Color(0xFF1E293B).withValues(alpha: 0.8),
                           child: SingleChildScrollView(
                             physics: const BouncingScrollPhysics(),
                             padding: const EdgeInsets.only(top: 12, bottom: 20, left: 8, right: 8),
@@ -192,7 +192,7 @@ class _ExpandableFabNavState extends State<ExpandableFabNav>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           decoration: BoxDecoration(
-            color: isActive ? baseColor : const Color(0xFF0F172A).withOpacity(0.9),
+            color: isActive ? baseColor : const Color(0xFF0F172A).withValues(alpha: 0.9),
             borderRadius: BorderRadius.circular(30),
             border: Border.all(
               color: isActive ? Colors.white38 : const Color(0xFF334155),
@@ -247,7 +247,7 @@ class _ExpandableFabNavState extends State<ExpandableFabNav>
               border: Border.all(color: Colors.white24, width: 2),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withValues(alpha: 0.3),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),

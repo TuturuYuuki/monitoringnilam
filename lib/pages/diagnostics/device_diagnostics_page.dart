@@ -7,6 +7,8 @@ import 'package:monitoring/pages/diagnostics/device/presentation/widgets/recent_
 import 'package:monitoring/widgets/global_footer.dart';
 import 'package:monitoring/widgets/global_header_bar.dart';
 import 'package:monitoring/widgets/global_sidebar_nav.dart';
+import 'package:monitoring/theme/app_dropdown_style.dart';
+import 'package:monitoring/utils/ui_utils.dart';
 
 class DeviceDiagnosticsPage extends StatefulWidget {
   const DeviceDiagnosticsPage({super.key});
@@ -42,11 +44,11 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage> {
   @override
   Widget build(BuildContext context) {
     final isLoading = !_controller.didBootstrap || _controller.isLoading;
-    final isMobile = MediaQuery.of(context).size.width < 800;
+    final isMobile = isMobileScreen(context);
 
     if (isLoading) {
       return Scaffold(
-        backgroundColor: const Color(0xFF2C3E50),
+        backgroundColor: AppDropdownStyle.standardPageBackground,
         body: Column(
           children: [
             const GlobalHeaderBar(currentRoute: '/device-diagnostics'),
@@ -70,7 +72,7 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage> {
     final packetLossSpots = _controller.packetLossSpots;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF2C3E50),
+      backgroundColor: AppDropdownStyle.standardPageBackground,
       body: Column(
         children: [
           const GlobalHeaderBar(currentRoute: '/device-diagnostics'),

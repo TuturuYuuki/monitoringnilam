@@ -239,8 +239,16 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
     final screenSize = MediaQuery.of(context).size;
-    final glassWidth = (screenSize.width * 0.9).clamp(320.0, 500.0);
-    final glassHeight = (screenSize.height * 0.85).clamp(600.0, 750.0);
+    final topPadding = MediaQuery.of(context).padding.top;
+    
+    // Adjusted dimensions for mobile
+    final glassWidth = isMobile 
+        ? (screenSize.width * 0.92).clamp(300.0, 420.0)
+        : (screenSize.width * 0.42).clamp(400.0, 500.0);
+        
+    final glassHeight = isMobile
+        ? (screenSize.height * 0.82).clamp(580.0, 680.0)
+        : (screenSize.height * 0.85).clamp(600.0, 750.0);
 
     return Scaffold(
       body: LiquidGlassView(
@@ -258,30 +266,36 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
 
             // Dark Overlay
             Container(
-              color: Colors.black.withOpacity(0.4),
+              color: Colors.black.withValues(alpha: 0.45),
             ),
 
-            // Logo Danantara Indonesia - Kiri Atas
+            // Logos in a responsive Row with SafeArea consideration
             Positioned(
-              left: isMobile ? 10 : 20,
-              top: isMobile ? 10 : 20,
-              child: Image.asset(
-                'assets/images/logo_danantara.png',
-                width: isMobile ? 140 : 180,
-                height: isMobile ? 50 : 70,
-                fit: BoxFit.contain,
-              ),
-            ),
-
-            // Logo Pelindo - Kanan Atas
-            Positioned(
-              right: 20,
-              top: 20,
-              child: Image.asset(
-                'assets/images/logo_nilam.png',
-                width: isMobile ? 140 : 180,
-                height: isMobile ? 50 : 70,
-                fit: BoxFit.contain,
+              top: topPadding + (isMobile ? 8 : 20),
+              left: 0,
+              right: 0,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 32),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Logo Danantara
+                    Image.asset(
+                      'assets/images/logo_danantara.png',
+                      width: isMobile ? 110 : 180,
+                      height: isMobile ? 40 : 70,
+                      fit: BoxFit.contain,
+                    ),
+                    // Logo Pelindo/Nilam
+                    Image.asset(
+                      'assets/images/logo_nilam.png',
+                      width: isMobile ? 140 : 240,
+                      height: isMobile ? 55 : 100,
+                      fit: BoxFit.contain,
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -297,7 +311,7 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
             distortionWidth: 45,
             refractionMode: LiquidGlassRefractionMode.shapeRefraction,
             blur: const LiquidGlassBlur(sigmaX: 15, sigmaY: 15),
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
             shape: const RoundedRectangleShape(
                 cornerRadius: 24,
                 borderWidth: 1.5,
@@ -307,13 +321,15 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                 Center(
                   child: SingleChildScrollView(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24.0, vertical: 40.0),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isMobile ? 24.0 : 40.0,
+                        vertical: isMobile ? 28.0 : 40.0,
+                      ),
                       child: Container(
                         constraints: BoxConstraints(
                           maxWidth: glassWidth,
                         ),
-                        padding: const EdgeInsets.all(40),
+                        padding: EdgeInsets.all(isMobile ? 24 : 40),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(24),
                         ),
@@ -329,14 +345,14 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                             color: Colors.white,
                           ),
                           const SizedBox(height: 16),
-                          const Text(
+                          Text(
                             'Verification',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: 32,
+                              fontSize: isMobile ? 26 : 32,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
-                              shadows: [
+                              shadows: const [
                                 Shadow(
                                     color: Colors.black38,
                                     blurRadius: 4,
@@ -348,8 +364,8 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                           Text(
                             'The OTP Code Has Been Sent To\n$email',
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 15,
+                            style: TextStyle(
+                              fontSize: isMobile ? 13 : 15,
                               color: Colors.white70,
                               height: 1.5,
                               fontWeight: FontWeight.w500,
@@ -365,8 +381,8 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                                   horizontal: 16, vertical: 8),
                               decoration: BoxDecoration(
                                 color: remainingSeconds < 60
-                                    ? Colors.redAccent.withOpacity(0.5)
-                                    : Colors.white.withOpacity(0.1),
+                                    ? Colors.redAccent.withValues(alpha: 0.5)
+                                    : Colors.white.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(color: Colors.white24),
                               ),
@@ -412,7 +428,7 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                                   fontSize: 16,
                                   letterSpacing: 0),
                               filled: true,
-                              fillColor: Colors.black.withOpacity(0.45),
+                              fillColor: Colors.black.withValues(alpha: 0.45),
                               border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(16),
                                   borderSide: BorderSide.none),
@@ -421,7 +437,7 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                                   borderSide: const BorderSide(
                                       color: Colors.blue, width: 1.5)),
                               contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 20, vertical: 18),
+                                  horizontal: 24, vertical: 18),
                               counterText: '',
                             ),
                             validator: (value) {
@@ -448,7 +464,7 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                               boxShadow: [
                                 BoxShadow(
                                   color:
-                                      const Color(0xFF1976D2).withOpacity(0.5),
+                                      const Color(0xFF1976D2).withValues(alpha: 0.5),
                                   blurRadius: 15,
                                   offset: const Offset(0, 5),
                                 ),
@@ -517,12 +533,12 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                 ),
                 Positioned(
                   top: 14,
-                  left: 12,
+                  left: isMobile ? 8 : 12,
                   child: IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.arrow_back_ios_new_rounded,
                       color: Colors.white,
-                      size: 28,
+                      size: isMobile ? 22 : 28,
                     ),
                     onPressed: () => Navigator.pop(context),
                   ),

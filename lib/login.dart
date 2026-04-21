@@ -117,8 +117,16 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
     final screenSize = MediaQuery.of(context).size;
-    final glassWidth = (screenSize.width * 0.9).clamp(320.0, 480.0);
-    final glassHeight = (screenSize.height * 0.86).clamp(520.0, 620.0);
+    final topPadding = MediaQuery.of(context).padding.top;
+    
+    // Adjusted dimensions for mobile
+    final glassWidth = isMobile 
+        ? (screenSize.width * 0.92).clamp(300.0, 400.0)
+        : (screenSize.width * 0.35).clamp(380.0, 420.0);
+        
+    final glassHeight = isMobile
+        ? (screenSize.height * 0.82).clamp(500.0, 600.0)
+        : (screenSize.height * 0.86).clamp(520.0, 620.0);
 
     return Scaffold(
       body: LiquidGlassView(
@@ -136,30 +144,36 @@ class _LoginPageState extends State<LoginPage> {
 
             // Overlay Gelap Ringan
             Container(
-              color: Colors.black.withOpacity(0.4),
+              color: Colors.black.withValues(alpha: 0.45),
             ),
 
-            // Logo Danantara Indonesia - Kiri Atas
+            // Logos in a responsive Row with SafeArea consideration
             Positioned(
-              left: isMobile ? 10 : 20,
-              top: isMobile ? 10 : 20,
-              child: Image.asset(
-                'assets/images/logo_danantara.png',
-                width: isMobile ? 140 : 180,
-                height: isMobile ? 50 : 70,
-                fit: BoxFit.contain,
-              ),
-            ),
-
-            // Logo Pelindo - Kanan Atas (bigger)
-            Positioned(
-              right: isMobile ? 12 : 24,
-              top: isMobile ? 12 : 24,
-              child: Image.asset(
-                'assets/images/logo_nilam.png',
-                width: isMobile ? 180 : 240,
-                height: isMobile ? 70 : 100,
-                fit: BoxFit.contain,
+              top: topPadding + (isMobile ? 8 : 20),
+              left: 0,
+              right: 0,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 32),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Logo Danantara
+                    Image.asset(
+                      'assets/images/logo_danantara.png',
+                      width: isMobile ? 110 : 180,
+                      height: isMobile ? 40 : 70,
+                      fit: BoxFit.contain,
+                    ),
+                    // Logo Pelindo/Nilam
+                    Image.asset(
+                      'assets/images/logo_nilam.png',
+                      width: isMobile ? 140 : 240,
+                      height: isMobile ? 55 : 100,
+                      fit: BoxFit.contain,
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -174,7 +188,7 @@ class _LoginPageState extends State<LoginPage> {
             distortionWidth: 45,
             refractionMode: LiquidGlassRefractionMode.shapeRefraction,
             blur: const LiquidGlassBlur(sigmaX: 15, sigmaY: 15),
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
             shape: const RoundedRectangleShape(
                 cornerRadius: 24,
                 borderWidth: 1.5,
@@ -201,23 +215,22 @@ class _LoginPageState extends State<LoginPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         // Ikon Gembok sebagai aksen modern
-                        const Icon(
+                        Icon(
                           Icons.lock_person_rounded,
-                          size: 50,
+                          size: isMobile ? 50 : 40,
                           color: Colors.white,
                         ),
                         const SizedBox(height: 12), // Reduced
 
-                        // Judul "Welcome Back"
-                        const Text(
+                        Text(
                           'Welcome Back',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 28, // Reduced slightly
+                            fontSize: isMobile ? 26 : 30,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                             letterSpacing: 1.2,
-                            shadows: [
+                            shadows: const [
                               Shadow(
                                   color: Colors.black38,
                                   blurRadius: 4,
@@ -225,18 +238,17 @@ class _LoginPageState extends State<LoginPage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 6), // Reduced
-                        const Text(
+                        const SizedBox(height: 6),
+                        Text(
                           'Sign in to access your dashboard',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 13, // Reduced
+                            fontSize: isMobile ? 13 : 14,
                             color: Colors.white70,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-
-                        const SizedBox(height: 32), // Reduced from 48
+                        SizedBox(height: isMobile ? 24 : 32),
 
                         // Username Field
                         TextFormField(
@@ -253,7 +265,7 @@ class _LoginPageState extends State<LoginPage> {
                                 color: Color(0xFFFF8A80), fontSize: 13),
                             filled: true,
                             fillColor: Colors.black
-                                .withOpacity(0.45), // Input semi-transparent
+                                .withValues(alpha: 0.45), // Input semi-transparent
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
                               borderSide: BorderSide.none,
@@ -274,7 +286,7 @@ class _LoginPageState extends State<LoginPage> {
                           },
                         ),
 
-                        const SizedBox(height: 16), // Reduced from 20
+                        SizedBox(height: isMobile ? 12 : 16),
 
                         // Password Field
                         TextFormField(
@@ -290,7 +302,7 @@ class _LoginPageState extends State<LoginPage> {
                             errorStyle: const TextStyle(
                                 color: Color(0xFFFF8A80), fontSize: 13),
                             filled: true,
-                            fillColor: Colors.black.withOpacity(0.45),
+                            fillColor: Colors.black.withValues(alpha: 0.45),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
                               borderSide: BorderSide.none,
@@ -352,7 +364,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
 
-                        const SizedBox(height: 24), // Reduced from 32
+                        SizedBox(height: isMobile ? 16 : 24),
 
                         // Login Button
                         Container(
@@ -365,7 +377,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF1976D2).withOpacity(0.5),
+                                color: const Color(0xFF1976D2).withValues(alpha: 0.5),
                                 blurRadius: 15,
                                 offset: const Offset(0, 5),
                               ),
@@ -404,8 +416,6 @@ class _LoginPageState extends State<LoginPage> {
                         ),
 
                         const SizedBox(height: 24), // Reduced from 32
-
-                        // Sign Up Section (Text Link instead of giant button)
                         Wrap(
                           alignment: WrapAlignment.center,
                           crossAxisAlignment: WrapCrossAlignment.center,

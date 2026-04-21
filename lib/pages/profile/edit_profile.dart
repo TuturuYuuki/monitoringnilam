@@ -7,6 +7,7 @@ import 'package:monitoring/services/api_service.dart';
 import 'package:monitoring/widgets/global_header_bar.dart';
 import 'package:monitoring/widgets/global_sidebar_nav.dart';
 import 'package:monitoring/widgets/global_footer.dart';
+import 'package:monitoring/theme/app_dropdown_style.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -55,15 +56,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
       _usernameController.text = cachedData['username'] ?? '';
       _emailController.text = cachedData['email'] ?? '';
       _phoneController.text =
-          (cachedData['phone'] == null || cachedData['phone'] == '')
-              ? '-'
-              : cachedData['phone']!;
+        (cachedData['phone'] == null || cachedData['phone'] == '-' ||
+            cachedData['phone'].toString().trim().isEmpty)
+          ? ''
+          : cachedData['phone']!;
       _divisionController.text =
-          (cachedData['division'] == null || cachedData['division'] == '')
-              ? '-'
-              : cachedData['division']!;
+        (cachedData['division'] == null || cachedData['division'] == '-' ||
+            cachedData['division'].toString().trim().isEmpty)
+          ? ''
+          : cachedData['division']!;
 
-      _locationController.text = cachedData['location'] ?? '';
+      _locationController.text =
+        (cachedData['location'] == null ||
+            cachedData['location'] == '-' ||
+            cachedData['location'].toString().trim().isEmpty)
+          ? ''
+          : cachedData['location']!;
       _currentEmail = cachedData['email'] ?? '';
       _emailVerified = true;
     });
@@ -83,12 +91,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
             _nameController.text = profileData['fullname'] ?? '';
             _usernameController.text = profileData['username'] ?? '';
             _emailController.text = profileData['email'] ?? '';
-            _phoneController.text = profileData['phone'] ?? '';
-            _locationController.text = profileData['location'] ?? '';
+            _phoneController.text =
+              (profileData['phone'] == null ||
+                  profileData['phone'].toString().trim().isEmpty ||
+                  profileData['phone'] == '-')
+                ? ''
+                : profileData['phone'].toString();
+            _locationController.text =
+              (profileData['location'] == null ||
+                  profileData['location'].toString().trim().isEmpty ||
+                  profileData['location'] == '-')
+                ? ''
+                : profileData['location'].toString();
             _divisionController.text =
-                profileData['division']?.isNotEmpty == true
-                    ? profileData['division']!
-                    : (profileData['role'] ?? '');
+              profileData['division']?.toString().trim().isNotEmpty == true
+                ? profileData['division'].toString()
+                : (profileData['role'] ?? '').toString();
             _currentEmail = profileData['email'] ?? '';
             _emailVerified = true;
           });
@@ -118,7 +136,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (newEmail.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Email Not Empty'),
+          content: Text('Email cannot be empty'),
           backgroundColor: Colors.red,
         ),
       );
@@ -261,7 +279,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                  'Email Successfully Verified! You Can Now Save Your Changes'),
+                  'Email successfully verified! You can now save your changes'),
               backgroundColor: Colors.green,
               duration: Duration(seconds: 2),
             ),
@@ -333,6 +351,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
+  String? _requiredValidator(String label, String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty || trimmed == '-') {
+      return '$label is required';
+    }
+    return null;
+  }
+
 
   void _performUpdate() async {
     setState(() {
@@ -343,16 +369,21 @@ class _EditProfilePageState extends State<EditProfilePage> {
       // Bersihkan data: jika isinya '-' ubah jadi string kosong sebelum dikirim ke DB
       String finalPhone = _phoneController.text.trim();
       String finalDivision = _divisionController.text.trim();
+      String finalLocation = _locationController.text.trim();
 
       if (finalPhone == '-') finalPhone = '';
       if (finalDivision == '-') finalDivision = '';
+      if (finalLocation == '-') finalLocation = '';
+
+      // Removed mandatory check for phone, division, and location
+      // Users can now leave these fields empty
 
       final updateData = {
         'fullname': _nameController.text.trim(),
         'email': _emailController.text.trim(),
         'username': _usernameController.text.trim(),
         'phone': finalPhone,
-        'location': _locationController.text.trim(),
+        'location': finalLocation,
         'division': finalDivision,
       };
 
@@ -379,41 +410,68 @@ class _EditProfilePageState extends State<EditProfilePage> {
       });
 
       if (response['success'] == true || response['success'] == 1) {
-        debugPrint('Update Successfully, Saving To SharedPreferences');
+        debugPrint('Update Successfully, Verifying Backend Persistence');
 
-        // Update SharedPreferences with new data
+        final profile = await apiService.getProfile(_userId!);
+        if (profile == null) {
+          setState(() {
+            _isLoading = false;
+          });
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Profile update returned success, but fresh data could not be loaded'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
+        final profileJson = profile.toJson();
+        final persistedOk =
+            (profileJson['fullname']?.toString().trim() ?? '') == updateData['fullname'] &&
+            (profileJson['username']?.toString().trim() ?? '') == updateData['username'] &&
+            (profileJson['email']?.toString().trim() ?? '') == updateData['email'] &&
+            (profileJson['phone']?.toString().trim() ?? '') == updateData['phone'] &&
+            (profileJson['location']?.toString().trim() ?? '') == updateData['location'] &&
+            (profileJson['division']?.toString().trim() ?? '') == updateData['division'];
+
+        if (!persistedOk) {
+          debugPrint('Backend profile mismatch after update: $profileJson');
+          setState(() {
+            _isLoading = false;
+          });
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Save failed: backend data was not updated completely'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
+        debugPrint('Backend persistence verified, saving to cache');
+
         final currentData = await AuthHelper.getUserData();
-
-        // Prepare updated user data
         final Map<String, dynamic> updatedData = {
           'id': _userId,
-          'username': updateData['username'],
-          'email': updateData['email'],
-          'fullname': updateData['fullname'],
+          'username': profileJson['username'] ?? updateData['username'],
+          'email': profileJson['email'] ?? updateData['email'],
+          'fullname': profileJson['fullname'] ?? updateData['fullname'],
           'role': currentData['role'] ?? 'user',
-          'phone': updateData['phone'],
-          'location': updateData['location'],
-          'division': updateData['division'],
+          'phone': profileJson['phone'] ?? updateData['phone'],
+          'location': profileJson['location'] ?? updateData['location'],
+          'division': profileJson['division'] ?? updateData['division'],
         };
 
-        // Save to SharedPreferences
         await AuthHelper.saveUserData(updatedData);
         debugPrint('Data Saved To SharedPreferences: $updatedData');
 
-        // Fetch fresh profile from backend to confirm persistence and update cache
-        try {
-          final profile = await apiService.getProfile(_userId!);
-          if (profile != null) {
-            debugPrint('Fresh Profile From Backend: ${profile.toJson()}');
-            await AuthHelper.saveUserData(profile.toJson());
-          }
-        } catch (e) {
-          debugPrint('Failed To Fetch Fresh Profile: $e');
-          // Tetap lanjut karena data sudah disimpan di SharedPreferences
-        }
-
         if (mounted) {
-          const message = 'Profile Successfully Updated!';
+          const message = 'Profile updated successfully';
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -459,7 +517,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF2C3E50),
+      backgroundColor: AppDropdownStyle.standardPageBackground,
       body: Column(
         children: [
           const GlobalHeaderBar(currentRoute: '/edit-profile'),
@@ -468,7 +526,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 currentRoute: '/edit-profile',
                 child: SingleChildScrollView(
                   child: Padding(
-                    padding: EdgeInsets.all(isMobile ? 8 : 24.0),
+                    padding: EdgeInsets.all(isMobile ? 12 : 24),
                     child: Center(
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
@@ -500,7 +558,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Update Your Profile Information',
+          'Update your profile information',
           style: TextStyle(
             color: Colors.white70,
             fontSize: 14,
@@ -526,7 +584,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   Icons.person,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Name Not Empty';
+                      return 'Name cannot be empty';
                     }
                     return null;
                   },
@@ -538,7 +596,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   Icons.account_circle,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Username Not Empty';
+                      return 'Username cannot be empty';
                     }
                     return null;
                   },
@@ -551,33 +609,24 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   _phoneController,
                   Icons.phone,
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Phone Number Not Empty';
-                    }
                     return null;
                   },
                 ),
                 const SizedBox(height: 20),
                 _buildTextField(
-                  'Location',
+                    'Location',
                   _locationController,
                   Icons.location_on,
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Location Not Empty';
-                    }
                     return null;
                   },
                 ),
                 const SizedBox(height: 20),
                 _buildTextField(
-                  'Division',
+                    'Division',
                   _divisionController,
                   Icons.domain,
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Division Not Empty';
-                    }
                     return null;
                   },
                 ),
@@ -663,7 +712,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 controller: _emailController,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Email Not Empty';
+                    return 'Email cannot be empty';
                   }
                   if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
                     return 'Invalid Email Format';

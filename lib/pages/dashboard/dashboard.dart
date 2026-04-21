@@ -36,6 +36,7 @@ import 'package:monitoring/constants/terminal_data.dart';
 import 'package:monitoring/widgets/dashboard/status_cards.dart';
 import 'package:monitoring/widgets/global_footer.dart';
 import 'package:monitoring/widgets/dashboard/live_terminal_map.dart';
+import 'package:monitoring/theme/app_dropdown_style.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -399,7 +400,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
 
       if (mounted) {
         setState(() {
-          // 1. Simpan Data Master
+          // 1. Save Data Master
           cameras = effectiveCameras;
           towers = effectiveTowers;
           masterLocations = fetchedMasterLocations;
@@ -498,7 +499,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       // The realtime ping check has already updated all statuses in the database
       // So we just read the current status from database without individual pings
       final response = await http.get(
-        Uri.parse('${ApiService.baseUrl}?endpoint=mmt&action=all'),
+        Uri.parse(
+            'http://localhost/monitoring_api/index.php?endpoint=mmt&action=all'),
       );
 
       if (response.statusCode == 200) {
@@ -584,7 +586,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
     _lastPingCheckAt = now;
 
     try {
-      final baseUrl = ApiService.baseUrl;
+      const baseUrl = 'http://localhost/monitoring_api/index.php';
 
       // Call realtime ping endpoint yang update semua towers dan cameras sekaligus
       final response = await http
@@ -768,7 +770,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                             border: Border.all(color: Colors.white, width: 2.5),
                             boxShadow: [
                               BoxShadow(
-                                color: badgeColor.withOpacity(0.5),
+                                color: badgeColor.withValues(alpha: 0.5),
                                 blurRadius: 6,
                                 spreadRadius: 1,
                               ),
@@ -785,7 +787,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
+                    color: Colors.black.withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -811,23 +813,14 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
     }
 
     return masterLocations.map((location) {
-      final locType = DeviceIconResolver.normalizeType(
-        (location['location_type'] ?? location['type'] ?? '')
-            .toString()
-            .toUpperCase(),
-      );
-      final locCode =
-          (location['location_code'] ?? location['code'] ?? '').toString();
-      final locName =
-          (location['location_name'] ?? location['name'] ?? '').toString();
-      final lat = double.tryParse(
-            (location['latitude'] ?? location['lat'] ?? '0').toString(),
-          ) ??
-          0.0;
-      final lng = double.tryParse(
-            (location['longitude'] ?? location['lng'] ?? '0').toString(),
-          ) ??
-          0.0;
+      final locType =
+          (location['location_type'] ?? '').toString().toUpperCase();
+      final locCode = (location['location_code'] ?? '').toString();
+      final locName = (location['location_name'] ?? '').toString();
+      final lat =
+          double.tryParse((location['latitude'] ?? '0').toString()) ?? 0.0;
+      final lng =
+          double.tryParse((location['longitude'] ?? '0').toString()) ?? 0.0;
 
       // Static icon color based on location type
       final markerColor = DeviceIconResolver.colorForType(locType);
@@ -885,7 +878,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: badgeColor.withOpacity(0.6),
+                                color: badgeColor.withValues(alpha: 0.6),
                                 blurRadius: 4,
                                 spreadRadius: 1,
                               ),
@@ -902,7 +895,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
+                    color: Colors.black.withValues(alpha: 0.6),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.white24, width: 0.5),
                   ),
@@ -1168,9 +1161,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
         // Keep master location point in sync immediately so grouped devices follow tower drag in UI.
         final towerCode = tower.towerId.toUpperCase();
         final masterIdx = masterLocations.indexWhere((m) {
-          final type = DeviceIconResolver.normalizeType(
-            (m['location_type'] ?? m['type'] ?? '').toString().toUpperCase(),
-          );
+          final type = (m['location_type'] ?? '').toString().toUpperCase();
           final code = (m['location_code'] ?? '').toString().toUpperCase();
           final name = (m['location_name'] ?? '').toString().toUpperCase();
           return type == 'TOWER' && (code == towerCode || name == towerCode);
@@ -1238,9 +1229,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       return;
     }
 
-    final locType = DeviceIconResolver.normalizeType(
-      (master['location_type'] ?? master['type'] ?? '').toString(),
-    );
+    final locType = (master['location_type'] ?? '').toString().toUpperCase();
     final codeKey =
         _normalizeMasterKey((master['location_code'] ?? '').toString());
     final nameKey =
@@ -1365,7 +1354,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF2C3E50),
+      backgroundColor: AppDropdownStyle.standardPageBackground,
       body: Column(
         children: [
           const GlobalHeaderBar(
@@ -1383,46 +1372,15 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   Widget _buildContent(BuildContext context) {
     final isMobile = isMobileScreen(context);
 
-    if (isMobile) {
-      return GlobalSidebarNav(
-        currentRoute: '/dashboard',
-        enabled: false,
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              children: [
-                SizedBox(
-                  height: 560,
-                  child: LiveTerminalMap(
-                    devices: _buildLayoutDevices(),
-                    towers: towers,
-                    masterLocations: masterLocations,
-                    isPickMode: _isPickTowerMode,
-                    pickYardFilter: _pickTowerYard,
-                    onAreaPicked: _handleAreaPickedForTower,
-                    onTowerMoved: _handleTowerPositionUpdate,
-                    onMasterMoved: _handleMasterPositionUpdate,
-                    onTriggerPingCheck: _triggerPingCheck,
-                    onLoadDashboardData: _loadDashboardData,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _buildDashboardStatsBottom(context, isMobile: true),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
     return GlobalSidebarNav(
       currentRoute: '/dashboard',
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(isMobile ? 12.0 : 24.0),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final mapHeight = constraints.maxWidth > 1400 ? 580.0 : 490.0;
+            final mapHeight = isMobile
+                ? 450.0
+                : (constraints.maxWidth > 1400 ? 520.0 : 450.0);
 
             return SingleChildScrollView(
               child: Column(
@@ -1444,10 +1402,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _buildDashboardStatsBottom(
-                    context,
-                    isMobile: false,
-                  ),
+                  _buildDashboardStatsBottom(context, isMobile: isMobile),
+                  const SizedBox(height: 32),
                 ],
               ),
             );
@@ -1459,110 +1415,103 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
 
   Widget _buildDashboardStatsBottom(BuildContext context,
       {required bool isMobile}) {
-    if (isMobile) {
-      return Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: [
-          SizedBox(
-            width: double.infinity,
-            child: NetworkStatusCard(
-              totalOnline: totalOnlineTowers,
-              totalDown: totalDownTowers,
-            ),
-          ),
-          SizedBox(
-            width: double.infinity,
-            child: CCTVMonitoringCard(
-              totalUp: totalUpCameras,
-              totalDown: totalDownCameras,
-            ),
-          ),
-          SizedBox(
-            width: double.infinity,
-            child: MMTMonitoringCard(
-              totalUp: totalUpMMT,
-              totalDown: totalDownMMT,
-            ),
-          ),
-          SizedBox(
-            width: double.infinity,
-            child: ActiveAlertsCard(totalWarnings: totalWarnings),
-          ),
-        ],
-      );
-    }
-
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isCompactDesktop = constraints.maxWidth < 1300;
+        final width = constraints.maxWidth;
+        final double spacing = isMobile ? 8.0 : 16.0;
 
-        if (!isCompactDesktop) {
+        // CASE 1: Desktop / Ultra-Wide (4 columns in a row)
+        if (width > 1100) {
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: NetworkStatusCard(
-                  totalOnline: totalOnlineTowers,
-                  totalDown: totalDownTowers,
-                ),
+              _buildExpandedCard(NetworkStatusCard(
+                totalOnline: totalOnlineTowers,
+                totalDown: totalDownTowers,
+              )),
+              SizedBox(width: spacing),
+              _buildExpandedCard(CCTVMonitoringCard(
+                totalUp: totalUpCameras,
+                totalDown: totalDownCameras,
+              )),
+              SizedBox(width: spacing),
+              _buildExpandedCard(MMTMonitoringCard(
+                totalUp: totalUpMMT,
+                totalDown: totalDownMMT,
+              )),
+              SizedBox(width: spacing),
+              _buildExpandedCard(ActiveAlertsCard(totalWarnings: totalWarnings)),
+            ],
+          );
+        }
+        
+        // CASE 2: Tablet / Small Laptop (2x2 grid, but wider)
+        if (width > 600) {
+          return Column(
+            children: [
+              Row(
+                children: [
+                  _buildExpandedCard(NetworkStatusCard(
+                    totalOnline: totalOnlineTowers,
+                    totalDown: totalDownTowers,
+                  )),
+                  SizedBox(width: spacing),
+                  _buildExpandedCard(CCTVMonitoringCard(
+                    totalUp: totalUpCameras,
+                    totalDown: totalDownCameras,
+                  )),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: CCTVMonitoringCard(
-                  totalUp: totalUpCameras,
-                  totalDown: totalDownCameras,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: MMTMonitoringCard(
-                  totalUp: totalUpMMT,
-                  totalDown: totalDownMMT,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ActiveAlertsCard(totalWarnings: totalWarnings),
+              SizedBox(height: spacing),
+              Row(
+                children: [
+                  _buildExpandedCard(MMTMonitoringCard(
+                    totalUp: totalUpMMT,
+                    totalDown: totalDownMMT,
+                  )),
+                  SizedBox(width: spacing),
+                  _buildExpandedCard(ActiveAlertsCard(totalWarnings: totalWarnings)),
+                ],
               ),
             ],
           );
         }
 
-        final cardWidth = (constraints.maxWidth - 12) / 2;
-        return Wrap(
-          spacing: 12,
-          runSpacing: 12,
+        // CASE 3: Mobile (Stacked layout)
+        return Column(
           children: [
-            SizedBox(
-              width: cardWidth,
-              child: NetworkStatusCard(
-                totalOnline: totalOnlineTowers,
-                totalDown: totalDownTowers,
-              ),
+            Row(
+              children: [
+                _buildExpandedCard(NetworkStatusCard(
+                  totalOnline: totalOnlineTowers,
+                  totalDown: totalDownTowers,
+                )),
+                SizedBox(width: spacing),
+                _buildExpandedCard(CCTVMonitoringCard(
+                  totalUp: totalUpCameras,
+                  totalDown: totalDownCameras,
+                )),
+              ],
             ),
-            SizedBox(
-              width: cardWidth,
-              child: CCTVMonitoringCard(
-                totalUp: totalUpCameras,
-                totalDown: totalDownCameras,
-              ),
-            ),
-            SizedBox(
-              width: cardWidth,
-              child: MMTMonitoringCard(
-                totalUp: totalUpMMT,
-                totalDown: totalDownMMT,
-              ),
-            ),
-            SizedBox(
-              width: cardWidth,
-              child: ActiveAlertsCard(totalWarnings: totalWarnings),
+            SizedBox(height: spacing),
+            Row(
+              children: [
+                _buildExpandedCard(MMTMonitoringCard(
+                  totalUp: totalUpMMT,
+                  totalDown: totalDownMMT,
+                )),
+                SizedBox(width: spacing),
+                _buildExpandedCard(ActiveAlertsCard(totalWarnings: totalWarnings)),
+              ],
             ),
           ],
         );
       },
     );
+  }
+
+  Widget _buildExpandedCard(Widget child) {
+    return Expanded(child: child);
   }
 
   // Navigate to CCTV page based on Container Yard ID
@@ -1622,7 +1571,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Dismiss',
-      barrierColor: Colors.black.withOpacity(0.5),
+      barrierColor: Colors.black.withValues(alpha: 0.5),
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (context, animation, secondaryAnimation) {
         return ScaleTransition(
@@ -1638,7 +1587,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
+                      color: Colors.black.withValues(alpha: 0.3),
                       blurRadius: 10,
                       spreadRadius: 5,
                     ),
@@ -1806,13 +1755,13 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            const Color(0xFF1A237E).withOpacity(0.9),
-            const Color(0xFF0D47A1).withOpacity(0.9),
+            const Color(0xFF1A237E).withValues(alpha: 0.9),
+            const Color(0xFF0D47A1).withValues(alpha: 0.9),
           ],
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -1878,7 +1827,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 2),
               ),
@@ -1898,10 +1847,10 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: color.withOpacity(0.5),
+          color: color.withValues(alpha: 0.5),
           width: 1,
         ),
       ),
@@ -2005,11 +1954,11 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                             borderRadius: BorderRadius.circular(50),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
+                                color: Colors.black.withValues(alpha: 0.1),
                                 blurRadius: 8,
                                 spreadRadius: 1,
                               ),
@@ -2047,11 +1996,11 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               decoration: BoxDecoration(
                 color: isActive
-                    ? Colors.white.withOpacity(0.8)
-                    : Colors.white.withOpacity(0.2),
+                    ? Colors.white.withValues(alpha: 0.8)
+                    : Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(25),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.3),
+                  color: Colors.white.withValues(alpha: 0.3),
                   width: 1.5,
                 ),
               ),
@@ -2061,7 +2010,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                   fontSize: 16,
                   fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
                   color:
-                      isActive ? Colors.black : Colors.white.withOpacity(0.9),
+                      isActive ? Colors.black : Colors.white.withValues(alpha: 0.9),
                 ),
               ),
             ),
@@ -2090,11 +2039,11 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               decoration: BoxDecoration(
                 color: isActive
-                    ? Colors.white.withOpacity(0.8)
-                    : Colors.white.withOpacity(0.2),
+                    ? Colors.white.withValues(alpha: 0.8)
+                    : Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(25),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.3),
+                  color: Colors.white.withValues(alpha: 0.3),
                   width: 1.5,
                 ),
               ),
@@ -2104,7 +2053,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                   fontSize: 16,
                   fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
                   color:
-                      isActive ? Colors.black : Colors.white.withOpacity(0.9),
+                      isActive ? Colors.black : Colors.white.withValues(alpha: 0.9),
                 ),
               ),
             ),
@@ -2190,15 +2139,15 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.12),
+            color: Colors.white.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -2211,7 +2160,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1976D2).withOpacity(0.8),
+                      color: const Color(0xFF1976D2).withValues(alpha: 0.8),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: const Icon(Icons.timeline,
@@ -2242,7 +2191,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                       height: height,
                       decoration: BoxDecoration(
                         color:
-                            Colors.white.withOpacity(0.3), // Changed to white
+                            Colors.white.withValues(alpha: 0.3), // Changed to white
                         borderRadius: BorderRadius.circular(2),
                       ),
                     );
@@ -2256,17 +2205,17 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                   Text(
                     '00:00',
                     style: TextStyle(
-                        color: Colors.white.withOpacity(0.6), fontSize: 12),
+                        color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
                   ),
                   Text(
                     '12:00',
                     style: TextStyle(
-                        color: Colors.white.withOpacity(0.6), fontSize: 12),
+                        color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
                   ),
                   Text(
                     '23:59',
                     style: TextStyle(
-                        color: Colors.white.withOpacity(0.6), fontSize: 12),
+                        color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
                   ),
                 ],
               ),

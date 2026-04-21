@@ -8,6 +8,7 @@ import 'package:monitoring/models/tower_model.dart';
 import 'package:monitoring/widgets/global_header_bar.dart';
 import 'package:monitoring/widgets/global_sidebar_nav.dart';
 import 'package:monitoring/widgets/global_footer.dart';
+import 'package:monitoring/theme/app_dropdown_style.dart';
 
 class AlertsPage extends StatefulWidget {
   const AlertsPage({super.key});
@@ -211,7 +212,7 @@ class _AlertsPageState extends State<AlertsPage> {
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF2C3E50),
+      backgroundColor: AppDropdownStyle.standardPageBackground,
       body: Column(
         children: [
           const GlobalHeaderBar(currentRoute: '/alerts'),
@@ -262,19 +263,19 @@ class _AlertsPageState extends State<AlertsPage> {
           label: Text(type),
           selected: isSelected,
           onSelected: (_) => setState(() => _selectedDeviceType = type),
-          selectedColor: const Color(0xFF1976D2).withOpacity(0.45),
+          selectedColor: const Color(0xFF1976D2).withValues(alpha: 0.45),
           checkmarkColor: Colors.white,
-          backgroundColor: Colors.white.withOpacity(0.12),
+          backgroundColor: Colors.white.withValues(alpha: 0.12),
           side: BorderSide(
             color: isSelected
-                ? Colors.white.withOpacity(0.45)
-                : Colors.white.withOpacity(0.22),
+                ? Colors.white.withValues(alpha: 0.45)
+                : Colors.white.withValues(alpha: 0.22),
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
           labelStyle: TextStyle(
-            color: isSelected ? Colors.white : Colors.white.withOpacity(0.88),
+            color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.88),
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
           ),
         );
@@ -305,12 +306,12 @@ class _AlertsPageState extends State<AlertsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.22),
+        color: color.withValues(alpha: 0.22),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.75), width: 1.5),
+        border: Border.all(color: color.withValues(alpha: 0.75), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.25),
+            color: color.withValues(alpha: 0.25),
             blurRadius: 8,
             spreadRadius: 0,
           ),
@@ -353,7 +354,7 @@ class _AlertsPageState extends State<AlertsPage> {
               ),
               const SizedBox(width: 12),
               const Text(
-                'Live Alert Feed',
+                'Alert',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -370,9 +371,9 @@ class _AlertsPageState extends State<AlertsPage> {
                         color: Colors.white70,
                       ))
                   : Text(
-                      '${filtered.length} Alerts Detected',
+                      '${filtered.length} Alerts detected',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.65),
+                        color: Colors.white.withValues(alpha: 0.65),
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -396,9 +397,9 @@ class _AlertsPageState extends State<AlertsPage> {
                         color: Colors.lightGreenAccent.shade200, size: 48),
                     const SizedBox(height: 12),
                     Text(
-                      'Belum ada alert',
+                      'No alerts available',
                       style: TextStyle(
-                          color: Colors.white.withOpacity(0.75), fontSize: 16),
+                          color: Colors.white.withValues(alpha: 0.75), fontSize: 16),
                     ),
                   ],
                 ),
@@ -424,8 +425,8 @@ class _AlertsPageState extends State<AlertsPage> {
     final statusColor =
         isDown ? const Color(0xFFFF1744) : const Color(0xFF00E676);
     final bgColor = isDown
-        ? const Color(0xFFFF1744).withOpacity(0.22)
-        : const Color(0xFF00E676).withOpacity(0.18);
+        ? const Color(0xFFFF1744).withValues(alpha: 0.22)
+        : const Color(0xFF00E676).withValues(alpha: 0.18);
     final deviceName = _cleanDeviceName(alert.title);
     final ip = _extractIpFromDescription(alert.description);
     final date = alert.tanggal ?? '-';
@@ -446,10 +447,10 @@ class _AlertsPageState extends State<AlertsPage> {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.35),
+              color: statusColor.withValues(alpha: 0.35),
               shape: BoxShape.circle,
               border:
-                  Border.all(color: statusColor.withOpacity(0.9), width: 1.5),
+                  Border.all(color: statusColor.withValues(alpha: 0.9), width: 1.5),
             ),
             child: Icon(
               isDown
@@ -476,10 +477,10 @@ class _AlertsPageState extends State<AlertsPage> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.22),
+                      color: Colors.orange.withValues(alpha: 0.22),
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(
-                        color: Colors.orange.withOpacity(0.75),
+                        color: Colors.orange.withValues(alpha: 0.75),
                         width: 1,
                       ),
                     ),
@@ -517,7 +518,7 @@ class _AlertsPageState extends State<AlertsPage> {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: statusColor.withOpacity(0.4),
+                  color: statusColor.withValues(alpha: 0.4),
                   blurRadius: 4,
                   spreadRadius: 1,
                 ),
@@ -547,26 +548,62 @@ class _AlertsPageState extends State<AlertsPage> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          liquidGlassCard(
-            borderRadius: 14,
-            blurSigma: 10,
-            padding: const EdgeInsets.all(8),
-            child: const Icon(Icons.notifications_active,
-                size: 24, color: Color(0xFF90CAF9)),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      blurRadius: 10,
+                    )
+                  ],
+                ),
+                child: const Icon(
+                  Icons.notifications_active,
+                  size: 30,
+                  color: Color(0xFF1976D2),
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Alert Monitoring',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           const Text(
-            'Alert Monitoring',
+            'Monitoring View of Alert',
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              color: Colors.white70,
+              fontSize: 13,
             ),
           ),
-          const Text(
-            'Real Time Device Status Monitoring',
-            style: TextStyle(color: Colors.white70, fontSize: 12),
-          ),
+          if (_lastRefreshTime != null)
+            Row(
+              children: [
+                const Text('•', style: TextStyle(color: Colors.greenAccent)),
+                const SizedBox(width: 4),
+                Text(
+                  'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
+                  style: const TextStyle(
+                    color: Colors.greenAccent,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
         ],
       );
     }
@@ -597,15 +634,15 @@ class _AlertsPageState extends State<AlertsPage> {
             Row(
               children: [
                 const Text(
-                  'Real Time Device Status Monitoring',
+                  'Monitoring View of Alert',
                   style: TextStyle(color: Colors.white70, fontSize: 14),
                 ),
                 if (_lastRefreshTime != null) ...[
-                  const SizedBox(width: 8),
-                  const Text('•', style: TextStyle(color: Colors.white70)),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
+                  const Text('•', style: TextStyle(color: Colors.greenAccent)),
+                  const SizedBox(width: 6),
                   Text(
-                    'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}',
+                    'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
                     style: const TextStyle(
                       color: Colors.greenAccent,
                       fontSize: 12,

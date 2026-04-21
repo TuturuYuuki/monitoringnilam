@@ -9,15 +9,15 @@ BoxDecoration appGlassDecoration({
   double borderOpacity = 0.28,
 }) {
   return BoxDecoration(
-    color: Colors.white.withOpacity(fillOpacity),
+    color: Colors.white.withValues(alpha: fillOpacity),
     borderRadius: BorderRadius.circular(borderRadius),
     border: Border.all(
-      color: Colors.white.withOpacity(borderOpacity),
+      color: Colors.white.withValues(alpha: borderOpacity),
       width: 1.5,
     ),
     boxShadow: [
       BoxShadow(
-        color: Colors.black.withOpacity(0.22),
+        color: Colors.black.withValues(alpha: 0.22),
         blurRadius: 20,
         offset: const Offset(0, 8),
       ),
@@ -47,9 +47,9 @@ Widget liquidGlassCard({
 /// Inline glass field for date triggers / compact dropdown rows on dark UIs.
 BoxDecoration appGlassFieldDecoration({double radius = 16}) {
   return BoxDecoration(
-    color: Colors.white.withOpacity(0.08),
+    color: Colors.white.withValues(alpha: 0.08),
     borderRadius: BorderRadius.circular(radius),
-    border: Border.all(color: Colors.white.withOpacity(0.22)),
+    border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
   );
 }
 
@@ -68,9 +68,8 @@ bool isDesktopScreen(BuildContext context) {
 }
 
 double getResponsivePadding(BuildContext context) {
-  if (isMobileScreen(context)) return 8.0;
-  if (isTabletScreen(context)) return 14.0;
-  return 20.0;
+  if (isMobileScreen(context)) return 12.0;
+  return 24.0;
 }
 
 double getResponsiveFontSize(
@@ -113,7 +112,7 @@ Future<void> navigateWithLoading(BuildContext context, String routeName) async {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
+                color: Colors.black.withValues(alpha: 0.2),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -202,11 +201,11 @@ Widget buildLiquidGlassButton(String text, VoidCallback onPressed,
         child: Container(
           decoration: BoxDecoration(
             color: isActive
-                ? Colors.white.withOpacity(0.9)
-                : Colors.white.withOpacity(0.4),
+                ? Colors.white.withValues(alpha: 0.9)
+                : Colors.white.withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(25),
             border: Border.all(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               width: 1.5,
             ),
           ),
@@ -215,9 +214,9 @@ Widget buildLiquidGlassButton(String text, VoidCallback onPressed,
             child: InkWell(
               onTap: onPressed,
               borderRadius: BorderRadius.circular(25),
-              splashColor: Colors.white.withOpacity(0.3),
-              highlightColor: Colors.white.withOpacity(0.2),
-              hoverColor: Colors.white.withOpacity(0.15),
+              splashColor: Colors.white.withValues(alpha: 0.3),
+              highlightColor: Colors.white.withValues(alpha: 0.2),
+              hoverColor: Colors.white.withValues(alpha: 0.15),
               child: Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 32, vertical: 16),

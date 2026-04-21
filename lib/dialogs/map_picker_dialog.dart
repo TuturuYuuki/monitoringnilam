@@ -135,7 +135,7 @@ class _MapPickerDialogState extends State<MapPickerDialog> {
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.red.withOpacity(0.5),
+                                  color: Colors.red.withValues(alpha: 0.5),
                                   blurRadius: 8,
                                   spreadRadius: 2,
                                 )
@@ -229,7 +229,7 @@ class GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.grey.withOpacity(0.3)
+      ..color = Colors.grey.withValues(alpha: 0.3)
       ..strokeWidth = 1;
 
     // Draw vertical lines

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:monitoring/utils/ui_utils.dart'; // added for liquidGlassCard
 
 class DeviceTelemetryDataTableCard extends StatelessWidget {
   final List<Map<String, dynamic>> rows;
@@ -10,6 +11,7 @@ class DeviceTelemetryDataTableCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 900;
     final hasRows = rows.isNotEmpty;
     final visibleRows = hasRows
         ? rows
@@ -41,44 +43,79 @@ class DeviceTelemetryDataTableCard extends StatelessWidget {
             ),
           ];
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF172330),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-      ),
+    return liquidGlassCard(
+      padding: EdgeInsets.all(isMobile ? 12 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Data Device Telemetry',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 4,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1976D2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Device Telemetry Data',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E2C3A),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          Text(
+            isMobile
+                ? 'Swipe table left/right to view all columns.'
+                : 'Complete device telemetry table.',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.75),
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
             ),
-            child: Column(
-              children: [
-                _TelemetryHeaderRow(),
-                ...visibleRows.asMap().entries.map(
-                  (entry) => _TelemetryDataRow(
-                    row: entry.value,
-                    isLast: entry.key == visibleRows.length - 1,
+          ),
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final tableWidth = _TelemetryLayout.getTableWidth(constraints.maxWidth);
+              final columnWidths = _TelemetryLayout.getColumnWidths(tableWidth);
+
+              return Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E2C3A).withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                ),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Column(
+                    children: [
+                      _TelemetryHeaderRow(
+                        isMobile: isMobile,
+                        tableWidth: tableWidth,
+                        columnWidths: columnWidths,
+                      ),
+                      ...visibleRows.asMap().entries.map(
+                        (entry) => _TelemetryDataRow(
+                          row: entry.value,
+                          isLast: entry.key == visibleRows.length - 1,
+                          isMobile: isMobile,
+                          tableWidth: tableWidth,
+                          columnWidths: columnWidths,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              );
+            },
           ),
         ],
       ),
@@ -130,43 +167,56 @@ class _TelemetryRow {
 }
 
 class _TelemetryHeaderRow extends StatelessWidget {
+  final bool isMobile;
+  final double tableWidth;
+  final List<double> columnWidths;
+
+  const _TelemetryHeaderRow({
+    required this.isMobile,
+    required this.tableWidth,
+    required this.columnWidths,
+  });
+
   @override
   Widget build(BuildContext context) {
     const headers = [
-      ('sampled_at', 2),
-      ('cpu_load_percent', 1),
-      ('ram_usage_percent', 1),
-      ('latency_ms', 1),
-      ('response_time_ms', 1),
-      ('packet_loss_percent', 1),
-      ('traffic_rx_mbps', 1),
-      ('traffic_tx_mbps', 1),
-      ('uptime_seconds', 1),
+      'TIME',
+      'CPU %',
+      'RAM %',
+      'LATENCY',
+      'RESP TIME',
+      'PKT LOSS %',
+      'RX MBPS',
+      'TX MBPS',
+      'UPTIME',
     ];
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      width: tableWidth,
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 16, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.08),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.white.withValues(alpha: 0.12),
+            Colors.white.withValues(alpha: 0.05),
+          ],
+        ),
       ),
       child: Row(
-        children: headers
-            .map(
-              (item) => Expanded(
-                flex: item.$2,
-                child: Text(
-                  item.$1,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            )
-            .toList(growable: false),
+        children: [
+          for (int i = 0; i < headers.length; i++)
+            _tableCell(
+              text: headers[i],
+              width: columnWidths[i],
+              isHeader: true,
+              isMobile: isMobile,
+              isTime: i == 0,
+            ),
+        ],
       ),
     );
   }
@@ -175,49 +225,139 @@ class _TelemetryHeaderRow extends StatelessWidget {
 class _TelemetryDataRow extends StatelessWidget {
   final _TelemetryRow row;
   final bool isLast;
+  final bool isMobile;
+  final double tableWidth;
+  final List<double> columnWidths;
 
-  const _TelemetryDataRow({required this.row, required this.isLast});
+  const _TelemetryDataRow({
+    required this.row,
+    required this.isLast,
+    required this.isMobile,
+    required this.tableWidth,
+    required this.columnWidths,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: isLast ? Colors.transparent : Colors.white.withValues(alpha: 0.03),
-        border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {}, // For hover effect
+        hoverColor: Colors.white.withValues(alpha: 0.05),
+        child: Container(
+          width: tableWidth,
+          padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 16, vertical: 12),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: isLast ? BorderSide.none : BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+            ),
+          ),
+          child: Row(
+            children: [
+              _tableCell(
+                text: row.updated,
+                width: columnWidths[0],
+                isMobile: isMobile,
+                isTime: true,
+              ),
+              _tableCell(
+                text: row.cpuLoad,
+                width: columnWidths[1],
+                isMobile: isMobile,
+              ),
+              _tableCell(
+                text: row.ramUsage,
+                width: columnWidths[2],
+                isMobile: isMobile,
+              ),
+              _tableCell(
+                text: row.latency,
+                width: columnWidths[3],
+                isMobile: isMobile,
+              ),
+              _tableCell(
+                text: row.responseTime,
+                width: columnWidths[4],
+                isMobile: isMobile,
+              ),
+              _tableCell(
+                text: row.packetLoss,
+                width: columnWidths[5],
+                isMobile: isMobile,
+              ),
+              _tableCell(
+                text: row.trafficRx,
+                width: columnWidths[6],
+                isMobile: isMobile,
+              ),
+              _tableCell(
+                text: row.trafficTx,
+                width: columnWidths[7],
+                isMobile: isMobile,
+              ),
+              _tableCell(
+                text: row.uptime,
+                width: columnWidths[8],
+                isMobile: isMobile,
+              ),
+            ],
+          ),
         ),
       ),
-      child: Row(
-        children: [
-          _cell(row.updated, flex: 2),
-          _cell(row.cpuLoad, flex: 1),
-          _cell(row.ramUsage, flex: 1),
-          _cell(row.latency, flex: 1),
-          _cell(row.responseTime, flex: 1),
-          _cell(row.packetLoss, flex: 1),
-          _cell(row.trafficRx, flex: 1),
-          _cell(row.trafficTx, flex: 1),
-          _cell(row.uptime, flex: 1),
-        ],
-      ),
     );
+  }
+}
+
+class _TelemetryLayout {
+  static double getTableWidth(double availableWidth) {
+    return availableWidth > 1100 ? availableWidth : 1100;
   }
 
-  Widget _cell(String text, {required int flex}) {
-    return Expanded(
-      flex: flex,
+  static List<double> getColumnWidths(double tableWidth) {
+    // Proportional distribution for desktop
+    final timeWidth = tableWidth * 0.18; // 18% for Time
+    final uptimeWidth = tableWidth * 0.12; // 12% for Uptime
+    final remainingWidth = tableWidth - timeWidth - uptimeWidth;
+    final otherColWidth = remainingWidth / 7;
+
+    return [
+      timeWidth,
+      otherColWidth,
+      otherColWidth,
+      otherColWidth,
+      otherColWidth,
+      otherColWidth,
+      otherColWidth,
+      otherColWidth,
+      uptimeWidth,
+    ];
+  }
+}
+
+Widget _tableCell({
+  required String text,
+  required double width,
+  bool isHeader = false,
+  bool isMobile = false,
+  bool isTime = false,
+}) {
+  return SizedBox(
+    width: width,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Text(
         text,
-        textAlign: TextAlign.center,
+        textAlign: isTime ? TextAlign.left : TextAlign.center,
+        maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.9),
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
+          color: isHeader ? Colors.white : Colors.white.withValues(alpha: 0.9),
+          fontWeight: isHeader ? FontWeight.w800 : FontWeight.w600,
+          fontSize: isMobile ? 11 : 13,
+          letterSpacing: isHeader ? 0.5 : 0,
         ),
       ),
-    );
-  }
+    ),
+  );
 }
 

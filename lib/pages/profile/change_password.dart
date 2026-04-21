@@ -170,7 +170,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            content: const Text('Password Not Match'),
+            content: const Text('Passwords do not match'),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             actions: [
@@ -275,7 +275,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   ],
                 ),
                 content:
-                    Text(res['message'] ?? 'Kata sandi berhasil diubah'),
+                    Text(res['message'] ?? 'Password changed successfully'),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
                 actions: [
@@ -291,7 +291,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           }
         } else {
           // Show specific error message from backend
-          final errorMessage = res['message'] ?? 'Gagal mengubah kata sandi';
+          final errorMessage = res['message'] ?? 'Failed to change password';
           print('Error Message: $errorMessage');
 
           if (mounted) {
@@ -302,7 +302,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   children: [
                     Icon(Icons.error, color: Colors.red),
                     SizedBox(width: 8),
-                    Text('Gagal'),
+                    Text('Failed'),
                   ],
                 ),
                 content: Text(errorMessage),
@@ -353,7 +353,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                 currentRoute: '/change-password',
                 child: SingleChildScrollView(
                   child: Padding(
-                    padding: EdgeInsets.all(isMobile ? 8 : 24.0),
+                    padding: EdgeInsets.all(isMobile ? 12 : 24),
                     child: Center(
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
@@ -376,7 +376,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       children: [
         // Title
         const Text(
-          'Ubah kata sandi',
+          'Change Password',
           style: TextStyle(
             color: Colors.white,
             fontSize: 28,
@@ -385,7 +385,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Perbarui kata sandi Anda',
+          'Update your password',
           style: TextStyle(
             color: Colors.white70,
             fontSize: 14,
@@ -395,10 +395,10 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
+            color: Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               width: 1,
             ),
           ),
@@ -407,7 +407,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             child: Column(
               children: [
                 _buildPasswordField(
-                  'Password Now',
+                  'Current Password',
                   _currentPasswordController,
                   _showCurrentPassword,
                   () {
@@ -417,7 +417,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   },
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Password Now Cannot Be Empty';
+                      return 'Current password cannot be empty';
                     }
                     return null;
                   },
@@ -465,7 +465,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        'New Password and Confirm New Password Must Be Same',
+                        'New password and confirm password must be the same',
                         style: TextStyle(color: Colors.red, fontSize: 12),
                       ),
                     ),
@@ -475,10 +475,10 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.03),
+                    color: Colors.white.withValues(alpha: 0.03),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: Colors.orange.withOpacity(0.2),
+                      color: Colors.orange.withValues(alpha: 0.2),
                       width: 1,
                     ),
                   ),

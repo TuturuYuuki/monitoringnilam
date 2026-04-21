@@ -7,13 +7,6 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:monitoring/main.dart';
 import 'package:monitoring/theme/app_dropdown_style.dart';
-import 'package:monitoring/utils/ui_utils.dart'
-    show
-        isMobileScreen,
-        buildLiquidGlassButton,
-        showLogoutDialog,
-        liquidGlassCard,
-        appGlassFieldDecoration;
 import 'package:monitoring/services/api_service.dart';
 import 'package:monitoring/models/alert_model.dart';
 import 'package:monitoring/models/tower_model.dart';
@@ -121,7 +114,7 @@ class _ReportPageState extends State<ReportPage> {
         if (towerMap.containsKey(searchName)) {
           final tower = towerMap[searchName]!;
           newLocation = tower.location;
-          newDeviceType = 'Tower';
+          newDeviceType = 'AP';
           isDeletedDevice = false;
         } else if (cameraMap.containsKey(searchName)) {
           final camera = cameraMap[searchName]!;
@@ -153,7 +146,7 @@ class _ReportPageState extends State<ReportPage> {
     if (reportAlerts.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Belum ada data"), backgroundColor: Colors.orange),
+          content: Text("No data available"), backgroundColor: Colors.orange),
       );
       return;
     }
@@ -194,7 +187,7 @@ class _ReportPageState extends State<ReportPage> {
         'No',
         'Device',
         'Status',
-        'IP',
+        'IP Address',
         'Location',
         'Timestamp'
       ];
@@ -242,7 +235,7 @@ class _ReportPageState extends State<ReportPage> {
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(32),
-          header: (_) => pageHeader('Device UP ($upCount)', PdfColors.green100),
+          header: (_) => pageHeader('Devices UP ($upCount)', PdfColors.green100),
           build: (_) => upAlerts.isEmpty
               ? [
                   pw.Center(
@@ -273,7 +266,7 @@ class _ReportPageState extends State<ReportPage> {
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(32),
           header: (_) =>
-              pageHeader('Device DOWN ($downCount)', PdfColors.red100),
+              pageHeader('Devices DOWN ($downCount)', PdfColors.red100),
           build: (_) => downAlerts.isEmpty
               ? [
                   pw.Center(
@@ -470,7 +463,7 @@ class _ReportPageState extends State<ReportPage> {
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF2C3E50),
+      backgroundColor: AppDropdownStyle.standardPageBackground,
       body: Column(
         children: [
           const GlobalHeaderBar(currentRoute: '/report'),
@@ -582,9 +575,9 @@ class _ReportPageState extends State<ReportPage> {
           child: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.22),
+              color: Colors.white.withValues(alpha: 0.22),
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withOpacity(0.35)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
             ),
             child: const Icon(Icons.person, color: Colors.white, size: 24),
           ),
@@ -613,7 +606,7 @@ class _ReportPageState extends State<ReportPage> {
                     child: Row(
                       children: [
                         Icon(Icons.calendar_month,
-                            size: 16, color: Colors.white.withOpacity(0.85)),
+                            size: 16, color: Colors.white.withValues(alpha: 0.85)),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -631,33 +624,16 @@ class _ReportPageState extends State<ReportPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: appGlassFieldDecoration(radius: 16),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _statusFilter,
-                      isExpanded: true,
-                      dropdownColor: AppDropdownStyle.menuBackground,
-                      iconEnabledColor: Colors.white70,
-                      borderRadius: AppDropdownStyle.menuBorderRadius,
-                      style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600),
-                      items: ['ALL', 'UP', 'DOWN']
-                          .map((s) => DropdownMenuItem(
-                                value: s,
-                                child: SizedBox(
-                                  width: double.infinity,
-                                  child: Text(s,
-                                      style:
-                                          const TextStyle(color: Colors.white)),
-                                ),
-                              ))
-                          .toList(),
-                      onChanged: (val) {
-                        setState(() => _statusFilter = val!);
+                  child: AnimatedDropdownButton(
+                    value: _statusFilter,
+                    items: const ['ALL', 'UP', 'DOWN'],
+                    backgroundColor: AppDropdownStyle.menuBackground,
+                    onChanged: (String? val) {
+                      if (val != null) {
+                        setState(() => _statusFilter = val);
                         _fetchReportData();
-                      },
-                    ),
+                      }
+                    },
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -706,7 +682,7 @@ class _ReportPageState extends State<ReportPage> {
                             children: [
                               Icon(Icons.calendar_month,
                                   size: 16,
-                                  color: Colors.white.withOpacity(0.85)),
+                                  color: Colors.white.withValues(alpha: 0.85)),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
@@ -731,36 +707,17 @@ class _ReportPageState extends State<ReportPage> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: appGlassFieldDecoration(radius: 16),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: _statusFilter,
-                          isExpanded: true,
-                          dropdownColor: AppDropdownStyle.menuBackground,
-                          iconEnabledColor: Colors.white70,
-                          borderRadius: AppDropdownStyle.menuBorderRadius,
-                          style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600),
-                          items: ['ALL', 'UP', 'DOWN']
-                              .map((s) => DropdownMenuItem(
-                                    value: s,
-                                    child: SizedBox(
-                                      width: double.infinity,
-                                      child: Text(s,
-                                          style: const TextStyle(
-                                              color: Colors.white)),
-                                    ),
-                                  ))
-                              .toList(),
-                          onChanged: (val) {
-                            print("DEBUG: Dropdown changed to $val");
-                            if (val != null) {
-                              setState(() => _statusFilter = val);
-                              _fetchReportData();
-                            }
-                          },
-                        ),
+                      child: AnimatedDropdownButton(
+                        value: _statusFilter,
+                        items: const ['ALL', 'UP', 'DOWN'],
+                        backgroundColor: AppDropdownStyle.menuBackground,
+                        onChanged: (String? val) {
+                          print("DEBUG: Dropdown changed to $val");
+                          if (val != null) {
+                            setState(() => _statusFilter = val);
+                            _fetchReportData();
+                          }
+                        },
                       ),
                     ),
                   ),
@@ -807,6 +764,7 @@ class _ReportPageState extends State<ReportPage> {
       firstDate: DateTime(2024),
       lastDate: DateTime(2030),
       builder: (context, child) {
+        final bool isMobile = MediaQuery.of(context).size.width < 600;
         // App Core Colors
         const Color primaryBlue = Color(0xFF1976D2);
         const Color backgroundDark = Color(0xFF2C3E50);
@@ -814,83 +772,124 @@ class _ReportPageState extends State<ReportPage> {
 
         return Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 550, maxHeight: 600),
+            constraints: BoxConstraints(
+              maxWidth: isMobile ? 300 : 550,
+              maxHeight: isMobile ? 315 : 600,
+            ),
             child: Container(
-              margin: const EdgeInsets.all(24),
+              margin: EdgeInsets.all(isMobile ? 4 : 24),
+              decoration: BoxDecoration(
+                boxShadow: isMobile ? [] : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(28),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                  child: Theme(
-                    data: Theme.of(context).copyWith(
-                      brightness: Brightness.dark,
-                      colorScheme: ColorScheme.dark(
-                        primary: primaryBlue,
-                        onPrimary: Colors.white,
-                        surface: backgroundDark.withOpacity(0.85),
-                        onSurface: Colors.white,
-                        secondary: const Color(0xFF64B5F6),
-                        onSecondary: Colors.white,
-                        surfaceContainerHighest: surfaceDark.withOpacity(0.5),
-                      ),
-                      appBarTheme: const AppBarTheme(
-                        backgroundColor: primaryBlue,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        centerTitle: false,
-                        iconTheme: IconThemeData(color: Colors.white),
-                      ),
-                      dialogTheme: DialogThemeData(
-                        backgroundColor: backgroundDark.withOpacity(0.85),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(28),
-                        ),
-                      ),
-                      datePickerTheme: DatePickerThemeData(
-                        backgroundColor: Colors.transparent,
-                        headerBackgroundColor: primaryBlue,
-                        headerForegroundColor: Colors.white,
-                        rangeSelectionBackgroundColor:
-                            primaryBlue.withOpacity(0.45),
-                        rangePickerHeaderBackgroundColor: primaryBlue,
-                        rangePickerHeaderForegroundColor: Colors.white,
-                        rangePickerSurfaceTintColor: Colors.transparent,
-                        surfaceTintColor: Colors.transparent,
-                        dayStyle: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                        weekdayStyle: const TextStyle(
-                          color: Colors.white70,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                        dayForegroundColor:
-                            WidgetStateProperty.resolveWith((states) {
-                          if (states.contains(WidgetState.disabled)) {
-                            return Colors.white24;
-                          }
-                          return Colors.white;
-                        }),
-                        todayForegroundColor:
-                            WidgetStateProperty.all(const Color(0xFFFFD54F)),
-                        todayBorder: const BorderSide(
-                            color: Color(0xFFFFD54F), width: 1.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(28),
-                        ),
-                      ),
-                      textButtonTheme: TextButtonThemeData(
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          textStyle: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 14),
-                        ),
+                borderRadius: BorderRadius.circular(isMobile ? 12 : 28),
+                child: Theme(
+                  data: Theme.of(context).copyWith(
+                    brightness: Brightness.dark,
+                    colorScheme: ColorScheme.dark(
+                      primary: primaryBlue,
+                      onPrimary: Colors.white,
+                      surface: backgroundDark.withValues(alpha: 1.0),
+                      onSurface: Colors.white,
+                      secondary: const Color(0xFF64B5F6),
+                      onSecondary: Colors.white,
+                      surfaceContainerHighest: surfaceDark.withValues(alpha: 0.8),
+                    ),
+                    secondaryHeaderColor: Colors.white,
+                    appBarTheme: const AppBarTheme(
+                      backgroundColor: primaryBlue,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      centerTitle: false,
+                      iconTheme: IconThemeData(color: Colors.white),
+                    ),
+                    dialogTheme: DialogThemeData(
+                      backgroundColor: backgroundDark,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(isMobile ? 16 : 28),
                       ),
                     ),
+                    inputDecorationTheme: InputDecorationTheme(
+                      labelStyle: const TextStyle(color: Colors.white70),
+                      hintStyle: const TextStyle(color: Colors.white38),
+                      suffixIconColor: Colors.white70,
+                      prefixIconColor: Colors.white70,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Colors.white38),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Colors.white24),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF00D9FF)),
+                      ),
+                    ),
+                    datePickerTheme: DatePickerThemeData(
+                      backgroundColor: Colors.transparent,
+                      headerBackgroundColor: primaryBlue,
+                      headerForegroundColor: Colors.white,
+                      rangeSelectionBackgroundColor:
+                          primaryBlue.withValues(alpha: 0.45),
+                      rangePickerHeaderBackgroundColor: primaryBlue,
+                      rangePickerHeaderForegroundColor: Colors.white,
+                      rangePickerSurfaceTintColor: Colors.transparent,
+                      surfaceTintColor: Colors.transparent,
+                      rangePickerHeaderHeadlineStyle: TextStyle(
+                        fontSize: isMobile ? 14 : 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      rangePickerHeaderHelpStyle: TextStyle(
+                        fontSize: isMobile ? 8 : 12,
+                        color: Colors.white.withValues(alpha: 0.85),
+                      ),
+                      dayStyle: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: isMobile ? 8 : 14,
+                      ),
+                      weekdayStyle: TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.bold,
+                        fontSize: isMobile ? 8 : 12,
+                      ),
+                      dayForegroundColor:
+                          WidgetStateProperty.resolveWith((states) {
+                        if (states.contains(WidgetState.disabled)) {
+                          return Colors.white24;
+                        }
+                        return Colors.white;
+                      }),
+                      todayForegroundColor:
+                          WidgetStateProperty.all(const Color(0xFFFFD54F)),
+                      todayBorder: const BorderSide(
+                          color: Color(0xFFFFD54F), width: 1.5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(isMobile ? 16 : 28),
+                      ),
+                    ),
+                    textButtonTheme: TextButtonThemeData(
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        padding: isMobile ? const EdgeInsets.symmetric(horizontal: 12, vertical: 8) : null,
+                        textStyle: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: isMobile ? 11 : 14),
+                      ),
+                    ),
+                  ),
+                  child: Transform.scale(
+                    scale: isMobile ? 0.82 : 1.0,
                     child: Material(
-                      color: backgroundDark.withOpacity(0.75),
+                      color: backgroundDark,
                       child: child,
                     ),
                   ),
@@ -914,7 +913,7 @@ class _ReportPageState extends State<ReportPage> {
       return const Padding(
         padding: EdgeInsets.only(top: 100),
         child: Center(
-            child: Text("Belum ada data",
+            child: Text("No data available",
                 style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -923,7 +922,6 @@ class _ReportPageState extends State<ReportPage> {
     }
 
     final filteredAlerts = _filterByDeviceType(_allReportAlerts);
-
     final totalCount = filteredAlerts.length;
     final isMobile = isMobileScreen(context);
 
@@ -1019,7 +1017,7 @@ class _ReportPageState extends State<ReportPage> {
                                     color: Colors.black87)),
                             Expanded(
                                 flex: 2,
-                                child: _ReportHeaderText('AKSI',
+                                child: _ReportHeaderText('ACTION',
                                     color: Colors.black87)),
                           ],
                         ),
@@ -1038,10 +1036,10 @@ class _ReportPageState extends State<ReportPage> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 20, vertical: 12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF2C3E50).withOpacity(0.9),
+                            color: const Color(0xFF2C3E50).withValues(alpha: 0.9),
                             border: Border(
                               bottom: BorderSide(
-                                  color: Colors.white.withOpacity(0.1),
+                                  color: Colors.white.withValues(alpha: 0.1),
                                   width: 1),
                             ),
                           ),
@@ -1066,12 +1064,12 @@ class _ReportPageState extends State<ReportPage> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 8, vertical: 2),
                                         decoration: BoxDecoration(
-                                          color: Colors.orange.withOpacity(0.2),
+                                          color: Colors.orange.withValues(alpha: 0.2),
                                           borderRadius:
                                               BorderRadius.circular(999),
                                           border: Border.all(
                                             color:
-                                                Colors.orange.withOpacity(0.75),
+                                                Colors.orange.withValues(alpha: 0.75),
                                             width: 1,
                                           ),
                                         ),
@@ -1154,12 +1152,12 @@ class _ReportPageState extends State<ReportPage> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color:
-            isWhite ? Colors.white.withOpacity(0.18) : accent.withOpacity(0.12),
+            isWhite ? Colors.white.withValues(alpha: 0.18) : accent.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
           color: isWhite
-              ? Colors.white.withOpacity(0.45)
-              : accent.withOpacity(0.5),
+              ? Colors.white.withValues(alpha: 0.45)
+              : accent.withValues(alpha: 0.5),
         ),
       ),
       child: Text(
@@ -1205,7 +1203,7 @@ class _ReportPageState extends State<ReportPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: tone.withOpacity(0.35)),
+        border: Border.all(color: tone.withValues(alpha: 0.35)),
       ),
       child: Column(
         children: [
@@ -1213,7 +1211,7 @@ class _ReportPageState extends State<ReportPage> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: tone.withOpacity(0.08),
+              color: tone.withValues(alpha: 0.08),
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(12)),
             ),
@@ -1258,7 +1256,7 @@ class _ReportPageState extends State<ReportPage> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      color: tone.withOpacity(0.1),
+                      color: tone.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -1282,7 +1280,7 @@ class _ReportPageState extends State<ReportPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Konfirmasi hapus'),
+        title: const Text('Delete confirmation'),
         content: Text('Hapus report log untuk ${alert.title}?'),
         actions: [
           TextButton(
@@ -1302,7 +1300,7 @@ class _ReportPageState extends State<ReportPage> {
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Log berhasil dihapus'),
+              content: Text('Log successfully deleted'),
               backgroundColor: Colors.green),
         );
         _fetchReportData();
@@ -1326,12 +1324,12 @@ class _ReportPageState extends State<ReportPage> {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
               color: isSelected
-                  ? Colors.white.withOpacity(0.2)
+                  ? Colors.white.withValues(alpha: 0.2)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color:
-                    isSelected ? Colors.white : Colors.white.withOpacity(0.3),
+                    isSelected ? Colors.white : Colors.white.withValues(alpha: 0.3),
               ),
             ),
             child: Row(
@@ -1363,9 +1361,9 @@ class _ReportPageState extends State<ReportPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
+        color: Colors.white.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.15)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

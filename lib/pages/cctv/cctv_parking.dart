@@ -1,11 +1,8 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:animations/animations.dart';
 import 'package:http/http.dart' as http;
 import 'package:monitoring/main.dart';
-import 'package:monitoring/utils/ui_utils.dart';
-import 'package:monitoring/route_proxy_page.dart';
 import 'package:monitoring/services/api_service.dart';
 import 'package:monitoring/utils/location_label_utils.dart';
 import 'package:monitoring/models/camera_model.dart';
@@ -30,6 +27,11 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
   final List<Camera> allCameras = [];
   DateTime? lastUpdated;
   Timer? _refreshTimer;
+  int globalTotalCameras = 0;
+  int globalUpCameras = 0;
+  int globalDownCameras = 0;
+  bool _isLoadingGlobalSummary = true;
+  bool _isGlobalSummaryRequestInFlight = false;
 
   List<Camera> get paginatedCameras {
     int start = currentPage * camerasPerPage;
@@ -77,9 +79,9 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
+                      color: Colors.red.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -129,29 +131,31 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
   void initState() {
     super.initState();
     _loadCameras();
+    _loadGlobalSummary(initialLoad: true);
     // Refresh setiap 2 detik untuk monitoring realtime
     _refreshTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       if (mounted) {
         _loadCameras();
+        _loadGlobalSummary();
       }
     });
   }
 
   Future<void> _triggerRealtimePing() async {
     try {
-      print('=== Starting Realtime Ping For All Cameras (PARKING) ===');
+      debugPrint('=== Starting Realtime Ping For All Cameras (PARKING) ===');
 
       final apiService = ApiService();
       final pingResult = await apiService.triggerRealtimePing();
 
       if (pingResult['success'] == true) {
-        print('Realtime Ping Completed: ${pingResult['message']}');
-        print('IP Checked: ${pingResult['ips_checked']}');
+        debugPrint('Realtime Ping Completed: ${pingResult['message']}');
+        debugPrint('IP Checked: ${pingResult['ips_checked']}');
       }
 
-      print('=== Realtime Ping Completed (PARKING) ===');
+      debugPrint('=== Realtime Ping Completed (PARKING) ===');
     } catch (e) {
-      print('Error Triggering Realtime Ping: $e');
+      debugPrint('Error Triggering Realtime Ping: $e');
     }
   }
 
@@ -162,6 +166,8 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
           isLoading = true;
         });
       }
+
+      final resolvedPerPage = _resolveCamerasPerPage();
 
       final cameras =
           await ApiService().getValidatedCamerasByAreaType('Parking');
@@ -176,18 +182,45 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
           } else if (totalPages == 0) {
             currentPage = 0;
           }
+          camerasPerPage = resolvedPerPage;
           lastUpdated = DateTime.now();
         });
       }
 
       _triggerRealtimePing();
     } catch (e) {
-      print('Error Loading Camera: $e');
+      debugPrint('Error Loading Camera: $e');
       if (mounted) {
         setState(() {
           isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _loadGlobalSummary({bool initialLoad = false}) async {
+    if (_isGlobalSummaryRequestInFlight) return;
+    _isGlobalSummaryRequestInFlight = true;
+    try {
+      if (mounted && initialLoad) {
+        setState(() => _isLoadingGlobalSummary = true);
+      }
+      final cameras = await ApiService().getAllCameras();
+      final up = cameras.where((c) => c.status == 'UP').length;
+      final down = cameras.length - up;
+      if (mounted) {
+        setState(() {
+          globalTotalCameras = cameras.length;
+          globalUpCameras = up;
+          globalDownCameras = down;
+          _isLoadingGlobalSummary = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading CCTV global overview: $e');
+      if (mounted) setState(() => _isLoadingGlobalSummary = false);
+    } finally {
+      _isGlobalSummaryRequestInFlight = false;
     }
   }
 
@@ -201,7 +234,7 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
           .timeout(
         const Duration(seconds: 10),
         onTimeout: () {
-          print('Realtime Ping Timed Out');
+          debugPrint('Realtime Ping Timed Out');
           return http.Response('{"Success":False}', 408);
         },
       );
@@ -210,7 +243,7 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
         await _loadCameras();
       }
     } catch (e) {
-      print('Error Triggering Ping Check (Ignored): $e');
+      debugPrint('Error Triggering Ping Check (Ignored): $e');
     }
   }
 
@@ -224,7 +257,7 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF2C3E50),
+      backgroundColor: AppDropdownStyle.standardPageBackground,
       body: Column(
         children: [
           const GlobalHeaderBar(currentRoute: '/cctv-parking'),
@@ -248,238 +281,6 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    final isMobile = isMobileScreen(context);
-    double screenWidth = MediaQuery.of(context).size.width;
-    return Container(
-      width: screenWidth,
-      padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 12 : 24, vertical: isMobile ? 12 : 16),
-      color: const Color(0xFF1976D2),
-      child: isMobile
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Terminal Nilam',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: isMobile ? 28 : 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: OpenContainer(
-                        transitionDuration: const Duration(milliseconds: 550),
-                        transitionType: ContainerTransitionType.fadeThrough,
-                        closedElevation: 0,
-                        closedColor: Colors.transparent,
-                        closedShape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(50),
-                        ),
-                        openElevation: 0,
-                        openBuilder: (context, _) =>
-                            const RouteProxyPage('/profile'),
-                        closedBuilder: (context, openContainer) {
-                          return GestureDetector(
-                            onTap: openContainer,
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.9),
-                                borderRadius: BorderRadius.circular(50),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 8,
-                                    spreadRadius: 1,
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.person,
-                                color: Color(0xFF1976D2),
-                                size: 24,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(context)
-                      .copyWith(scrollbars: false),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildHeaderOpenButton(
-                            '+ Add New Device', '/add-device',
-                            isActive: false),
-                        const SizedBox(width: 4),
-                        _buildHeaderOpenButton('Dashboard', '/dashboard',
-                            isActive: false),
-                        const SizedBox(width: 4),
-                        _buildHeaderOpenButton('Access Point', '/network',
-                            isActive: false),
-                        const SizedBox(width: 4),
-                        _buildHeaderOpenButton('CCTV', '/cctv', isActive: true),
-                        const SizedBox(width: 4),
-                        _buildHeaderOpenButton('Alert', '/alerts',
-                            isActive: false),
-                        const SizedBox(width: 4),
-                        _buildHeaderOpenButton('Alert Report', '/report',
-                            isActive: false),
-                        const SizedBox(width: 4),
-                        _buildHeaderLogoutButton(),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            )
-          : Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Terminal Nilam - TETAP FIXED
-                const Text(
-                  'Terminal Nilam',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(width: 30),
-                // Buttons - SCROLL HORIZONTAL
-                Expanded(
-                  child: ScrollConfiguration(
-                    behavior: ScrollConfiguration.of(context)
-                        .copyWith(scrollbars: false),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildHeaderOpenButton(
-                              'Add New Device', '/add-device',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderOpenButton(
-                              'Master Data', '/tower-management',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderOpenButton('Dashboard', '/dashboard',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderOpenButton('Access Point', '/network',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderOpenButton('CCTV', '/cctv',
-                              isActive: true),
-                          const SizedBox(width: 12),
-                          _buildHeaderOpenButton('MMT', '/mmt-monitoring',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderOpenButton('Alert', '/alerts',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderOpenButton('Alert Report', '/report',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderLogoutButton(),
-                          const SizedBox(width: 12),
-                          // Profile Icon - SCROLL dengan buttons
-                          MouseRegion(
-                            cursor: SystemMouseCursors.click,
-                            child: OpenContainer(
-                              transitionDuration:
-                                  const Duration(milliseconds: 550),
-                              transitionType:
-                                  ContainerTransitionType.fadeThrough,
-                              closedElevation: 0,
-                              closedColor: Colors.transparent,
-                              closedShape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(50),
-                              ),
-                              openElevation: 0,
-                              openBuilder: (context, _) =>
-                                  const RouteProxyPage('/profile'),
-                              closedBuilder: (context, openContainer) {
-                                return GestureDetector(
-                                  onTap: openContainer,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.9),
-                                      borderRadius: BorderRadius.circular(50),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.1),
-                                          blurRadius: 8,
-                                          spreadRadius: 1,
-                                        ),
-                                      ],
-                                    ),
-                                    child: const Icon(
-                                      Icons.person,
-                                      color: Color(0xFF1976D2),
-                                      size: 24,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-    );
-  }
-
-  Widget _buildHeaderButton(String text, VoidCallback onPressed,
-      {bool isActive = false}) {
-    return buildLiquidGlassButton(text, onPressed, isActive: isActive);
-  }
-
-  Widget _buildHeaderOpenButton(String text, String route,
-      {bool isActive = false}) {
-    return OpenContainer(
-      transitionDuration: const Duration(milliseconds: 550),
-      transitionType: ContainerTransitionType.fadeThrough,
-      closedElevation: 0,
-      closedColor: Colors.transparent,
-      closedShape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      openElevation: 0,
-      openBuilder: (context, _) => RouteProxyPage(route),
-      closedBuilder: (context, openContainer) {
-        return buildLiquidGlassButton(text, openContainer, isActive: isActive);
-      },
-    );
-  }
-
-  Widget _buildHeaderLogoutButton() {
-    return buildLiquidGlassButton('Logout', () => _showLogoutDialog(context),
-        isActive: false);
-  }
 
   Widget _buildContent(BuildContext context, BoxConstraints constraints) {
     final isMobile =
@@ -487,176 +288,117 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // --- TITLE SECTION ---
-        if (isMobile)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Icon CCTV dengan Border Putih (Mobile)
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.videocam,
-                  size: 24,
-                  color: Color(0xFF1976D2),
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'CCTV Monitoring',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Text(
-                'Live Camera Feeds And Surveillance System Status',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          )
-        else
-          Row(
-            children: [
-              // Icon CCTV dengan Border Putih (Desktop)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1976D2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.videocam,
-                  size: 32,
-                  color: Colors
-                      .white, // Warna Putih untuk kontras terhadap biru tema
-                ),
-              ),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'CCTV Monitoring',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Text(
-                        'Live Camera Feeds And Surveillance System Status',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
-                      ),
-                      if (lastUpdated != null) ...[
-                        const SizedBox(width: 8),
-                        const Text('•',
-                            style: TextStyle(color: Colors.white70)),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Updated: ${lastUpdated!.hour.toString().padLeft(2, '0')}:${lastUpdated!.minute.toString().padLeft(2, '0')}:${lastUpdated!.second.toString().padLeft(2, '0')}',
-                          style: const TextStyle(
-                            color: Colors.greenAccent,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-              const Spacer(),
-              // Fullscreen Button
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, '/cctv-fullscreen'),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.fullscreen,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        const SizedBox(height: 24),
+        isMobile ? _buildMobileHeader() : _buildDesktopHeader(),
+        const SizedBox(height: 16),
 
         // --- STATS CARDS ROW ---
         LayoutBuilder(
           builder: (context, constraints) {
-            // Penyesuaian lebar kartu untuk mobile (bisa scroll horizontal)
-            double cardWidth = isMobile
-                ? (constraints.maxWidth - 16) / 1.5
-                : constraints.maxWidth > 1400
-                    ? (constraints.maxWidth - 100) / 5
-                    : (constraints.maxWidth - 80) / 3;
-
             return isMobile
-                ? SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildStatCard('Total Camera', '${allCameras.length}',
-                            Colors.orange, cardWidth),
-                        const SizedBox(width: 8),
-                        _buildStatCard(
-                            'UP', '$upCameras', Colors.green, cardWidth),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: _showOfflineList,
-                          child: _buildStatCard(
-                              'DOWN', '$downCameras', Colors.red, cardWidth),
-                        ),
-                      ],
-                    ),
-                  )
-                : Wrap(
-                    spacing: 16,
-                    runSpacing: 16,
+                ? Column(
                     children: [
-                      _buildStatCard('Total Camera', '${allCameras.length}',
-                          Colors.orange, cardWidth),
-                      _buildStatCard(
-                          'UP', '$upCameras', Colors.green, cardWidth),
-                      GestureDetector(
-                        onTap: _showOfflineList,
-                        child: _buildStatCard(
-                            'DOWN', '$downCameras', Colors.red, cardWidth),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildStatCard(
+                              'Total CCTV',
+                              '${allCameras.length}',
+                              Colors.blue,
+                              compact: true,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildStatCard(
+                              'UP',
+                              '$upCameras',
+                              Colors.green,
+                              compact: true,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: downCameras > 0 ? _showOfflineList : null,
+                              child: _buildStatCard(
+                                'DOWN',
+                                '$downCameras',
+                                Colors.red,
+                                compact: true,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      _buildCCTVDropdown(cardWidth),
-                      _buildAreaButton(cardWidth),
-                      _buildCheckStatusButton(cardWidth),
+                      const SizedBox(height: 12),
+                      Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                  child: _buildCCTVDropdown(double.infinity)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                  child:
+                                      _buildCheckStatusButton(double.infinity)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                  child: _buildAreaButton(double.infinity)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                                child: _buildStatCard('Total CCTV',
+                                    '${allCameras.length}', Colors.blue)),
+                            const SizedBox(width: 16),
+                            Expanded(
+                                child: _buildStatCard(
+                                    'UP', '$upCameras', Colors.green)),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: downCameras > 0 ? _showOfflineList : null,
+                                child: _buildStatCard(
+                                    'DOWN', '$downCameras', Colors.red),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildCCTVDropdown(constraints.maxWidth),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildAreaButton(constraints.maxWidth),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildCheckStatusButton(constraints.maxWidth),
+                          ),
+                        ],
+                      ),
                     ],
                   );
           },
         ),
+
         const SizedBox(height: 24),
 
         // --- CAMERA GRID ---
@@ -669,34 +411,138 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
     );
   }
 
-  Widget _buildStatCard(
-      String title, String value, Color indicatorColor, double width) {
+  Widget _buildHeaderOverviewMini({required bool isMobile}) {
+    final cards = [
+      _buildGlobalStatCard('ALL', '$globalTotalCameras', Colors.orange,
+          width: isMobile ? null : 86),
+      _buildGlobalStatCard('UP', '$globalUpCameras', Colors.green,
+          width: isMobile ? null : 86),
+      _buildGlobalStatCard('DOWN', '$globalDownCameras', Colors.red,
+          width: isMobile ? null : 86),
+    ];
+
+    final content = isMobile
+        ? Row(
+            children: [
+              Expanded(child: cards[0]),
+              const SizedBox(width: 8),
+              Expanded(child: cards[1]),
+              const SizedBox(width: 8),
+              Expanded(child: cards[2]),
+            ],
+          )
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              cards[0],
+              const SizedBox(width: 8),
+              cards[1],
+              const SizedBox(width: 8),
+              cards[2],
+            ],
+          );
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Overview Data All Area',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: isMobile ? 12 : 14,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          content,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGlobalStatCard(String title, String value, Color indicatorColor,
+      {double? width}) {
+    return Container(
+      width: width,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 10,
+                ),
+              ),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: indicatorColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 18,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String title, String value, Color indicatorColor,
+      {double? width, bool compact = false}) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(20),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           width: width,
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(compact ? 12 : 20),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.white.withOpacity(0.12),
-                Colors.white.withOpacity(0.02),
+                Colors.white.withValues(alpha: 0.2),
+                Colors.white.withValues(alpha: 0.05),
               ],
             ),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Colors.white.withOpacity(0.25),
+              color: Colors.white.withValues(alpha: 0.2),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 15,
-                spreadRadius: 2,
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -707,39 +553,47 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
-                    child: Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white.withOpacity(0.6),
-                        letterSpacing: 1.2,
+                    child: SizedBox(
+                      height: compact ? 32 : 20,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: compact ? 11 : 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white.withValues(alpha: 0.9),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                   Container(
-                    width: 10,
-                    height: 10,
+                    width: compact ? 10 : 12,
+                    height: compact ? 10 : 12,
                     decoration: BoxDecoration(
                       color: indicatorColor,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: indicatorColor.withOpacity(0.5),
-                          blurRadius: 6,
-                          spreadRadius: 1,
+                          color: indicatorColor.withValues(alpha: 0.5),
+                          blurRadius: 8,
+                          spreadRadius: 2,
                         ),
                       ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               Text(
                 value,
-                style: const TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w900,
+                style: TextStyle(
+                  fontSize: compact ? 24 : 32,
+                  fontWeight: FontWeight.bold,
                   color: Colors.white,
                   letterSpacing: -0.5,
                 ),
@@ -747,10 +601,13 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
               const SizedBox(height: 4),
               Container(
                 height: 2,
-                width: 40,
+                width: compact ? 30 : 40,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [indicatorColor, indicatorColor.withOpacity(0)],
+                    colors: [
+                      indicatorColor,
+                      indicatorColor.withValues(alpha: 0)
+                    ],
                   ),
                   borderRadius: BorderRadius.circular(2),
                 ),
@@ -771,263 +628,158 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
       'PARKING'
     ];
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          width: width,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withOpacity(0.12),
-                Colors.white.withOpacity(0.02),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.25),
-              width: 1.5,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(Icons.location_on_rounded,
-                    color: Colors.white, size: 20),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'AREA',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 2.0,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: null,
-                        hint: const Text(
-                          "SELECT AREA",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 14,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        dropdownColor: AppDropdownStyle.menuBackground,
-                        borderRadius: AppDropdownStyle.menuBorderRadius,
-                        isExpanded: true,
-                        icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                            color: Colors.white, size: 20),
-                        items: areaOptions.map((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(
-                              value,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          if (newValue == null) return;
-
-                          if (newValue == 'CY 1') {
-                            Navigator.pushReplacementNamed(context, '/cctv');
-                          } else if (newValue == 'CY 2') {
-                            Navigator.pushReplacementNamed(
-                                context, '/cctv-cy2');
-                          } else if (newValue == 'CY 3') {
-                            Navigator.pushReplacementNamed(
-                                context, '/cctv-cy3');
-                          } else if (newValue == 'GATE') {
-                            Navigator.pushReplacementNamed(
-                                context, '/cctv-gate');
-                          } else if (newValue == 'PARKING') {
-                            Navigator.pushReplacementNamed(
-                                context, '/cctv-parking');
-                          }
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+    return _buildActionCard(
+      title: 'AREA',
+      icon: Icons.location_on_rounded,
+      iconColor: Colors.white,
+      content: AnimatedDropdownButton(
+        value: "Select Area",
+        items: areaOptions,
+        backgroundColor: AppDropdownStyle.menuBackground,
+        onChanged: (String? newValue) {
+          if (newValue == null) return;
+          if (newValue == 'CY 1') {
+            Navigator.pushReplacementNamed(context, '/cctv');
+          } else if (newValue == 'CY 2') {
+            Navigator.pushReplacementNamed(context, '/cctv-cy2');
+          } else if (newValue == 'CY 3') {
+            Navigator.pushReplacementNamed(context, '/cctv-cy3');
+          } else if (newValue == 'GATE') {
+            Navigator.pushReplacementNamed(context, '/cctv-gate');
+          } else if (newValue == 'PARKING') {
+            Navigator.pushReplacementNamed(context, '/cctv-parking');
+          }
+        },
       ),
     );
   }
 
   Widget _buildAreaButton(double width) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          width: width,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFF1976D2).withOpacity(0.12),
-                const Color(0xFF1976D2).withOpacity(0.02),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: const Color(0xFF1976D2).withOpacity(0.25),
-              width: 1.5,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1976D2).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(Icons.location_on_rounded,
-                    color: Colors.white, size: 20),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'AREA',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 2.0,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      selectedArea,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 15,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+    return _buildActionCard(
+      title: 'AREA',
+      icon: Icons.location_on_rounded,
+      iconColor: const Color(0xFF1976D2),
+      content: Text(
+        selectedArea,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w900,
+          fontSize: 15,
+          letterSpacing: 0.5,
         ),
       ),
     );
   }
 
   Widget _buildCheckStatusButton(double width) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: () async {
+    return _buildActionCard(
+      title: 'ACTION',
+      icon: Icons.refresh_rounded,
+      iconColor: const Color(0xFF4CAF50),
+      onTap: () async {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Checking status...'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        await _triggerPingCheck();
+        await _loadCameras();
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Memeriksa status...'),
+              content: Text('✓ Status successfully updated!'),
+              backgroundColor: Colors.green,
               duration: Duration(seconds: 2),
             ),
           );
-          await _triggerPingCheck();
-          await _loadCameras();
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('✓ Status berhasil diperbarui!'),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 2),
-              ),
-            );
-          }
-        },
+        }
+      },
+      content: const Text(
+        'CHECK STATUS',
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w900,
+          fontSize: 15,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionCard({
+    required String title,
+    required IconData icon,
+    required Color iconColor,
+    required Widget content,
+    VoidCallback? onTap,
+  }) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
+    return MouseRegion(
+      cursor:
+          onTap != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      child: GestureDetector(
+        onTap: onTap,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(24),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
             child: Container(
-              width: width,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 12 : 16, vertical: 12),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    const Color(0xFF4CAF50).withOpacity(0.12),
-                    const Color(0xFF4CAF50).withOpacity(0.02),
+                    Colors.white.withValues(alpha: 0.12),
+                    Colors.white.withValues(alpha: 0.02),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: const Color(0xFF4CAF50).withOpacity(0.25),
+                  color: Colors.white.withValues(alpha: 0.2),
                   width: 1.5,
                 ),
               ),
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(isMobile ? 8 : 10),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: iconColor.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(Icons.refresh_rounded,
-                        color: Colors.white, size: 20),
+                    child: Icon(icon,
+                        color: Colors.white, size: isMobile ? 18 : 20),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: isMobile ? 12 : 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'AKSI',
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.6),
+                            color: Colors.white.withValues(alpha: 0.6),
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 2.0,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'CEK STATUS',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 15,
-                            letterSpacing: 0.5,
-                          ),
+                        SizedBox(
+                          width: double.infinity,
+                          child: content is Text
+                              ? FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: content,
+                                )
+                              : content,
                         ),
                       ],
                     ),
@@ -1055,13 +807,13 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.white.withOpacity(0.12),
-                  Colors.white.withOpacity(0.02),
+                  Colors.white.withValues(alpha: 0.12),
+                  Colors.white.withValues(alpha: 0.02),
                 ],
               ),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 width: 1.5,
               ),
             ),
@@ -1073,7 +825,7 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                       color: Colors.white, strokeWidth: 3),
                   SizedBox(height: 20),
                   Text(
-                    'LOADING CAMERAS...',
+                    'Loading CCTV data...',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.white,
@@ -1102,13 +854,13 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.white.withOpacity(0.12),
-                  Colors.white.withOpacity(0.02),
+                  Colors.white.withValues(alpha: 0.12),
+                  Colors.white.withValues(alpha: 0.02),
                 ],
               ),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 width: 1.5,
               ),
             ),
@@ -1123,7 +875,8 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                   ),
                   SizedBox(height: 20),
                   Text(
-                    'NO DATA CAMERA',
+                    'No CCTV data available',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
@@ -1177,18 +930,18 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Colors.white.withOpacity(0.15),
-                    Colors.white.withOpacity(0.04),
+                    Colors.white.withValues(alpha: 0.15),
+                    Colors.white.withValues(alpha: 0.04),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.25),
+                  color: Colors.white.withValues(alpha: 0.25),
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     blurRadius: 15,
                     offset: const Offset(0, 8),
                   ),
@@ -1204,7 +957,7 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Colors.white.withOpacity(0.08),
+                            Colors.white.withValues(alpha: 0.08),
                             Colors.transparent,
                           ],
                         ),
@@ -1216,23 +969,23 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                           decoration: BoxDecoration(
                             gradient: RadialGradient(
                               colors: [
-                                statusColor.withOpacity(0.3),
-                                statusColor.withOpacity(0.1),
+                                statusColor.withValues(alpha: 0.3),
+                                statusColor.withValues(alpha: 0.1),
                               ],
                             ),
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: statusColor.withOpacity(0.6),
+                              color: statusColor.withValues(alpha: 0.6),
                               width: 2,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: statusColor.withOpacity(0.4),
+                                color: statusColor.withValues(alpha: 0.4),
                                 blurRadius: 15,
                                 spreadRadius: 2,
                               ),
                               BoxShadow(
-                                color: Colors.white.withOpacity(0.3),
+                                color: Colors.white.withValues(alpha: 0.3),
                                 blurRadius: 4,
                                 spreadRadius: 0.5,
                               ),
@@ -1251,10 +1004,10 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       border: Border(
                         top: BorderSide(
-                          color: Colors.white.withOpacity(0.08),
+                          color: Colors.white.withValues(alpha: 0.08),
                           width: 1,
                         ),
                       ),
@@ -1285,7 +1038,7 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
               filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: PopupMenuButton<String>(
@@ -1306,7 +1059,7 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                         children: [
                           Icon(Icons.edit, color: Colors.blueAccent, size: 18),
                           SizedBox(width: 8),
-                          Text('Ubah', style: TextStyle(color: Colors.white)),
+                          Text('Edit', style: TextStyle(color: Colors.white)),
                         ],
                       ),
                     ),
@@ -1331,95 +1084,114 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
   }
 
   Widget _buildPagination() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.2),
-              width: 1.5,
-            ),
-          ),
+    // Ensure at least 1 page is shown even if data is empty
+    final int displayPages = totalPages > 0 ? totalPages : 1;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Center(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                'Menampilkan ${(currentPage * camerasPerPage) + 1}-${(currentPage * camerasPerPage) + paginatedCameras.length} dari ${allCameras.length} kamera',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withOpacity(0.7),
-                ),
+              // Previous Button
+              _buildPaginationButton(
+                label: 'Previous',
+                onTap: currentPage > 0
+                    ? () => setState(() => currentPage--)
+                    : null,
+                color: const Color(0xFFE53935),
+                isFirst: true,
               ),
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.chevron_left, color: Colors.white),
-                    onPressed: currentPage > 0
-                        ? () {
-                            setState(() {
-                              currentPage--;
-                            });
-                          }
-                        : null,
-                  ),
-                  ...List.generate(totalPages, (index) {
-                    final isCurrent = currentPage == index;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            currentPage = index;
-                          });
-                        },
-                        child: Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            color: isCurrent
-                                ? const Color(0xFF1976D2).withOpacity(0.8)
-                                : Colors.white.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: isCurrent
-                                  ? Colors.white.withOpacity(0.5)
-                                  : Colors.white.withOpacity(0.2),
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: isCurrent
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                  IconButton(
-                    icon: const Icon(Icons.chevron_right, color: Colors.white),
-                    onPressed: currentPage < totalPages - 1
-                        ? () {
-                            setState(() {
-                              currentPage++;
-                            });
-                          }
-                        : null,
-                  ),
-                ],
+
+              // Page Numbers
+              ...List.generate(displayPages, (index) {
+                // Logic to show limited page numbers with ellipsis
+                if (displayPages > 7) {
+                  if (index != 0 &&
+                      index != displayPages - 1 &&
+                      (index < currentPage - 1 || index > currentPage + 1)) {
+                    if (index == 1 && currentPage > 3) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 4),
+                        child: Text('...', style: TextStyle(color: Colors.white70)),
+                      );
+                    }
+                    if (index == displayPages - 2 && currentPage < displayPages - 4) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 4),
+                        child: Text('...', style: TextStyle(color: Colors.white70)),
+                      );
+                    }
+                    if (index > 1 && index < displayPages - 2) return const SizedBox.shrink();
+                  }
+                }
+
+                return _buildPaginationButton(
+                  label: '${index + 1}',
+                  onTap: (allCameras.isNotEmpty && currentPage != index)
+                      ? () => setState(() => currentPage = index)
+                      : null,
+                  color: currentPage == index
+                      ? const Color(0xFF1565C0)
+                      : const Color(0xFF2196F3),
+                  isSquare: true,
+                );
+              }),
+
+              // Next Button
+              _buildPaginationButton(
+                label: 'Next',
+                onTap: currentPage < displayPages - 1 && allCameras.isNotEmpty
+                    ? () => setState(() => currentPage++)
+                    : null,
+                color: const Color(0xFFE53935),
+                isLast: true,
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaginationButton({
+    required String label,
+    VoidCallback? onTap,
+    required Color color,
+    bool isFirst = false,
+    bool isLast = false,
+    bool isSquare = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: isSquare ? 12 : 16,
+            vertical: 8,
+          ),
+          decoration: BoxDecoration(
+            color: onTap == null ? color.withValues(alpha: 0.3) : color,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              if (onTap != null)
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+            ],
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: onTap == null ? Colors.white54 : Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
           ),
         ),
       ),
@@ -1462,7 +1234,7 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
             children: [
               TextField(
                 controller: ipController,
-                decoration: const InputDecoration(labelText: 'IP Address'),
+                decoration: const InputDecoration(labelText: 'IP address'),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
@@ -1472,8 +1244,7 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
                 borderRadius: AppDropdownStyle.menuBorderRadius,
                 decoration: const InputDecoration(labelText: 'Location'),
                 items: locationOptions
-                    .map((option) => DropdownMenuItem<String>(
-                          value: option['label'],
+                    .map((option) => DropdownMenuItem<String>(value: option['label'],
                           child: Text(option['label'] ?? ''),
                         ))
                     .toList(),
@@ -1514,15 +1285,18 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
 
                 if (response['success'] == true) {
                   if (mounted) {
-                    Navigator.pop(context); // Menutup dialog
-                    _loadCameras(); // Refresh data
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    Navigator.pop(context);
+                    _loadCameras();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                         content: Text('Berhasil diperbarui'),
-                        backgroundColor: Colors.green));
+                        backgroundColor: Colors.green,
+                      ));
+                    }
                   }
                 }
               },
-              child: const Text('Save', style: TextStyle(color: Colors.white)),
+              child: const Text('Save Changes', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -1534,8 +1308,8 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Konfirmasi hapus'),
-        content: Text('Hapus kamera ${camera.cameraId}?'),
+        title: const Text('Delete confirmation'),
+        content: Text('Delete kamera ${camera.cameraId}?'),
         actions: [
           // Tombol Cancel
           TextButton(
@@ -1550,11 +1324,14 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
 
               if (response['success'] == true) {
                 if (mounted) {
-                  Navigator.pop(context); // Menutup dialog
-                  _loadCameras(); // Refresh data
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Data berhasil dihapus'),
-                      backgroundColor: Colors.red));
+                  Navigator.pop(context);
+                  _loadCameras();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Data successfully deleted'),
+                      backgroundColor: Colors.red,
+                    ));
+                  }
                 }
               }
             },
@@ -1565,36 +1342,147 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
     );
   }
 
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout', style: TextStyle(color: Colors.black87)),
-        content: const Text('Are you sure you want to exit?',
-            style: TextStyle(color: Colors.black87)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child:
-              const Text('Cancel', style: TextStyle(color: Colors.black87)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                '/login',
-                (route) => false,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+  Widget _buildMobileHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.videocam,
+                  size: 30, color: Color(0xFF1976D2)),
             ),
-            child: const Text('Logout'),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'CCTV Monitoring',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            GestureDetector(
+              onTap: () => Navigator.pushNamed(context, '/cctv-fullscreen'),
+              child: Icon(
+                Icons.fullscreen_rounded,
+                color: Colors.white.withValues(alpha: 0.8),
+                size: 28,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Monitoring View of CCTV',
+          style: TextStyle(
+            color: Colors.white70,
+            fontSize: 13,
           ),
-        ],
-      ),
+        ),
+        if (lastUpdated != null)
+          Row(
+            children: [
+              const Text('•', style: TextStyle(color: Colors.greenAccent)),
+              const SizedBox(width: 4),
+              Text(
+                'Updated: ${lastUpdated!.hour.toString().padLeft(2, '0')}:${lastUpdated!.minute.toString().padLeft(2, '0')}:${lastUpdated!.second.toString().padLeft(2, '0')}',
+                style: const TextStyle(
+                  color: Colors.greenAccent,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        const SizedBox(height: 10),
+        _buildHeaderOverviewMini(isMobile: true),
+      ],
+    );
+  }
+
+  Widget _buildDesktopHeader() {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1976D2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(
+            Icons.videocam,
+            size: 30,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'CCTV Monitoring',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Text(
+                  'Monitoring View of CCTV',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                ),
+                if (lastUpdated != null) ...[
+                  const SizedBox(width: 12),
+                  const Text('•', style: TextStyle(color: Colors.greenAccent)),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Updated: ${lastUpdated!.hour.toString().padLeft(2, '0')}:${lastUpdated!.minute.toString().padLeft(2, '0')}:${lastUpdated!.second.toString().padLeft(2, '0')}',
+                    style: const TextStyle(
+                      color: Colors.greenAccent,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+        const Spacer(),
+        _buildHeaderOverviewMini(isMobile: false),
+        const SizedBox(width: 16),
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () => Navigator.pushNamed(context, '/cctv-fullscreen'),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.fullscreen_rounded,
+                color: Colors.white,
+                size: 32,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:monitoring/main.dart';
@@ -9,6 +8,7 @@ import 'package:monitoring/utils/tower_status_override.dart';
 import 'package:monitoring/widgets/global_header_bar.dart';
 import 'package:monitoring/widgets/global_sidebar_nav.dart';
 import 'package:monitoring/widgets/global_footer.dart';
+import 'package:monitoring/theme/app_dropdown_style.dart';
 
 // Fullscreen CCTV Page - All Areas
 class CCTVFullscreenPage extends StatefulWidget {
@@ -32,12 +32,13 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
   void initState() {
     super.initState();
     _loadAllCameras();
-    // Refresh UI setiap 1 detik untuk status monitoring realtime
-    _refreshTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    // Refresh UI setiap 5 detik untuk status monitoring realtime (dikurangi frekuensinya agar tidak berat)
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       if (mounted) {
         _loadAllCameras();
       }
     });
+
 
     // Trigger continuous PING every 2 seconds independent of UI refresh
     // This ensures devices are pinged even while UI is loading
@@ -68,34 +69,34 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
       final cameras = await apiService.getAllCameras();
       final updatedCameras = applyForcedCameraStatus(cameras);
 
+      final camerasMap = updatedCameras
+          .map((c) => {
+                'id': c.cameraId,
+                'location': c.location,
+                'status': c.status,
+                'type': c.type,
+                'containerYard': c.containerYard,
+                'areaType': c.areaType,
+              })
+          .toList();
+
+      // Sort by container yard, then area type, then camera id
+      camerasMap.sort((a, b) {
+        int cmpYard = a['containerYard'].toString().compareTo(b['containerYard'].toString());
+        if (cmpYard != 0) return cmpYard;
+        int cmpArea = a['areaType'].toString().compareTo(b['areaType'].toString());
+        if (cmpArea != 0) return cmpArea;
+        return a['id'].toString().compareTo(b['id'].toString());
+      });
+
       if (mounted) {
         setState(() {
           allCameras.clear();
-          final camerasMap = updatedCameras
-              .map((c) => {
-                    'id': c.cameraId,
-                    'location': c.location,
-                    'status': c.status,
-                    'type': c.type,
-                    'containerYard': c.containerYard,
-                    'areaType': c.areaType,
-                  })
-              .toList();
-          // Sort by container yard, then area type, then camera id
-          camerasMap.sort((a, b) {
-            int cmpYard = a['containerYard']
-                .toString()
-                .compareTo(b['containerYard'].toString());
-            if (cmpYard != 0) return cmpYard;
-            int cmpArea =
-                a['areaType'].toString().compareTo(b['areaType'].toString());
-            if (cmpArea != 0) return cmpArea;
-            return a['id'].toString().compareTo(b['id'].toString());
-          });
           allCameras.addAll(camerasMap);
           isLoading = false;
         });
       }
+
 
       // Trigger realtime ping in background after UI loads
       _triggerRealtimePing();
@@ -161,24 +162,19 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
   @override
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
+    
     return Scaffold(
-      backgroundColor: const Color(0xFF2C3E50),
+      backgroundColor: AppDropdownStyle.standardPageBackground,
       body: Column(
         children: [
           const GlobalHeaderBar(currentRoute: '/cctv-fullscreen'),
           Expanded(
-            child: GlobalSidebarNav(
-                currentRoute: '/cctv-fullscreen',
-                child: SingleChildScrollView(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      return Padding(
-                        padding: EdgeInsets.all(isMobile ? 8 : 16),
-                        child: _buildContent(context, constraints),
-                      );
-                    },
+            child: isMobile
+                ? _buildScrollingContent(context)
+                : GlobalSidebarNav(
+                    currentRoute: '/cctv-fullscreen',
+                    child: _buildScrollingContent(context),
                   ),
-                )),
           ),
           const GlobalFooter(),
         ],
@@ -186,379 +182,299 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
     );
   }
 
-  Widget _buildContent(BuildContext context, BoxConstraints constraints) {
+  Widget _buildScrollingContent(BuildContext context) {
     final isMobile = isMobileScreen(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // --- TITLE SECTION ---
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1976D2).withOpacity(0.8),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF1976D2).withOpacity(0.3),
-                            blurRadius: 10,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.videocam_rounded,
-                        color: Colors.white,
-                        size: 30,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 18),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'All CCTV Fullscreen View',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Monitoring All Camera Status Realtime',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+    final spacing = isMobile ? 8.0 : 10.0;
+    
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              isMobile ? 12 : 24,
+              isMobile ? 8 : 16,
+              isMobile ? 12 : 24,
+              16,
             ),
-            if (!isMobile)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(30),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: ElevatedButton.icon(
-                    onPressed: _goBackToCctvOverview,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white.withOpacity(0.12),
-                      foregroundColor: Colors.white,
-                      shape: StadiumBorder(
-                        side: BorderSide(
-                          color: Colors.white.withOpacity(0.2),
-                          width: 1,
-                        ),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 22, vertical: 14),
-                      elevation: 0,
-                    ),
-                    icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                    label: const Text(
-                      'BACK',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.0,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-        if (isMobile) ...[
-          const SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: ElevatedButton.icon(
-              onPressed: _goBackToCctvOverview,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white.withOpacity(0.14),
-                foregroundColor: Colors.white,
-                shape: const StadiumBorder(),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              ),
-              icon: const Icon(Icons.arrow_back_rounded, size: 16),
-              label: const Text('Back'),
-            ),
+            child: _buildHeaderSection(isMobile),
           ),
-        ],
-        const SizedBox(height: 16),
-
-        // --- STATS SECTION (Compact & Readable) ---
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard('TOTAL CAMERA', totalCameras.toString(),
-                  Colors.blue, double.infinity),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildStatCard(
-                  'UP', upCameras.toString(), Colors.green, double.infinity),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildStatCard(
-                  'DOWN', downCameras.toString(), Colors.red, double.infinity),
-            ),
-          ],
         ),
-        const SizedBox(height: 16),
-
-        // --- CAMERA GRID - FULL SCREEN ---
-        _buildCameraGrid(constraints),
+        SliverPadding(
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 12 : 24,
+          ),
+          sliver: SliverToBoxAdapter(
+            child: _buildStatsSection(isMobile),
+          ),
+        ),
+        SliverPadding(
+          padding: EdgeInsets.all(isMobile ? 12 : 24),
+          sliver: isLoading
+              ? SliverToBoxAdapter(child: _buildLoadingIndicator())
+              : allCameras.isEmpty
+                  ? SliverToBoxAdapter(child: _buildEmptyState())
+                  : SliverGrid(
+                      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                        maxCrossAxisExtent: isMobile ? 120 : 140,
+                        crossAxisSpacing: spacing,
+                        mainAxisSpacing: spacing,
+                        childAspectRatio: 1.0,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          return _buildCameraStatusBox(allCameras[index]);
+                        },
+                        childCount: allCameras.length,
+                      ),
+                    ),
+        ),
+        // Add some bottom padding
+        const SliverToBoxAdapter(child: SizedBox(height: 40)),
       ],
     );
   }
 
-  Widget _buildStatCard(
-      String title, String value, Color indicatorColor, double width) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          width: width,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withOpacity(0.12),
-                Colors.white.withOpacity(0.02),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.25),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 15,
-                spreadRadius: 2,
+  Widget _buildHeaderSection(bool isMobile) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.videocam_rounded,
+                  color: Color(0xFF1976D2),
+                  size: 30,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'All CCTV Fullscreen',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: isMobile ? 18 : 26,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      'Monitoring View of All CCTV',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: isMobile ? 10 : 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          child: Column(
+        ),
+        if (!isMobile)
+          ElevatedButton.icon(
+            onPressed: _goBackToCctvOverview,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white.withValues(alpha: 0.12),
+              foregroundColor: Colors.white,
+              shape: const StadiumBorder(),
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+            ),
+            icon: const Icon(Icons.arrow_back_rounded, size: 18),
+            label: const Text('BACK'),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildStatsSection(bool isMobile) {
+    return Column(
+      children: [
+        if (isMobile) 
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: ElevatedButton.icon(
+                onPressed: _goBackToCctvOverview,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white.withValues(alpha: 0.14),
+                  foregroundColor: Colors.white,
+                  shape: const StadiumBorder(),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                ),
+                icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                label: const Text('Back'),
+              ),
+            ),
+          ),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _buildStatCard('Total CCTV', totalCameras.toString(),
+                    Colors.blue, isMobile: isMobile),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildStatCard(
+                    'UP', upCameras.toString(), Colors.green, isMobile: isMobile),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildStatCard(
+                    'DOWN', downCameras.toString(), Colors.red, isMobile: isMobile),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+
+  Widget _buildStatCard(String title, String value, Color indicatorColor, {required bool isMobile}) {
+    return Container(
+      padding: EdgeInsets.all(isMobile ? 12 : 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.15),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white.withOpacity(0.6),
-                        letterSpacing: 1.2,
-                      ),
-                    ),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: isMobile ? 10 : 12,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white.withValues(alpha: 0.6),
+                    letterSpacing: 1.2,
                   ),
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: indicatorColor,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: indicatorColor.withOpacity(0.5),
-                          blurRadius: 6,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                  letterSpacing: -0.5,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(width: 4),
               Container(
-                height: 2,
-                width: 40,
+                width: 10,
+                height: 10,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [indicatorColor, indicatorColor.withOpacity(0)],
-                  ),
-                  borderRadius: BorderRadius.circular(2),
+                  color: indicatorColor,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: indicatorColor.withValues(alpha: 0.5),
+                      blurRadius: 6,
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: isMobile ? 22 : 28,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Container(
+            height: 2,
+            width: 32,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [indicatorColor, indicatorColor.withValues(alpha: 0)],
+              ),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  Widget _buildLoadingIndicator() {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(40),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+            SizedBox(height: 20),
+            Text(
+              'Loading CCTV data...',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2.0,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildCameraGrid(BoxConstraints constraints) {
-    // Show loading indicator
-    if (isLoading) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            padding: const EdgeInsets.all(40),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.white.withOpacity(0.12),
-                  Colors.white.withOpacity(0.02),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.2),
-                width: 1.5,
-              ),
-            ),
-            child: const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(
-                      color: Colors.white, strokeWidth: 3),
-                  SizedBox(height: 20),
-                  Text(
-                    'LOADING CAMERA DATA...',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 2.0,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+  Widget _buildEmptyState() {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(40),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(24),
         ),
-      );
-    }
-
-    // Show empty state if no cameras
-    if (allCameras.isEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            padding: const EdgeInsets.all(40),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.white.withOpacity(0.12),
-                  Colors.white.withOpacity(0.02),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.2),
-                width: 1.5,
+        child: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.videocam_off_rounded, size: 80, color: Colors.white54),
+            SizedBox(height: 20),
+            Text(
+              'No CCTV data available',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+                letterSpacing: 1.5,
               ),
             ),
-            child: const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.videocam_off_rounded,
-                    size: 80,
-                    color: Colors.white54,
-                  ),
-                  SizedBox(height: 20),
-                  Text(
-                    'NO DATA CAMERA',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    // Show camera grid when data exists
-    double spacing = 10;
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withOpacity(0.12),
-                Colors.white.withOpacity(0.02),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.2),
-              width: 1.5,
-            ),
-          ),
-          child: GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 140,
-              crossAxisSpacing: spacing,
-              mainAxisSpacing: spacing,
-              childAspectRatio: 1.0,
-            ),
-            itemCount: allCameras.length,
-            itemBuilder: (context, index) {
-              return _buildCameraStatusBox(allCameras[index]);
-            },
-          ),
+          ],
         ),
       ),
     );
@@ -576,7 +492,7 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
           borderRadius: BorderRadius.circular(6),
           boxShadow: [
             BoxShadow(
-              color: statusColor.withOpacity(0.4),
+              color: statusColor.withValues(alpha: 0.4),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -624,3 +540,4 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
     );
   }
 }
+

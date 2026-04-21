@@ -1,5 +1,8 @@
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
-
+import 'package:monitoring/theme/app_dropdown_style.dart';
+import 'package:monitoring/utils/ui_utils.dart';
+import 'package:monitoring/route_proxy_page.dart';
 class _NavItem {
   final IconData icon;
   final String label;
@@ -27,8 +30,6 @@ class GlobalSidebarNav extends StatefulWidget {
   /// The width of the collapsed sidebar strip.
   static const double collapsedWidth = 52;
 
-  static final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
-
   @override
   State<GlobalSidebarNav> createState() => _GlobalSidebarNavState();
 }
@@ -37,9 +38,9 @@ class _GlobalSidebarNavState extends State<GlobalSidebarNav> {
   bool _isExpanded = false;
 
   static const double _collapsedWidth = GlobalSidebarNav.collapsedWidth;
-  static const double _expandedWidth = 210;
-  static const _bgColor = Color(0xFF151C2C);
-  static const _activeColor = Color(0xFF3B82F6);
+  static const double _expandedWidth = 52;
+  static const _bgColor = Color(0xFF1976D2);
+  static const _activeColor = AppDropdownStyle.accentColor;
 
   static const List<_NavItem> _navItems = [
     _NavItem(Icons.dashboard_outlined, 'Dashboard', '/dashboard'),
@@ -97,12 +98,36 @@ class _GlobalSidebarNavState extends State<GlobalSidebarNav> {
         '/device-performance'
       ].contains(current);
     }
+    if (target != '/' && target != '/dashboard' && current.startsWith(target)) {
+      return true;
+    }
     return false;
   }
 
   void _navigate(String route) {
     if (!_isActiveRoute(widget.currentRoute, route)) {
-      Navigator.pushReplacementNamed(context, route);
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          settings: RouteSettings(name: route),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              RouteProxyPage(route),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0.01, 0),
+                  end: Offset.zero,
+                ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut)),
+                child: child,
+              ),
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 350),
+        ),
+      );
     } else {
       setState(() => _isExpanded = false);
     }
@@ -110,286 +135,81 @@ class _GlobalSidebarNavState extends State<GlobalSidebarNav> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 900;
-
-    // Mobile mode: keep edge-mounted icon rail (web-like), no floating menu.
+    final isMobile = isMobileScreen(context);
+    
     if (!widget.enabled || isMobile) {
-      return Scaffold(
-        key: GlobalSidebarNav.scaffoldKey,
-        drawer: Drawer(
-          backgroundColor: _bgColor,
-          child: Column(
-            children: [
-              const DrawerHeader(
-                decoration: BoxDecoration(color: _bgColor),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.warehouse, color: Colors.white, size: 40),
-                      SizedBox(height: 10),
-                      Text(
-                        'TPK Nilam',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Expanded(
-                child: ListView(
-                  padding: EdgeInsets.zero,
-                  children: _navItems.map((item) {
-                    final isActive =
-                        _isActiveRoute(widget.currentRoute, item.route);
-                    return ListTile(
-                      leading: Icon(item.icon,
-                          color: isActive ? _activeColor : Colors.white54),
-                      title: Text(
-                        item.label,
-                        style: TextStyle(
-                            color: isActive ? Colors.white : Colors.white70,
-                            fontWeight: isActive
-                                ? FontWeight.bold
-                                : FontWeight.normal),
-                      ),
-                      selected: isActive,
-                      selectedTileColor: _activeColor.withOpacity(0.12),
-                      onTap: () {
-                        Navigator.pop(context); // Close drawer
-                        _navigate(item.route);
-                      },
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-          ),
-        ),
-        body: widget.child,
-      );
+      return widget.child;
     }
 
-    return Stack(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Content with left padding for sidebar space
-        Padding(
-          padding: const EdgeInsets.only(left: _collapsedWidth),
-          child: widget.child,
-        ),
-        // Scrim overlay when expanded
-        if (_isExpanded)
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: () => setState(() => _isExpanded = false),
-              child: Container(color: Colors.black.withOpacity(0.3)),
-            ),
-          ),
-        // Sidebar panel (always on top)
-        Positioned(
-          left: 0,
-          top: 0,
-          bottom: 0,
-          child: _isExpanded ? _buildExpandedPanel() : _buildCollapsedPanel(),
-        ),
+        _buildSidebarPanel(),
+        Expanded(child: widget.child),
       ],
     );
   }
 
-  Widget _buildCollapsedPanel() {
-    return Material(
-      elevation: 2,
-      shadowColor: Colors.black26,
-      color: _bgColor,
-      child: SizedBox(
-        width: _collapsedWidth,
-        child: Column(
-          children: [
-            const SizedBox(height: 8),
-            _buildToggle(),
-            const Divider(
-                color: Colors.white10, height: 20, indent: 10, endIndent: 10),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: _navItems.map((item) {
-                    final isActive =
-                        _isActiveRoute(widget.currentRoute, item.route);
-                    return Tooltip(
-                      message: item.label,
-                      preferBelow: false,
-                      waitDuration: const Duration(milliseconds: 400),
-                      textStyle: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600),
+  Widget _buildSidebarPanel() {
+    return Container(
+      width: _collapsedWidth,
+      decoration: BoxDecoration(
+        color: AppDropdownStyle.menuBackground,
+        border: Border(
+          right: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+        ),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 16),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              itemCount: _navItems.length,
+              itemBuilder: (context, index) {
+                final item = _navItems[index];
+                final isActive = _isActiveRoute(widget.currentRoute, item.route);
+                
+                // Variabel lokal untuk menyimpan GlobalKey tooltip
+                final tooltipKey = GlobalKey<TooltipState>();
+
+                return Tooltip(
+                  key: tooltipKey,
+                  message: item.label,
+                  waitDuration: Duration.zero,
+                  triggerMode: TooltipTriggerMode.manual,
+                  margin: const EdgeInsets.only(left: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2A3650),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white10),
+                  ),
+                  textStyle: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                  child: GestureDetector(
+                    onTap: () {
+                      tooltipKey.currentState?.ensureTooltipVisible();
+                      _navigate(item.route);
+                    },
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+                      height: 40,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2A3650),
+                        color: isActive ? AppDropdownStyle.accentColor.withValues(alpha: 0.2) : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: InkWell(
-                        onTap: () => _navigate(item.route),
-                        child: Container(
-                          width: _collapsedWidth,
-                          height: 46,
-                          alignment: Alignment.center,
-                          child: Container(
-                            width: 34,
-                            height: 34,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              color: isActive
-                                  ? _activeColor.withOpacity(0.2)
-                                  : Colors.transparent,
-                            ),
-                            child: Icon(item.icon,
-                                color: isActive ? _activeColor : Colors.white54,
-                                size: 21),
-                          ),
-                        ),
+                      child: Icon(
+                        item.icon,
+                        color: isActive ? AppDropdownStyle.accentColor : Colors.white70,
+                        size: 22,
                       ),
-                    );
-                  }).toList(),
-                ),
-              ),
+                    ),
+                  ),
+                );
+              },
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildExpandedPanel() {
-    return Material(
-      elevation: 16,
-      shadowColor: Colors.black54,
-      color: _bgColor,
-      child: SizedBox(
-        width: _expandedWidth,
-        child: Column(
-          children: [
-            const SizedBox(height: 8),
-            _buildToggle(),
-            const Divider(
-                color: Colors.white10, height: 20, indent: 12, endIndent: 12),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: _navItems.map((item) {
-                    final isActive =
-                        _isActiveRoute(widget.currentRoute, item.route);
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      child: InkWell(
-                        onTap: () => _navigate(item.route),
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          height: 44,
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            color: isActive
-                                ? _activeColor.withOpacity(0.12)
-                                : Colors.transparent,
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 34,
-                                height: 34,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(10),
-                                  color: isActive
-                                      ? _activeColor.withOpacity(0.2)
-                                      : Colors.transparent,
-                                ),
-                                child: Icon(item.icon,
-                                    color: isActive
-                                        ? _activeColor
-                                        : Colors.white54,
-                                    size: 21),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  item.label,
-                                  style: TextStyle(
-                                    color: isActive
-                                        ? Colors.white
-                                        : Colors.white70,
-                                    fontSize: 14,
-                                    fontWeight: isActive
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (isActive)
-                                Container(
-                                  width: 4,
-                                  height: 18,
-                                  decoration: BoxDecoration(
-                                    color: _activeColor,
-                                    borderRadius: BorderRadius.circular(2),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildToggle() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: InkWell(
-        onTap: () => setState(() => _isExpanded = !_isExpanded),
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          height: 38,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            color: Colors.white.withOpacity(0.06),
           ),
-          child: Row(
-            mainAxisAlignment: _isExpanded
-                ? MainAxisAlignment.spaceBetween
-                : MainAxisAlignment.center,
-            children: [
-              if (_isExpanded) ...[
-                const Padding(
-                  padding: EdgeInsets.only(left: 12),
-                  child: Text('Navigation',
-                      style: TextStyle(
-                          color: Colors.white60,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5)),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(right: 8),
-                  child: Icon(Icons.close_rounded,
-                      color: Colors.white54, size: 18),
-                ),
-              ] else
-                const Icon(Icons.menu_rounded, color: Colors.white60, size: 20),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }

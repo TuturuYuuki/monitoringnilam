@@ -50,7 +50,7 @@ class TrafficChartCard extends StatelessWidget {
           Text(
             'Maksimum $maxSamples sampel terakhir (refresh setiap $refreshSeconds detik)',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.85),
+              color: Colors.white.withValues(alpha: 0.85),
               fontSize: 12,
             ),
           ),
@@ -67,7 +67,7 @@ class TrafficChartCard extends StatelessWidget {
                   show: true,
                   drawVerticalLine: false,
                   getDrawingHorizontalLine: (_) => FlLine(
-                    color: Colors.white.withOpacity(0.1),
+                    color: Colors.white.withValues(alpha: 0.1),
                     strokeWidth: 1,
                   ),
                 ),
@@ -79,7 +79,7 @@ class TrafficChartCard extends StatelessWidget {
                       getTitlesWidget: (value, _) => Text(
                         value.toInt().toString(),
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.85),
+                          color: Colors.white.withValues(alpha: 0.85),
                           fontSize: 10,
                         ),
                       ),
@@ -98,8 +98,8 @@ class TrafficChartCard extends StatelessWidget {
                 borderData: FlBorderData(
                   show: true,
                   border: Border(
-                    left: BorderSide(color: Colors.white.withOpacity(0.2)),
-                    bottom: BorderSide(color: Colors.white.withOpacity(0.2)),
+                    left: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                    bottom: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
                   ),
                 ),
                 lineTouchData: const LineTouchData(
@@ -116,7 +116,7 @@ class TrafficChartCard extends StatelessWidget {
                     dotData: const FlDotData(show: false),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: rxColor.withOpacity(0.15),
+                      color: rxColor.withValues(alpha: 0.15),
                     ),
                   ),
                   LineChartBarData(
