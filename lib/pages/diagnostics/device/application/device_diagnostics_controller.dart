@@ -53,7 +53,7 @@ class DeviceDiagnosticsController {
     responseTimeSpots = const [];
     packetLossSpots = const [];
     isLiveData = false;
-    errorMessage = 'Data historis backend belum tersedia untuk perangkat ini.';
+    errorMessage = 'Backend historical data is not yet available for this device';
     isLoading = false;
   }
 

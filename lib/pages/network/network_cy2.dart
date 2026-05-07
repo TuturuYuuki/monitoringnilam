@@ -2,15 +2,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:monitoring/models/tower_model.dart';
 import 'package:monitoring/services/api_service.dart';
-import 'package:monitoring/services/device_storage_service.dart';
 import 'dart:ui';
 import 'package:monitoring/main.dart';
 import 'package:monitoring/utils/tower_status_override.dart';
-import 'package:monitoring/utils/location_label_utils.dart';
 import 'package:monitoring/widgets/global_header_bar.dart';
 import 'package:monitoring/widgets/global_sidebar_nav.dart';
 import 'package:monitoring/widgets/global_footer.dart';
 import 'package:monitoring/theme/app_dropdown_style.dart';
+import 'package:monitoring/utils/location_label_utils.dart';
 
 // Network Page
 class NetworkCY2Page extends StatefulWidget {
@@ -41,14 +40,28 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
   int globalDownDevices = 0;
   bool _isLoadingGlobalSummary = true;
   bool _isGlobalSummaryRequestInFlight = false;
+  List<Map<String, String>> _masterOptions = [];
 
   @override
   void initState() {
     super.initState();
     apiService = ApiService();
     _checkConnection();
+    _loadMasterLocations();
     _loadTowers();
     _loadGlobalSummary(initialLoad: true);
+    _startAutoRefresh();
+  }
+
+  void _startAutoRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (mounted) {
+        _loadMasterLocations();
+        _loadTowers();
+        _loadGlobalSummary();
+      }
+    });
   }
 
   @override
@@ -91,6 +104,17 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     }
   }
 
+  Future<void> _loadMasterLocations() async {
+    try {
+      final locs = await apiService.getAllMasterLocations();
+      if (mounted) {
+        setState(() {
+          _masterOptions = buildMasterLocationOptions(locs);
+        });
+      }
+    } catch (_) {}
+  }
+
   Future<void> _triggerRealtimePing() async {
     try {
       final pingResult = await apiService.triggerRealtimePing();
@@ -102,9 +126,30 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     }
   }
 
-  Future<void> _triggerPingCheck() async {
-    await _triggerRealtimePing();
+  Future<void> _handleCheckStatus() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Checking status...'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    // Call the ping check and wait for it
+    await apiService.triggerRealtimePing();
+
+    if (mounted) {
+      await _loadTowers();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✓ Status successfully updated!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
+
 
   Future<void> _loadGlobalSummary({bool initialLoad = false}) async {
     if (_isGlobalSummaryRequestInFlight) {
@@ -120,15 +165,10 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
       }
 
       final allTowers = await apiService.getAllTowers();
-      final allCameras = await apiService.getAllCameras();
-      final allMMTs = await apiService.getAllMMTs();
 
       final towerUp = allTowers.where((t) => !isDownStatus(t.status)).length;
-      final cameraUp = allCameras.where((c) => c.status == 'UP').length;
-      final mmtUp = allMMTs.where((m) => m.status == 'UP').length;
-
-      final total = allTowers.length + allCameras.length + allMMTs.length;
-      final up = towerUp + cameraUp + mmtUp;
+      final total = allTowers.length;
+      final up = towerUp;
       final down = (total - up).clamp(0, 999999);
 
       if (mounted) {
@@ -172,7 +212,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                 const Padding(
                   padding: EdgeInsets.all(12.0),
                   child: Text(
-                    'All Towers Are In UP Condition',
+                    'All tower are in UP condition',
                     style: TextStyle(fontSize: 13, color: Colors.black54),
                     textAlign: TextAlign.center,
                   ),
@@ -243,6 +283,181 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
   }
 
   int get totalPages => (towers.length / itemsPerPage).ceil();
+
+  Future<void> _editTower(Tower tower) async {
+    final ipController = TextEditingController(text: tower.ipAddress);
+    var locationOptions = buildMasterLocationOptions(
+      await apiService.getAllMasterLocations(),
+    );
+    if (locationOptions.isEmpty) {
+      locationOptions = [
+        {
+          'label': normalizeLocationLabel(tower.location),
+          'container_yard': tower.containerYard,
+          'location_type': 'AP',
+          'location_code': tower.towerId,
+          'location_name': tower.location,
+        }
+      ];
+    }
+    final matchedOption = matchMasterLocationOption(
+      locationOptions,
+      tower.location,
+      currentContainerYard: tower.containerYard,
+    );
+    var selectedLocation =
+        matchedOption?['label'] ?? normalizeLocationLabel(tower.location);
+    var selectedYard = matchedOption?['container_yard'] ?? tower.containerYard;
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setLocalState) => AlertDialog(
+          backgroundColor: const Color(0xFFF5F5F7),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Edit ${tower.towerId}',
+              style: const TextStyle(
+                  color: Colors.black87, fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                  controller: ipController,
+                  style: const TextStyle(color: Colors.black87),
+                  decoration: const InputDecoration(
+                    labelText: 'IP address',
+                    labelStyle: TextStyle(color: Colors.black54),
+                    enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.black12)),
+                  )),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: selectedLocation,
+                isExpanded: true,
+                isDense: true,
+                style: const TextStyle(color: Colors.black87, fontSize: 13),
+                dropdownColor: Colors.white,
+                decoration: const InputDecoration(
+                  labelText: 'Location',
+                  labelStyle: TextStyle(color: Colors.black54),
+                  enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: Colors.black12)),
+                ),
+                items: locationOptions.map((option) {
+                  return DropdownMenuItem<String>(
+                    value: option['label'],
+                    child: Text(
+                      option['label'] ?? '',
+                      style: const TextStyle(color: Colors.black87, fontSize: 13),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  final option = locationOptions.firstWhere(
+                    (item) => item['label'] == value,
+                    orElse: () => locationOptions.first,
+                  );
+                  setLocalState(() {
+                    selectedLocation = value;
+                    selectedYard =
+                        option['container_yard'] ?? tower.containerYard;
+                  });
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: Colors.black54)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1976D2)),
+              child: const Text('Save Changes',
+                  style: TextStyle(color: Colors.white)),
+              onPressed: () async {
+                final response = await apiService.updateTower(tower.id, {
+                  'ip_address': ipController.text,
+                  'location': locationOptions.firstWhere(
+                          (o) => o['label'] == selectedLocation,
+                          orElse: () => locationOptions.first)[
+                      'location_code'] ??
+                      selectedLocation,
+                  'container_yard': selectedYard,
+                });
+
+                if (!context.mounted) return;
+                if (response['success'] == true) {
+                  Navigator.pop(context);
+                  await _loadTowers();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Successfully updated'),
+                        backgroundColor: Colors.green));
+                  }
+                } else {
+                  Navigator.pop(context);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Failed to update'),
+                        backgroundColor: Colors.red));
+                  }
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteTower(Tower tower) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFFF5F5F7),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete confirmation',
+            style:
+                TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+        content: Text('Are you sure you want to delete ${tower.towerId}?',
+            style: const TextStyle(color: Colors.black54)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.black54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+            onPressed: () async {
+              final response = await apiService.deleteTower(tower.id);
+              if (!context.mounted) return;
+              if (response['success'] == true) {
+                Navigator.pop(context);
+                await _loadTowers();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Successfully deleted'),
+                      backgroundColor: Colors.green));
+                }
+              } else {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Failed to delete'),
+                      backgroundColor: Colors.red));
+                }
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildPagination() {
     final int displayPages = totalPages > 0 ? totalPages : 1;
@@ -463,18 +678,15 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                       child: _buildActionCard(
                         title: 'ACTION',
                         icon: Icons.refresh_rounded,
-                        iconColor: Colors.green,
-                        onTap: () async {
-                          setState(() => isLoading = true);
-                          await _triggerPingCheck();
-                          await _loadTowers();
-                        },
+                        iconColor: const Color(0xFF4CAF50),
+                        onTap: _handleCheckStatus,
                         content: const Text(
                           "CHECK STATUS",
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w900,
                             fontSize: 15,
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ),
@@ -523,7 +735,21 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                 Row(
                   children: [
                     Expanded(
-                      child: _buildCheckStatusButton(constraints.maxWidth),
+                      child: _buildActionCard(
+                        title: 'ACTION',
+                        icon: Icons.refresh_rounded,
+                        iconColor: const Color(0xFF4CAF50),
+                        onTap: _handleCheckStatus,
+                        content: const Text(
+                          "CHECK STATUS",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 15,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -794,26 +1020,44 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
   Widget _buildAreaButton(double width) {
     return _buildActionCard(
       title: 'AREA',
-      icon: Icons.location_on_rounded,
-      iconColor: Colors.white,
-      content: AnimatedDropdownButton(
-        value: "Select Area",
-        items: _areaOptions,
-        backgroundColor: AppDropdownStyle.menuBackground,
-        onChanged: (String? newValue) {
-          if (newValue == null) return;
-          if (newValue == 'CY 1') {
-            Navigator.pushReplacementNamed(context, '/network');
-          } else if (newValue == 'CY 2') {
-            Navigator.pushReplacementNamed(context, '/network-cy2');
-          } else if (newValue == 'CY 3') {
-            Navigator.pushReplacementNamed(context, '/network-cy3');
-          } else if (newValue == 'GATE') {
-            Navigator.pushReplacementNamed(context, '/network-gate');
-          } else if (newValue == 'PARKING') {
-            Navigator.pushReplacementNamed(context, '/network-parking');
-          }
-        },
+      icon: Icons.map_rounded,
+      iconColor: Colors.orange,
+      content: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: 'CY 2',
+          isExpanded: true,
+          isDense: true,
+          dropdownColor: const Color(0xFF1B2631),
+          icon: const Icon(Icons.arrow_drop_down, color: Colors.white70),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+          items: [
+            
+            ..._areaOptions.map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }),
+          ],
+          onChanged: (String? newValue) {
+            if (newValue == null) return;
+            if (newValue == 'CY 1') {
+              Navigator.pushReplacementNamed(context, '/network');
+            } else if (newValue == 'CY 2') {
+              Navigator.pushReplacementNamed(context, '/network-cy2');
+            } else if (newValue == 'CY 3') {
+              Navigator.pushReplacementNamed(context, '/network-cy3');
+            } else if (newValue == 'GATE') {
+              Navigator.pushReplacementNamed(context, '/network-gate');
+            } else if (newValue == 'PARKING') {
+              Navigator.pushReplacementNamed(context, '/network-parking');
+            }
+          },
+        ),
       ),
     );
   }
@@ -822,21 +1066,21 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     if (MediaQuery.of(context).size.width >= 600) {
       return const SizedBox.shrink();
     }
-    return _buildActionCard(
-      title: 'ACTION',
-      icon: Icons.refresh_rounded,
-      iconColor: Colors.green,
-      onTap: () async {
-        setState(() => isLoading = true);
-        await _triggerPingCheck();
-        await _loadTowers();
-      },
-      content: Text(
-        "CHECK STATUS",
+    return ElevatedButton.icon(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF4CAF50),
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      onPressed: _handleCheckStatus,
+      icon: const Icon(Icons.refresh_rounded, size: 20),
+      label: const Text(
+        'CHECK STATUS',
         style: TextStyle(
-          color: Colors.white,
           fontWeight: FontWeight.w900,
-          fontSize: isMobileScreen(context) ? 13 : 15,
+          fontSize: 14,
+          letterSpacing: 0.5,
         ),
       ),
     );
@@ -852,7 +1096,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
     final bool isMobile = MediaQuery.of(context).size.width < 600;
 
     return Container(
-      constraints: BoxConstraints(minHeight: isMobile ? 45 : 50),
+      constraints: BoxConstraints(minHeight: isMobile ? 65 : 75),
       child: MouseRegion(
         cursor:
             onTap != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
@@ -922,6 +1166,7 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
   }
 
   Widget _buildTowerList(BoxConstraints constraints) {
+    final isMobile = isMobileScreen(context);
     if (isLoading) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(20),
@@ -1024,8 +1269,6 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
       );
     }
 
-    final isMobile = isMobileScreen(context);
-
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: BackdropFilter(
@@ -1056,7 +1299,8 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
           child: Column(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 width: double.infinity,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -1082,7 +1326,8 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                 ),
               ),
               Builder(builder: (context) {
-                const double minTableWidth = 500;
+                const double minTableWidth = 600;
+                final isMobile = MediaQuery.of(context).size.width < 600;
                 final tableContent = Column(
                   children: [
                     Container(
@@ -1092,22 +1337,25 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            const Color(0xFF1976D2).withValues(alpha: 0.8),
-                            const Color(0xFF1976D2).withValues(alpha: 0.4),
+                            const Color(0xFFC6B430).withValues(alpha: 0.8),
+                            const Color(0xFFC6B430).withValues(alpha: 0.4),
                           ],
                         ),
                       ),
                       child: Row(
                         children: [
                           _buildHeaderCell('AP ID', flex: 2),
-                          _buildHeaderCell('IP Address', flex: 3),
-                          _buildHeaderCell('Status', flex: 2, isLast: true),
+                          _buildHeaderCell('Location', flex: 3),
+                          _buildHeaderCell('IP Address', flex: 2),
+                          _buildHeaderCell('Status', flex: 1),
+                          _buildHeaderCell('Action', flex: 2, isLast: true),
                         ],
                       ),
                     ),
                     ...paginatedData.map((tower) => _buildTowerTableRow(tower)),
                   ],
                 );
+
                 if (isMobile) {
                   return SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
@@ -1127,40 +1375,89 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
       {required int flex, bool isLast = false}) {
     return Expanded(
       flex: flex,
-      child: Text(
-        label,
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w800,
-          fontSize: 14,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            right: isLast
+                ? BorderSide.none
+                : BorderSide(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    width: 1,
+                  ),
+          ),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
+          ),
         ),
       ),
     );
   }
 
   Widget _buildTowerTableRow(Tower tower) {
-    final bool isDown = isDownStatus(tower.status);
+    final bool isDown = tower.status != 'UP';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
         border: Border(
-          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05), width: 1),
+          bottom: BorderSide(
+            color: Colors.white.withValues(alpha: 0.05),
+            width: 1,
+          ),
         ),
       ),
       child: Row(
         children: [
-          _buildTableCell(tower.towerId,
-              flex: 2, fontWeight: FontWeight.w800, color: Colors.white),
-          _buildTableCell(tower.ipAddress,
-              flex: 3, color: Colors.white.withValues(alpha: 0.7)),
           _buildTableCell(
-            isDown ? 'DOWN' : 'UP',
+            tower.towerId,
             flex: 2,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+          _buildTableCell(
+            resolveFullLocationLabel(
+              _masterOptions,
+              tower.location,
+              currentContainerYard: tower.containerYard,
+            ),
+            flex: 3,
+            fontWeight: FontWeight.w800,
+            color: Colors.white.withValues(alpha: 0.9),
+          ),
+          _buildTableCell(tower.ipAddress,
+              flex: 2, color: Colors.white.withValues(alpha: 0.7)),
+          _buildTableCell(
+            isDown ? 'DOWN' : tower.status,
+            flex: 1,
             color: isDown ? Colors.redAccent : Colors.greenAccent,
             fontWeight: FontWeight.w800,
-            isLast: true,
+          ),
+          Expanded(
+            flex: 2,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
+                  onPressed: () => _editTower(tower),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                  onPressed: () => _confirmDeleteTower(tower),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1180,7 +1477,10 @@ class _NetworkCY2PageState extends State<NetworkCY2Page> {
           border: Border(
             right: isLast
                 ? BorderSide.none
-                : BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.8),
+                : BorderSide(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    width: 0.8,
+                  ),
           ),
         ),
         child: Text(

@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:monitoring/constants/terminal_data.dart';
 import 'package:monitoring/models/device_model.dart';
 import 'package:monitoring/models/tower_model.dart';
+import 'package:monitoring/models/master_location_model.dart';
 import 'package:monitoring/widgets/terminal_layout_static.dart';
 
 class LiveTerminalMap extends StatefulWidget {
   final List<AddedDevice> devices;
   final List<Tower> towers;
-  final List<Map<String, dynamic>> masterLocations;
+  final List<MasterLocation> masterLocations;
   final bool isPickMode;
   final String? pickYardFilter;
   final Function(String areaId, double relX, double relY) onAreaPicked;
   final Function(String towerId, double latitude, double longitude)
       onTowerMoved;
-  final Function(Map<String, dynamic> master, double latitude, double longitude)
+  final Function(MasterLocation master, double latitude, double longitude)
       onMasterMoved;
   final Future<void> Function({bool force}) onTriggerPingCheck;
   final Future<void> Function() onLoadDashboardData;
+  final Function(AddedDevice device)? onDeviceTap;
 
   const LiveTerminalMap({
     super.key,
@@ -31,6 +32,7 @@ class LiveTerminalMap extends StatefulWidget {
     required this.onMasterMoved,
     required this.onTriggerPingCheck,
     required this.onLoadDashboardData,
+    this.onDeviceTap,
   });
 
   @override
@@ -47,6 +49,33 @@ class _LiveTerminalMapState extends State<LiveTerminalMap> {
     'GATE',
   ];
   String? _mobileFocusedArea;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncMobileFocus();
+  }
+
+  @override
+  void didUpdateWidget(covariant LiveTerminalMap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isPickMode != oldWidget.isPickMode ||
+        widget.pickYardFilter != oldWidget.pickYardFilter) {
+      _syncMobileFocus();
+    }
+  }
+
+  void _syncMobileFocus() {
+    if (widget.isPickMode && widget.pickYardFilter != null) {
+      // Normalize filter (e.g. "CY 1" -> "CY1") to match _mobileAreas
+      final normalized = widget.pickYardFilter!.replaceAll(' ', '').toUpperCase();
+      if (_mobileAreas.contains(normalized)) {
+        setState(() {
+          _mobileFocusedArea = normalized;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -164,21 +193,10 @@ class _LiveTerminalMapState extends State<LiveTerminalMap> {
                         pickYardFilter: widget.pickYardFilter,
                         forcedAreaId: null,
                         onAreaPicked: widget.onAreaPicked,
+                        onDeviceTap: widget.onDeviceTap,
                         isFreeroamEditEnabled: _isFreeroamEditMode,
                         onTowerMoved: widget.onTowerMoved,
                         onMasterMoved: widget.onMasterMoved,
-                        towerPoints: towerPoints
-                            .map(
-                              (p) => StaticTowerPoint(
-                                number: p.number,
-                                label: p.label,
-                                latitude: p.latitude,
-                                longitude: p.longitude,
-                                containerYard: p.containerYard,
-                                towerIdHint: p.towerIdHint,
-                              ),
-                            )
-                            .toList(),
                       ),
                     );
 
@@ -191,7 +209,10 @@ class _LiveTerminalMapState extends State<LiveTerminalMap> {
                       separatorBuilder: (_, __) => const SizedBox(height: 10),
                       itemBuilder: (context, index) {
                         final areaId = _mobileAreas[index];
-                        final isFocused = _mobileFocusedArea == areaId;
+                        // Force focused if in pick mode and matches filter
+                        final isPickTarget = widget.isPickMode && 
+                                            widget.pickYardFilter?.replaceAll(' ', '').toUpperCase() == areaId;
+                        final isFocused = isPickTarget || _mobileFocusedArea == areaId;
 
                         return GestureDetector(
                           onTap: () {
@@ -202,13 +223,14 @@ class _LiveTerminalMapState extends State<LiveTerminalMap> {
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(14),
                             child: Container(
-                              height: isFocused ? 250 : 220,
+                              height: isFocused ? 450 : 220,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(color: Colors.white24),
                                 color: Colors.black.withValues(alpha: 0.08),
                               ),
                               child: TerminalLayoutStatic(
+                                key: ValueKey('map_${areaId}_$isFocused'),
                                 devices: widget.devices,
                                 towers: widget.towers,
                                 masterLocations: widget.masterLocations,
@@ -217,21 +239,10 @@ class _LiveTerminalMapState extends State<LiveTerminalMap> {
                                 forcedAreaId: areaId,
                                 isZoomed: isFocused,
                                 onAreaPicked: widget.onAreaPicked,
+                                onDeviceTap: widget.onDeviceTap,
                                 isFreeroamEditEnabled: _isFreeroamEditMode,
                                 onTowerMoved: widget.onTowerMoved,
                                 onMasterMoved: widget.onMasterMoved,
-                                towerPoints: towerPoints
-                                    .map(
-                                      (p) => StaticTowerPoint(
-                                        number: p.number,
-                                        label: p.label,
-                                        latitude: p.latitude,
-                                        longitude: p.longitude,
-                                        containerYard: p.containerYard,
-                                        towerIdHint: p.towerIdHint,
-                                      ),
-                                    )
-                                    .toList(),
                               ),
                             ),
                           ),

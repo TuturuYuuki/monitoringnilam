@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:monitoring/theme/app_dropdown_style.dart';
 import 'utils/auth_helper.dart';
+import 'services/api_service.dart';
 import 'pages/dashboard/dashboard.dart';
 import 'pages/network/network.dart';
 import 'pages/network/network_cy2.dart';
@@ -28,8 +30,18 @@ import 'pages/mmt/mmt_monitoring_cy2.dart';
 import 'pages/mmt/mmt_monitoring_cy3.dart';
 import 'pages/network/network_gate.dart';
 import 'pages/network/network_parking.dart';
-import 'pages/mmt/mmt_monitoring_gate.dart';
-import 'pages/mmt/mmt_monitoring_parking.dart';
+import 'package:monitoring/pages/mmt/mmt_monitoring_gate.dart';
+import 'package:monitoring/pages/mmt/mmt_monitoring_parking.dart';
+import 'package:monitoring/pages/nvr/nvr_cy1.dart';
+import 'package:monitoring/pages/nvr/nvr_cy2.dart';
+import 'package:monitoring/pages/nvr/nvr_cy3.dart';
+import 'package:monitoring/pages/nvr/nvr_gate.dart';
+import 'package:monitoring/pages/nvr/nvr_parking.dart';
+import 'package:monitoring/pages/switch/switch_cy1.dart';
+import 'package:monitoring/pages/switch/switch_cy2.dart';
+import 'package:monitoring/pages/switch/switch_cy3.dart';
+import 'package:monitoring/pages/switch/switch_gate.dart';
+import 'package:monitoring/pages/switch/switch_parking.dart';
 import 'pages/diagnostics/device_diagnostics_page.dart';
 import 'pages/diagnostics/global_diagnostics_page.dart';
 import 'pages/diagnostics/device_performance_page.dart';
@@ -106,14 +118,30 @@ class _AnimatedDropdownButtonState extends State<AnimatedDropdownButton>
     final overlay = Overlay.of(context);
     final renderBox = context.findRenderObject() as RenderBox;
     final size = renderBox.size;
+    final buttonPosition = renderBox.localToGlobal(Offset.zero);
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    // Ruang di bawah dan di atas button
+    final spaceBelow = screenHeight - buttonPosition.dy - size.height;
+    final spaceAbove = buttonPosition.dy;
+    final maxMenuHeight = screenHeight * 0.4;
+
+    // Buka ke atas jika ruang bawah tidak cukup dan ruang atas lebih besar
+    final openUpward = spaceBelow < maxMenuHeight && spaceAbove > spaceBelow;
+    final availableHeight = openUpward
+        ? (spaceAbove - 8).clamp(100.0, maxMenuHeight)
+        : (spaceBelow - 8).clamp(100.0, maxMenuHeight);
 
     _overlayEntry = OverlayEntry(
       builder: (context) => Positioned(
-        width: size.width,
+        width: size.width < 180 ? 180 : size.width,
         child: CompositedTransformFollower(
           link: _layerLink,
           showWhenUnlinked: false,
-          offset: Offset(0, size.height),
+          // Offset negatif = buka ke atas
+          offset: openUpward
+              ? Offset(0, -(availableHeight + 8))
+              : Offset(0, size.height + 4),
           child: FadeTransition(
             opacity: _animationController,
             child: Material(
@@ -121,52 +149,57 @@ class _AnimatedDropdownButtonState extends State<AnimatedDropdownButton>
               borderRadius: BorderRadius.circular(12),
               color: Colors.transparent,
               child: Container(
-                margin: const EdgeInsets.only(top: 4),
                 decoration: BoxDecoration(
                   color: widget.backgroundColor,
                   borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: widget.items.map((item) {
-                    return MouseRegion(
-                      onEnter: (_) {
-                        setState(() {
-                          _hoveredItem = item;
-                        });
-                      },
-                      onExit: (_) {
-                        setState(() {
-                          _hoveredItem = null;
-                        });
-                      },
-                      cursor: SystemMouseCursors.click,
-                      child: InkWell(
-                        onTap: () => _selectItem(item),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _hoveredItem == item
-                                ? Colors.blue.withValues(alpha: 0.6)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            item,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: availableHeight),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: widget.items.map((item) {
+                        return MouseRegion(
+                          onEnter: (_) => setState(() => _hoveredItem = item),
+                          onExit: (_) => setState(() => _hoveredItem = null),
+                          cursor: SystemMouseCursors.click,
+                          child: InkWell(
+                            onTap: () => _selectItem(item),
+                            splashColor: Colors.white.withValues(alpha: 0.1),
+                            highlightColor: Colors.transparent,
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _hoveredItem == item
+                                    ? const Color(0xFF2A3650)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                item,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                        );
+                      }).toList(),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -195,26 +228,31 @@ class _AnimatedDropdownButtonState extends State<AnimatedDropdownButton>
       link: _layerLink,
       child: InkWell(
         onTap: _toggleDropdown,
+        splashColor: Colors.white.withValues(alpha: 0.05),
+        highlightColor: Colors.transparent,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
+          decoration: const BoxDecoration(
+            color: Colors.transparent, // Removed background and border to tidy up the UI
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                widget.value,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
+              Flexible(
+                child: Text(
+                  widget.value,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               const Icon(
                 Icons.arrow_drop_down,
                 color: Colors.white,
+                size: 20,
               ),
             ],
           ),
@@ -299,6 +337,16 @@ class MyApp extends StatelessWidget {
         '/mmt-monitoring-cy3': (context) => const MMTMonitoringCY3Page(),
         '/mmt-monitoring-gate': (context) => const MMTMonitoringGatePage(),
         '/mmt-monitoring-parking': (context) => const MMTMonitoringParkingPage(),
+        '/nvr-monitoring-cy1': (context) => const NVRPageCY1(),
+        '/nvr-monitoring-cy2': (context) => const NVRPageCY2(),
+        '/nvr-monitoring-cy3': (context) => const NVRPageCY3(),
+        '/nvr-monitoring-gate': (context) => const NVRPageGATE(),
+        '/nvr-monitoring-parking': (context) => const NVRPagePARKING(),
+        '/switch-monitoring-cy1': (context) => const SwitchPageCY1(),
+        '/switch-monitoring-cy2': (context) => const SwitchPageCY2(),
+        '/switch-monitoring-cy3': (context) => const SwitchPageCY3(),
+        '/switch-monitoring-gate': (context) => const SwitchPageGATE(),
+        '/switch-monitoring-parking': (context) => const SwitchPagePARKING(),
         '/device-diagnostics': (context) => const DeviceDiagnosticsPage(),
         '/global-diagnostics': (context) => const GlobalDiagnosticsPage(),
         '/device-performance': (context) => const DevicePerformancePage(),
@@ -316,44 +364,103 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
-  late Future<bool> _isLoggedInFuture;
+  late Future<Map<String, dynamic>> _initFuture;
 
   @override
   void initState() {
     super.initState();
-    _isLoggedInFuture = AuthHelper.isLoggedIn();
+    _initFuture = _initApp();
+  }
+
+  Future<Map<String, dynamic>> _initApp() async {
+    // 1. Initialize API Root from storage
+    await ApiService.ensureInitialized();
+    
+    // 2. Try to connect to backend
+    final result = await ApiService().testConnection();
+    
+    // 3. Check login status
+    final isLoggedIn = await AuthHelper.isLoggedIn();
+    
+    return {
+      'isLoggedIn': isLoggedIn,
+      'connection': result,
+    };
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<bool>(
-      future: _isLoggedInFuture,
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _initFuture,
       builder: (context, snapshot) {
-        // Load state: show loading screen
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Scaffold(
+          return const Scaffold(
+            backgroundColor: Color(0xFF0F172A),
             body: Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  const Color(0xFF1976D2).withValues(alpha: 0.7),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: Colors.blueAccent),
+                  SizedBox(height: 24),
+                  Text(
+                    'INITIALIZING SYSTEM...',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2.0,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final data = snapshot.data;
+        final connection = data?['connection'] as Map<String, dynamic>?;
+        final isLoggedIn = data?['isLoggedIn'] == true;
+
+        // If connection failed and we are not on web (where localhost usually works)
+        if (connection?['success'] != true && !kIsWeb) {
+          return Scaffold(
+            backgroundColor: const Color(0xFF0F172A),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.cloud_off_rounded, size: 80, color: Colors.redAccent),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'CONNECTION FAILED',
+                      style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      connection?['message'] ?? 'Unable to reach backend server.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    const SizedBox(height: 32),
+                    ElevatedButton(
+                      onPressed: () => setState(() {
+                        _initFuture = _initApp();
+                      }),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueAccent,
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      ),
+                      child: const Text('RETRY CONNECTION', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
                 ),
               ),
             ),
           );
         }
 
-        // Error state: default to login
-        if (snapshot.hasError) {
-          return const LoginPage();
-        }
-
-        // Jika sudah login, tampilkan dashboard
-        if (snapshot.data == true) {
-          return const DashboardPage();
-        }
-
-        // Jika belum login, tampilkan login page
-        return const LoginPage();
+        return isLoggedIn ? const DashboardPage() : const LoginPage();
       },
     );
   }

@@ -50,6 +50,18 @@ class AddedDevice {
     return 0.0;
   }
 
+  /// Bersihkan karakter mojibake akibat encoding PHP/DB tidak konsisten.
+  /// Contoh: â€¢ (UTF-8 bullet di-baca Latin-1) → diganti strip/dash.
+  static String _sanitize(String value) {
+    return value
+        .replaceAll('\u00e2\u0080\u00a2', '-') // â€¢ → -  (bullet •)
+        .replaceAll('\u00e2\u0080\u0093', '-') // â€" → -  (en-dash –)
+        .replaceAll('\u00e2\u0080\u0094', '-') // â€" → -  (em-dash —)
+        .replaceAll('\u00e2\u0080\u0098', "'") // â€˜ → '  (left quote ')
+        .replaceAll('\u00e2\u0080\u0099', "'") // â€™ → '  (right quote ')
+        .trim();
+  }
+
   // Create from JSON
   factory AddedDevice.fromJson(Map<String, dynamic> json) {
     final createdAtRaw = (json['createdAt'] ?? '').toString();
@@ -58,9 +70,9 @@ class AddedDevice {
     return AddedDevice(
       id: (json['id'] ?? '').toString(),
       type: (json['type'] ?? '').toString(),
-      name: (json['name'] ?? '').toString(),
+      name: _sanitize((json['name'] ?? '').toString()),
       ipAddress: (json['ipAddress'] ?? '').toString(),
-      locationName: normalizeLocationLabel(
+      locationName: canonicalizeLocationLabel(
         (json['locationName'] ?? '').toString(),
       ),
       latitude: _toDouble(json['latitude']),

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthHelper {
@@ -35,7 +36,7 @@ class AuthHelper {
       await prefs.setString('division', newDivision);
     } catch (e) {
       // Gracefully handle SharedPreferences errors (e.g., MissingPluginException on Windows)
-      print('Warning: Could not save user data to preferences: $e');
+      debugPrint('Warning: Could not save user data to preferences: $e');
     }
   }
 
@@ -75,7 +76,7 @@ class AuthHelper {
       await prefs.clear();
     } catch (e) {
       // Gracefully handle SharedPreferences errors on Windows
-      print('Warning: Could not clear user data from preferences: $e');
+      debugPrint('Warning: Could not clear user data from preferences: $e');
     }
   }
 

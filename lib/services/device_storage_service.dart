@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:monitoring/models/device_model.dart';
 
@@ -19,7 +20,7 @@ class DeviceStorageService {
       devicesList.add(device);
       await _saveDevices(devicesList);
     } catch (e) {
-      print('Warning: Could not add device to storage: $e');
+      debugPrint('Warning: Could not add device to storage: $e');
     }
   }
 
@@ -43,13 +44,13 @@ class DeviceStorageService {
             );
           }
         } catch (e) {
-          print('Warning: Skipping invalid device record in storage: $e');
+          debugPrint('Warning: Skipping invalid device record in storage: $e');
         }
       }
 
       return devices;
     } catch (e) {
-      print('Warning: Could not retrieve devices from storage: $e');
+      debugPrint('Warning: Could not retrieve devices from storage: $e');
       return [];
     }
   }
@@ -62,7 +63,7 @@ class DeviceStorageService {
       devicesList.removeWhere((d) => d.id == deviceId);
       await _saveDevices(devicesList);
     } catch (e) {
-      print('Warning: Could not remove device from storage: $e');
+      debugPrint('Warning: Could not remove device from storage: $e');
     }
   }
 
@@ -70,7 +71,7 @@ class DeviceStorageService {
     try {
       await _saveDevices(devices);
     } catch (e) {
-      print('Warning: Could not overwrite devices in storage: $e');
+      debugPrint('Warning: Could not overwrite devices in storage: $e');
     }
   }
 
@@ -104,7 +105,7 @@ class DeviceStorageService {
 
       return originalLength - devicesList.length;
     } catch (e) {
-      print('Warning: Could not remove device by type/name/ip: $e');
+      debugPrint('Warning: Could not remove device by type/name/ip: $e');
       return 0;
     }
   }
@@ -113,23 +114,34 @@ class DeviceStorageService {
   static Future<bool> updateDeviceFields({
     required String type,
     required String name,
+    String? previousIpAddress,
     required Map<String, dynamic> updates,
   }) async {
     try {
       final normalizedType = type.trim().toLowerCase();
       final normalizedName = name.trim().toLowerCase();
+      final normalizedPreviousIp = previousIpAddress?.trim() ?? '';
 
       final devicesList = await getDevices();
       bool found = false;
 
       for (var i = 0; i < devicesList.length; i++) {
         final device = devicesList[i];
-        if (device.type.trim().toLowerCase() == normalizedType &&
-            device.name.trim().toLowerCase() == normalizedName) {
+        final matchesTypeAndName =
+            device.type.trim().toLowerCase() == normalizedType &&
+            device.name.trim().toLowerCase() == normalizedName;
+        final matchesPreviousIp = normalizedPreviousIp.isNotEmpty &&
+            device.ipAddress.trim() == normalizedPreviousIp;
+
+        if (matchesTypeAndName || matchesPreviousIp) {
           final updated = AddedDevice(
             id: device.id,
-            type: device.type,
-            name: device.name,
+            type: updates.containsKey('type')
+                ? (updates['type']?.toString() ?? device.type)
+                : device.type,
+            name: updates.containsKey('name')
+                ? (updates['name']?.toString() ?? device.name)
+                : device.name,
             ipAddress: updates.containsKey('ipAddress')
                 ? (updates['ipAddress']?.toString() ?? device.ipAddress)
                 : device.ipAddress,
@@ -158,12 +170,12 @@ class DeviceStorageService {
 
       if (found) {
         await _saveDevices(devicesList);
-        print('✓ Updated device in local storage: $type / $name');
+        debugPrint('✓ Updated device in local storage: $type / $name');
       }
 
       return found;
     } catch (e) {
-      print('Warning: Could not update device fields: $e');
+      debugPrint('Warning: Could not update device fields: $e');
       return false;
     }
   }
@@ -225,7 +237,7 @@ class DeviceStorageService {
 
       return updatedCount;
     } catch (e) {
-      print('Warning: Could not update devices by location rename: $e');
+      debugPrint('Warning: Could not update devices by location rename: $e');
       return 0;
     }
   }
@@ -243,7 +255,7 @@ class DeviceStorageService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_storageKey);
     } catch (e) {
-      print('Warning: Could not clear devices from storage: $e');
+      debugPrint('Warning: Could not clear devices from storage: $e');
     }
   }
 }

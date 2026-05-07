@@ -5,25 +5,43 @@ import 'package:flutter/foundation.dart';
 import 'package:monitoring/models/camera_model.dart';
 import 'package:monitoring/models/mmt_model.dart';
 import 'package:monitoring/models/tower_model.dart';
+import 'package:monitoring/models/nvr_model.dart';
+import 'package:monitoring/models/switch_model.dart';
 import 'package:monitoring/pages/diagnostics/performance/data/device_performance_repository.dart';
+
+class DeviceDescriptor {
+  final String id;
+  final String name;
+  final String type; // access_point, camera, mmt
+  final String infraType; // TOWER, RTG, RS, CC, OTHER
+
+  DeviceDescriptor({
+    required this.id,
+    required this.name,
+    required this.type,
+    required this.infraType,
+  });
+
+  @override
+  String toString() => '$name ($type)';
+}
 
 class DevicePerformanceController extends ChangeNotifier {
   static const int warningThreshold = 80;
   static const Duration refreshInterval = Duration(seconds: 10);
-  static const int maxSamples = 24;
 
   final DevicePerformanceRepository _repository;
 
   DevicePerformanceController({DevicePerformanceRepository? repository})
       : _repository = repository ?? DevicePerformanceRepository();
 
-  String _selectedType = 'access_point';
-  String _selectedDeviceId = '';
-  String _selectedRange = 'all';
+  String _selectedCategory = 'All Devices';
+  String _selectedRange = '24h';
 
-  List<Tower> _towers = [];
-  List<Camera> _cameras = [];
-  List<MMT> _mmts = [];
+  List<DeviceDescriptor> _allDevices = [];
+  List<Map<String, dynamic>> _masterLocations = [];
+  List<Map<String, dynamic>> _inventoryRows = [];
+  Map<String, dynamic>? _overallData;
 
   bool _isBootLoading = true;
   bool _isRefreshing = false;
@@ -31,7 +49,7 @@ class DevicePerformanceController extends ChangeNotifier {
   DateTime? _lastUpdated;
 
   Map<String, dynamic>? _telemetry;
-  List<Map<String, dynamic>> _telemetryRows = const [];
+  final List<Map<String, dynamic>> _telemetryRows = const [];
   Timer? _refreshTimer;
 
   final List<FlSpot> _rxSpots = [];
@@ -40,9 +58,11 @@ class DevicePerformanceController extends ChangeNotifier {
 
   bool _didBootstrap = false;
 
-  String get selectedType => _selectedType;
-  String get selectedDeviceId => _selectedDeviceId;
+  String get selectedCategory => _selectedCategory;
   String get selectedRange => _selectedRange;
+  
+  static const List<String> categories = ['All Devices', 'Access Point', 'CCTV', 'MMT', 'NVR', 'Switch'];
+  
   int get selectedRangeHours {
     switch (_selectedRange) {
       case '24h':
@@ -56,9 +76,7 @@ class DevicePerformanceController extends ChangeNotifier {
         return 24 * 30;
     }
   }
-  List<Tower> get towers => _towers;
-  List<Camera> get cameras => _cameras;
-  List<MMT> get mmts => _mmts;
+
   bool get isBootLoading => _isBootLoading;
   bool get isRefreshing => _isRefreshing;
   String? get error => _error;
@@ -69,26 +87,72 @@ class DevicePerformanceController extends ChangeNotifier {
   List<FlSpot> get rxSpots => List.unmodifiable(_rxSpots);
   List<FlSpot> get txSpots => List.unmodifiable(_txSpots);
   bool get didBootstrap => _didBootstrap;
+  Map<String, dynamic>? get overallData => _overallData;
 
-  List<String> deviceOptions(String type) {
-    if (type == 'camera') {
-      return _cameras
-          .map((e) => e.cameraId)
-          .where((e) => e.isNotEmpty)
-          .toList();
+  List<Map<String, dynamic>> get categoryTelemetry {
+    final rows = _resolvedTelemetryRows();
+    if (rows.isEmpty) return [];
+
+    if (_selectedCategory == 'All Devices') {
+      return rows;
     }
-    if (type == 'mmt') {
-      return _mmts.map((e) => e.mmtId).where((e) => e.isNotEmpty).toList();
-    }
-    return _towers.map((e) => e.towerId).where((e) => e.isNotEmpty).toList();
+
+    final targetType = _mapCategoryToType(_selectedCategory);
+
+    return rows.where((row) {
+      final devType = row['device_type']?.toString().toLowerCase().trim() ?? '';
+      
+      // Sangat permisif: cari keyword dalam string tipe
+      if (_selectedCategory == 'Access Point') {
+        return devType == 'access_point' || 
+               devType == 'tower' || 
+               devType == 'ap' || 
+               devType.contains('access') || 
+               devType.contains('ap') || 
+               devType.contains('tower') ||
+               devType.contains('wireless');
+      }
+      
+      if (_selectedCategory == 'CCTV') {
+        return devType == 'camera' || 
+               devType == 'cctv' || 
+               devType.contains('cam') || 
+               devType.contains('cctv');
+      }
+
+      if (_selectedCategory == 'MMT') {
+        return devType == 'mmt' || devType.contains('mmt');
+      }
+
+      return devType == targetType;
+    }).map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
-  String resolveInitialDeviceId(String type, String preferredId) {
-    final options = deviceOptions(type);
-    if (preferredId.isNotEmpty && options.any((e) => e == preferredId)) {
-      return preferredId;
+  List<Map<String, dynamic>> _resolvedTelemetryRows() {
+    final rows = _overallData?['telemetry_rows'];
+    if (rows is List && rows.isNotEmpty) {
+      return rows.map((e) => Map<String, dynamic>.from(e)).toList();
     }
-    return options.isNotEmpty ? options.first : preferredId;
+    return List<Map<String, dynamic>>.from(_inventoryRows);
+  }
+
+  String _mapCategoryToType(String cat) {
+    switch (cat) {
+      case 'All Devices':
+        return 'all';
+      case 'Access Point':
+        return 'access_point';
+      case 'CCTV':
+        return 'camera';
+      case 'MMT':
+        return 'mmt';
+      case 'NVR':
+        return 'nvr';
+      case 'Switch':
+        return 'switch';
+      default:
+        return 'all';
+    }
   }
 
   Future<void> bootstrap(Map<String, dynamic>? args) async {
@@ -97,162 +161,258 @@ class DevicePerformanceController extends ChangeNotifier {
     }
     _didBootstrap = true;
 
+    await _loadAllData();
+    
     if (args != null) {
-      final rawType = (args['deviceType']?.toString() ?? '').toLowerCase();
-      if (rawType.contains('camera') || rawType.contains('cctv')) {
-        _selectedType = 'camera';
-      } else if (rawType.contains('mmt')) {
-        _selectedType = 'mmt';
-      } else if (rawType.contains('tower') ||
-          rawType.contains('ap') ||
-          rawType.contains('access')) {
-        _selectedType = 'access_point';
+      final candidateType = (args['deviceType'] ?? '').toString().toLowerCase();
+      if (candidateType == 'all') {
+        _selectedCategory = 'All Devices';
       }
-
-      final candidateId =
-          args['deviceId']?.toString() ?? args['deviceName']?.toString() ?? '';
-      _selectedDeviceId = candidateId.trim();
+      if (candidateType == 'camera') {
+        _selectedCategory = 'CCTV';
+      } else if (candidateType == 'mmt') _selectedCategory = 'MMT';
+      else if (candidateType == 'access_point') _selectedCategory = 'Access Point';
     }
 
-    await _loadDeviceOptions();
-    await refreshTelemetry(force: true);
+    await refreshData(force: true);
     _startRefreshTimer();
 
     _isBootLoading = false;
     notifyListeners();
   }
 
-  Future<void> _loadDeviceOptions() async {
+  Future<void> _loadAllData() async {
     final towers = await _repository.getAllTowers();
     final cameras = await _repository.getAllCameras();
     final mmts = await _repository.getAllMMTs();
+    final nvrs = await _repository.getAllNVRs();
+    final switches = await _repository.getAllSwitches();
+    _masterLocations = await _repository.getAllMasterLocations();
 
-    _towers = towers;
-    _cameras = cameras;
-    _mmts = mmts;
-    _selectedDeviceId =
-        resolveInitialDeviceId(_selectedType, _selectedDeviceId);
-    _error = null;
-    notifyListeners();
+    final List<DeviceDescriptor> all = [];
+
+    String resolveInfra(String loc) {
+      if (loc.isEmpty) return 'OTHER';
+      final normalized = loc.trim().toUpperCase();
+      final match = _masterLocations.firstWhere(
+        (m) =>
+            m['location_name'].toString().toUpperCase() == normalized ||
+            m['location_code'].toString().toUpperCase() == normalized,
+        orElse: () => {},
+      );
+      if (match.isEmpty) return 'OTHER';
+      return (match['location_type'] ?? 'OTHER').toString().toUpperCase();
+    }
+
+    for (final t in towers) {
+      all.add(DeviceDescriptor(
+        id: t.towerId,
+        name: t.towerId,
+        type: 'access_point',
+        infraType: resolveInfra(t.location),
+      ));
+    }
+    for (final c in cameras) {
+      all.add(DeviceDescriptor(
+        id: c.cameraId,
+        name: c.cameraId,
+        type: 'camera',
+        infraType: resolveInfra(c.location),
+      ));
+    }
+    for (final m in mmts) {
+      all.add(DeviceDescriptor(
+        id: m.mmtId,
+        name: m.mmtId,
+        type: 'mmt',
+        infraType: resolveInfra(m.location),
+      ));
+    }
+    for (final n in nvrs) {
+      all.add(DeviceDescriptor(
+        id: n.nvrId,
+        name: n.nvrId,
+        type: 'nvr',
+        infraType: resolveInfra(n.location),
+      ));
+    }
+    for (final s in switches) {
+      all.add(DeviceDescriptor(
+        id: s.switchId,
+        name: s.switchId,
+        type: 'switch',
+        infraType: resolveInfra(s.location),
+      ));
+    }
+
+    _allDevices = all;
+    _inventoryRows = [
+      ...towers.map((t) => _buildTowerRow(t)),
+      ...cameras.map((c) => _buildCameraRow(c)),
+      ...mmts.map((m) => _buildMmtRow(m)),
+      ...nvrs.map((n) => _buildNvrRow(n)),
+      ...switches.map((s) => _buildSwitchRow(s)),
+    ];
   }
 
-  void updateSelectedType(String type) {
-    final nextId = resolveInitialDeviceId(type, '');
-    _selectedType = type;
-    _selectedDeviceId = nextId;
+  void updateSelectedCategory(String category) {
+    if (category == _selectedCategory) return;
+    _selectedCategory = category;
     notifyListeners();
-    refreshTelemetry(force: true);
-  }
-
-  void updateSelectedDeviceId(String deviceId) {
-    _selectedDeviceId = deviceId;
-    notifyListeners();
-    refreshTelemetry(force: true);
+    refreshData(force: true);
   }
 
   void updateSelectedRange(String range) {
-    if (range == _selectedRange) {
-      return;
-    }
+    if (range == _selectedRange) return;
     _selectedRange = range;
     notifyListeners();
-    refreshTelemetry(force: true);
+    refreshData(force: true);
   }
 
   void _startRefreshTimer() {
     _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(refreshInterval, (_) {
-      refreshTelemetry();
+      refreshData();
     });
   }
 
-  Future<void> refreshTelemetry({bool force = false}) async {
-    final availableDevices = deviceOptions(_selectedType);
-    if (availableDevices.isEmpty) {
-      _telemetry = null;
-      _telemetryRows = const [];
-      _error =
-          'Device data for this category is currently unavailable. Please ensure master device data is populated.';
-      notifyListeners();
-      return;
-    }
-
-    if (_selectedDeviceId.isEmpty ||
-        !availableDevices.contains(_selectedDeviceId)) {
-      _selectedDeviceId = availableDevices.first;
-    }
-
-    if (_isRefreshing && !force) {
-      return;
-    }
+  Future<void> refreshData({bool force = false}) async {
+    if (_isRefreshing && !force) return;
 
     _isRefreshing = true;
     _error = null;
     notifyListeners();
 
-    final response = await _repository.getDevicePerformance(
-      deviceType: _selectedType,
-      deviceId: _selectedDeviceId,
-      hours: selectedRangeHours,
-    );
-
-    if (response['success'] == true &&
-        response['data'] is Map<String, dynamic>) {
-      final data = response['data'] as Map<String, dynamic>;
-      final rawRows = data['telemetry_rows'];
-      if (rawRows is List) {
-        _telemetryRows = rawRows
-            .whereType<Map>()
-            .map((row) => Map<String, dynamic>.from(row))
-            .toList(growable: false);
-      } else {
-        _telemetryRows = const [];
+    try {
+      // 1. Fetch Global Diagnostics (which contains telemetry_rows for categories)
+      final response = await _repository.getGlobalDiagnostics(hours: selectedRangeHours);
+      if (response['success'] == true) {
+        _overallData = response['data'];
       }
 
-      _pushTrafficSample(
-        rx: toDouble(data['traffic_rx_mbps']),
-        tx: toDouble(data['traffic_tx_mbps']),
-      );
+      // 2. For charts, we use a sample device of this category
+      final targetType = _mapCategoryToType(_selectedCategory);
+      final devices = _selectedCategory == 'All Devices'
+          ? _allDevices
+          : _allDevices.where((d) => d.type.toLowerCase() == targetType).toList();
+      
+      if (devices.isNotEmpty) {
+        final sample = devices.first;
+        final perfResponse = await _repository.getDevicePerformance(
+          deviceType: sample.type,
+          deviceId: sample.id,
+          hours: selectedRangeHours,
+        );
+        if (perfResponse['success'] == true) {
+          _telemetry = perfResponse['data'];
+          _updateChartSpots();
+        }
+      } else {
+        _telemetry = null;
+        _rxSpots.clear();
+        _txSpots.clear();
+      }
 
-      _telemetry = data;
       _lastUpdated = DateTime.now();
+    } catch (e) {
+      _error = e.toString();
+    } finally {
       _isRefreshing = false;
       notifyListeners();
-      return;
-    }
-
-    _isRefreshing = false;
-    _telemetryRows = const [];
-    _error =
-        response['message']?.toString() ?? 'Failed to fetch telemetry data.';
-    notifyListeners();
-  }
-
-  void _pushTrafficSample({required double rx, required double tx}) {
-    _rxSpots.add(FlSpot(_sampleIndex, rx));
-    _txSpots.add(FlSpot(_sampleIndex, tx));
-    _sampleIndex += 1;
-
-    if (_rxSpots.length > maxSamples) {
-      _rxSpots.removeAt(0);
-    }
-    if (_txSpots.length > maxSamples) {
-      _txSpots.removeAt(0);
     }
   }
 
-  double toDouble(dynamic value) {
-    if (value is num) {
-      return value.toDouble();
+  void _updateChartSpots() {
+    _rxSpots.clear();
+    _txSpots.clear();
+    _sampleIndex = 0;
+
+    if (_telemetry == null) return;
+    final history = _telemetry!['history'] as List?;
+    if (history == null) return;
+
+    for (final point in history) {
+      final rx = double.tryParse(point['rx_mbps'].toString()) ?? 0;
+      final tx = double.tryParse(point['tx_mbps'].toString()) ?? 0;
+      _rxSpots.add(FlSpot(_sampleIndex, rx));
+      _txSpots.add(FlSpot(_sampleIndex, tx));
+      _sampleIndex += 1;
     }
-    return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
-  int toInt(dynamic value) {
-    if (value is num) {
-      return value.round();
-    }
-    return int.tryParse(value?.toString() ?? '') ?? 0;
+  Map<String, dynamic> _buildTowerRow(Tower tower) {
+    return {
+      'sampled_at': tower.updatedAt,
+      'device_id': tower.towerId,
+      'device_type': 'access_point',
+      'cpu_load_percent': tower.cpuLoad.toDouble(),
+      'ram_usage_percent': tower.ramUsage.toDouble(),
+      'response_time_ms': tower.latencyMs.toDouble(),
+      'packet_loss_percent': tower.packetLoss,
+      'traffic_rx_mbps': tower.bwRx.toDouble(),
+      'traffic_tx_mbps': tower.bwTx.toDouble(),
+      'uptime_seconds': tower.uptimeSeconds,
+    };
+  }
+
+  Map<String, dynamic> _buildCameraRow(Camera camera) {
+    return {
+      'sampled_at': camera.updatedAt,
+      'device_id': camera.cameraId,
+      'device_type': 'camera',
+      'cpu_load_percent': camera.cpuLoad.toDouble(),
+      'ram_usage_percent': camera.ramUsage.toDouble(),
+      'response_time_ms': camera.latencyMs.toDouble(),
+      'packet_loss_percent': camera.packetLoss,
+      'traffic_rx_mbps': camera.bwRx.toDouble(),
+      'traffic_tx_mbps': camera.bwTx.toDouble(),
+      'uptime_seconds': camera.uptimeSeconds,
+    };
+  }
+
+  Map<String, dynamic> _buildMmtRow(MMT mmt) {
+    return {
+      'sampled_at': mmt.updatedAt,
+      'device_id': mmt.mmtId,
+      'device_type': 'mmt',
+      'cpu_load_percent': 0,
+      'ram_usage_percent': 0,
+      'response_time_ms': 0,
+      'packet_loss_percent': 0,
+      'traffic_rx_mbps': 0,
+      'traffic_tx_mbps': 0,
+      'uptime_seconds': 0,
+    };
+  }
+
+  Map<String, dynamic> _buildNvrRow(NVR nvr) {
+    return {
+      'sampled_at': nvr.updatedAt,
+      'device_id': nvr.nvrId,
+      'device_type': 'nvr',
+      'cpu_load_percent': 0,
+      'ram_usage_percent': 0,
+      'response_time_ms': 0,
+      'packet_loss_percent': 0,
+      'traffic_rx_mbps': 0,
+      'traffic_tx_mbps': 0,
+      'uptime_seconds': 0,
+    };
+  }
+
+  Map<String, dynamic> _buildSwitchRow(SwitchModel sw) {
+    return {
+      'sampled_at': sw.updatedAt,
+      'device_id': sw.switchId,
+      'device_type': 'switch',
+      'cpu_load_percent': 0,
+      'ram_usage_percent': 0,
+      'response_time_ms': 0,
+      'packet_loss_percent': 0,
+      'traffic_rx_mbps': 0,
+      'traffic_tx_mbps': 0,
+      'uptime_seconds': 0,
+    };
   }
 
   @override

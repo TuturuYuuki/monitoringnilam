@@ -117,9 +117,9 @@ class _StatusCardFrame extends StatelessWidget {
     required this.headerIcon,
     required this.title,
     required this.tiles,
-    this.padding = const EdgeInsets.all(16),
-    this.maxTitleLines = 2,
-  });
+    required this.padding,
+    required this.maxTitleLines,
+  }); 
 
   @override
   Widget build(BuildContext context) {
@@ -147,18 +147,18 @@ class _StatusCardFrame extends StatelessWidget {
                     Row(
                       children: [
                         Container(
-                          padding: EdgeInsets.all(iconPad),
+                          padding: EdgeInsets.all(compact ? 6 : 8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1976D2).withValues(alpha: 0.8),
-                            borderRadius: BorderRadius.circular(16),
+                            color: const Color(0xFF1976D2),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
                             headerIcon,
                             color: Colors.white,
-                            size: compact ? 24 : 28,
+                            size: compact ? 18 : 20,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             title,
@@ -217,6 +217,8 @@ class NetworkStatusCard extends StatelessWidget {
       ),
       headerIcon: Icons.router,
       title: 'Access Point Monitoring',
+      padding: const EdgeInsets.all(16),
+      maxTitleLines: 2,
       tiles: [
         Builder(
           builder: (context) => LayoutBuilder(
@@ -278,6 +280,8 @@ class CCTVMonitoringCard extends StatelessWidget {
       ),
       headerIcon: Icons.videocam,
       title: 'CCTV Monitoring',
+      padding: const EdgeInsets.all(16),
+      maxTitleLines: 2,
       tiles: [
         Builder(
           builder: (context) => LayoutBuilder(
@@ -337,8 +341,10 @@ class MMTMonitoringCard extends StatelessWidget {
         context,
         MaterialPageRoute(builder: (context) => const MMTMonitoringPage()),
       ),
-      headerIcon: Icons.tablet_mac,
+      headerIcon: Icons.tablet_android,
       title: 'MMT Monitoring',
+      padding: const EdgeInsets.all(16),
+      maxTitleLines: 2,
       tiles: [
         Builder(
           builder: (context) => LayoutBuilder(
@@ -348,7 +354,7 @@ class MMTMonitoringCard extends StatelessWidget {
                 count: totalUp,
                 label: 'UP',
                 color: Colors.green,
-                icon: Icons.tablet_mac,
+                icon: Icons.tablet_android,
                 iconBoxSize: compact ? 46 : 52,
                 iconSize: compact ? 22 : 26,
                 countFontSize: compact ? 22 : 26,
@@ -366,7 +372,7 @@ class MMTMonitoringCard extends StatelessWidget {
                 count: totalDown,
                 label: 'DOWN',
                 color: Colors.red,
-                icon: Icons.tablet_mac,
+                icon: Icons.tablet_android,
                 iconBoxSize: compact ? 46 : 52,
                 iconSize: compact ? 22 : 26,
                 countFontSize: compact ? 22 : 26,
@@ -398,6 +404,8 @@ class ActiveAlertsCard extends StatelessWidget {
       ),
       headerIcon: Icons.warning_amber_rounded,
       title: 'Alert Monitoring',
+      padding: const EdgeInsets.all(16),
+      maxTitleLines: 2,
       tiles: [
         Builder(
           builder: (context) => LayoutBuilder(
@@ -410,6 +418,126 @@ class ActiveAlertsCard extends StatelessWidget {
                 icon: Icons.report_problem,
                 iconBoxSize: compact ? 48 : 56,
                 iconSize: compact ? 24 : 28,
+                countFontSize: compact ? 22 : 26,
+                labelFontSize: compact ? 11 : 12,
+                spacing: compact ? 6 : 8,
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class NVRMonitoringCard extends StatelessWidget {
+  final int totalUp;
+  final int totalDown;
+
+  const NVRMonitoringCard({
+    super.key,
+    required this.totalUp,
+    required this.totalDown,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _StatusCardFrame(
+      onTap: () => Navigator.pushNamed(context, '/nvr-monitoring-cy1'),
+      headerIcon: Icons.dns,
+      title: 'NVR Monitoring',
+      padding: const EdgeInsets.all(16),
+      maxTitleLines: 2,
+      tiles: [
+        Builder(
+          builder: (context) => LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 120;
+              return TowerStatusTile(
+                count: totalUp,
+                label: 'UP',
+                color: Colors.green,
+                icon: Icons.dns,
+                iconBoxSize: compact ? 46 : 52,
+                iconSize: compact ? 22 : 26,
+                countFontSize: compact ? 22 : 26,
+                labelFontSize: compact ? 11 : 12,
+                spacing: compact ? 6 : 8,
+              );
+            },
+          ),
+        ),
+        Builder(
+          builder: (context) => LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 120;
+              return TowerStatusTile(
+                count: totalDown,
+                label: 'DOWN',
+                color: Colors.red,
+                icon: Icons.dns_outlined,
+                iconBoxSize: compact ? 46 : 52,
+                iconSize: compact ? 22 : 26,
+                countFontSize: compact ? 22 : 26,
+                labelFontSize: compact ? 11 : 12,
+                spacing: compact ? 6 : 8,
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class SwitchMonitoringCard extends StatelessWidget {
+  final int totalUp;
+  final int totalDown;
+
+  const SwitchMonitoringCard({
+    super.key,
+    required this.totalUp,
+    required this.totalDown,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _StatusCardFrame(
+      onTap: () => Navigator.pushNamed(context, '/switch-monitoring-cy1'),
+      headerIcon: Icons.device_hub,
+      title: 'Switch Monitoring',
+      padding: const EdgeInsets.all(16),
+      maxTitleLines: 2,
+      tiles: [
+        Builder(
+          builder: (context) => LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 120;
+              return TowerStatusTile(
+                count: totalUp,
+                label: 'UP',
+                color: Colors.green,
+                icon: Icons.device_hub,
+                iconBoxSize: compact ? 46 : 52,
+                iconSize: compact ? 22 : 26,
+                countFontSize: compact ? 22 : 26,
+                labelFontSize: compact ? 11 : 12,
+                spacing: compact ? 6 : 8,
+              );
+            },
+          ),
+        ),
+        Builder(
+          builder: (context) => LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 120;
+              return TowerStatusTile(
+                count: totalDown,
+                label: 'DOWN',
+                color: Colors.red,
+                icon: Icons.device_hub,
+                iconBoxSize: compact ? 46 : 52,
+                iconSize: compact ? 22 : 26,
                 countFontSize: compact ? 22 : 26,
                 labelFontSize: compact ? 11 : 12,
                 spacing: compact ? 6 : 8,

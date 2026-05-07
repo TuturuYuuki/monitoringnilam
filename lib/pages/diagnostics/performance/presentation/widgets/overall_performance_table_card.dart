@@ -8,7 +8,7 @@ class OverallPerformanceTableCard extends StatelessWidget {
   const OverallPerformanceTableCard({
     super.key,
     required this.overallData,
-    this.title = 'Data Keseluruhan Performance',
+    this.title = 'All Data Performance',
     this.selectedRange = 'all',
   });
 
@@ -25,27 +25,19 @@ class OverallPerformanceTableCard extends StatelessWidget {
 
     final rows = <_OverallMetricRow>[
       _OverallMetricRow(
-        label: 'UP Devices',
-        value: up.toString(),
-      ),
-      _OverallMetricRow(
-        label: 'DOWN/WARNING Devices',
-        value: down.toString(),
-      ),
-      _OverallMetricRow(
-        label: 'Rata-rata CPU',
+        label: 'Rata - Rata CPU',
         value: '${_toDouble(vital['cpu_load_percent']).toStringAsFixed(2)} %',
       ),
       _OverallMetricRow(
-        label: 'Rata-rata Memory',
+        label: 'Rata - Rata Memory',
         value: '${_toDouble(vital['memory_used_percent']).toStringAsFixed(2)} %',
       ),
       _OverallMetricRow(
-        label: 'Rata-rata Latency',
+        label: 'Rata - Rata Latency',
         value: '${_toDouble(vital['response_time_ms']).toStringAsFixed(2)} ms',
       ),
       _OverallMetricRow(
-        label: 'Rata-rata Packet Loss',
+        label: 'Rata - Rata Packet Loss',
         value: '${_toDouble(vital['packet_loss_percent']).toStringAsFixed(2)} %',
       ),
     ];
@@ -104,7 +96,7 @@ class OverallPerformanceTableCard extends StatelessWidget {
                 runSpacing: 8,
                 children: [
                   _statusPill('UP', up.toString(), const Color(0xFF3CB371)),
-                  _statusPill('DOWN/WARN', down.toString(), const Color(0xFFB0B0B0)),
+                  _statusPill('DOWN', down.toString(), const Color(0xFFB0B0B0)),
                 ],
               ),
               const SizedBox(height: 12),
@@ -196,14 +188,14 @@ class OverallPerformanceTableCard extends StatelessWidget {
   static String _rangeLabel(String range) {
     switch (range) {
       case '24h':
-        return '24 Jam';
+        return '24 Hour';
       case '7d':
-        return '7 Hari';
+        return '7 Day';
       case '30d':
-        return '30 Hari';
+        return '30 Day';
       case 'all':
       default:
-        return 'Semua Data';
+        return 'All Time';
     }
   }
 

@@ -52,7 +52,7 @@ class Camera {
     return Camera(
       id: int.tryParse(json['id'].toString()) ?? 0,
       cameraId: json['camera_id']?.toString() ?? '',
-      location: normalizeLocationLabel(json['location']?.toString() ?? ''),
+      location: canonicalizeLocationLabel(json['location']?.toString() ?? ''),
       ipAddress: json['ip_address']?.toString() ?? '',
       status: json['status']?.toString() ?? 'Unknown',
       type: json['type']?.toString() ?? 'Fixed',

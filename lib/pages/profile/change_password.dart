@@ -52,17 +52,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     final userIdStr = user['user_id'] ?? user['id']?.toString() ?? '';
     final parsedId = int.tryParse(userIdStr);
 
-    print('=== Loading User for Change Password ===');
-    print('User data: $user');
-    print('User ID string: $userIdStr');
-    print('Parsed User ID: $parsedId');
-
     setState(() {
       _userId = parsedId;
     });
 
     if (_userId == null) {
-      print('WARNING: User ID Is Null! Cannot Change Password.');
+      debugPrint('WARNING: User ID Is Null! Cannot Change Password.');
     }
   }
 
@@ -95,8 +90,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   }
 
   Future<void> _testConnection() async {
-    print('\\n=== User Triggered Connection Test ===');
-
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -243,20 +236,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       }
 
       try {
-        print('=== Starting Change Password ===');
-        print('User ID: $_userId');
-        print(
-            'Current Password: ${_currentPasswordController.text.isNotEmpty ? "[PROVIDED]" : "[EMPTY]"}');
-        print(
-            'New Password: ${_newPasswordController.text.isNotEmpty ? "[PROVIDED]" : "[EMPTY]"}');
-
         final res = await apiService.changePassword(
           _userId!,
           _currentPasswordController.text,
           _newPasswordController.text,
         );
-
-        print('Change Password Result: $res');
 
         setState(() {
           _isLoading = false;
@@ -292,7 +276,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         } else {
           // Show specific error message from backend
           final errorMessage = res['message'] ?? 'Failed to change password';
-          print('Error Message: $errorMessage');
 
           if (mounted) {
             showDialog(

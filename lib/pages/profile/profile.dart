@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:animations/animations.dart';
 import 'package:monitoring/main.dart';
 import 'package:monitoring/utils/ui_utils.dart';
 import 'package:monitoring/utils/auth_helper.dart';
-import 'package:monitoring/route_proxy_page.dart';
 import 'package:monitoring/services/api_service.dart';
 import 'package:monitoring/widgets/global_header_bar.dart';
 import 'package:monitoring/widgets/global_sidebar_nav.dart';
@@ -37,16 +35,14 @@ class _ProfilePageState extends State<ProfilePage> {
     final userData = await AuthHelper.getUserData();
     // First show cached data quickly
     setState(() {
-      fullname =
-          userData['fullname']!.isEmpty ? 'No Name' : userData['fullname']!;
-      username =
-          userData['username']!.isEmpty ? 'No Username' : userData['username']!;
-      email = userData['email']!.isEmpty ? 'No Email' : userData['email']!;
-      division = userData['division']!.isEmpty
-          ? (userData['role']!.isEmpty ? 'Division' : userData['role']!)
+      fullname = (userData['fullname'] ?? '').isEmpty ? 'No Name' : userData['fullname']!;
+      username = (userData['username'] ?? '').isEmpty ? 'No Username' : userData['username']!;
+      email = (userData['email'] ?? '').isEmpty ? 'No Email' : userData['email']!;
+      division = (userData['division'] ?? '').isEmpty
+          ? ((userData['role'] ?? '').isEmpty ? 'Division' : userData['role']!)
           : userData['division']!;
-      phone = userData['phone']!.isEmpty ? '-' : userData['phone']!;
-      location = userData['location']!.isEmpty ? '-' : userData['location']!;
+      phone = (userData['phone'] ?? '').isEmpty ? '-' : userData['phone']!;
+      location = (userData['location'] ?? '').isEmpty ? '-' : userData['location']!;
     });
 
     // Then fetch fresh profile from API (sync with DB)
@@ -89,15 +85,12 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: SingleChildScrollView(
                       child: Padding(
                         padding: EdgeInsets.all(isMobile ? 12 : 24),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            ConstrainedBox(
-                              constraints: BoxConstraints(
-                                  maxWidth: isMobile ? double.infinity : 800),
-                              child: _buildContent(context),
-                            ),
-                          ],
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                                maxWidth: isMobile ? double.infinity : 800),
+                            child: _buildContent(context),
+                          ),
                         ),
                       ),
                     )),
@@ -110,249 +103,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    double screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = isMobileScreen(context);
 
-    return Container(
-      width: screenWidth,
-      padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 12 : 24, vertical: isMobile ? 12 : 16),
-      color: const Color(0xFF1976D2),
-      child: isMobile
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Terminal Nilam',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: GestureDetector(
-                        onTap: () {},
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            borderRadius: BorderRadius.circular(50),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.1),
-                                blurRadius: 8,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.person,
-                            color: Color(0xFF1976D2),
-                            size: 24,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(context)
-                      .copyWith(scrollbars: false),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildHeaderOpenButton('Add New Device', '/add-device',
-                            isActive: false),
-                        const SizedBox(width: 8),
-                        _buildHeaderOpenButton('Dashboard', '/dashboard',
-                            isActive: false),
-                        const SizedBox(width: 8),
-                        _buildHeaderOpenButton('AP', '/network',
-                            isActive: false),
-                        const SizedBox(width: 8),
-                        _buildHeaderOpenButton('CCTV', '/cctv',
-                            isActive: false),
-                        const SizedBox(width: 8),
-                        _buildHeaderOpenButton(
-                            'MMT Monitoring', '/mmt-monitoring',
-                            isActive: false),
-                        const SizedBox(width: 8),
-                        _buildHeaderOpenButton('Alert', '/alerts',
-                            isActive: false),
-                        const SizedBox(width: 8),
-                        _buildHeaderOpenButton('Alert Report', '/report',
-                            isActive: false),
-                        const SizedBox(width: 8),
-                        _buildHeaderOpenButton(
-                            'Master Tower', '/tower-management',
-                            isActive: false),
-                        const SizedBox(width: 8),
-                        _buildHeaderLogoutButton(),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            )
-          : Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Terminal Nilam - FIXED
-                const Text(
-                  'Terminal Nilam',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(width: 30),
-                // Buttons + Profile - SCROLL HORIZONTAL
-                Expanded(
-                  child: ScrollConfiguration(
-                    behavior: ScrollConfiguration.of(context)
-                        .copyWith(scrollbars: false),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildHeaderOpenButton(
-                              'Add New Device', '/add-device',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderOpenButton(
-                              'Master Data', '/tower-management',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderOpenButton('Dashboard', '/dashboard',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderOpenButton('AP', '/network',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderOpenButton('CCTV', '/cctv',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderOpenButton('MMT', '/mmt-monitoring',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderOpenButton('Alert', '/alerts',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderOpenButton('Alert Report', '/report',
-                              isActive: false),
-                          const SizedBox(width: 12),
-                          _buildHeaderLogoutButton(),
-                          const SizedBox(width: 12),
-                          MouseRegion(
-                            cursor: SystemMouseCursors.click,
-                            child: GestureDetector(
-                              onTap: () {},
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                  borderRadius: BorderRadius.circular(50),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.1),
-                                      blurRadius: 8,
-                                      spreadRadius: 1,
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(
-                                  Icons.person,
-                                  color: Color(0xFF1976D2),
-                                  size: 24,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-    );
-  }
-
-  Widget _buildHeaderButton(String text, VoidCallback onPressed) {
-    return buildLiquidGlassButton(text, onPressed, isActive: false);
-  }
-
-  Widget _buildHeaderOpenButton(String text, String route,
-      {bool isActive = false}) {
-    return OpenContainer(
-      transitionDuration: const Duration(milliseconds: 550),
-      transitionType: ContainerTransitionType.fadeThrough,
-      closedElevation: 0,
-      closedColor: Colors.transparent,
-      closedShape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      openElevation: 0,
-      openBuilder: (context, _) => RouteProxyPage(route),
-      closedBuilder: (context, openContainer) {
-        return buildLiquidGlassButton(text, openContainer, isActive: isActive);
-      },
-    );
-  }
-
-  Widget _buildHeaderLogoutButton() {
-    return buildLiquidGlassButton('Logout', () => _showLogoutDialog(context),
-        isActive: false);
-  }
-
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout', style: TextStyle(color: Colors.black87)),
-        content: const Text('Are you sure you want to logout?',
-            style: TextStyle(color: Colors.black87)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child:
-                const Text('Cancel', style: TextStyle(color: Colors.black87)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              AuthHelper.clearUserData();
-              Navigator.pushReplacementNamed(context, '/login');
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeaderButtonOld(String text, VoidCallback onPressed) {
-    return buildLiquidGlassButton(text, onPressed, isActive: false);
-  }
 
   Widget _buildContent(BuildContext context) {
     return Column(

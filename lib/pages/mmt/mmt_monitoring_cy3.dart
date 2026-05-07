@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:monitoring/models/mmt_model.dart';
 import 'package:monitoring/services/api_service.dart';
+import 'package:monitoring/utils/device_icon_resolver.dart';
 import 'dart:async';
 import 'dart:ui';
 import 'package:monitoring/main.dart';
@@ -39,10 +40,12 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
   int globalDownMMTs = 0;
   bool _isLoadingGlobalSummary = true;
   bool _isGlobalSummaryRequestInFlight = false;
+  List<Map<String, String>> _masterOptions = [];
 
   @override
   void initState() {
     super.initState();
+    _loadMasterLocations();
     _loadMMTs();
     _loadGlobalSummary(initialLoad: true);
     _startAutoRefresh();
@@ -55,8 +58,9 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
   }
 
   void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       if (mounted) {
+        _loadMasterLocations();
         _loadMMTs();
         _loadGlobalSummary();
       }
@@ -77,7 +81,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
 
   Future<void> _loadMMTs() async {
     try {
-      final mmts = await _apiService.getValidatedMMTsByAreaType(selectedArea.replaceAll(' ', ''));
+      final mmts = await _apiService.getValidatedMMTsByYard(selectedArea);
       if (mounted) {
         setState(() {
           _mmts = mmts;
@@ -89,7 +93,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading MMTs: $e')),
+          SnackBar(content: Text('Error loading MMT: $e')),
         );
       }
     }
@@ -119,6 +123,17 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
     } finally {
       _isGlobalSummaryRequestInFlight = false;
     }
+  }
+
+  Future<void> _loadMasterLocations() async {
+    try {
+      final locs = await _apiService.getAllMasterLocations();
+      if (mounted) {
+        setState(() {
+          _masterOptions = buildMasterLocationOptions(locs);
+        });
+      }
+    } catch (_) {}
   }
 
   int get totalMMTs => _mmts.length;
@@ -257,6 +272,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
                           ],
                         ),
                       ),
+                      const SizedBox(height: 16),
                       Row(
                         children: [
                           Expanded(
@@ -496,26 +512,44 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
   Widget _buildNetworkDropdown(double width) {
     return _buildActionCard(
       title: 'AREA',
-      icon: Icons.location_on_rounded,
-      iconColor: Colors.white,
-      content: AnimatedDropdownButton(
-        value: "Select Area",
-        items: _areaOptions,
-        backgroundColor: AppDropdownStyle.menuBackground,
-        onChanged: (String? newValue) {
-          if (newValue == null) return;
-          if (newValue == 'CY 1') {
-            Navigator.pushReplacementNamed(context, '/mmt-monitoring');
-          } else if (newValue == 'CY 2') {
-            Navigator.pushReplacementNamed(context, '/mmt-monitoring-cy2');
-          } else if (newValue == 'CY 3') {
-            Navigator.pushReplacementNamed(context, '/mmt-monitoring-cy3');
-          } else if (newValue == 'GATE') {
-            Navigator.pushReplacementNamed(context, '/mmt-monitoring-gate');
-          } else if (newValue == 'PARKING') {
-            Navigator.pushReplacementNamed(context, '/mmt-monitoring-parking');
-          }
-        },
+      icon: Icons.map_rounded,
+      iconColor: Colors.orange,
+      content: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: 'CY 3',
+          isExpanded: true,
+          isDense: true,
+          dropdownColor: const Color(0xFF1B2631),
+          icon: const Icon(Icons.arrow_drop_down, color: Colors.white70),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+          items: [
+            
+            ..._areaOptions.map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }),
+          ],
+          onChanged: (String? newValue) {
+            if (newValue == null) return;
+            if (newValue == 'CY 1') {
+              Navigator.pushReplacementNamed(context, '/mmt-monitoring');
+            } else if (newValue == 'CY 2') {
+              Navigator.pushReplacementNamed(context, '/mmt-monitoring-cy2');
+            } else if (newValue == 'CY 3') {
+              Navigator.pushReplacementNamed(context, '/mmt-monitoring-cy3');
+            } else if (newValue == 'GATE') {
+              Navigator.pushReplacementNamed(context, '/mmt-monitoring-gate');
+            } else if (newValue == 'PARKING') {
+              Navigator.pushReplacementNamed(context, '/mmt-monitoring-parking');
+            }
+          },
+        ),
       ),
     );
   }
@@ -561,7 +595,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
         }
       },
       content: const Text(
-        'CHECK STATUS',
+        "CHECK STATUS",
         style: TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.w900,
@@ -582,7 +616,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
     final bool isMobile = MediaQuery.of(context).size.width < 600;
 
     return Container(
-      constraints: const BoxConstraints(minHeight: 50),
+      constraints: BoxConstraints(minHeight: isMobile ? 65 : 75),
       child: MouseRegion(
         cursor:
             onTap != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
@@ -694,40 +728,45 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
 
   Widget _buildMMTList(BuildContext context) {
     if (_isLoading) {
-      return Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.all(40),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withValues(alpha: 0.12),
+                  Colors.white.withValues(alpha: 0.02),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.2),
+                width: 1.5,
+              ),
             ),
-          ],
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                ),
+            child: const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                  SizedBox(height: 20),
+                  Text(
+                    'Loading MMT data...',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2.0,
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(height: 10),
-              Text(
-                'Loading MMT data...',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       );
@@ -782,55 +821,98 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
       );
     }
 
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withValues(alpha: 0.12),
+                Colors.white.withValues(alpha: 0.02),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.2),
+              width: 1.5,
+            ),
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            width: double.infinity,
-            color: const Color(0xFF1976D2),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'MMT List',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
+          child: Column(
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF1976D2).withValues(alpha: 0.8),
+                      const Color(0xFF1976D2).withValues(alpha: 0.4),
+                    ],
                   ),
                 ),
-              ],
-            ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'MMT List',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Builder(builder: (context) {
+                const double minTableWidth = 600;
+                final isMobile = MediaQuery.of(context).size.width < 600;
+                final tableContent = Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 14),
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFFC6B430).withValues(alpha: 0.8),
+                            const Color(0xFFC6B430).withValues(alpha: 0.4),
+                          ],
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          _buildHeaderCell('MMT ID', flex: 2),
+                          _buildHeaderCell('Location', flex: 3),
+                          _buildHeaderCell('IP Address', flex: 2),
+                          _buildHeaderCell('Status', flex: 1),
+                          _buildHeaderCell('Action', flex: 2, isLast: true),
+                        ],
+                      ),
+                    ),
+                    ...paginatedData.map((mmt) => _buildMMTTableRow(mmt)),
+                  ],
+                );
+
+                if (isMobile) {
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(width: minTableWidth, child: tableContent),
+                  );
+                }
+                return tableContent;
+              }),
+            ],
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            width: double.infinity,
-            color: const Color(0xFFC6B430),
-            child: Row(
-              children: [
-                _buildHeaderCell('MMT ID', flex: 2),
-                _buildHeaderCell('Location', flex: 3),
-                _buildHeaderCell('IP Address', flex: 2),
-                _buildHeaderCell('Status', flex: 1),
-                _buildHeaderCell('Action', flex: 2, isLast: true),
-              ],
-            ),
-          ),
-          ...paginatedData.map((mmt) => _buildMMTTableRow(mmt)),
-        ],
+        ),
       ),
     );
   }
@@ -839,38 +921,62 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
       {required int flex, bool isLast = false}) {
     return Expanded(
       flex: flex,
-      child: Text(
-        label,
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w800,
-          fontSize: 14,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            right: isLast
+                ? BorderSide.none
+                : BorderSide(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    width: 1,
+                  ),
+          ),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
+          ),
         ),
       ),
     );
   }
 
   Widget _buildMMTTableRow(MMT mmt) {
-    final isDown = mmt.status != 'UP';
-    final statusColor = isDown ? Colors.red : Colors.black87;
+    final bool isDown = mmt.status != 'UP';
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFE8D5C4),
+        color: Colors.white.withValues(alpha: 0.05),
         border: Border(
-          bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+          bottom: BorderSide(
+            color: Colors.white.withValues(alpha: 0.05),
+            width: 1,
+          ),
         ),
       ),
       child: Row(
         children: [
-          _buildTableCell(mmt.mmtId, flex: 2, fontWeight: FontWeight.w800),
-          _buildTableCell(mmt.location, flex: 3, fontWeight: FontWeight.w800),
-          _buildTableCell(mmt.ipAddress, flex: 2),
+          _buildTableCell(mmt.mmtId,
+              flex: 2, fontWeight: FontWeight.w800, color: Colors.white),
+          _buildTableCell(
+              resolveFullLocationLabel(
+                _masterOptions,
+                mmt.location,
+                currentContainerYard: mmt.containerYard,
+              ),
+              flex: 3,
+              fontWeight: FontWeight.w800,
+              color: Colors.white.withValues(alpha: 0.9)),
+          _buildTableCell(mmt.ipAddress,
+              flex: 2, color: Colors.white.withValues(alpha: 0.7)),
           _buildTableCell(
             isDown ? 'DOWN' : mmt.status,
             flex: 1,
-            color: statusColor,
+            color: isDown ? Colors.redAccent : Colors.greenAccent,
             fontWeight: FontWeight.w800,
           ),
           Expanded(
@@ -881,12 +987,14 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
                 IconButton(
                   icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
                   onPressed: () => _editMMT(mmt),
+                  padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
                 const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red, size: 20),
                   onPressed: () => _confirmDeleteMMT(mmt),
+                  padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
               ],
@@ -910,7 +1018,10 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
           border: Border(
             right: isLast
                 ? BorderSide.none
-                : BorderSide(color: Colors.grey[500]!, width: 0.8),
+                : BorderSide(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    width: 0.8,
+                  ),
           ),
         ),
         child: Text(
@@ -928,6 +1039,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
 
   Future<void> _editMMT(MMT mmt) async {
     final ipController = TextEditingController(text: mmt.ipAddress);
+    final nameController = TextEditingController(text: mmt.mmtId);
     var locationOptions = buildMasterLocationOptions(
       await _apiService.getAllMasterLocations(),
     );
@@ -959,18 +1071,37 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                  controller: ipController,
-                  decoration: const InputDecoration(labelText: 'IP address')),
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Name')),
               const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: selectedLocation,
-                isExpanded: true,
-                dropdownColor: AppDropdownStyle.menuBackground,
-                borderRadius: AppDropdownStyle.menuBorderRadius,
-                decoration: const InputDecoration(labelText: 'Location'),
+              TextField(
+                  controller: ipController,
+                  decoration: const InputDecoration(labelText: 'IP Address')),
+              const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedLocation,
+                  isExpanded: true,
+                  isDense: true,
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  dropdownColor: AppDropdownStyle.menuBackground,
+                  borderRadius: AppDropdownStyle.menuBorderRadius,
+                  decoration: const InputDecoration(labelText: 'Location'),
                 items: locationOptions
                     .map((option) => DropdownMenuItem<String>(value: option['label'],
-                          child: Text(option['label'] ?? ''),
+                          child: Text(
+                            option['label'] ?? '',
+                            style: const TextStyle(color: Colors.white, fontSize: 13),
+                          ),
+                        ))
+                    .toList(),
+                selectedItemBuilder: (context) => locationOptions
+                    .map((option) => Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            option['label'] ?? '',
+                            style: const TextStyle(color: Colors.black, fontSize: 13),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ))
                     .toList(),
                 onChanged: (value) {
@@ -993,10 +1124,12 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Cancel')),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () async {
                 final response = await _apiService.updateMMT(mmt.id, {
+                  'mmt_id': nameController.text,
                   'ip_address': ipController.text,
-                  'location': selectedLocation,
+                  'location': locationOptions.firstWhere((o) => o['label'] == selectedLocation, orElse: () => locationOptions.first)['location_code'] ?? selectedLocation,
                   'container_yard': selectedYard,
                 });
 
@@ -1006,7 +1139,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
                   await _loadMMTs(); // REFRESH DATA DARI DATABASE
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Successfully Updated'),
+                        content: Text('Successfully updated'),
                         backgroundColor: Colors.green));
                   }
                 } else {
@@ -1018,7 +1151,8 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
                   }
                 }
               },
-              child: const Text('Save Changes'),
+              child: const Text('Save Change',
+                  style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -1031,7 +1165,7 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
       context: context,
       builder: (context) => AlertDialog(
           title: const Text('Delete confirmation'),
-          content: Text('Hapus ${mmt.mmtId}?'),
+          content: Text('Delete ${mmt.mmtId}?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
@@ -1194,8 +1328,8 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.tablet_mac,
-                  size: 30, color: Color(0xFF1976D2)),
+                child: Icon(DeviceIconResolver.iconForType('MMT'),
+                  size: 30, color: const Color(0xFF1976D2)),
             ),
             const SizedBox(width: 10),
             const Expanded(
@@ -1248,8 +1382,8 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
             color: const Color(0xFF1976D2),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(
-            Icons.tablet_mac,
+          child: Icon(
+            DeviceIconResolver.iconForType('MMT'),
             size: 32,
             color: Colors.white,
           ),
@@ -1299,5 +1433,3 @@ class _MMTMonitoringCY3PageState extends State<MMTMonitoringCY3Page> {
     );
   }
 }
-
-

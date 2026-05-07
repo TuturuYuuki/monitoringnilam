@@ -27,7 +27,7 @@ class MMT {
     return MMT(
       id: int.tryParse(json['id'].toString()) ?? 0,
       mmtId: json['mmt_id']?.toString() ?? '',
-      location: normalizeLocationLabel(json['location']?.toString() ?? ''),
+      location: canonicalizeLocationLabel(json['location']?.toString() ?? ''),
       ipAddress: json['ip_address']?.toString() ?? '',
       status: json['status']?.toString() ?? 'Unknown',
       type: json['type']?.toString() ?? 'Standard',

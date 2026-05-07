@@ -352,23 +352,16 @@ class _TowerDetailPanelState extends State<TowerDetailPanel> {
                         showDialog(
                           context: context,
                           builder: (context) => AlertDialog(
-                            title: const Text('Delete Tower?'),
-                            content: const Text('This action cannot be undone.'),
+                            title: const Text('Device Info'),
+                            content: const Text('This tower record is not found in the database'),
                             actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Cancel'),
-                              ),
                               ElevatedButton(
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                  widget.onDelete();
-                                },
+                                onPressed: () => Navigator.pop(context),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red,
+                                  backgroundColor: Colors.grey,
                                 ),
                                 child: const Text(
-                                  'Delete',
+                                  'Close',
                                   style: TextStyle(color: Colors.white),
                                 ),
                               ),

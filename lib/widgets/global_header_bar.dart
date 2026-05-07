@@ -1,9 +1,7 @@
 import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:monitoring/utils/auth_helper.dart';
-import 'package:monitoring/theme/app_dropdown_style.dart';
 import 'package:monitoring/utils/ui_utils.dart';
-import 'package:monitoring/route_proxy_page.dart';
 
 class _NavEntry {
   final IconData icon;
@@ -60,7 +58,7 @@ class _GlobalHeaderBarState extends State<GlobalHeaderBar> {
 
   void _openProfile() {
     if (widget.currentRoute == '/profile') return;
-    Navigator.pushReplacementNamed(context, '/profile');
+    Navigator.pushNamed(context, '/profile');
   }
 
   Future<void> _logout() async {
@@ -93,101 +91,7 @@ class _GlobalHeaderBarState extends State<GlobalHeaderBar> {
     }
   }
 
-  void _showNavMenu(BuildContext context) {
-    final RenderBox button = context.findRenderObject() as RenderBox;
-    final RenderBox overlay =
-        Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
-    final RelativeRect position = RelativeRect.fromRect(
-      Rect.fromPoints(
-        button.localToGlobal(Offset(0, button.size.height + 4),
-            ancestor: overlay),
-        button.localToGlobal(
-            Offset(button.size.width, button.size.height + 4),
-            ancestor: overlay),
-      ),
-      Offset.zero & overlay.size,
-    );
 
-    showMenu<String>(
-      context: context,
-      position: position,
-      constraints: const BoxConstraints(minWidth: 52, maxWidth: 52),
-      elevation: 12,
-      color: AppDropdownStyle.menuBackground,
-      shape: RoundedRectangleBorder(
-        borderRadius: AppDropdownStyle.menuBorderRadius,
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
-      ),
-      items: _mobileNavItems.map((item) {
-        final isActive = widget.currentRoute == item.route;
-        final tooltipKey = GlobalKey<TooltipState>();
-
-        return PopupMenuItem<String>(
-          value: item.route,
-          padding: EdgeInsets.zero,
-          child: Tooltip(
-            key: tooltipKey,
-            message: item.label,
-            waitDuration: Duration.zero,
-            triggerMode: TooltipTriggerMode.manual,
-            preferBelow: false,
-            child: InkWell(
-              onTap: () {
-                tooltipKey.currentState?.ensureTooltipVisible();
-                // Tunggu sebentar agar tooltip terlihat sebelum menu tertutup
-                Future.delayed(const Duration(milliseconds: 100), () {
-                  if (context.mounted) Navigator.pop(context, item.route);
-                });
-              },
-              child: Center(
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: isActive
-                        ? AppDropdownStyle.accentColor.withValues(alpha: 0.2)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    item.icon,
-                    color: isActive ? AppDropdownStyle.accentColor : Colors.white70,
-                    size: 22,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    ).then((route) {
-      if (route != null && route != widget.currentRoute) {
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            settings: RouteSettings(name: route),
-            pageBuilder: (context, animation, secondaryAnimation) =>
-                RouteProxyPage(route),
-            transitionsBuilder:
-                (context, animation, secondaryAnimation, child) {
-              return FadeTransition(
-                opacity: animation,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0.01, 0),
-                    end: Offset.zero,
-                  ).animate(
-                      CurvedAnimation(parent: animation, curve: Curves.easeOut)),
-                  child: child,
-                ),
-              );
-            },
-            transitionDuration: const Duration(milliseconds: 350),
-          ),
-        );
-      }
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -215,87 +119,107 @@ class _GlobalHeaderBarState extends State<GlobalHeaderBar> {
           ),
           child: SafeArea(
             bottom: false,
-            child: Row(
+            child: Stack(
+              alignment: Alignment.center,
               children: [
-                // Logo + title
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.warehouse,
+                if (isMobile)
+                  const Text(
+                    'TPK Nilam',
+                    style: TextStyle(
                       color: Colors.white,
-                      size: isMobile ? 22 : 30,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
                     ),
-                    SizedBox(width: isMobile ? 8 : 12),
-                    Text(
-                      'TPK Nilam',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: isMobile ? 16 : 24,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                // Right-side controls: profile + ⋮ + logout
+                  ),
+                // Left & Right controls
                 Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Profile avatar
-                    InkWell(
-                      onTap: _openProfile,
-                      borderRadius: BorderRadius.circular(30),
-                      child: Row(
+                    if (isMobile)
+                      IconButton(
+                        icon: const Icon(Icons.menu, color: Colors.white, size: 26),
+                        onPressed: () {
+                          sidebarExpandedNotifier.value = !sidebarExpandedNotifier.value;
+                        },
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                        splashRadius: 22,
+                      )
+                    else
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (!isMobile)
-                            Text(
-                              _name,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14,
-                              ),
-                            ),
-                          if (!isMobile) const SizedBox(width: 10),
-                          CircleAvatar(
-                            radius: isMobile ? 15 : 18,
-                            backgroundColor: Colors.white24,
-                            child: Icon(
-                              Icons.person,
+                          IconButton(
+                            icon: const Icon(Icons.home, color: Colors.white, size: 26),
+                            onPressed: () {
+                              if (widget.currentRoute != '/dashboard') {
+                                Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false);
+                              }
+                            },
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                            splashRadius: 22,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Monitoring Dashboard',
+                            style: TextStyle(
                               color: Colors.white,
-                              size: isMobile ? 17 : 20,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    // ⋮ Nav menu (mobile only)
-                    if (isMobile)
-                      Builder(
-                        builder: (btnCtx) => IconButton(
-                          onPressed: () => _showNavMenu(btnCtx),
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                          icon: const Icon(
-                            Icons.more_vert,
-                            color: Colors.white,
-                            size: 22,
+                    const Spacer(),
+                    // Right-side controls: profile + logout + ⋮
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Profile avatar
+                        InkWell(
+                          onTap: _openProfile,
+                          borderRadius: BorderRadius.circular(30),
+                          child: Row(
+                            children: [
+                              if (!isMobile)
+                                Text(
+                                  _name,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              if (!isMobile) const SizedBox(width: 10),
+                              CircleAvatar(
+                                radius: isMobile ? 15 : 18,
+                                backgroundColor: Colors.white24,
+                                child: Icon(
+                                  Icons.person,
+                                  color: Colors.white,
+                                  size: isMobile ? 17 : 20,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                    // Logout
-                    IconButton(
-                      onPressed: _logout,
-                      padding: EdgeInsets.only(left: isMobile ? 2 : 8),
-                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                      splashRadius: isMobile ? 18 : 22,
-                      icon: Icon(
-                        Icons.logout,
-                        color: Colors.white,
-                        size: isMobile ? 20 : 22,
-                      ),
+                        const SizedBox(width: 8),
+                        // Logout
+                        IconButton(
+                          onPressed: _logout,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                          splashRadius: 20,
+                          icon: Icon(
+                            Icons.logout,
+                            color: Colors.white.withValues(alpha: 0.9),
+                            size: isMobile ? 19 : 22,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                      ],
                     ),
                   ],
                 ),
@@ -307,4 +231,3 @@ class _GlobalHeaderBarState extends State<GlobalHeaderBar> {
     );
   }
 }
-

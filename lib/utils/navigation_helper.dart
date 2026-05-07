@@ -1,10 +1,6 @@
-// 🎯 navigation_helper.dart
-// Centralized navigation management dengan error handling
-
 import 'package:flutter/material.dart';
 
 class NavigationHelper {
-  /// Safe navigation dengan error handling
   static Future<void> navigateTo(
     BuildContext context,
     String routeName, {

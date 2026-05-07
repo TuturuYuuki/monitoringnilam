@@ -51,7 +51,7 @@ class Tower {
       id: int.tryParse(json['id'].toString()) ?? 0,
       towerId: json['tower_id']?.toString() ?? '',
       towerNumber: int.tryParse(json['tower_number'].toString()) ?? 0,
-      location: normalizeLocationLabel(json['location']?.toString() ?? ''),
+      location: canonicalizeLocationLabel(json['location']?.toString() ?? ''),
       ipAddress: json['ip_address']?.toString() ?? '',
       status: json['status']?.toString() ?? 'Unknown',
       containerYard: json['container_yard']?.toString() ?? '',

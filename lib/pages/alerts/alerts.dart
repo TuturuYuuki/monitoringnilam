@@ -9,6 +9,7 @@ import 'package:monitoring/widgets/global_header_bar.dart';
 import 'package:monitoring/widgets/global_sidebar_nav.dart';
 import 'package:monitoring/widgets/global_footer.dart';
 import 'package:monitoring/theme/app_dropdown_style.dart';
+import 'package:monitoring/utils/location_label_utils.dart';
 
 class AlertsPage extends StatefulWidget {
   const AlertsPage({super.key});
@@ -24,6 +25,7 @@ class _AlertsPageState extends State<AlertsPage> {
   Timer? _timer;
   DateTime? _lastRefreshTime = DateTime.now();
   String _selectedDeviceType = 'ALL';
+  Map<String, String> _currentDeviceIps = {};
 
   @override
   void initState() {
@@ -44,8 +46,11 @@ class _AlertsPageState extends State<AlertsPage> {
   Future<void> _loadAlerts({bool showLoading = true}) async {
     if (showLoading && mounted) setState(() => _isLoading = true);
     try {
-      final results =
-          await apiService.getAllAlerts(source: 'HISTORY', limit: 200);
+      final results = await apiService.getAllAlerts(
+        source: 'ALL',
+        status: 'ALL',
+        limit: 200,
+      );
 
       if (mounted) {
         final alertListRaw = results['alerts'] as List? ?? [];
@@ -58,11 +63,26 @@ class _AlertsPageState extends State<AlertsPage> {
           }
         }
 
-        // Sync alerts with current device/master data
+        // Sync alerts with current device/master data and remove repeated same-state rows.
         final synced = await _syncAlertsWithDeviceData(loaded);
+        final deduped = _dedupeByDeviceState(synced);
+        // Filter: Hanya tampilkan alert dari 30 hari terakhir saja (Visual Clean-up)
+        final now = DateTime.now();
+        final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+        
+        final filteredByDate = deduped.where((alert) {
+          if (alert.tanggal == null || alert.tanggal!.isEmpty) return false;
+          try {
+            final alertDate = DateTime.parse(alert.tanggal!);
+            return alertDate.isAfter(thirtyDaysAgo);
+          } catch (_) {
+            // Jika format gagal diparse (misal bukan YYYY-MM-DD), coba fallback
+            return true; 
+          }
+        }).toList();
 
         setState(() {
-          _alerts = synced;
+          _alerts = filteredByDate;
           _isLoading = false;
           _lastRefreshTime = DateTime.now();
         });
@@ -80,6 +100,11 @@ class _AlertsPageState extends State<AlertsPage> {
       final towers = await apiService.getAllTowers();
       final cameras = await apiService.getAllCameras();
       final mmts = await apiService.getAllMMTs();
+      final nvrs = await apiService.getAllNVRs();
+      final switches = await apiService.getAllSwitches();
+      // Fetch master location points to resolve full labels (RTG / TOWER formatting)
+      final masterRows = await apiService.getAllMasterLocations();
+      final masterOptions = buildMasterLocationOptions(masterRows);
       // Build lookup maps using model fields that actually exist.
       final Map<String, Tower> towerMap = {};
       for (final t in towers) {
@@ -89,6 +114,34 @@ class _AlertsPageState extends State<AlertsPage> {
       }
       final cameraMap = {for (var c in cameras) _deviceKey(c.cameraId): c};
       final mmtMap = {for (var m in mmts) _deviceKey(m.mmtId): m};
+      final nvrMap = {for (var n in nvrs) _deviceKey(n.nvrId): n};
+      final switchMap = {for (var s in switches) _deviceKey(s.switchId): s};
+
+      // Populate current IP mapping
+      final Map<String, String> ipMap = {};
+      for (final t in towers) {
+        ipMap[_deviceKey(t.towerId)] = t.ipAddress;
+        ipMap[_deviceKey('AP ${t.towerNumber}')] = t.ipAddress;
+        ipMap[_deviceKey('AP${t.towerNumber}')] = t.ipAddress;
+      }
+      for (final c in cameras) {
+        ipMap[_deviceKey(c.cameraId)] = c.ipAddress;
+      }
+      for (final m in mmts) {
+        ipMap[_deviceKey(m.mmtId)] = m.ipAddress;
+      }
+      for (final n in nvrs) {
+        ipMap[_deviceKey(n.nvrId)] = n.ipAddress;
+      }
+      for (final s in switches) {
+        ipMap[_deviceKey(s.switchId)] = s.ipAddress;
+      }
+
+      if (mounted) {
+        setState(() {
+          _currentDeviceIps = ipMap;
+        });
+      }
 
       // Sync each alert
       return alerts.map((alert) {
@@ -102,22 +155,33 @@ class _AlertsPageState extends State<AlertsPage> {
         // Check towers
         if (towerMap.containsKey(searchName)) {
           final tower = towerMap[searchName]!;
-          newLocation = tower.location;
+          // Resolve to full master label when possible (e.g. "RTG - RTG03 - CY 1")
+          newLocation = resolveFullLocationLabel(masterOptions, tower.location, currentContainerYard: tower.containerYard);
           newDeviceType = 'Tower';
           isDeletedDevice = false;
         }
         // Check cameras
         else if (cameraMap.containsKey(searchName)) {
           final camera = cameraMap[searchName]!;
-          newLocation = camera.location;
+          newLocation = resolveFullLocationLabel(masterOptions, camera.location, currentContainerYard: camera.containerYard);
           newDeviceType = 'CCTV';
           isDeletedDevice = false;
         }
         // Check MMTs
         else if (mmtMap.containsKey(searchName)) {
           final mmt = mmtMap[searchName]!;
-          newLocation = mmt.location;
+          newLocation = resolveFullLocationLabel(masterOptions, mmt.location, currentContainerYard: mmt.containerYard);
           newDeviceType = 'MMT';
+          isDeletedDevice = false;
+        } else if (nvrMap.containsKey(searchName)) {
+          final nvr = nvrMap[searchName]!;
+          newLocation = resolveFullLocationLabel(masterOptions, nvr.location, currentContainerYard: nvr.containerYard);
+          newDeviceType = 'NVR';
+          isDeletedDevice = false;
+        } else if (switchMap.containsKey(searchName)) {
+          final sw = switchMap[searchName]!;
+          newLocation = resolveFullLocationLabel(masterOptions, sw.location, currentContainerYard: sw.containerYard);
+          newDeviceType = 'SWITCH';
           isDeletedDevice = false;
         } else {
           // Keep alert row visible but mark as deleted device in UI.
@@ -133,7 +197,7 @@ class _AlertsPageState extends State<AlertsPage> {
       }).toList();
     } catch (e) {
       // If sync fails, return original alerts
-      print('Alert sync error: $e');
+      debugPrint('Alert sync error: $e');
       return alerts;
     }
   }
@@ -143,12 +207,24 @@ class _AlertsPageState extends State<AlertsPage> {
     return s.replaceAll(RegExp(r'[^a-z0-9]'), '');
   }
 
-  bool _isDeviceDown(String status) {
-    final s = status.toUpperCase().trim();
-    return s == 'DOWN' ||
-        s == 'OFFLINE' ||
-        s == 'UNREACHABLE' ||
-        s == 'WARNING';
+  List<Alert> _dedupeByDeviceState(List<Alert> alerts) {
+    final seenStateByDevice = <String, String>{};
+    final result = <Alert>[];
+
+    for (final alert in alerts) {
+      final deviceId = _deviceKey(alert.deviceId ?? _cleanDeviceName(alert.title.split(' is ')[0]));
+      final state = _isDownAlert(alert) ? 'DOWN' : 'UP';
+      final lastState = seenStateByDevice[deviceId];
+
+      if (lastState == state) {
+        continue;
+      }
+
+      seenStateByDevice[deviceId] = state;
+      result.add(alert);
+    }
+
+    return result;
   }
 
   // ==================== HELPERS ====================
@@ -183,6 +259,8 @@ class _AlertsPageState extends State<AlertsPage> {
       if (dt.contains('tower') || dt.contains('ap')) return 'AP';
       if (dt.contains('camera') || dt.contains('cctv')) return 'CCTV';
       if (dt.contains('mmt')) return 'MMT';
+      if (dt.contains('nvr')) return 'NVR';
+      if (dt.contains('switch')) return 'SWITCH';
     }
 
     final src = '${alert.title} ${alert.description} ${alert.lokasi ?? ''}'
@@ -190,6 +268,8 @@ class _AlertsPageState extends State<AlertsPage> {
     if (RegExp(r'\b(AP|TOWER)\b').hasMatch(src)) return 'AP';
     if (RegExp(r'\b(CAM|CCTV)\b').hasMatch(src)) return 'CCTV';
     if (RegExp(r'\bMMT\b').hasMatch(src)) return 'MMT';
+    if (RegExp(r'\bNVR\b').hasMatch(src)) return 'NVR';
+    if (RegExp(r'\bSWITCH\b').hasMatch(src)) return 'SWITCH';
     return 'Other';
   }
 
@@ -253,7 +333,7 @@ class _AlertsPageState extends State<AlertsPage> {
   // ==================== FILTER CHIPS ====================
 
   Widget _buildDeviceTypeFilter() {
-    final options = ['ALL', 'AP', 'CCTV', 'MMT'];
+    final options = ['ALL', 'AP', 'CCTV', 'MMT', 'NVR', 'SWITCH'];
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -428,7 +508,10 @@ class _AlertsPageState extends State<AlertsPage> {
         ? const Color(0xFFFF1744).withValues(alpha: 0.22)
         : const Color(0xFF00E676).withValues(alpha: 0.18);
     final deviceName = _cleanDeviceName(alert.title);
-    final ip = _extractIpFromDescription(alert.description);
+    final historicalIp = _extractIpFromDescription(alert.description);
+    final searchName = _deviceKey(deviceName);
+    final currentIp = _currentDeviceIps[searchName];
+    final ip = currentIp ?? historicalIp;
     final date = alert.tanggal ?? '-';
     final time = alert.waktu ?? '-';
 

@@ -1,14 +1,16 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:monitoring/models/user_model.dart';
 import 'package:monitoring/models/tower_model.dart';
 import 'package:monitoring/models/camera_model.dart';
 import 'package:monitoring/models/mmt_model.dart';
 import 'package:monitoring/models/alert_model.dart';
 import 'package:monitoring/models/device_model.dart';
+import 'package:monitoring/models/nvr_model.dart';
+import 'package:monitoring/models/switch_model.dart';
 import 'package:monitoring/services/device_storage_service.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter/material.dart';
 import 'package:monitoring/utils/tower_utils.dart';
 import 'package:monitoring/utils/tower_status_override.dart';
 import 'package:flutter/foundation.dart';
@@ -17,23 +19,45 @@ class ApiService {
   static const String _apiRootOverride =
       String.fromEnvironment('API_ROOT', defaultValue: '');
   static String? _activeApiRoot;
+  static bool _hasAttemptedLoad = false;
 
-  static String get _defaultApiRoot {
-    if (kIsWeb) {
-      return 'http://localhost/monitoring_api';
+  static Future<void> ensureInitialized() async {
+    if (_hasAttemptedLoad) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedRoot = prefs.getString('active_api_root');
+      if (savedRoot != null && savedRoot.isNotEmpty) {
+        _activeApiRoot = savedRoot;
+        debugPrint('ApiService restored root from storage => $savedRoot');
+      }
+    } catch (e) {
+      debugPrint('ApiService failed to load root from storage: $e');
     }
-    // Since user confirmed Apache is on port 80, we use that as default.
-    return 'http://localhost/monitoring_api';
+    _hasAttemptedLoad = true;
+  }
+
+  static String get _defaultApiRoot => 'http://localhost/monitoring_api';
+  
+  static String _cleanRoot(String root) {
+    if (root.isEmpty) return root;
+    // Remove query parameters if any
+    if (root.contains('?')) {
+      root = root.split('?').first;
+    }
+    // Remove trailing slash and specific file names
+    root = root.replaceAll(RegExp(r'/(index|performance|alerts)\.php$'), '');
+    if (root.endsWith('/')) {
+      root = root.substring(0, root.length - 1);
+    }
+    return root;
   }
 
   static String get _apiRoot {
-    if (_activeApiRoot != null && _activeApiRoot!.isNotEmpty) {
-      return _activeApiRoot!;
+    String root = _activeApiRoot ?? _apiRootOverride;
+    if (root.isEmpty) {
+      root = _defaultApiRoot;
     }
-    if (_apiRootOverride.isNotEmpty) {
-      return _apiRootOverride;
-    }
-    return _defaultApiRoot;
+    return _cleanRoot(root);
   }
 
   static String get baseUrl => '$_apiRoot/index.php';
@@ -74,6 +98,16 @@ class ApiService {
     if (root.isEmpty) return;
     _activeApiRoot = root;
     debugPrint('ApiService active root => $root');
+    _saveRoot(root);
+  }
+
+  static Future<void> _saveRoot(String root) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('active_api_root', root);
+    } catch (e) {
+      debugPrint('ApiService failed to save root: $e');
+    }
   }
 
   // ==================== CONNECTION TEST ====================
@@ -81,32 +115,49 @@ class ApiService {
   /// Test if Flutter can connect to the backend API
   Future<Map<String, dynamic>> testConnection() async {
     dynamic lastError;
-    for (final root in _rootCandidates) {
-      try {
-        final startTime = DateTime.now();
-        final response = await http.get(
-          Uri.parse('$root/index.php?endpoint=ping'),
-        ).timeout(const Duration(seconds: 5));
+    final candidates = {
+      ..._rootCandidates,
+      'http://127.0.0.1/monitoring_api',
+      'http://localhost/monitoring_api',
+    }.toList();
 
-        final duration = DateTime.now().difference(startTime);
-        if (response.statusCode == 200 || response.statusCode == 404) {
-          _setActiveRoot(root);
-          return {
-            'success': true,
-            'message': 'Backend reachable',
-            'responseTime': duration.inMilliseconds,
-            'root': root,
-          };
+    for (final root in candidates) {
+      try {
+        debugPrint('🔍 Testing API Candidate: $root/index.php?endpoint=test');
+        final response = await http.get(
+          Uri.parse('$root/index.php?endpoint=test'),
+        ).timeout(const Duration(seconds: 4));
+
+        debugPrint('📡 Response from $root: ${response.statusCode}');
+        
+        if (response.statusCode == 200) {
+          final decoded = jsonDecode(response.body);
+          // Relaxed check: if it returns 'path' containing 'monitoring_api', it's ours.
+          final isMonitoringApi = (decoded['success'] == true) && 
+              (decoded['message']?.toString().contains('Monitoring') == true || 
+               decoded['path']?.toString().contains('monitoring_api') == true);
+
+          if (isMonitoringApi) {
+            _setActiveRoot(root);
+            debugPrint('✅ Found Active Monitoring API at: $root');
+            return {
+              'success': true,
+              'message': 'Connected to Monitoring API',
+              'root': root,
+              'path': decoded['path'],
+            };
+          }
         }
-        lastError = 'Status: ${response.statusCode} @ $root';
+        lastError = 'Status: ${response.statusCode} (Not the correct API) @ $root';
       } catch (e) {
+        debugPrint('❌ Candidate failed: $root -> $e');
         lastError = '$e @ $root';
       }
     }
 
     return {
       'success': false,
-      'message': 'Cannot connect: $lastError',
+      'message': 'Backend connection failed: $lastError',
     };
   }
 
@@ -221,32 +272,32 @@ class ApiService {
       }
       return null;
     } catch (e) {
-      print('Error in getProfile: $e');
+      debugPrint('Error in getProfile: $e');
       return null;
     }
   }
 
   Future<Map<String, dynamic>> getUserProfile(int userId) async {
     try {
-      print('=== API getUserProfile ===');
-      print('User ID: $userId');
+      debugPrint('=== API getUserProfile ===');
+      debugPrint('User ID: $userId');
 
       final response = await http.get(
         Uri.parse('$baseUrl?endpoint=auth&action=get-profile&user_id=$userId'),
       );
 
-      print('Response Status: ${response.statusCode}');
-      print('Response Body: ${response.body}');
+      debugPrint('Response Status: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        print('Decoded data: $data');
+        debugPrint('Decoded data: $data');
         return data;
       } else {
         return {'success': false, 'message': 'Failed to get profile'};
       }
     } catch (e) {
-      print('Error in getUserProfile: $e');
+      debugPrint('Error in getUserProfile: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }
@@ -273,9 +324,9 @@ class ApiService {
         'address': data['location'],
       };
 
-      print('=== API updateProfile Request ===');
-      print('URL: $baseUrl?endpoint=auth&action=update-profile');
-      print('Body: $requestBody');
+      debugPrint('=== API updateProfile Request ===');
+      debugPrint('URL: $baseUrl?endpoint=auth&action=update-profile');
+      debugPrint('Body: $requestBody');
 
       final response = await http
           .post(
@@ -290,17 +341,17 @@ class ApiService {
                 408),
           );
 
-      print('=== API updateProfile Response ===');
-      print('Status Code: ${response.statusCode}');
-      print('Response Body: ${response.body}');
+      debugPrint('=== API updateProfile Response ===');
+      debugPrint('Status Code: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
-        print('Decoded Result: $result');
+        debugPrint('Decoded Result: $result');
 
         // Check response success flag
         bool isSuccess = result['success'] == true || result['success'] == 1;
-        print('Is success: $isSuccess');
+        debugPrint('Is success: $isSuccess');
 
         return result;
       } else {
@@ -310,8 +361,8 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('=== API updateProfile Error ===');
-      print('Error: $e');
+      debugPrint('=== API updateProfile Error ===');
+      debugPrint('Error: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }
@@ -320,18 +371,18 @@ class ApiService {
   Future<Map<String, dynamic>> verifyProfileUpdate(
       int userId, String fieldName, dynamic expectedValue) async {
     try {
-      print('=== Verifying $fieldName Update ===');
+      debugPrint('=== Verifying $fieldName Update ===');
 
       final profile = await getProfile(userId);
       if (profile != null) {
         final json = profile.toJson();
         final actualValue = json[fieldName];
 
-        print('Expected: $expectedValue');
-        print('Actual: $actualValue');
+        debugPrint('Expected: $expectedValue');
+        debugPrint('Actual: $actualValue');
 
         bool isMatched = actualValue == expectedValue;
-        print('Match: $isMatched');
+        debugPrint('Match: $isMatched');
 
         return {
           'success': isMatched,
@@ -347,7 +398,7 @@ class ApiService {
         'message': 'Failed to fetch profile for verification'
       };
     } catch (e) {
-      print('Error verifying: $e');
+      debugPrint('Error verifying: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }
@@ -356,14 +407,14 @@ class ApiService {
       int userId, String oldPassword, String newPassword) async {
     try {
       final startTime = DateTime.now();
-      print('=== Change Password Request START ===');
-      print('Timestamp: ${startTime.toIso8601String()}');
-      print('User ID: $userId');
-      print('Old Password Length: ${oldPassword.length}');
-      print('New Password Length: ${newPassword.length}');
-      print('Base URL: $baseUrl');
-      print('Full URL: $baseUrl?endpoint=auth&action=change-password');
-      print('About to send HTTP POST request...');
+      debugPrint('=== Change Password Request START ===');
+      debugPrint('Timestamp: ${startTime.toIso8601String()}');
+      debugPrint('User ID: $userId');
+      debugPrint('Old Password Length: ${oldPassword.length}');
+      debugPrint('New Password Length: ${newPassword.length}');
+      debugPrint('Base URL: $baseUrl');
+      debugPrint('Full URL: $baseUrl?endpoint=auth&action=change-password');
+      debugPrint('About to send HTTP POST request...');
 
       final requestBody = {
         'user_id': userId,
@@ -375,7 +426,7 @@ class ApiService {
         'confirm_password': newPassword,
       };
 
-      print('Request Body: $requestBody');
+      debugPrint('Request Body: $requestBody');
 
       final response = await http
           .post(
@@ -387,8 +438,8 @@ class ApiService {
         const Duration(seconds: 12),
         onTimeout: () {
           final duration = DateTime.now().difference(startTime);
-          print('❌ TIMEOUT after ${duration.inSeconds} seconds');
-          print('Change password timed out after 12 seconds');
+          debugPrint('❌ TIMEOUT after ${duration.inSeconds} seconds');
+          debugPrint('Change password timed out after 12 seconds');
           return http.Response(
               '{"success":false,"message":"Request timeout setelah 12 detik. Backend mungkin tidak dapat diakses dari Flutter."}',
               408);
@@ -396,42 +447,42 @@ class ApiService {
       );
 
       final duration = DateTime.now().difference(startTime);
-      print('✓ HTTP Request completed in ${duration.inMilliseconds}ms');
-      print('Change Password Response Status: ${response.statusCode}');
-      print('Change Password Response Body: ${response.body}');
-      print('Response Content-Type: ${response.headers["content-type"]}');
+      debugPrint('✓ HTTP Request completed in ${duration.inMilliseconds}ms');
+      debugPrint('Change Password Response Status: ${response.statusCode}');
+      debugPrint('Change Password Response Body: ${response.body}');
+      debugPrint('Response Content-Type: ${response.headers["content-type"]}');
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
-        print('✓ SUCCESS - Parsed result: $result');
-        print('=== Change Password Request END (SUCCESS) ===\n');
+        debugPrint('✓ SUCCESS - Parsed result: $result');
+        debugPrint('=== Change Password Request END (SUCCESS) ===\n');
         return result;
       } else if (response.statusCode == 401) {
         // Unauthorized - wrong old password
         final result = jsonDecode(response.body);
-        print('❌ UNAUTHORIZED - Wrong password');
-        print('=== Change Password Request END (UNAUTHORIZED) ===\n');
+        debugPrint('❌ UNAUTHORIZED - Wrong password');
+        debugPrint('=== Change Password Request END (UNAUTHORIZED) ===\n');
         return result;
       } else if (response.statusCode == 404) {
         // User not found
         final result = jsonDecode(response.body);
-        print('❌ NOT FOUND - User not found');
-        print('=== Change Password Request END (NOT FOUND) ===\n');
+        debugPrint('❌ NOT FOUND - User not found');
+        debugPrint('=== Change Password Request END (NOT FOUND) ===\n');
         return result;
       } else if (response.statusCode == 408) {
         // Timeout
         final result = jsonDecode(response.body);
-        print('❌ TIMEOUT - Request timed out');
-        print('=== Change Password Request END (TIMEOUT) ===\n');
+        debugPrint('❌ TIMEOUT - Request timed out');
+        debugPrint('=== Change Password Request END (TIMEOUT) ===\n');
         return result;
       } else {
-        print('⚠️ Unexpected status code: ${response.statusCode}');
+        debugPrint('⚠️ Unexpected status code: ${response.statusCode}');
         try {
           final result = jsonDecode(response.body);
-          print('=== Change Password Request END (ERROR) ===\n');
+          debugPrint('=== Change Password Request END (ERROR) ===\n');
           return result;
         } catch (e) {
-          print('=== Change Password Request END (PARSE ERROR) ===\n');
+          debugPrint('=== Change Password Request END (PARSE ERROR) ===\n');
           return {
             'success': false,
             'message': 'Gagal mengubah password (HTTP ${response.statusCode})'
@@ -439,11 +490,11 @@ class ApiService {
         }
       }
     } catch (e, stackTrace) {
-      print('❌❌❌ EXCEPTION in changePassword ❌❌❌');
-      print('Error type: ${e.runtimeType}');
-      print('Error message: $e');
-      print('Stack trace: $stackTrace');
-      print('=== Change Password Request END (EXCEPTION) ===\n');
+      debugPrint('❌❌❌ EXCEPTION in changePassword ❌❌❌');
+      debugPrint('Error type: ${e.runtimeType}');
+      debugPrint('Error message: $e');
+      debugPrint('Stack trace: $stackTrace');
+      debugPrint('=== Change Password Request END (EXCEPTION) ===\n');
       return {'success': false, 'message': 'Error koneksi: $e'};
     }
   }
@@ -454,8 +505,8 @@ class ApiService {
   Future<Map<String, dynamic>> sendForgotPasswordOtp(String email) async {
     try {
       final normalizedEmail = email.trim().toLowerCase();
-      print('=== Forgot Password - Send OTP ===');
-      print('Email: $normalizedEmail');
+      debugPrint('=== Forgot Password - Send OTP ===');
+      debugPrint('Email: $normalizedEmail');
 
       final response = await http
           .post(
@@ -466,14 +517,14 @@ class ApiService {
           .timeout(
         const Duration(seconds: 10),
         onTimeout: () {
-          print('❌ Request timeout');
+          debugPrint('❌ Request timeout');
           return http.Response(
               '{"success":false,"message":"Request timeout"}', 408);
         },
       );
 
-      print('Response Status: ${response.statusCode}');
-      print('Response Body: ${response.body}');
+      debugPrint('Response Status: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -487,7 +538,7 @@ class ApiService {
         }
       }
     } catch (e) {
-      print('Error in sendForgotPasswordOtp: $e');
+      debugPrint('Error in sendForgotPasswordOtp: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }
@@ -496,9 +547,9 @@ class ApiService {
   Future<Map<String, dynamic>> verifyResetPasswordOtp(
       String email, String otp) async {
     try {
-      print('=== Verify Reset Password OTP ===');
-      print('Email: $email');
-      print('OTP: $otp');
+      debugPrint('=== Verify Reset Password OTP ===');
+      debugPrint('Email: $email');
+      debugPrint('OTP: $otp');
 
       final response = await http
           .post(
@@ -509,14 +560,14 @@ class ApiService {
           .timeout(
         const Duration(seconds: 10),
         onTimeout: () {
-          print('❌ Request timeout');
+          debugPrint('❌ Request timeout');
           return http.Response(
               '{"success":false,"message":"Request timeout"}', 408);
         },
       );
 
-      print('Response Status: ${response.statusCode}');
-      print('Response Body: ${response.body}');
+      debugPrint('Response Status: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -530,7 +581,7 @@ class ApiService {
         }
       }
     } catch (e) {
-      print('Error in verifyResetPasswordOtp: $e');
+      debugPrint('Error in verifyResetPasswordOtp: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }
@@ -539,10 +590,10 @@ class ApiService {
   Future<Map<String, dynamic>> resetPassword(
       String email, String otp, String newPassword) async {
     try {
-      print('=== Reset Password ===');
-      print('Email: $email');
-      print('OTP: $otp');
-      print('New Password Length: ${newPassword.length}');
+      debugPrint('=== Reset Password ===');
+      debugPrint('Email: $email');
+      debugPrint('OTP: $otp');
+      debugPrint('New Password Length: ${newPassword.length}');
 
       final response = await http
           .post(
@@ -557,14 +608,14 @@ class ApiService {
           .timeout(
         const Duration(seconds: 10),
         onTimeout: () {
-          print('❌ Request timeout');
+          debugPrint('❌ Request timeout');
           return http.Response(
               '{"success":false,"message":"Request timeout"}', 408);
         },
       );
 
-      print('Response Status: ${response.statusCode}');
-      print('Response Body: ${response.body}');
+      debugPrint('Response Status: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -578,7 +629,7 @@ class ApiService {
         }
       }
     } catch (e) {
-      print('Error in resetPassword: $e');
+      debugPrint('Error in resetPassword: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }
@@ -586,10 +637,10 @@ class ApiService {
   Future<Map<String, dynamic>> requestEmailChangeOtp(
       int userId, String newEmail) async {
     try {
-      print('=== API: Request Email Change OTP ===');
-      print('URL: $baseUrl?endpoint=auth&action=request-email-change-otp');
-      print('User ID: $userId');
-      print('New Email: $newEmail');
+      debugPrint('=== API: Request Email Change OTP ===');
+      debugPrint('URL: $baseUrl?endpoint=auth&action=request-email-change-otp');
+      debugPrint('User ID: $userId');
+      debugPrint('New Email: $newEmail');
 
       final response = await http
           .post(
@@ -607,22 +658,22 @@ class ApiService {
                 408),
           );
 
-      print('Response Status: ${response.statusCode}');
-      print('Response Body: ${response.body}');
+      debugPrint('Response Status: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        print('Decoded Response: $data');
+        debugPrint('Decoded Response: $data');
         return data;
       } else {
-        print('Failed with status code: ${response.statusCode}');
+        debugPrint('Failed with status code: ${response.statusCode}');
         return {
           'success': false,
           'message': 'Gagal meminta OTP (Status: ${response.statusCode})'
         };
       }
     } catch (e) {
-      print('Exception in requestEmailChangeOtp: $e');
+      debugPrint('Exception in requestEmailChangeOtp: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }
@@ -660,9 +711,9 @@ class ApiService {
   Future<Map<String, dynamic>> updateProfileField(
       int userId, String fieldName, String fieldValue) async {
     try {
-      print('=== Direct Field Update Request ===');
-      print('User ID: $userId');
-      print('Field: $fieldName = $fieldValue');
+      debugPrint('=== Direct Field Update Request ===');
+      debugPrint('User ID: $userId');
+      debugPrint('Field: $fieldName = $fieldValue');
 
       // Build request body with field name directly
       final requestBody = {
@@ -670,8 +721,8 @@ class ApiService {
         fieldName: fieldValue, // Use field name directly
       };
 
-      print('Request Body: $requestBody');
-      print('URL: $baseUrl?endpoint=auth&action=update-profile');
+      debugPrint('Request Body: $requestBody');
+      debugPrint('URL: $baseUrl?endpoint=auth&action=update-profile');
 
       final response = await http
           .post(
@@ -686,27 +737,27 @@ class ApiService {
                 408),
           );
 
-      print('Response Status: ${response.statusCode}');
-      print('Response Body: ${response.body}');
+      debugPrint('Response Status: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         try {
           final result = jsonDecode(response.body);
-          print('Decoded Result: $result');
+          debugPrint('Decoded Result: $result');
           return result;
         } catch (e) {
-          print('Error decoding response: $e');
+          debugPrint('Error decoding response: $e');
           return {'success': false, 'message': 'Error decoding response'};
         }
       } else {
-        print('HTTP Error ${response.statusCode}');
+        debugPrint('HTTP Error ${response.statusCode}');
         return {
           'success': false,
           'message': 'Update failed with status ${response.statusCode}'
         };
       }
     } catch (e) {
-      print('Exception: $e');
+      debugPrint('Exception: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }
@@ -715,12 +766,45 @@ class ApiService {
   Future<Map<String, dynamic>> updateTower(
       int id, Map<String, dynamic> data) async {
     try {
+      Tower? existingTower;
+      try {
+        final towers = await getAllTowers();
+        for (final tower in towers) {
+          if (tower.id == id) {
+            existingTower = tower;
+            break;
+          }
+        }
+      } catch (_) {}
+
       final response = await http.post(
         Uri.parse('$baseUrl?endpoint=network&action=update'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'id': id, ...data}),
       );
-      return jsonDecode(response.body);
+
+      final result = jsonDecode(response.body) as Map<String, dynamic>;
+      if (result['success'] == true && existingTower != null) {
+        final oldType = (existingTower.towerId.toUpperCase().startsWith('AP') ||
+                existingTower.location.toUpperCase().contains('AP'))
+            ? 'Access Point'
+            : 'Tower';
+        await DeviceStorageService.updateDeviceFields(
+          type: oldType,
+          name: existingTower.towerId,
+          previousIpAddress: existingTower.ipAddress,
+          updates: {
+            'type': oldType,
+            'name': existingTower.towerId,
+            'ipAddress': data['ip_address']?.toString() ?? existingTower.ipAddress,
+            'locationName': data['location']?.toString() ?? existingTower.location,
+            'containerYard': data['container_yard']?.toString() ?? existingTower.containerYard,
+            'status': existingTower.status,
+          },
+        );
+      }
+
+      return result;
     } catch (e) {
       return {'success': false, 'message': 'Koneksi Gagal: $e'};
     }
@@ -770,7 +854,7 @@ class ApiService {
   Future<Map<String, dynamic>> updateProfileFieldByField(
       int userId, Map<String, dynamic> data) async {
     try {
-      print('=== Field by Field Update Start ===');
+      debugPrint('=== Field by Field Update Start ===');
 
       Map<String, dynamic> finalResult = {
         'success': true,
@@ -790,7 +874,7 @@ class ApiService {
 
       for (var key in fieldVariations.keys) {
         if (data[key] != null && data[key].toString().isNotEmpty) {
-          print('\nUpdating field: $key = ${data[key]}');
+          debugPrint('\nUpdating field: $key = ${data[key]}');
 
           final variations = fieldVariations[key]!;
           bool updated = false;
@@ -801,12 +885,12 @@ class ApiService {
                 await _updateSingleField(userId, fieldVariant, data[key]);
 
             if (result['success'] == true) {
-              print('✓ Successfully updated with field name: $fieldVariant');
+              debugPrint('✓ Successfully updated with field name: $fieldVariant');
               finalResult['results'][key] = result;
               updated = true;
               break;
             } else {
-              print(
+              debugPrint(
                   '✗ Failed with field name: $fieldVariant - ${result['message']}');
               finalResult['results']['${key}_$fieldVariant'] = result;
             }
@@ -814,7 +898,7 @@ class ApiService {
 
           if (!updated) {
             finalResult['success'] = false;
-            print('✗ Failed to update $key with any field name variation');
+            debugPrint('✗ Failed to update $key with any field name variation');
           }
         }
       }
@@ -854,7 +938,7 @@ class ApiService {
                 matches('divisi', data['division']));
 
         if (!verified) {
-          print('✗ Backend verification failed after update: $profileJson');
+          debugPrint('✗ Backend verification failed after update: $profileJson');
           return {
             'success': false,
             'message': 'Update response received, but backend data was not persisted'
@@ -862,11 +946,11 @@ class ApiService {
         }
       }
 
-      print('\n=== Field by Field Update Complete ===');
-      print('Final Result: $finalResult');
+      debugPrint('\n=== Field by Field Update Complete ===');
+      debugPrint('Final Result: $finalResult');
       return finalResult;
     } catch (e) {
-      print('Error in field-by-field update: $e');
+      debugPrint('Error in field-by-field update: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }
@@ -949,7 +1033,7 @@ class ApiService {
       }
       return [];
     } catch (e) {
-      print('Error: $e');
+      debugPrint('Error: $e');
       return [];
     }
   }
@@ -972,7 +1056,7 @@ class ApiService {
       }
       return [];
     } catch (e) {
-      print('Error fetching master locations: $e');
+      debugPrint('Error fetching master locations: $e');
       return [];
     }
   }
@@ -1026,6 +1110,14 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> updateMasterLocationPosition(
+      int id, double latitude, double longitude) async {
+    return updateMasterLocation(id, {
+      'latitude': latitude,
+      'longitude': longitude,
+    });
+  }
+
   Future<Map<String, dynamic>> deleteMasterLocation(int id) async {
     try {
       final response = await http.get(
@@ -1055,11 +1147,15 @@ class ApiService {
               .map((item) => Tower.fromJson(item as Map<String, dynamic>))
               .toList();
           return towers;
+        } else {
+          debugPrint('API Error (getTowersByContainerYard): ${json['message'] ?? 'Unknown error'}');
         }
+      } else {
+        debugPrint('HTTP Error (getTowersByContainerYard): ${response.statusCode} - ${response.body.substring(0, response.body.length > 100 ? 100 : response.body.length)}');
       }
       return [];
     } catch (e) {
-      print('Error Fetching $yardName: $e');
+      debugPrint('Exception (getTowersByContainerYard): $e');
       return [];
     }
   }
@@ -1103,7 +1199,7 @@ class ApiService {
       }
       return {};
     } catch (e) {
-      print('Error fetching network stats: $e');
+      debugPrint('Error fetching network stats: $e');
       return {};
     }
   }
@@ -1123,11 +1219,15 @@ class ApiService {
               .map((item) => Camera.fromJson(item as Map<String, dynamic>))
               .toList();
           return cameras;
+        } else {
+          debugPrint('API Error (getAllCameras): ${json['message'] ?? 'Unknown error'}');
         }
+      } else {
+        debugPrint('HTTP Error: ${response.statusCode} - ${response.body.substring(0, response.body.length > 100 ? 100 : response.body.length)}');
       }
       return [];
     } catch (e) {
-      print('Error fetching cameras: $e');
+      debugPrint('Exception (getAllCameras): $e');
       return [];
     }
   }
@@ -1150,7 +1250,7 @@ class ApiService {
       }
       return [];
     } catch (e) {
-      print('Error Fetching $yardName Cameras: $e');
+      debugPrint('Error Fetching $yardName Cameras: $e');
       return [];
     }
   }
@@ -1165,27 +1265,53 @@ class ApiService {
 
 // Fungsi untuk mengupdate data kamera
   Future<Map<String, dynamic>> updateCamera(
-      String cameraId, Map<String, dynamic> data) async {
+      int id, Map<String, dynamic> data) async {
     try {
+      Camera? existingCamera;
+      try {
+        final cameras = await getAllCameras();
+        for (final camera in cameras) {
+          if (camera.id == id) {
+            existingCamera = camera;
+            break;
+          }
+        }
+      } catch (_) {}
+
       final response = await http.post(
         Uri.parse('$baseUrl?endpoint=cctv&action=update'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'camera_id': cameraId,
-          'ip_address': data['ip_address'],
-          'location': data['location'],
-          'container_yard': data['container_yard'],
+          'id': id,
+          ...data,
         }),
       );
 
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
+      if (response.statusCode != 200) {
         return {
           'success': false,
           'message': 'Server Error: ${response.statusCode}'
         };
       }
+
+      final result = jsonDecode(response.body) as Map<String, dynamic>;
+      if (result['success'] == true && existingCamera != null) {
+        await DeviceStorageService.updateDeviceFields(
+          type: 'CCTV',
+          name: existingCamera.cameraId,
+          previousIpAddress: existingCamera.ipAddress,
+          updates: {
+            'type': 'CCTV',
+            'name': data['camera_id']?.toString() ?? existingCamera.cameraId,
+            'ipAddress': data['ip_address']?.toString() ?? existingCamera.ipAddress,
+            'locationName': data['location']?.toString() ?? existingCamera.location,
+            'containerYard': data['container_yard']?.toString() ?? existingCamera.containerYard,
+            'status': existingCamera.status,
+          },
+        );
+      }
+
+      return result;
     } catch (e) {
       return {'success': false, 'message': e.toString()};
     }
@@ -1245,7 +1371,7 @@ class ApiService {
       }
       return [];
     } catch (e) {
-      print('Error fetching cameras by area type: $e');
+      debugPrint('Error fetching cameras by area type: $e');
       return [];
     }
   }
@@ -1275,7 +1401,7 @@ class ApiService {
       }
       return [];
     } catch (e) {
-      print('Error fetching offline cameras: $e');
+      debugPrint('Error fetching offline cameras: $e');
       return [];
     }
   }
@@ -1294,12 +1420,21 @@ class ApiService {
       }
       return {};
     } catch (e) {
-      print('Error fetching CCTV stats: $e');
+      debugPrint('Error fetching CCTV stats: $e');
       return {};
     }
   }
 
   // ==================== MMT ENDPOINTS ====================
+
+  /// Fetches MMTs for a specific yard, applies status overrides, and sorts them by ID.
+  Future<List<MMT>> getValidatedMMTsByYard(String yardName) async {
+    final rawMMTs = await getMMTsByContainerYard(yardName);
+    // Applying same logic as towers if there was an override utility,
+    // but for now we'll just sort them.
+    rawMMTs.sort((a, b) => a.mmtId.compareTo(b.mmtId));
+    return rawMMTs;
+  }
 
   Future<List<MMT>> getAllMMTs() async {
     try {
@@ -1318,7 +1453,7 @@ class ApiService {
       }
       return [];
     } catch (e) {
-      print('Error fetching MMTs: $e');
+      debugPrint('Error fetching MMTs: $e');
       return [];
     }
   }
@@ -1341,7 +1476,7 @@ class ApiService {
       }
       return [];
     } catch (e) {
-      print('Error fetching MMTs by yard: $e');
+      debugPrint('Error fetching MMTs by yard: $e');
       return [];
     }
   }
@@ -1360,7 +1495,7 @@ class ApiService {
       }
       return null;
     } catch (e) {
-      print('Error fetching MMT: $e');
+      debugPrint('Error fetching MMT: $e');
       return null;
     }
   }
@@ -1379,7 +1514,7 @@ class ApiService {
       }
       return {};
     } catch (e) {
-      print('Error fetching MMT stats: $e');
+      debugPrint('Error fetching MMT stats: $e');
       return {};
     }
   }
@@ -1406,12 +1541,6 @@ class ApiService {
     }
   }
 
-  /// Fetches MMTs for a specific yard and sorts them by ID.
-  Future<List<MMT>> getValidatedMMTsByYard(String yardName) async {
-    final rawMMTs = await getMMTsByContainerYard(yardName);
-    rawMMTs.sort((a, b) => a.mmtId.compareTo(b.mmtId));
-    return rawMMTs;
-  }
 
   /// Fetches MMTs by area type (Wait, MMT might only use Yard filtering, check backend if area_type exists).
   /// For now, we will use Yard-based filtering which is consistent with the current implementation.
@@ -1492,9 +1621,10 @@ class ApiService {
     String start = DateFormat('yyyy-MM-dd').format(startDate);
     String end = DateFormat('yyyy-MM-dd').format(endDate);
 
+    // Use source=ALL to get both current devices and historical alerts (not just empty ARCHIVE)
     final response = await http.get(
       Uri.parse(
-          '$baseUrl?endpoint=alerts&action=report&source=ARCHIVE&start=$start&end=$end&status=$status'),
+          '$baseUrl?endpoint=alerts&action=report&source=ALL&start=$start&end=$end&status=$status'),
     );
 
     if (response.statusCode == 200) {
@@ -1507,7 +1637,7 @@ class ApiService {
         targetList = jsonResponse['data'] as List;
       }
 
-      print('DEBUG: getAlertsReport retrieved ${targetList.length} items');
+      debugPrint('getAlertsReport retrieved ${targetList.length} items');
 
       List<Alert> parsedAlerts = [];
       for (var item in targetList) {
@@ -1520,7 +1650,7 @@ class ApiService {
             parsedAlerts.add(Alert.fromJson(safeMap));
           }
         } catch (e) {
-          print('DEBUG: Error parsing individual alert: $e');
+          debugPrint('Error parsing individual alert: $e');
         }
       }
       return parsedAlerts;
@@ -1672,10 +1802,6 @@ class ApiService {
   }
 
   /// Helper: Get color untuk status indicator
-  Color _getStatusColor(String status) {
-    return _isDeviceDown(status) ? Colors.red : Colors.green;
-  }
-
   // Create device methods
   Future<Map<String, dynamic>> createTower({
     required String towerId,
@@ -1703,8 +1829,8 @@ class ApiService {
         }),
       );
 
-      print('Create Tower Response Status: ${response.statusCode}');
-      print('Create Tower Response Body: ${response.body}');
+      debugPrint('Create Tower Response Status: ${response.statusCode}');
+      debugPrint('Create Tower Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -1712,7 +1838,7 @@ class ApiService {
         return {'success': false, 'message': 'Failed to create tower'};
       }
     } catch (e) {
-      print('Error creating tower: $e');
+      debugPrint('Error creating tower: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }
@@ -1745,8 +1871,8 @@ class ApiService {
         }),
       );
 
-      print('Create Camera Response Status: ${response.statusCode}');
-      print('Create Camera Response Body: ${response.body}');
+      debugPrint('Create Camera Response Status: ${response.statusCode}');
+      debugPrint('Create Camera Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -1754,7 +1880,7 @@ class ApiService {
         return {'success': false, 'message': 'Failed to create camera'};
       }
     } catch (e) {
-      print('Error creating camera: $e');
+      debugPrint('Error creating camera: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }
@@ -1783,8 +1909,8 @@ class ApiService {
         }),
       );
 
-      print('Create MMT Response Status: ${response.statusCode}');
-      print('Create MMT Response Body: ${response.body}');
+      debugPrint('Create MMT Response Status: ${response.statusCode}');
+      debugPrint('Create MMT Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -1792,7 +1918,7 @@ class ApiService {
         return {'success': false, 'message': 'Failed to create MMT'};
       }
     } catch (e) {
-      print('Error creating MMT: $e');
+      debugPrint('Error creating MMT: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }
@@ -1800,16 +1926,49 @@ class ApiService {
   Future<Map<String, dynamic>> updateMMT(
       int id, Map<String, dynamic> data) async {
     try {
+      MMT? existingMMT;
+      try {
+        final mmts = await getAllMMTs();
+        for (final mmt in mmts) {
+          if (mmt.id == id) {
+            existingMMT = mmt;
+            break;
+          }
+        }
+      } catch (_) {}
+
       final response = await http.post(
         Uri.parse('$baseUrl?endpoint=mmt&action=update'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'id': id,
-          'ip_address': data['ip_address'],
-          'location': data['location'],
+          ...data,
         }),
       );
-      return jsonDecode(response.body);
+
+      final result = jsonDecode(response.body) as Map<String, dynamic>;
+      if (result['success'] == true && existingMMT != null) {
+        final oldType = existingMMT.type.trim().isEmpty ||
+                existingMMT.type.trim().toLowerCase() == 'standard'
+            ? 'Access Point'
+            : existingMMT.type;
+
+        await DeviceStorageService.updateDeviceFields(
+          type: oldType,
+          name: existingMMT.mmtId,
+          previousIpAddress: existingMMT.ipAddress,
+          updates: {
+            'type': oldType,
+            'name': existingMMT.mmtId,
+            'ipAddress': data['ip_address']?.toString() ?? existingMMT.ipAddress,
+            'locationName': data['location']?.toString() ?? existingMMT.location,
+            'containerYard': data['container_yard']?.toString() ?? existingMMT.containerYard,
+            'status': existingMMT.status,
+          },
+        );
+      }
+
+      return result;
     } catch (e) {
       return {'success': false, 'message': 'Koneksi Gagal: $e'};
     }
@@ -1851,41 +2010,10 @@ class ApiService {
     }
   }
 
-  Future<int> _deleteAlertsByDevice({
-    required String deviceType,
-    required String deviceId,
-    required String ipAddress,
-  }) async {
-    try {
-      final query = StringBuffer('action=delete_by_device');
-      if (deviceType.trim().isNotEmpty) {
-        query.write('&device_type=${Uri.encodeQueryComponent(deviceType)}');
-      }
-      if (deviceId.trim().isNotEmpty) {
-        query.write('&device_id=${Uri.encodeQueryComponent(deviceId)}');
-      }
-      if (ipAddress.trim().isNotEmpty) {
-        query.write('&ip_address=${Uri.encodeQueryComponent(ipAddress)}');
-      }
-
-      final response = await http.get(Uri.parse('$alertsUrl?$query'));
-      if (response.statusCode != 200) {
-        return 0;
-      }
-
-      final data = jsonDecode(response.body);
-      if (data is Map<String, dynamic> && data['success'] == true) {
-        return (data['deleted_rows'] as num?)?.toInt() ?? 0;
-      }
-    } catch (_) {}
-
-    return 0;
-  }
-
   // Trigger realtime ping untuk semua devices
   Future<Map<String, dynamic>> triggerRealtimePing() async {
     try {
-      print('=== Memulai Realtime Ping (Batas waktu 60 detik) ===');
+      debugPrint('=== Memulai Realtime Ping (Batas waktu 60 detik) ===');
 
       final response = await http
           .get(
@@ -1896,18 +2024,18 @@ class ApiService {
             seconds:
                 60), // Memberikan waktu lebih lama untuk proses ping di server
         onTimeout: () {
-          print('❌ Realtime ping GAGAL: Server tidak merespon dalam 60 detik');
+          debugPrint('❌ Realtime ping GAGAL: Server tidak merespon dalam 60 detik');
           // Mengembalikan response buatan agar catch error bisa menangkapnya
           return http.Response(
               '{"success":false,"message":"Server Timeout"}', 408);
         },
       );
 
-      print('Realtime Ping Status: ${response.statusCode}');
+      debugPrint('Realtime Ping Status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final decodedData = jsonDecode(response.body);
-        print('✓ Ping Berhasil: ${decodedData['message']}');
+        debugPrint('✓ Ping Berhasil: ${decodedData['message']}');
         return decodedData;
       } else {
         return {
@@ -1916,7 +2044,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('❌ Error koneksi/ping: $e');
+      debugPrint('❌ Error koneksi/ping: $e');
       return {
         'success': false,
         'message': 'Koneksi terputus atau server offline'
@@ -2117,8 +2245,8 @@ class ApiService {
         Uri.parse('$baseUrl?endpoint=device-ping&action=test&ip=$targetIp'),
       );
 
-      print('Device Connectivity Test Response: ${response.statusCode}');
-      print('Response Body: ${response.body}');
+      debugPrint('Device Connectivity Test Response: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -2126,7 +2254,7 @@ class ApiService {
         return {'success': false, 'message': 'Failed to test connectivity'};
       }
     } catch (e) {
-      print('Error testing device connectivity: $e');
+      debugPrint('Error testing device connectivity: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }
@@ -2150,8 +2278,8 @@ class ApiService {
         }),
       );
 
-      print('Report Device Status Response Status: ${response.statusCode}');
-      print('Report Device Status Response Body: ${response.body}');
+      debugPrint('Report Device Status Response Status: ${response.statusCode}');
+      debugPrint('Report Device Status Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -2159,7 +2287,7 @@ class ApiService {
         return {'success': false, 'message': 'Failed to report device status'};
       }
     } catch (e) {
-      print('Error reporting device status: $e');
+      debugPrint('Error reporting device status: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }
@@ -2187,7 +2315,7 @@ class ApiService {
         return {'success': false, 'message': 'Failed to update tower position'};
       }
     } catch (e) {
-      print('Error updating tower position: $e');
+      debugPrint('Error updating tower position: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }
@@ -2220,7 +2348,7 @@ class ApiService {
         return {'success': false, 'message': 'Failed to update tower position'};
       }
     } catch (e) {
-      print('Error updating tower position with history: $e');
+      debugPrint('Error updating tower position with history: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }
@@ -2240,7 +2368,7 @@ class ApiService {
         return {'success': false, 'message': 'Failed to get position history'};
       }
     } catch (e) {
-      print('Error getting position history: $e');
+      debugPrint('Error getting position history: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }
@@ -2268,8 +2396,195 @@ class ApiService {
         return {'success': false, 'message': 'Failed to validate position'};
       }
     } catch (e) {
-      print('Error validating position: $e');
+      debugPrint('Error validating position: $e');
       return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+  // ==================== NVR METHODS ====================
+  Future<List<NVR>> getAllNVRs() async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl?endpoint=nvr&action=all'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          return (data['data'] as List).map((i) => NVR.fromJson(i)).toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error fetching all NVRs: $e');
+      return [];
+    }
+  }
+
+  Future<List<NVR>> getValidatedNVRsByYard(String yard) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl?endpoint=nvr&action=by-yard&container_yard=$yard'),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          return (data['data'] as List).map((i) => NVR.fromJson(i)).toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error fetching NVRs: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> updateNVR(int id, Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl?endpoint=nvr&action=update'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'id': id, ...data}),
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> createNVR(Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl?endpoint=nvr&action=create'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> deleteNVR(int id) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl?endpoint=nvr&action=delete&id=$id'));
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  // ==================== SWITCH METHODS ====================
+  Future<List<SwitchModel>> getAllSwitches() async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl?endpoint=switch&action=all'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          return (data['data'] as List).map((i) => SwitchModel.fromJson(i)).toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error fetching all Switches: $e');
+      return [];
+    }
+  }
+
+  Future<List<SwitchModel>> getValidatedSwitchesByYard(String yard) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl?endpoint=switch&action=by-yard&container_yard=$yard'),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          return (data['data'] as List).map((i) => SwitchModel.fromJson(i)).toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error fetching Switches: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> updateSwitch(int id, Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl?endpoint=switch&action=update'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'id': id, ...data}),
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> createSwitch(Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl?endpoint=switch&action=create'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> deleteSwitch(int id) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl?endpoint=switch&action=delete&id=$id'));
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  /// Fetches a true global summary of all devices (Towers, Cameras, MMTs, NVRs, Switches)
+  Future<Map<String, int>> getGlobalDeviceSummary() async {
+    try {
+      final results = await Future.wait([
+        getAllTowers(),
+        getAllCameras(),
+        getAllMMTs(),
+        getAllNVRs(),
+        getAllSwitches(),
+      ]);
+
+      final towers = results[0] as List<Tower>;
+      final cameras = results[1] as List<Camera>;
+      final mmts = results[2] as List<MMT>;
+      final nvrs = results[3] as List<NVR>;
+      final switches = results[4] as List<SwitchModel>;
+
+      int up = 0;
+      int total = 0;
+
+      total += towers.length;
+      up += towers.where((t) => !isDownStatus(t.status)).length;
+
+      total += cameras.length;
+      up += cameras.where((c) => !isDownStatus(c.status)).length;
+
+      total += mmts.length;
+      // For MMT, we might need special status check if it uses override, 
+      // but usually the list status is sufficient for global count.
+      up += mmts.where((m) => !isDownStatus(m.status)).length;
+
+      total += nvrs.length;
+      up += nvrs.where((n) => !isDownStatus(n.status)).length;
+
+      total += switches.length;
+      up += switches.where((s) => !isDownStatus(s.status)).length;
+
+      return {
+        'total': total,
+        'up': up,
+        'down': (total - up).clamp(0, 999999),
+      };
+    } catch (e) {
+      debugPrint('Error in getGlobalDeviceSummary: $e');
+      return {'total': 0, 'up': 0, 'down': 0};
     }
   }
 }

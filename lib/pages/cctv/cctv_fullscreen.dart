@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:monitoring/main.dart';
 import 'package:monitoring/utils/ui_utils.dart';
 import 'package:monitoring/services/api_service.dart';
@@ -101,7 +100,7 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
       // Trigger realtime ping in background after UI loads
       _triggerRealtimePing();
     } catch (e) {
-      print('Error Loading Camera: $e');
+      debugPrint('Error Loading Camera: $e');
       if (mounted) {
         setState(() {
           isLoading = false;
@@ -112,42 +111,19 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
 
   Future<void> _triggerRealtimePing() async {
     try {
-      print('=== Starting Realtime Ping For All Camera (Fullscreen) ===');
+      debugPrint('=== Starting Realtime Ping For All Camera (Fullscreen) ===');
 
       final apiService = ApiService();
       final pingResult = await apiService.triggerRealtimePing();
 
       if (pingResult['success'] == true) {
-        print('Realtime Ping Completed: ${pingResult['message']}');
-        print('IP Checked: ${pingResult['ips_checked']}');
+        debugPrint('Realtime Ping Completed: ${pingResult['message']}');
+        debugPrint('IP Checked: ${pingResult['ips_checked']}');
       }
 
-      print('=== Realtime Ping Completed (Fullscreen) ===');
+      debugPrint('=== Realtime Ping Completed (Fullscreen) ===');
     } catch (e) {
-      print('Error Triggering Realtime Ping: $e');
-    }
-  }
-
-  Future<void> _triggerPingCheck() async {
-    try {
-      final baseUrl = ApiService.baseUrl;
-      await http
-          .get(
-        Uri.parse('$baseUrl?endpoint=realtime&action=all'),
-      )
-          .timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          print('Realtime Ping Timed Out');
-          return http.Response('{"Success":False}', 408);
-        },
-      );
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (mounted) {
-        await _loadAllCameras();
-      }
-    } catch (e) {
-      print('Error Triggering Ping Check (Ignored): $e');
+      debugPrint('Error Triggering Realtime Ping: $e');
     }
   }
 
@@ -422,7 +398,6 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
     );
   }
 
-
   Widget _buildLoadingIndicator() {
     return Center(
       child: Container(
@@ -515,29 +490,4 @@ class _CCTVFullscreenPageState extends State<CCTVFullscreenPage> {
       ),
     );
   }
-
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout', style: TextStyle(color: Colors.black87)),
-        content: const Text('Are you sure you want to exit?',
-            style: TextStyle(color: Colors.black87)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              navigateWithLoading(context, '/login');
-            },
-            child: const Text('Logout', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
 }
-

@@ -1,8 +1,6 @@
-import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
-import 'package:monitoring/theme/app_dropdown_style.dart';
 import 'package:monitoring/utils/ui_utils.dart';
-import 'package:monitoring/route_proxy_page.dart';
+
 class _NavItem {
   final IconData icon;
   final String label;
@@ -37,10 +35,11 @@ class GlobalSidebarNav extends StatefulWidget {
 class _GlobalSidebarNavState extends State<GlobalSidebarNav> {
   bool _isExpanded = false;
 
-  static const double _collapsedWidth = GlobalSidebarNav.collapsedWidth;
-  static const double _expandedWidth = 52;
-  static const _bgColor = Color(0xFF1976D2);
-  static const _activeColor = AppDropdownStyle.accentColor;
+  static const double _collapsedWidth = 68;
+  static const double _expandedWidth = 260;
+  static const _bgColor = Color(0xFF1E1F20); // Gemini-style dark background
+  static const _activeColor = Color(0xFF3B4D63); // Muted highlight
+  static const _accentColor = Color(0xFF8AB4F8); // Gemini blue accent
 
   static const List<_NavItem> _navItems = [
     _NavItem(Icons.dashboard_outlined, 'Dashboard', '/dashboard'),
@@ -49,6 +48,8 @@ class _GlobalSidebarNavState extends State<GlobalSidebarNav> {
     _NavItem(Icons.router_outlined, 'Access Point', '/network'),
     _NavItem(Icons.videocam_outlined, 'CCTV', '/cctv'),
     _NavItem(Icons.monitor_outlined, 'MMT', '/mmt-monitoring'),
+    _NavItem(Icons.dns_outlined, 'NVR', '/nvr-monitoring-cy1'),
+    _NavItem(Icons.device_hub_outlined, 'Switch', '/switch-monitoring-cy1'),
     _NavItem(Icons.warning_amber_outlined, 'Alerts', '/alerts'),
     _NavItem(Icons.assessment_outlined, 'Report', '/report'),
     _NavItem(Icons.speed_outlined, 'Performance', '/global-diagnostics'),
@@ -87,6 +88,24 @@ class _GlobalSidebarNavState extends State<GlobalSidebarNav> {
         '/mmt-cy3'
       ].contains(current);
     }
+    if (target == '/nvr-monitoring-cy1') {
+      return [
+        '/nvr-monitoring-cy1',
+        '/nvr-monitoring-cy2',
+        '/nvr-monitoring-cy3',
+        '/nvr-monitoring-gate',
+        '/nvr-monitoring-parking'
+      ].contains(current);
+    }
+    if (target == '/switch-monitoring-cy1') {
+      return [
+        '/switch-monitoring-cy1',
+        '/switch-monitoring-cy2',
+        '/switch-monitoring-cy3',
+        '/switch-monitoring-gate',
+        '/switch-monitoring-parking'
+      ].contains(current);
+    }
     if (target == '/profile') {
       return ['/profile', '/edit-profile', '/change-password']
           .contains(current);
@@ -104,41 +123,60 @@ class _GlobalSidebarNavState extends State<GlobalSidebarNav> {
     return false;
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _isExpanded = sidebarExpandedNotifier.value;
+    sidebarExpandedNotifier.addListener(_syncExpansion);
+  }
+
+  @override
+  void dispose() {
+    sidebarExpandedNotifier.removeListener(_syncExpansion);
+    super.dispose();
+  }
+
+  void _syncExpansion() {
+    if (mounted) setState(() => _isExpanded = sidebarExpandedNotifier.value);
+  }
+
   void _navigate(String route) {
     if (!_isActiveRoute(widget.currentRoute, route)) {
-      Navigator.pushReplacement(
-        context,
-        PageRouteBuilder(
-          settings: RouteSettings(name: route),
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              RouteProxyPage(route),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0.01, 0),
-                  end: Offset.zero,
-                ).animate(
-                    CurvedAnimation(parent: animation, curve: Curves.easeOut)),
-                child: child,
-              ),
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 350),
-        ),
-      );
-    } else {
-      setState(() => _isExpanded = false);
+      sidebarExpandedNotifier.value = false;
+      Navigator.pushReplacementNamed(context, route);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
-    
-    if (!widget.enabled || isMobile) {
+
+    if (!widget.enabled) {
       return widget.child;
+    }
+
+    if (isMobile) {
+      return Stack(
+        children: [
+          widget.child,
+          if (_isExpanded)
+            GestureDetector(
+              onTap: () => sidebarExpandedNotifier.value = false,
+              child: Container(
+                color: Colors.black54,
+              ),
+            ),
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            left: _isExpanded ? 0 : -_expandedWidth,
+            top: 0,
+            bottom: 0,
+            width: _expandedWidth,
+            child: _buildSidebarPanel(isOverlay: true),
+          ),
+        ],
+      );
     }
 
     return Row(
@@ -150,66 +188,85 @@ class _GlobalSidebarNavState extends State<GlobalSidebarNav> {
     );
   }
 
-  Widget _buildSidebarPanel() {
-    return Container(
-      width: _collapsedWidth,
+  Widget _buildSidebarPanel({bool isOverlay = false}) {
+    final width = _isExpanded ? _expandedWidth : _collapsedWidth;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+      width: isOverlay ? _expandedWidth : width,
       decoration: BoxDecoration(
-        color: AppDropdownStyle.menuBackground,
+        color: _bgColor,
         border: Border(
-          right: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+          right: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
         ),
       ),
       child: Column(
         children: [
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               itemCount: _navItems.length,
               itemBuilder: (context, index) {
                 final item = _navItems[index];
-                final isActive = _isActiveRoute(widget.currentRoute, item.route);
-                
-                // Variabel lokal untuk menyimpan GlobalKey tooltip
-                final tooltipKey = GlobalKey<TooltipState>();
+                final isActive =
+                    _isActiveRoute(widget.currentRoute, item.route);
 
-                return Tooltip(
-                  key: tooltipKey,
-                  message: item.label,
-                  waitDuration: Duration.zero,
-                  triggerMode: TooltipTriggerMode.manual,
-                  margin: const EdgeInsets.only(left: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2A3650),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white10),
-                  ),
-                  textStyle: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
-                  child: GestureDetector(
-                    onTap: () {
-                      tooltipKey.currentState?.ensureTooltipVisible();
-                      _navigate(item.route);
-                    },
-                    behavior: HitTestBehavior.opaque,
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: isActive ? AppDropdownStyle.accentColor.withValues(alpha: 0.2) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        item.icon,
-                        color: isActive ? AppDropdownStyle.accentColor : Colors.white70,
-                        size: 22,
-                      ),
-                    ),
-                  ),
-                );
+                return _buildSidebarItem(item, isActive);
               },
             ),
           ),
+          const SizedBox(height: 12),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSidebarItem(_NavItem item, bool isActive) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Tooltip(
+        message: _isExpanded ? '' : item.label,
+        preferBelow: false,
+        child: InkWell(
+          onTap: () => _navigate(item.route),
+          borderRadius: BorderRadius.circular(28),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            height: 48,
+            padding: EdgeInsets.symmetric(horizontal: _isExpanded ? 16 : 12),
+            decoration: BoxDecoration(
+              color: isActive ? _activeColor : Colors.transparent,
+              borderRadius: BorderRadius.circular(28),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  item.icon,
+                  color: isActive ? _accentColor : Colors.white70,
+                  size: 22,
+                ),
+                if (_isExpanded) ...[
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      item.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: isActive ? Colors.white : Colors.white70,
+                        fontSize: 14,
+                        fontWeight:
+                            isActive ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -1,7 +1,7 @@
 import 'package:monitoring/utils/location_label_utils.dart';
 
 class Alert {
-  final int id; // Ubah dynamic menjadi int agar pasti angka
+  final int id; 
   final String alertKey;
   final String title;
   final String description;
@@ -17,8 +17,7 @@ class Alert {
   final String? waktu;
   final String? lokasi;
 
-  // Lifecycle fields
-  final String alertStatus;     // open | acknowledged | resolved
+  final String alertStatus;    
   final String? resolvedAt;
   final String? acknowledgedAt;
   final String? deviceId;
@@ -60,7 +59,7 @@ class Alert {
     alertKey: (json['alert_key'] ?? fallbackKey).toString(),
     title: json['title'] ?? '',
     description: json['description'] ?? '',
-    lokasi: normalizeLocationLabel((json['lokasi'] ?? '').toString()),
+    lokasi: canonicalizeLocationLabel((json['lokasi'] ?? '').toString()),
     tanggal: json['tanggal'],
     waktu: json['waktu'],
     severity: json['severity'] ?? 'critical',
@@ -126,7 +125,7 @@ class Alert {
       tanggal: tanggal,
       waktu: waktu,
       lokasi: newLocation != null
-          ? normalizeLocationLabel(newLocation)
+          ? canonicalizeLocationLabel(newLocation)
           : lokasi,
       alertStatus: alertStatus,
       resolvedAt: resolvedAt,

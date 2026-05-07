@@ -1246,7 +1246,8 @@ class _LatencyPacketChartPanel extends StatelessWidget {
                   lineTouchData: LineTouchData(
                     enabled: true,
                     touchTooltipData: LineTouchTooltipData(
-                      tooltipBgColor: const Color(0xFF1E2D3B),
+                      tooltipBgColor: const Color(0xFF1E2D3B).withValues(alpha: 0.9),
+                      tooltipRoundedRadius: 8,
                       fitInsideHorizontally: true,
                       fitInsideVertically: true,
                       getTooltipItems: (touchedSpots) {
@@ -1254,22 +1255,24 @@ class _LatencyPacketChartPanel extends StatelessWidget {
                           final isLatency = spot.barIndex == 0;
                           final label = isLatency ? 'Latency' : 'Packet Loss';
                           final unit = isLatency ? 'ms' : '%';
-                          final value = spot.y.toStringAsFixed(2);
-                          final timeLabel = _formatClock(
-                            _timeAtAxisValue(
-                              spot.x,
-                              bounds,
-                              startTime,
-                              endTime,
-                            ),
-                          );
+                          final color = isLatency ? const Color(0xFFFF2D95) : const Color(0xFF39FF14);
+                          
                           return LineTooltipItem(
-                            '$label: $value $unit\n$timeLabel',
+                            '$label\n',
                             const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
+                              color: Colors.white70,
+                              fontSize: 10,
                             ),
+                            children: [
+                              TextSpan(
+                                text: '${spot.y.toStringAsFixed(2)} $unit',
+                                style: TextStyle(
+                                  color: color,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           );
                         }).toList(growable: false);
                       },
@@ -1402,27 +1405,28 @@ class _CpuAveragePanel extends StatelessWidget {
                   lineTouchData: LineTouchData(
                     enabled: true,
                     touchTooltipData: LineTouchTooltipData(
-                      tooltipBgColor: const Color(0xFF1E2D3B),
+                      tooltipBgColor: const Color(0xFF1E2D3B).withValues(alpha: 0.9),
+                      tooltipRoundedRadius: 8,
                       fitInsideHorizontally: true,
                       fitInsideVertically: true,
                       getTooltipItems: (touchedSpots) {
                         return touchedSpots.map((spot) {
-                          final value = spot.y.toStringAsFixed(2);
-                          final timeLabel = _formatClock(
-                            _timeAtAxisValue(
-                              spot.x,
-                              bounds,
-                              startTime,
-                              endTime,
-                            ),
-                          );
                           return LineTooltipItem(
-                            'CPU: $value %\n$timeLabel',
+                            'Avg CPU\n',
                             const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
+                              color: Colors.white70,
+                              fontSize: 10,
                             ),
+                            children: [
+                              TextSpan(
+                                text: '${spot.y.toStringAsFixed(2)} %',
+                                style: const TextStyle(
+                                  color: Color(0xFFB000FF),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           );
                         }).toList(growable: false);
                       },
@@ -1587,6 +1591,37 @@ class _TopCpusPanel extends StatelessWidget {
                           ),
                         ),
                         clipData: const FlClipData.all(),
+                        lineTouchData: LineTouchData(
+                          enabled: true,
+                          touchTooltipData: LineTouchTooltipData(
+                            tooltipBgColor: const Color(0xFF1E2D3B).withValues(alpha: 0.9),
+                            tooltipRoundedRadius: 8,
+                            fitInsideHorizontally: true,
+                            fitInsideVertically: true,
+                            getTooltipItems: (touchedSpots) {
+                              return touchedSpots.map((spot) {
+                                final bar = items[spot.barIndex];
+                                return LineTooltipItem(
+                                  '${bar.name}\n',
+                                  const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 10,
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: '${spot.y.toStringAsFixed(2)} %',
+                                      style: TextStyle(
+                                        color: bar.color,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }).toList(growable: false);
+                            },
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -1853,6 +1888,39 @@ class _DiskUsageTrendPanel extends StatelessWidget {
                     ),
                   ),
                   clipData: const FlClipData.all(),
+                  lineTouchData: LineTouchData(
+                    enabled: true,
+                    touchTooltipData: LineTouchTooltipData(
+                      tooltipBgColor: const Color(0xFF1E2D3B).withValues(alpha: 0.9),
+                      tooltipRoundedRadius: 8,
+                      fitInsideHorizontally: true,
+                      fitInsideVertically: true,
+                      getTooltipItems: (touchedSpots) {
+                        return touchedSpots.map((spot) {
+                          final isA = spot.barIndex == 0;
+                          final label = isA ? 'Disk A' : 'Disk B';
+                          final color = isA ? const Color(0xFFFF6A00) : const Color(0xFFAEEA00);
+                          return LineTooltipItem(
+                            '$label\n',
+                            const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 10,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: '${spot.y.toStringAsFixed(2)} %',
+                                style: TextStyle(
+                                  color: color,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          );
+                        }).toList(growable: false);
+                      },
+                    ),
+                  ),
                 ),
               ),
             ),

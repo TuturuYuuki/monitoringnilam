@@ -23,22 +23,18 @@ class DeviceTelemetryDataTableCard extends StatelessWidget {
                 latency: _fmt(row['latency_ms']),
                 responseTime: _fmt(row['response_time_ms']),
                 packetLoss: _fmt(row['packet_loss_percent']),
-                trafficRx: _fmt(row['traffic_rx_mbps']),
-                trafficTx: _fmt(row['traffic_tx_mbps']),
                 uptime: _toText(row['uptime_seconds']),
               ),
             )
             .toList(growable: false)
         : <_TelemetryRow>[
             const _TelemetryRow(
-              updated: 'NO DATA',
+              updated: '-',
               cpuLoad: '-',
               ramUsage: '-',
               latency: '-',
               responseTime: '-',
               packetLoss: '-',
-              trafficRx: '-',
-              trafficTx: '-',
               uptime: '-',
             ),
           ];
@@ -69,22 +65,22 @@ class DeviceTelemetryDataTableCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Text(
-            isMobile
-                ? 'Swipe table left/right to view all columns.'
-                : 'Complete device telemetry table.',
+            hasRows 
+              ? 'Latest telemetry readings from all monitored devices'
+              : 'No telemetry data available',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.75),
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
+              color: Colors.white.withValues(alpha: 0.7),
+              fontSize: 12,
+              fontWeight: FontWeight.w400,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
               final tableWidth = _TelemetryLayout.getTableWidth(constraints.maxWidth);
-              final columnWidths = _TelemetryLayout.getColumnWidths(tableWidth);
+              final columnWidths = _TelemetryLayout.getColumnWidths(tableWidth, isMobile);
 
               return Container(
                 width: double.infinity,
@@ -149,8 +145,6 @@ class _TelemetryRow {
   final String latency;
   final String responseTime;
   final String packetLoss;
-  final String trafficRx;
-  final String trafficTx;
   final String uptime;
 
   const _TelemetryRow({
@@ -160,8 +154,6 @@ class _TelemetryRow {
     required this.latency,
     required this.responseTime,
     required this.packetLoss,
-    required this.trafficRx,
-    required this.trafficTx,
     required this.uptime,
   });
 }
@@ -186,36 +178,44 @@ class _TelemetryHeaderRow extends StatelessWidget {
       'LATENCY',
       'RESP TIME',
       'PKT LOSS %',
-      'RX MBPS',
-      'TX MBPS',
       'UPTIME',
     ];
 
     return Container(
       width: tableWidth,
-      padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
+        color: const Color(0xFF1E2C3A).withValues(alpha: 0.6),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.white.withValues(alpha: 0.12),
-            Colors.white.withValues(alpha: 0.05),
-          ],
-        ),
       ),
-      child: Row(
+      child: Column(
         children: [
-          for (int i = 0; i < headers.length; i++)
-            _tableCell(
-              text: headers[i],
-              width: columnWidths[i],
-              isHeader: true,
-              isMobile: isMobile,
-              isTime: i == 0,
+          Container(
+            width: tableWidth,
+            padding: EdgeInsets.symmetric(horizontal: isMobile ? 14 : 20, vertical: 18),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0D47A1).withValues(alpha: 0.4),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  width: 1.5,
+                ),
+              ),
             ),
+            child: Row(
+              children: [
+                for (int i = 0; i < headers.length; i++)
+                  _tableCell(
+                    text: headers[i],
+                    width: columnWidths[i],
+                    isHeader: true,
+                    isMobile: isMobile,
+                    isTime: i == 0,
+                    isNumeric: i > 0,
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -243,13 +243,21 @@ class _TelemetryDataRow extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {}, // For hover effect
-        hoverColor: Colors.white.withValues(alpha: 0.05),
+        hoverColor: Colors.white.withValues(alpha: 0.08),
         child: Container(
           width: tableWidth,
-          padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 16, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: isMobile ? 14 : 20, vertical: 16),
           decoration: BoxDecoration(
+            color: (isLast ? 0 : 1) % 2 == 0
+                ? const Color(0xFF1E2C3A).withValues(alpha: 0.3)
+                : const Color(0xFF263849).withValues(alpha: 0.3),
             border: Border(
-              bottom: isLast ? BorderSide.none : BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+              bottom: isLast 
+                ? BorderSide.none 
+                : BorderSide(
+                    color: Colors.white.withValues(alpha: 0.04),
+                    width: 1.0,
+                  ),
             ),
           ),
           child: Row(
@@ -259,46 +267,43 @@ class _TelemetryDataRow extends StatelessWidget {
                 width: columnWidths[0],
                 isMobile: isMobile,
                 isTime: true,
+                isNumeric: false,
               ),
               _tableCell(
                 text: row.cpuLoad,
                 width: columnWidths[1],
                 isMobile: isMobile,
+                isNumeric: true,
               ),
               _tableCell(
                 text: row.ramUsage,
                 width: columnWidths[2],
                 isMobile: isMobile,
+                isNumeric: true,
               ),
               _tableCell(
                 text: row.latency,
                 width: columnWidths[3],
                 isMobile: isMobile,
+                isNumeric: true,
               ),
               _tableCell(
                 text: row.responseTime,
                 width: columnWidths[4],
                 isMobile: isMobile,
+                isNumeric: true,
               ),
               _tableCell(
                 text: row.packetLoss,
                 width: columnWidths[5],
                 isMobile: isMobile,
-              ),
-              _tableCell(
-                text: row.trafficRx,
-                width: columnWidths[6],
-                isMobile: isMobile,
-              ),
-              _tableCell(
-                text: row.trafficTx,
-                width: columnWidths[7],
-                isMobile: isMobile,
+                isNumeric: true,
               ),
               _tableCell(
                 text: row.uptime,
-                width: columnWidths[8],
+                width: columnWidths[6],
                 isMobile: isMobile,
+                isNumeric: false,
               ),
             ],
           ),
@@ -310,25 +315,28 @@ class _TelemetryDataRow extends StatelessWidget {
 
 class _TelemetryLayout {
   static double getTableWidth(double availableWidth) {
-    return availableWidth > 1100 ? availableWidth : 1100;
+    // Make table wider - use full available width or minimum 1400
+    return availableWidth > 1400 ? availableWidth * 0.95 : 1400;
   }
 
-  static List<double> getColumnWidths(double tableWidth) {
-    // Proportional distribution for desktop
-    final timeWidth = tableWidth * 0.18; // 18% for Time
-    final uptimeWidth = tableWidth * 0.12; // 12% for Uptime
-    final remainingWidth = tableWidth - timeWidth - uptimeWidth;
-    final otherColWidth = remainingWidth / 7;
+  static List<double> getColumnWidths(double tableWidth, bool isMobile) {
+    // Subtract horizontal padding of the container to get actual content width
+    final horizontalPadding = isMobile ? 24.0 : 32.0;
+    final contentWidth = tableWidth - horizontalPadding;
+
+    // Distribution for 7 columns: TIME, CPU, RAM, LATENCY, RESP TIME, PKT LOSS, UPTIME
+    final timeWidth = contentWidth * 0.13;      // 13% for Time
+    final uptimeWidth = contentWidth * 0.10;    // 10% for Uptime
+    final remaining = contentWidth - timeWidth - uptimeWidth;
+    final eachMiddle = remaining / 5; // CPU, RAM, LATENCY, RESP TIME, PKT LOSS
 
     return [
       timeWidth,
-      otherColWidth,
-      otherColWidth,
-      otherColWidth,
-      otherColWidth,
-      otherColWidth,
-      otherColWidth,
-      otherColWidth,
+      eachMiddle,
+      eachMiddle,
+      eachMiddle,
+      eachMiddle,
+      eachMiddle,
       uptimeWidth,
     ];
   }
@@ -340,21 +348,31 @@ Widget _tableCell({
   bool isHeader = false,
   bool isMobile = false,
   bool isTime = false,
+  bool isNumeric = false,
 }) {
+  // Determine text alignment based on content type
+  final alignment = isTime ? TextAlign.left : (isNumeric ? TextAlign.right : TextAlign.center);
+  
   return SizedBox(
     width: width,
     child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Text(
-        text,
-        textAlign: isTime ? TextAlign.left : TextAlign.center,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: isHeader ? Colors.white : Colors.white.withValues(alpha: 0.9),
-          fontWeight: isHeader ? FontWeight.w800 : FontWeight.w600,
-          fontSize: isMobile ? 11 : 13,
-          letterSpacing: isHeader ? 0.5 : 0,
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 12),
+      child: Tooltip(
+        message: text,
+        child: Text(
+          text,
+          textAlign: alignment,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: isHeader 
+              ? const Color(0xFF64B5F6)
+              : Colors.white.withValues(alpha: 0.85),
+            fontWeight: isHeader ? FontWeight.w700 : FontWeight.w500,
+            fontSize: isMobile ? 10 : 13,
+            letterSpacing: isHeader ? 0.4 : 0.1,
+            height: 1.5,
+          ),
         ),
       ),
     ),

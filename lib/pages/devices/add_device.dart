@@ -6,10 +6,10 @@ import 'package:monitoring/main.dart';
 import 'package:monitoring/models/camera_model.dart';
 import 'package:monitoring/models/device_model.dart';
 import 'package:monitoring/models/mmt_model.dart';
+import 'package:monitoring/models/tower_model.dart';
 import 'package:monitoring/services/api_service.dart';
 import 'package:monitoring/services/device_storage_service.dart';
 import 'package:monitoring/theme/app_dropdown_style.dart';
-import 'package:monitoring/utils/navigation_helper.dart';
 import 'package:monitoring/utils/device_icon_resolver.dart';
 import 'package:monitoring/utils/location_label_utils.dart';
 import 'package:monitoring/widgets/global_header_bar.dart';
@@ -38,7 +38,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
   String _selectedDeviceType = 'Access Point';
   String _selectedLocation = '';
 
-  final List<String> deviceTypes = ['Access Point', 'CCTV', 'MMT'];
+  final List<String> deviceTypes = ['Access Point', 'CCTV', 'MMT', 'NVR', 'Switch'];
 
   @override
   void initState() {
@@ -102,10 +102,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
           ..clear()
           ..addEntries(sortedEntries);
         if (_locationData.isNotEmpty) {
-          if (_selectedLocation.isEmpty ||
-              !_locationData.containsKey(_selectedLocation)) {
-            _selectedLocation = _locationData.keys.first;
-          }
+          _resetLocationToDefaultForType();
         } else {
           _selectedLocation = '';
         }
@@ -116,7 +113,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
       setState(() {
         _isLoadingLocations = false;
       });
-      print('Error loading location options from master location endpoint: $e');
+      // print removed
     }
   }
 
@@ -132,6 +129,10 @@ class _AddDevicePageState extends State<AddDevicePage> {
         return 'CAM 01';
       case 'MMT':
         return 'MMT 01';
+      case 'NVR':
+        return 'NVR 01';
+      case 'Switch':
+        return 'SW 01';
       default:
         return '';
     }
@@ -158,15 +159,18 @@ class _AddDevicePageState extends State<AddDevicePage> {
       final results = await Future.wait([
         apiService.getAllCameras(),
         apiService.getAllMMTs(),
+        apiService.getAllTowers(),
         DeviceStorageService.getDevices(),
       ]);
 
       final cameras = results[0] as List<Camera>;
       final mmts = results[1] as List<MMT>;
-      final addedDevices = results[2] as List<AddedDevice>;
+      final towers = results[2] as List<Tower>;
+      final addedDevices = results[3] as List<AddedDevice>;
 
       final names = <String>{};
       if (_selectedDeviceType == 'Access Point') {
+        names.addAll(towers.map((t) => t.towerId));
         names.addAll(addedDevices
             .where((d) => d.type == 'Access Point')
             .map((d) => d.name));
@@ -185,6 +189,12 @@ class _AddDevicePageState extends State<AddDevicePage> {
                 d.type == 'MMT' &&
                 !mmts.any((m) => m.mmtId.toLowerCase() == d.name.toLowerCase()))
             .map((d) => d.name));
+      } else if (_selectedDeviceType == 'NVR') {
+        final nvrs = await apiService.getAllNVRs();
+        names.addAll(nvrs.map((n) => n.nvrId));
+      } else if (_selectedDeviceType == 'Switch') {
+        final switches = await apiService.getAllSwitches();
+        names.addAll(switches.map((s) => s.switchId));
       }
 
       final nameList = names.where((n) => n.trim().isNotEmpty).toList();
@@ -219,91 +229,140 @@ class _AddDevicePageState extends State<AddDevicePage> {
       setState(() {
         _isLoadingUsedNames = false;
       });
-      print('Error Loading Used Device Name: $e');
+      // print removed
     }
   }
 
   void _showAllUsedNames() {
     if (_usedNamesForType.isEmpty) return;
-    showGeneralDialog(
+    showDialog(
       context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Device Name List',
-      barrierColor: Colors.black26,
-      transitionDuration: const Duration(milliseconds: 180),
-      pageBuilder: (context, anim1, anim2) {
-        return SafeArea(
-          child: Center(
-            child: Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      builder: (context) {
+        return Dialog(
+          backgroundColor: const Color(0xFF1E293B), // Dark theme color
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 24,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360), // Shrink slightly
+            child: Padding(
+                  padding: const EdgeInsets.all(20),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.list_alt_rounded, color: Colors.blue, size: 20),
+                          ),
+                          const SizedBox(width: 12),
                           Expanded(
-                            child: Text(
-                              'Name List For $_selectedDeviceType',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Name List',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  _selectedDeviceType,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white.withValues(alpha: 0.5),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           IconButton(
                             onPressed: () => Navigator.of(context).pop(),
-                            icon: const Icon(Icons.close),
+                            icon: const Icon(Icons.close_rounded, color: Colors.white54, size: 20),
                           ),
                         ],
                       ),
-                      Text(
-                        'Total: ${_usedNamesForType.length} Name',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black54,
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'TOTAL RECORDS',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.4),
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                            Text(
+                              '${_usedNamesForType.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 16),
                       ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 360),
-                        child: ListView.separated(
-                          shrinkWrap: true,
-                          itemCount: _usedNamesForType.length,
-                          separatorBuilder: (_, __) => const Divider(height: 1),
-                          itemBuilder: (context, index) {
-                            final name = _usedNamesForType[index];
-                            return ListTile(
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
-                              leading:
-                                  const Icon(Icons.label_outline, size: 18),
-                              title: Text(
-                                name,
-                                style: const TextStyle(fontSize: 13),
-                              ),
-                            );
-                          },
+                        constraints: const BoxConstraints(maxHeight: 300),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: _usedNamesForType.length,
+                            itemBuilder: (context, index) {
+                              final name = _usedNamesForType[index];
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.03),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: ListTile(
+                                  dense: true,
+                                  visualDensity: VisualDensity.compact,
+                                  leading: Icon(
+                                    Icons.label_important_outline_rounded,
+                                    size: 16,
+                                    color: Colors.blue.withValues(alpha: 0.6),
+                                  ),
+                                  title: Text(
+                                    name,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-            ),
-          ),
-        );
-      },
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        return FadeTransition(
-          opacity: animation,
-          child: child,
-        );
+            );
       },
     );
   }
@@ -329,16 +388,19 @@ class _AddDevicePageState extends State<AddDevicePage> {
       final results = await Future.wait([
         apiService.getAllCameras(),
         apiService.getAllMMTs(),
+        apiService.getAllTowers(),
         DeviceStorageService.getDevices(),
       ]);
 
       final cameras = results[0] as List<Camera>;
       final mmts = results[1] as List<MMT>;
-      final addedDevices = results[2] as List<AddedDevice>;
+      final towers = results[2] as List<Tower>;
+      final addedDevices = results[3] as List<AddedDevice>;
 
       // Get all DB device names for comparison
       final dbNames = <String>{};
       if (_selectedDeviceType == 'Access Point') {
+        dbNames.addAll(towers.map((t) => t.towerId.toLowerCase()));
         dbNames.addAll(
           addedDevices
               .where((d) => d.type == 'Access Point')
@@ -348,6 +410,12 @@ class _AddDevicePageState extends State<AddDevicePage> {
         dbNames.addAll(cameras.map((c) => c.cameraId.toLowerCase()));
       } else if (_selectedDeviceType == 'MMT') {
         dbNames.addAll(mmts.map((m) => m.mmtId.toLowerCase()));
+      } else if (_selectedDeviceType == 'NVR') {
+        final nvrs = await apiService.getAllNVRs();
+        dbNames.addAll(nvrs.map((n) => n.nvrId.toLowerCase()));
+      } else if (_selectedDeviceType == 'Switch') {
+        final switches = await apiService.getAllSwitches();
+        dbNames.addAll(switches.map((s) => s.switchId.toLowerCase()));
       }
 
       // Only include local storage devices that don't exist in DB
@@ -366,7 +434,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
       if (!mounted) return;
       setState(() {
         _isCheckingName = false;
-        _nameError = isTaken ? 'The Device Name Is Already In Use' : null;
+        _nameError = isTaken ? 'The device name is already in use' : null;
       });
       _formKey.currentState?.validate();
     } catch (_) {
@@ -389,7 +457,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-              'Location not available. Please add a master tower first.'),
+              'Location not available. Please add a master tower first'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -402,7 +470,14 @@ class _AddDevicePageState extends State<AddDevicePage> {
       final latitude = locationInfo?['lat'] ?? 0.0;
       final longitude = locationInfo?['lng'] ?? 0.0;
       final containerYard = locationInfo?['cy'] ?? '';
-      final savedLocationName = normalizeLocationLabel(_selectedLocation);
+      
+      // Persist the canonical full location label so all downstream tables stay consistent.
+      final savedLocationName = buildMasterLocationLabel(
+        locationType: (locationInfo?['location_type'] ?? '').toString(),
+        locationCode: locationInfo?['location_code']?.toString() ?? normalizeLocationLabel(_selectedLocation),
+        locationName: locationInfo?['location_name']?.toString() ?? '',
+        containerYard: containerYard,
+      );
 
       // Auto-fill fields sesuai template
       String deviceId = _nameController.text;
@@ -444,31 +519,22 @@ class _AddDevicePageState extends State<AddDevicePage> {
 
       final saveFuture =
           DeviceStorageService.addDevice(newDevice).catchError((e) {
-        print('Error Saving To Local Storage: $e');
+        // print removed
       });
 
       // Prepare API request data
       String deviceIpAddress = _ipAddressController.text;
       Future<Map<String, dynamic>>? createFuture;
 
-      print('=== DEBUG: Saving Device ===');
-      print('Device Type: $_selectedDeviceType');
-      print('Device ID: $deviceId');
-      print('IP Address From Input: $deviceIpAddress');
-      print('Location: $savedLocationName');
-      print('Container Yard: $containerYard');
+      // print removed
+      // print removed
+      // print removed
+      // print removed
+      // print removed
+      // print removed
 
       // Execute API call (non-blocking) - don't await for dialog
       if (_selectedDeviceType == 'Access Point') {
-        print(
-            '\nG??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??');
-        print('=??? Creating Access Point (Tower)');
-        print('Device ID: $deviceId');
-        print('Location: $savedLocationName');
-        print('IP: $deviceIpAddress');
-        print('Container Yard: $containerYard');
-        print(
-            'G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??\n');
 
         createFuture = apiService.createTower(
           towerId: deviceId,
@@ -482,11 +548,11 @@ class _AddDevicePageState extends State<AddDevicePage> {
         );
         createFuture.then((result) {
           if (result['success'] == true) {
-            print('G?? SUCCESS: Tower created in database');
-            print('Response: $result');
+            // print removed
+            // print removed
           } else {
-            print('G?? FAILED: ${result['message'] ?? 'Unknown error'}');
-            print('Full response: $result');
+            // print removed
+            // print removed
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -499,7 +565,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
             }
           }
         }).catchError((e) {
-          print('G??G??G?? EXCEPTION: $e');
+          // print removed
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -511,14 +577,6 @@ class _AddDevicePageState extends State<AddDevicePage> {
           }
         });
       } else if (_selectedDeviceType == 'CCTV') {
-        print(
-            '\nG??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??');
-        print('=?? Creating CCTV (Camera)');
-        print('Camera ID: $deviceId');
-        print('Location: $savedLocationName');
-        print('IP: $deviceIpAddress');
-        print(
-            'G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??\n');
 
         createFuture = apiService.createCamera(
           cameraId: deviceId,
@@ -533,9 +591,9 @@ class _AddDevicePageState extends State<AddDevicePage> {
         );
         createFuture.then((result) {
           if (result['success'] == true) {
-            print('G?? SUCCESS: Camera created in database');
+            // print removed
           } else {
-            print('G?? FAILED: ${result['message']}');
+            // print removed
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -548,7 +606,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
             }
           }
         }).catchError((e) {
-          print('G?? EXCEPTION: $e');
+          // print removed
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -560,14 +618,6 @@ class _AddDevicePageState extends State<AddDevicePage> {
           }
         });
       } else if (_selectedDeviceType == 'MMT') {
-        print(
-            '\nG??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??');
-        print('=??? Creating MMT');
-        print('MMT ID: $deviceId');
-        print('Location: $savedLocationName');
-        print('IP: $deviceIpAddress');
-        print(
-            'G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??G??\n');
 
         createFuture = apiService.createMMT(
           mmtId: deviceId,
@@ -580,9 +630,9 @@ class _AddDevicePageState extends State<AddDevicePage> {
         );
         createFuture.then((result) {
           if (result['success'] == true) {
-            print('G?? SUCCESS: MMT created in database');
+            // print removed
           } else {
-            print('G?? FAILED: ${result['message']}');
+            // print removed
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -595,7 +645,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
             }
           }
         }).catchError((e) {
-          print('G?? EXCEPTION: $e');
+          // print removed
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -606,6 +656,28 @@ class _AddDevicePageState extends State<AddDevicePage> {
             );
           }
         });
+      } else if (_selectedDeviceType == 'NVR') {
+        createFuture = apiService.createNVR({
+          'nvr_id': deviceId,
+          'location': savedLocationName,
+          'ip_address': deviceIpAddress,
+          'container_yard': containerYard,
+          'latitude': latitude,
+          'longitude': longitude,
+          'status': status,
+          'type': type,
+        });
+      } else if (_selectedDeviceType == 'Switch') {
+        createFuture = apiService.createSwitch({
+          'switch_id': deviceId,
+          'location': savedLocationName,
+          'ip_address': deviceIpAddress,
+          'container_yard': containerYard,
+          'latitude': latitude,
+          'longitude': longitude,
+          'status': status,
+          'type': type,
+        });
       }
 
       // Show success dialog IMMEDIATELY (no waiting)
@@ -613,50 +685,44 @@ class _AddDevicePageState extends State<AddDevicePage> {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Device successfully added'),
+            backgroundColor: const Color(0xFF1E293B),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.green, size: 28),
+                SizedBox(width: 12),
+                Text(
+                  'Success',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                ),
+              ],
+            ),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      border: Border.all(color: Colors.green),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.green),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Device saved',
-                            style:
-                                TextStyle(fontSize: 12, color: Colors.black87),
-                          ),
-                        ),
-                      ],
-                    ),
+                  const Text(
+                    'Device has been successfully registered.',
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
                   ),
+                  const SizedBox(height: 20),
+                  _buildInfoRow('DEVICE ID', deviceId),
                   const SizedBox(height: 12),
-                  _buildInfoRow('Device ID:', deviceId),
-                  const SizedBox(height: 8),
-                  _buildInfoRow('Device Type:', _selectedDeviceType),
-                  const SizedBox(height: 8),
-                  _buildInfoRow('Location:', _selectedLocation),
-                  const SizedBox(height: 8),
-                  _buildInfoRow('IP Address:', _ipAddressController.text),
-                  const SizedBox(height: 8),
-                  _buildInfoRow('Container Yard:', containerYard),
+                  _buildInfoRow('DEVICE TYPE', _selectedDeviceType),
+                  const SizedBox(height: 12),
+                  _buildInfoRow('LOCATION', _selectedLocation.split(' ').skip(1).join(' ')),
+                  const SizedBox(height: 12),
+                  _buildInfoRow('IP ADDRESS', _ipAddressController.text),
+                  const SizedBox(height: 12),
+                  _buildInfoRow('CONTAINER YARD', containerYard),
                   if (_selectedDeviceType == 'Access Point') ...[
-                    const SizedBox(height: 8),
-                    _buildInfoRow('Device Count:', deviceCount.toString()),
+                    const SizedBox(height: 12),
+                    _buildInfoRow('DEVICE COUNT', deviceCount.toString()),
                   ],
                   if (_selectedDeviceType == 'CCTV') ...[
-                    const SizedBox(height: 8),
-                    _buildInfoRow('Area Type:', areaType),
+                    const SizedBox(height: 12),
+                    _buildInfoRow('AREA TYPE', areaType),
                   ],
                 ],
               ),
@@ -667,7 +733,10 @@ class _AddDevicePageState extends State<AddDevicePage> {
                   Navigator.pop(context);
                   _resetForm();
                 },
-                child: const Text('Add Another Device'),
+                child: const Text(
+                  'Add Another',
+                  style: TextStyle(color: Colors.white60, fontWeight: FontWeight.bold),
+                ),
               ),
               ElevatedButton(
                 onPressed: () async {
@@ -676,7 +745,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                     await saveFuture
                         .timeout(const Duration(seconds: 3))
                         .catchError((_) {
-                      print('Timeout Or Error Waiting For Save');
+                      return null;
                     });
 
                     final pendingCreate = createFuture;
@@ -684,33 +753,31 @@ class _AddDevicePageState extends State<AddDevicePage> {
                       await pendingCreate
                           .timeout(const Duration(seconds: 8))
                           .catchError((_) {
-                        print('Timeout Or Error Waiting For Device Creation');
                         return <String, dynamic>{};
                       });
                     }
 
-                    // Wait a moment for DB to settle
                     await Future.delayed(const Duration(milliseconds: 500));
-                  } catch (e) {
-                    print('Error Waiting For Device Creation: $e');
-                  }
+                  } catch (_) {}
 
                   if (!context.mounted) return;
 
-                  // Navigate back to dashboard
-                  if (context.mounted) {
-                    Navigator.of(context).pushNamedAndRemoveUntil(
-                      '/dashboard',
-                      (route) => false,
-                      arguments: {'Refresh': true},
-                    );
-                  }
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    '/dashboard',
+                    (route) => false,
+                    arguments: {'Refresh': true},
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1976D2),
                   foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text('Return to dashboard'),
+                child: const Text(
+                  'Dashboard',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
@@ -723,8 +790,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
     _formKey.currentState!.reset();
     setState(() {
       _selectedDeviceType = 'Access Point';
-      _selectedLocation =
-          _locationData.isNotEmpty ? _locationData.keys.first : '';
+      _resetLocationToDefaultForType();
       _nameController.clear();
       _ipAddressController.clear();
       _nameError = null;
@@ -733,214 +799,39 @@ class _AddDevicePageState extends State<AddDevicePage> {
     _loadUsedNamesForType();
   }
 
+  void _resetLocationToDefaultForType() {
+    if (_locationData.isNotEmpty) {
+      if (_selectedLocation.isEmpty || !_locationData.containsKey(_selectedLocation)) {
+        _selectedLocation = _locationData.keys.first;
+      }
+    } else {
+      _selectedLocation = '';
+    }
+  }
+
   Widget _buildInfoRow(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white.withValues(alpha: 0.5),
+            fontSize: 10,
+            letterSpacing: 1,
           ),
         ),
         const SizedBox(height: 4),
         Text(
           value,
-          style: TextStyle(
-            color: Colors.grey[700],
-            fontSize: 13,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    double screenWidth = MediaQuery.of(context).size.width;
-    return Container(
-      width: screenWidth,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      color: const Color(0xFF1976D2),
-      child: Row(
-        children: [
-          const Text(
-            'Terminal Nilam',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(width: 30),
-          Expanded(
-            child: ScrollConfiguration(
-              behavior:
-                  ScrollConfiguration.of(context).copyWith(scrollbars: false),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildHeaderOpenButton('Add New Device', '/add-device',
-                        isActive: true),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('Master Data', '/tower-management'),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('Dashboard', '/dashboard'),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('Access Point', '/network'),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('CCTV', '/cctv'),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('MMT', '/mmt-monitoring'),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('Alert', '/alerts'),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('Alert Report', '/report'),
-                    const SizedBox(width: 12),
-                    _buildHeaderButton(
-                        'Logout', () => _showLogoutDialog(context)),
-                    const SizedBox(width: 12),
-                    // Profile Icon
-                    GestureDetector(
-                      onTap: () {
-                        NavigationHelper.navigateTo(context, '/profile');
-                      },
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            borderRadius: BorderRadius.circular(50),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.1),
-                                blurRadius: 8,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.person,
-                            color: Color(0xFF1976D2),
-                            size: 24,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeaderButton(String text, VoidCallback onPressed,
-      {bool isActive = false}) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(25),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            decoration: BoxDecoration(
-              color: isActive
-                  ? Colors.white.withValues(alpha: 0.9)
-                  : Colors.white.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(25),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.2),
-                width: 1.5,
-              ),
-            ),
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
-                color: Colors.black,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeaderOpenButton(String text, String routeName,
-      {bool isActive = false}) {
-    return GestureDetector(
-      onTap: () {
-        NavigationHelper.navigateTo(context, routeName, replace: true);
-      },
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(25),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            decoration: BoxDecoration(
-              color: isActive
-                  ? Colors.white.withValues(alpha: 0.9)
-                  : Colors.white.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(25),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.2),
-                width: 1.5,
-              ),
-            ),
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
-                color: Colors.black,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout',
-            style: TextStyle(color: Colors.black87, fontSize: 20)),
-        content: const Text('Are you sure you want to exit?',
-            style: TextStyle(color: Colors.black87)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel', style: TextStyle(color: Colors.black87)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              Navigator.pushReplacementNamed(context, '/login');
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-            ),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1064,7 +955,6 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                         decoration: BoxDecoration(
                                           color: Colors.white.withValues(alpha: 0.08),
                                           borderRadius: BorderRadius.circular(16),
-                                          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
                                         ),
                                         child: Row(
                                           children: [
@@ -1105,6 +995,8 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                                           _nameController.clear();
                                                           _nameError = null;
                                                           _isCheckingName = false;
+                                                          
+                                                          _resetLocationToDefaultForType();
                                                         });
                                                         _loadUsedNamesForType();
                                                       }
@@ -1267,8 +1159,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                                               20),
                                                       border: Border.all(
                                                           color: Colors.white
-                                                              .withOpacity(
-                                                                  0.22)),
+                                                              .withValues(alpha: 0.22)),
                                                     ),
                                                     child: Center(
                                                       child: Text(
@@ -1342,7 +1233,6 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                         decoration: BoxDecoration(
                                           color: Colors.white.withValues(alpha: 0.08),
                                           borderRadius: BorderRadius.circular(16),
-                                          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
                                         ),
                                         child: Row(
                                           children: [

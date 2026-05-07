@@ -1,56 +1,26 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:monitoring/models/device_model.dart';
 import 'package:monitoring/models/tower_model.dart';
 import 'package:monitoring/utils/layout_mapper.dart';
 import 'package:monitoring/utils/device_icon_resolver.dart';
 import 'package:monitoring/utils/location_label_utils.dart';
+import 'package:monitoring/models/master_location_model.dart';
 
-class TowerCoordinateFallback {
-  static const Map<int, Map<String, double>> byTowerNumber = {
-    1: {'lat': -7.209459, 'lng': 112.724717},
-    2: {'lat': -7.209191, 'lng': 112.725250},
-    3: {'lat': -7.208561, 'lng': 112.724946},
-    4: {'lat': -7.208150, 'lng': 112.724395},
-    5: {'lat': -7.208262, 'lng': 112.724161},
-    6: {'lat': -7.208956, 'lng': 112.724173},
-    7: {'lat': -7.207690, 'lng': 112.723693},
-    8: {'lat': -7.207567, 'lng': 112.723945},
-    9: {'lat': -7.207156, 'lng': 112.724302},
-    10: {'lat': -7.204341, 'lng': 112.722956},
-    11: {'lat': -7.204080, 'lng': 112.722354},
-    12: {'lat': -7.204228, 'lng': 112.722045},
-    13: {'lat': -7.204460, 'lng': 112.721970},
-    14: {'lat': -7.205410, 'lng': 112.722386},
-    15: {'lat': -7.206786, 'lng': 112.723023},
-    16: {'lat': -7.207566, 'lng': 112.723469},
-    17: {'lat': -7.207342, 'lng': 112.723059},
-    18: {'lat': -7.209240, 'lng': 112.723915},
-    19: {'lat': -7.210090, 'lng': 112.724321},
-    20: {'lat': -7.210336, 'lng': 112.723639},
-    21: {'lat': -7.210082, 'lng': 112.723303},
-    22: {'lat': -7.209070, 'lng': 112.722914},
-    23: {'lat': -7.208501, 'lng': 112.722942},
-    24: {'lat': -7.208017, 'lng': 112.722195},
-    25: {'lat': -7.207314, 'lng': 112.722005},
-    26: {'lat': -7.207213, 'lng': 112.722232},
-    27: {'lat': -7.207029, 'lng': 112.722613},
-  };
+class _ParentPosition {
+  final double cx;
+  final double cy;
+  final ContainerYardArea area;
+  final bool hasPreview;
+  final int priority;
 
-  static Map<String, double>? getCoordinates(Tower tower) {
-    if (tower.towerNumber > 0 && byTowerNumber.containsKey(tower.towerNumber)) {
-      return byTowerNumber[tower.towerNumber];
-    }
-    final idMatch = RegExp(r'(\d+)').firstMatch(tower.towerId);
-    if (idMatch != null) {
-      final num = int.tryParse(idMatch.group(1)!);
-      if (num != null && byTowerNumber.containsKey(num)) {
-        return byTowerNumber[num];
-      }
-    }
-    return null;
-  }
+  _ParentPosition({
+    required this.cx,
+    required this.cy,
+    required this.area,
+    this.hasPreview = false,
+    this.priority = 0,
+  });
 }
 
 class ContainerYardArea {
@@ -72,34 +42,15 @@ class ContainerYardArea {
   });
 }
 
-class StaticTowerPoint {
-  final int number;
-  final String label;
-  final double latitude;
-  final double longitude;
-  final String containerYard;
-  final String? towerIdHint;
-
-  const StaticTowerPoint({
-    required this.number,
-    required this.label,
-    required this.latitude,
-    required this.longitude,
-    required this.containerYard,
-    this.towerIdHint,
-  });
-}
-
 class TerminalLayoutStatic extends StatefulWidget {
   final List<AddedDevice> devices;
   final List<Tower> towers;
-  final List<StaticTowerPoint> towerPoints;
-  final List<Map<String, dynamic>> masterLocations;
+
+  final List<MasterLocation> masterLocations;
   final Function(AddedDevice)? onDeviceTap;
   final Function(String towerId, double latitude, double longitude)?
       onTowerMoved;
-  final Function(
-          Map<String, dynamic> master, double latitude, double longitude)?
+  final Function(MasterLocation master, double latitude, double longitude)?
       onMasterMoved;
   final bool isFreeroamEditEnabled;
   final bool isPickMode;
@@ -111,7 +62,6 @@ class TerminalLayoutStatic extends StatefulWidget {
     super.key,
     required this.devices,
     this.towers = const [],
-    this.towerPoints = const [],
     this.masterLocations = const [],
     this.onDeviceTap,
     this.onTowerMoved,
@@ -132,70 +82,17 @@ class TerminalLayoutStatic extends StatefulWidget {
 
 class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
   late List<ContainerYardArea> areas;
-  AddedDevice? _selectedDevice;
   String? _zoomedAreaId;
-  Tower? _selectedTower;
-  final List<AddedDevice> _devicesAtTower = [];
-  double? _pickedCx; // ← For precise position picking
-  double? _pickedCy; // ← For precise position picking
   final Map<String, Offset> _dragPreview = {};
   final Map<String, Offset> _masterDragPreview = {};
-
-  // ─────────────────────────────────────────────────────────────
-  // Posisi tower hardcoded — dikalibrasi sesuai permintaan user:
-  // cx (0.0 - 1.0): 0.0=Kiri, 1.0=Kanan
-  // cy (0.0 - 1.0): 0.0=Atas, 1.0=Bawah
-  // ─────────────────────────────────────────────────────────────
-  static const Map<String, Map<String, double>> _towerPos = {
-    // ── CY1 (Container Yard 1) ───────────────────────────────
-    // Tower 7-15 only (T1-T3 belong to CY2, T4-T6 reserved for future)
-    // KIRI PINGGIR (T11, T12A)
-    'Tower 11 - CY1': {'cx': 0.06, 'cy': 0.30},
-    'Tower 12A - CY1': {'cx': 0.06, 'cy': 0.70},
-
-    // KIRI AGAK TENGAH (T10, T12)
-    'Tower 10 - CY1': {'cx': 0.25, 'cy': 0.30},
-    'Tower 12 - CY1': {'cx': 0.25, 'cy': 0.70},
-
-    // BAWAH TENGAH (T13, T14)
-    'Tower 13 - CY1': {'cx': 0.42, 'cy': 0.85},
-    'Tower 14 - CY1': {'cx': 0.58, 'cy': 0.85},
-
-    // KANAN AGAK TENGAH (T15, T9)
-    'Tower 9 - CY1': {'cx': 0.75, 'cy': 0.30},
-    'Tower 15 - CY1': {'cx': 0.75, 'cy': 0.70},
-
-    // KANAN PINGGIR (T7, T8)
-    'Tower 7 - CY1': {'cx': 0.94, 'cy': 0.30},
-    'Tower 8 - CY1': {'cx': 0.94, 'cy': 0.70},
-
-    // ── CY2 (Container Yard 2) ───────────────────────────────
-    // Tower 1-6 (all towers in CY2)
-    'Tower 1 - CY2': {'cx': 0.94, 'cy': 0.65},
-    'Tower 2 - CY2': {'cx': 0.94, 'cy': 0.25},
-    'Tower 3 - CY2': {'cx': 0.46, 'cy': 0.06},
-    'Tower 4 - CY2': {'cx': 0.04, 'cy': 0.28},
-    'Tower 5 - CY2': {'cx': 0.04, 'cy': 0.68},
-    'Tower 6 - CY2': {'cx': 0.46, 'cy': 0.90},
-
-    // ── CY3 (Container Yard 3) ───────────────────────────────
-    // Tower 16-26 (T1-T3 are hidden/not rendered)
-    'Tower 16 - CY3': {'cx': 0.40, 'cy': 0.06},
-    'Tower 17 - CY3': {'cx': 0.60, 'cy': 0.06},
-    'Tower 18 - CY3': {'cx': 0.92, 'cy': 0.24},
-    'Tower 19 - CY3': {'cx': 0.92, 'cy': 0.48},
-    'Tower 20 - CY3': {'cx': 0.92, 'cy': 0.72},
-    'Tower 21 - CY3': {'cx': 0.38, 'cy': 0.88},
-    'Tower 22 - CY3': {'cx': 0.52, 'cy': 0.88},
-    'Tower 23 - CY3': {'cx': 0.66, 'cy': 0.88},
-    'Tower 24 - CY3': {'cx': 0.08, 'cy': 0.24},
-    'Tower 25 - CY3': {'cx': 0.08, 'cy': 0.48},
-    'Tower 26 - CY3': {'cx': 0.08, 'cy': 0.72},
-  };
+  List<Map<String, String>> _masterOptions = [];
 
   @override
   void initState() {
     super.initState();
+    _masterOptions = buildMasterLocationOptions(
+      widget.masterLocations.map((m) => m.toMap()).toList(),
+    );
     _initializeLayout();
     _syncPickModeZoom(forceUpdate: true);
   }
@@ -203,6 +100,11 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
   @override
   void didUpdateWidget(covariant TerminalLayoutStatic oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.masterLocations != oldWidget.masterLocations) {
+      _masterOptions = buildMasterLocationOptions(
+        widget.masterLocations.map((m) => m.toMap()).toList(),
+      );
+    }
     _syncPickModeZoom();
   }
 
@@ -271,155 +173,99 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
 
   @override
   Widget build(BuildContext context) {
-    _debugLogTowerDistribution();
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
         final h = constraints.maxHeight;
         final effectiveZoomAreaId = widget.forcedAreaId ??
-          ((widget.isPickMode && widget.pickYardFilter != null)
-            ? widget.pickYardFilter
-            : _zoomedAreaId);
-        final bool showZoomedDetail = effectiveZoomAreaId != null && widget.isZoomed;
+            ((widget.isPickMode && widget.pickYardFilter != null)
+                ? widget.pickYardFilter
+                : _zoomedAreaId);
+        final bool showZoomedDetail =
+            effectiveZoomAreaId != null && widget.isZoomed;
 
         return Stack(
           children: [
             Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5F5F5),
-                borderRadius: BorderRadius.circular(15),
-              ),
-            ),
+                decoration: BoxDecoration(
+                    color: const Color(0xFFF5F5F5),
+                    borderRadius: BorderRadius.circular(15))),
             if (!showZoomedDetail) ...[
               ...areas
                   .where((a) =>
                       widget.forcedAreaId == null ||
                       a.id == widget.forcedAreaId)
                   .map((area) => _buildAreaBox(area, w, h)),
-              if (widget.forcedAreaId == null) ...[
-                ..._buildMasterLocationMarkers(w, h),
-                ..._buildAllMarkers(w, h),
-                ..._buildTowerMarkers(w, h),
-              ]
+              ..._buildMasterLocationMarkers(w, h),
+              ..._buildAllMarkers(w, h),
             ] else ...[
-            _buildZoomedArea(w, h, effectiveZoomAreaId),
-          ],
+              _buildZoomedArea(w, h, effectiveZoomAreaId),
+            ],
           ],
         );
       },
     );
   }
 
-  // ─── Area box ────────────────────────────────────────────────
   Widget _buildAreaBox(ContainerYardArea area, double w, double h) {
     final canPickThisArea =
         widget.pickYardFilter == null || widget.pickYardFilter == area.id;
-
-    final bool isForced = widget.forcedAreaId == area.id;
-    final double posLeft = isForced ? 10.0 : area.left * w;
-    final double posTop = isForced ? 10.0 : area.top * h;
-    final double posWidth = isForced ? w - 20.0 : area.width * w;
-    final double posHeight = isForced ? h - 20.0 : area.height * h;
-
     return Positioned(
-      left: posLeft,
-      top: posTop,
-      width: posWidth,
-      height: posHeight,
+      left: area.left * w,
+      top: area.top * h,
+      width: area.width * w,
+      height: area.height * h,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
           onTapDown: widget.isPickMode
-              ? (TapDownDetails details) {
+              ? (details) {
                   if (canPickThisArea && widget.onAreaPicked != null) {
-                    final areaLeft = area.left * w;
-                    final areaTop = area.top * h;
-                    final areaWidth = area.width * w;
-                    final areaHeight = area.height * h;
-
-                    final relX = (details.localPosition.dx / areaWidth).clamp(0.0, 1.0);
-                    final relY = (details.localPosition.dy / areaHeight).clamp(0.0, 1.0);
-
-                    _pickedCx = relX;
-                    _pickedCy = relY;
-
-                    print('✓ Precise pick: Area=${area.id} RelPos=(${relX.toStringAsFixed(3)}, ${relY.toStringAsFixed(3)})');
-
+                    final relX = (details.localPosition.dx / (area.width * w))
+                        .clamp(0.0, 1.0);
+                    final relY = (details.localPosition.dy / (area.height * h))
+                        .clamp(0.0, 1.0);
                     widget.onAreaPicked!(area.id, relX, relY);
                   }
                 }
-              : (widget.forcedAreaId == null
-                  ? (TapDownDetails details) {
-                      setState(() => _zoomedAreaId = area.id);
-                    }
-                  : null), // Let tap bubble up to parent ListView item
+              : null,
+          onTap: widget.isPickMode
+              ? null
+              : () => setState(() => _zoomedAreaId = area.id),
           child: Container(
             decoration: BoxDecoration(
               color: widget.isPickMode
                   ? (canPickThisArea
                       ? area.bgColor.withValues(alpha: 0.95)
-                      : Colors.grey.shade300.withValues(alpha: 0.65))
+                      : Colors.grey.shade300)
                   : area.bgColor,
               border: Border.all(
-                color: widget.isPickMode
-                    ? (canPickThisArea
-                        ? const Color(0xFF1976D2)
-                        : Colors.grey.shade500)
-                    : area.borderColor,
-                width: widget.isPickMode ? 3 : 2.5,
-              ),
+                  color: widget.isPickMode
+                      ? (canPickThisArea
+                          ? const Color(0xFF1976D2)
+                          : Colors.grey.shade500)
+                      : area.borderColor,
+                  width: 2.5),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      area.label,
-                      style: TextStyle(
+                padding: const EdgeInsets.all(8),
+                child: Text(area.label,
+                    style: const TextStyle(
                         fontWeight: FontWeight.w900,
-                        fontSize: (MediaQuery.of(context).size.width < 600) ? 13 : 11,
-                        color: Colors.black54,
-                      ),
-                    ),
-                  ),
-                  Icon(
-                    widget.isPickMode
-                        ? (canPickThisArea
-                            ? Icons.check_circle_outline
-                            : Icons.block)
-                        : Icons.zoom_in,
-                    size: 16,
-                    color: Colors.black54,
-                  ),
-                ],
-              ),
-            ),
+                        fontSize: 11,
+                        color: Colors.black54))),
           ),
         ),
       ),
     );
   }
 
-  // ─── Zoomed area ─────────────────────────────────────────────
   Widget _buildZoomedArea(double w, double h, String areaId) {
     final area =
         areas.firstWhere((a) => a.id == areaId, orElse: () => areas.first);
     final devicesInArea =
         widget.devices.where((d) => _findTargetArea(d).id == area.id).toList();
-
-    if (kDebugMode) {
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('ZOOM IN: ${area.id} (${area.label})');
-      print('Total devices in widget: ${widget.devices.length}');
-      print('Devices filtered for this area: ${devicesInArea.length}');
-      for (var d in devicesInArea) {
-        print('  - ${d.name} (${d.type}) @ ${d.locationName}');
-      }
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    }
 
     return Positioned(
       left: 10,
@@ -442,92 +288,36 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
         onTap: widget.isPickMode
             ? null
             : (widget.forcedAreaId == null
-                ? () {
-                    setState(() => _zoomedAreaId = null);
-                  }
-                : null), // Let tap bubble up to parent ListView item
+                ? () => setState(() => _zoomedAreaId = null)
+                : null),
         child: Container(
           decoration: BoxDecoration(
-            color: area.bgColor,
-            border: Border.all(color: area.borderColor, width: 3.5),
-            borderRadius: BorderRadius.circular(12),
-          ),
+              color: area.bgColor,
+              border: Border.all(color: area.borderColor, width: 3.5),
+              borderRadius: BorderRadius.circular(12)),
           child: Stack(
             children: [
               Positioned(
-                top: 10,
-                left: 12,
-                child: Text(area.label,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 18,
-                        color: Colors.black54)),
-              ),
+                  top: 10,
+                  left: 12,
+                  child: Text(area.label,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                          color: Colors.black54))),
               Positioned(
-                top: 12,
-                right: 12,
-                child: Text(
-                    widget.isPickMode
-                        ? 'Tap untuk pilih posisi tower'
-                        : 'Tap Area For Zoom Out',
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.black.withValues(alpha: 0.55),
-                        fontWeight: FontWeight.w600)),
-              ),
+                  top: 12,
+                  right: 12,
+                  child: Text(
+                      widget.isPickMode
+                          ? 'Tap area for zoom out'
+                          : 'Tap area for zoom out',
+                      style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.black54,
+                          fontWeight: FontWeight.w600))),
               ..._buildZoomedMasterLocationMarkers(area, w - 20, h - 20),
-              ..._buildZoomedTowerMarkers(area, w - 20, h - 20),
-              // Keep devices on top in zoom mode so they are not hidden by master markers.
               ..._buildZoomedMarkers(devicesInArea, area, w - 20, h - 20),
-
-              // Debug: tampilkan tower yang tidak ketemu posisinya
-              if (kDebugMode)
-                ...() {
-                  final missing = widget.towers
-                      .where(
-                          (t) => _normalizeAreaId(t.containerYard) == area.id)
-                      .where((t) => !_isHiddenCy3Tower(t))
-                      .where((t) => _resolveTowerPosition(t) == null)
-                      .toList();
-                  return missing.asMap().entries.map((e) {
-                    final t = e.value;
-                    return Positioned(
-                      bottom: 8.0 + (e.key * 50.0),
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text('❌ NO POSITION',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold)),
-                            Text('location: "${t.location}"',
-                                style: const TextStyle(
-                                    color: Colors.yellow, fontSize: 9)),
-                            Text('towerId:  "${t.towerId}"',
-                                style: const TextStyle(
-                                    color: Colors.yellow, fontSize: 9)),
-                            Text('number:   ${t.towerNumber}',
-                                style: const TextStyle(
-                                    color: Colors.yellow, fontSize: 9)),
-                            Text('cy:       "${t.containerYard}"',
-                                style: const TextStyle(
-                                    color: Colors.yellow, fontSize: 9)),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList();
-                }(),
             ],
           ),
         ),
@@ -535,80 +325,29 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     );
   }
 
-  // ─── Tower position resolver ─────────────────────────────────
-  bool _isRelativeCoordinate(double? value) {
-    if (value == null) return false;
-    return value >= 0.0 && value <= 1.0;
+  bool _isRelativeCoordinate(double? value) =>
+      value != null && value > 0.00001 && value <= 1.0;
+  String _normalizeMatchKey(String value) =>
+      value.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+
+  String _normalizeAreaId(String? id) {
+    String s = (id ?? '').trim().toUpperCase().replaceAll(' ', '');
+    // Handle CY 01 -> CY1, T 01 -> T1
+    return s.replaceAllMapped(
+        RegExp(r'([A-Z]+)0+(\d+)'), (m) => '${m[1]}${m[2]}');
   }
 
-  String _normalizeMatchKey(String value) {
-    return value.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
-  }
-
-  Map<String, dynamic>? _findTowerMasterLocation(Tower tower) {
-    final towerIdKey = _normalizeMatchKey(tower.towerId);
-    final locKey = _normalizeMatchKey(tower.location);
-
-    for (final location in widget.masterLocations) {
-      final type = (location['location_type'] ?? '').toString().toUpperCase();
-      if (type != 'TOWER') continue;
-
-      final code =
-          _normalizeMatchKey((location['location_code'] ?? '').toString());
-      final name =
-          _normalizeMatchKey((location['location_name'] ?? '').toString());
-
-      final isMatch = (code.isNotEmpty &&
-              (towerIdKey.contains(code) || locKey.contains(code))) ||
-          (name.isNotEmpty &&
-              (towerIdKey.contains(name) || locKey.contains(name)));
-
-      if (isMatch) {
-        return location;
-      }
+  MasterLocation? _findTowerMasterLocation(Tower tower) {
+    final tid = _normalizeMatchKey(tower.towerId);
+    final tloc = _normalizeMatchKey(tower.location);
+    for (final loc in widget.masterLocations) {
+      if (loc.locationType.toUpperCase() != 'TOWER') continue;
+      final mcode = _normalizeMatchKey(loc.locationCode);
+      final mname = _normalizeMatchKey(loc.locationName);
+      if (mcode.isNotEmpty && (tid == mcode || tloc == mcode)) return loc;
+      if (mname.isNotEmpty && (tid == mname || tloc == mname)) return loc;
     }
-
     return null;
-  }
-
-  // Check if tower matches ANY master location (TOWER/RTG/RS/CC)
-  Map<String, dynamic>? _findAnyMasterLocationForTower(Tower tower) {
-    final towerIdKey = _normalizeMatchKey(tower.towerId);
-    final locKey = _normalizeMatchKey(tower.location);
-
-    for (final location in widget.masterLocations) {
-      final code =
-          _normalizeMatchKey((location['location_code'] ?? '').toString());
-      final name =
-          _normalizeMatchKey((location['location_name'] ?? '').toString());
-
-      final isMatch = (code.isNotEmpty &&
-              (towerIdKey.contains(code) || locKey.contains(code))) ||
-          (name.isNotEmpty &&
-              (towerIdKey.contains(name) || locKey.contains(name)));
-
-      if (isMatch) {
-        return location;
-      }
-    }
-
-    return null;
-  }
-
-  String _displayTowerLocationLabel(Tower tower) {
-    final matched = _findAnyMasterLocationForTower(tower);
-    if (matched != null) {
-      return buildMasterLocationLabel(
-        locationType: (matched['location_type'] ?? '').toString(),
-        locationCode: (matched['location_code'] ?? '').toString(),
-        locationName: (matched['location_name'] ?? '').toString(),
-        containerYard:
-            (matched['container_yard'] ?? tower.containerYard).toString(),
-      );
-    }
-
-    final fallback = normalizeLocationLabel(tower.location);
-    return fallback.isEmpty ? '-' : fallback;
   }
 
   Map<String, double>? _resolveTowerPosition(Tower tower) {
@@ -616,753 +355,506 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     if (preview != null) {
       return {
         'cx': preview.dx.clamp(0.0, 1.0),
-        'cy': preview.dy.clamp(0.0, 1.0),
+        'cy': preview.dy.clamp(0.0, 1.0)
       };
     }
-
-    final masterTower = _findTowerMasterLocation(tower);
-    if (masterTower != null) {
-      final lat = double.tryParse((masterTower['latitude'] ?? '').toString());
-      final lng = double.tryParse((masterTower['longitude'] ?? '').toString());
-      if (_isRelativeCoordinate(lat) && _isRelativeCoordinate(lng)) {
+    final master = _findTowerMasterLocation(tower);
+    if (master != null) {
+      final mpreview = _masterDragPreview[_masterPreviewKey(master)];
+      if (mpreview != null) {
         return {
-          'cx': lat!,
-          'cy': lng!,
+          'cx': mpreview.dx.clamp(0.0, 1.0),
+          'cy': mpreview.dy.clamp(0.0, 1.0)
         };
       }
+      if (_isRelativeCoordinate(master.latitude) &&
+          _isRelativeCoordinate(master.longitude)) {
+        return {'cx': master.longitude, 'cy': master.latitude};
+      }
     }
-
-    // Gunakan hanya koordinat relatif 0..1 dari input user/pick mode.
     if (_isRelativeCoordinate(tower.latitude) &&
         _isRelativeCoordinate(tower.longitude)) {
-      return {
-        'cx': tower.latitude!,
-        'cy': tower.longitude!,
-      };
+      return {'cx': tower.longitude!, 'cy': tower.latitude!};
     }
     return null;
   }
 
-  bool _isDraggableMasterType(String locType) {
-    return locType == 'TOWER' ||
-        locType == 'RTG' ||
-        locType == 'RS' ||
-        locType == 'CC';
+  String _masterPreviewKey(MasterLocation location) {
+    if (location.id != 0) return 'ML_ID_${location.id}';
+    // Use a more unique fallback key to prevent "ghost shifts" where multiple new items move together
+    return 'ML_REF_${location.locationType}_${location.locationCode}_${location.locationName}_${location.containerYard}';
   }
 
-  String _masterPreviewKey(Map<String, dynamic> location) {
-    final itemId = (location['item_id'] ?? '').toString();
-    if (itemId.isNotEmpty) {
-      return 'ID:$itemId';
-    }
-    final type = (location['location_type'] ?? '').toString().toUpperCase();
-    final code = (location['location_code'] ?? '').toString().toUpperCase();
-    final yard = (location['container_yard'] ?? '').toString().toUpperCase();
-    return '$type#$code#$yard';
-  }
+  Offset? _resolveMasterPosition(MasterLocation location) {
+    final preview = _masterDragPreview[_masterPreviewKey(location)];
+    if (preview != null) return Offset(preview.dx, preview.dy);
 
-  Offset? _resolveMasterPosition(Map<String, dynamic> location) {
-    final key = _masterPreviewKey(location);
-    final preview = _masterDragPreview[key];
-    if (preview != null) {
-      return Offset(preview.dx.clamp(0.0, 1.0), preview.dy.clamp(0.0, 1.0));
+    // If we have relative coordinates (0.0 to 1.0)
+    if (_isRelativeCoordinate(location.latitude) &&
+        _isRelativeCoordinate(location.longitude)) {
+      return Offset(location.longitude, location.latitude);
     }
 
-    final lat =
-        double.tryParse((location['latitude'] ?? '0').toString()) ?? 0.0;
-    final lng =
-        double.tryParse((location['longitude'] ?? '0').toString()) ?? 0.0;
-    if (_isRelativeCoordinate(lat) && _isRelativeCoordinate(lng)) {
-      return Offset(lat, lng);
-    }
+    // If we have real Lat/Lng, we must map them relative to their assigned Area Box
+    if (location.latitude.abs() > 0 && location.longitude.abs() > 0) {
+      final pixel =
+          LayoutMapper.latLngToPixel(location.latitude, location.longitude);
+      final globalX = pixel.x / LayoutMapper.PNG_WIDTH;
+      final globalY = pixel.y / LayoutMapper.PNG_HEIGHT;
 
-    if (lat.abs() > 0.0 && lng.abs() > 0.0) {
-      final pixel = LayoutMapper.latLngToPixel(lat, lng);
-      return Offset(
-        (pixel.x / LayoutMapper.PNG_WIDTH).clamp(0.0, 1.0),
-        (pixel.y / LayoutMapper.PNG_HEIGHT).clamp(0.0, 1.0),
-      );
-    }
+      final area = areas.firstWhere(
+          (a) => a.id == _normalizeAreaId(location.containerYard),
+          orElse: () => areas.first);
 
+      // Translate global offset to local area-relative offset
+      final localX = ((globalX - area.left) / area.width).clamp(0.0, 1.0);
+      final localY = ((globalY - area.top) / area.height).clamp(0.0, 1.0);
+
+      return Offset(localX, localY);
+    }
     return null;
   }
 
-  // ─── Tower label helpers ─────────────────────────────────────
-  String _extractTowerCode(Tower tower) {
-    if (tower.towerNumber > 0) return tower.towerNumber.toString();
-    final idMatch = RegExp(r'(\d+[A-Z]?)', caseSensitive: false)
-        .firstMatch(tower.towerId)
-        ?.group(1)
-        ?.toUpperCase();
-    if (idMatch != null && idMatch.isNotEmpty) return idMatch;
-    final locMatch = RegExp(r'TOWER\s*(\d+[A-Z]?)', caseSensitive: false)
-        .firstMatch(tower.location)
-        ?.group(1)
-        ?.toUpperCase();
-    if (locMatch != null && locMatch.isNotEmpty) return locMatch;
-    return '';
-  }
+  List<AddedDevice> _devicesForMasterLocation(MasterLocation location) {
+    final mCode = normalizeLocationMatchKey(location.locationCode);
+    final mName = normalizeLocationMatchKey(location.locationName);
+    final mYard = _normalizeAreaId(location.containerYard);
 
-  String _towerShortLabel(Tower tower) {
-    final code = _extractTowerCode(tower);
-    return code.isNotEmpty ? 'T$code' : 'T';
-  }
+    final filtered = widget.devices.where((d) {
+      final dLoc = normalizeLocationMatchKey(d.locationName);
+      final dYard = _normalizeAreaId(d.containerYard);
 
-  String _towerLongLabel(Tower tower) {
-    final code = _extractTowerCode(tower);
-    if (code.isNotEmpty) return 'Tower $code';
-    return tower.towerId.isNotEmpty ? tower.towerId : tower.location;
-  }
+      // 1. Strict match (Exact)
+      bool isMatch = (mCode.isNotEmpty && dLoc == mCode) ||
+          (mName.isNotEmpty && dLoc == mName);
 
-  bool _isHiddenCy3Tower(Tower tower) {
-    if (_normalizeAreaId(tower.containerYard) != 'CY3') return false;
-    final code = _extractTowerCode(tower);
-    return code == '1' || code == '2' || code == '3';
-  }
-
-  // ─── Dedup ───────────────────────────────────────────────────
-  String _towerDedupKey(Tower tower) {
-    final areaId = _normalizeAreaId(tower.containerYard);
-    final code = _extractTowerCode(tower);
-    if (areaId.isNotEmpty && code.isNotEmpty) return '$areaId#$code';
-    return '$areaId#${tower.towerId.toUpperCase()}#${tower.location.toUpperCase()}';
-  }
-
-  List<Tower> _uniqueTowersForRender() {
-    final seen = <String>{};
-    final unique = <Tower>[];
-    for (final tower in widget.towers) {
-      if (seen.add(_towerDedupKey(tower))) unique.add(tower);
-    }
-    return unique;
-  }
-
-  bool _isKeyRelated(String a, String b) {
-    if (a.isEmpty || b.isEmpty) return false;
-    return a == b || a.contains(b) || b.contains(a);
-  }
-
-  double _deviceOrbitRadius(int count) {
-    if (count <= 1) return 28.0;
-    if (count == 2) return 32.0;
-    if (count <= 4) return 36.0;
-    if (count <= 6) return 40.0;
-    return 44.0;
-  }
-
-  List<AddedDevice> _devicesForTower(Tower tower) {
-    final towerIdKey = _normalizeMatchKey(tower.towerId);
-    final towerLocKey = _normalizeMatchKey(tower.location);
-
-    return widget.devices.where((device) {
-      final deviceLocKey = _normalizeMatchKey(device.locationName);
-      return _isKeyRelated(deviceLocKey, towerIdKey) ||
-          _isKeyRelated(deviceLocKey, towerLocKey);
-    }).toList(growable: false);
-  }
-
-  List<AddedDevice> _devicesForMasterLocation(Map<String, dynamic> location) {
-    final locType = (location['location_type'] ?? '').toString().toUpperCase();
-    final codeKey =
-        _normalizeMatchKey((location['location_code'] ?? '').toString());
-    final nameKey =
-        _normalizeMatchKey((location['location_name'] ?? '').toString());
-    final yardKey =
-      _normalizeAreaId((location['container_yard'] ?? '').toString());
-    final digitKey = RegExp(r'\d+').firstMatch(codeKey)?.group(0) ??
-      RegExp(r'\d+').firstMatch(nameKey)?.group(0) ??
-      '';
-
-    // Debug logging for RTG matching
-    if (kDebugMode && locType == 'RTG') {
-      debugPrint('[RTG MATCH DEBUG] Location: $nameKey / $codeKey');
-      debugPrint('[RTG MATCH DEBUG] Available devices:');
-      for (final device in widget.devices) {
-        final deviceLocKey = _normalizeMatchKey(device.locationName);
-        debugPrint('  - Device location: $deviceLocKey (${device.name})');
-      }
-    }
-
-    if (locType == 'TOWER') {
-      final relatedTowerKeys = <String>{};
-      for (final tower in widget.towers) {
-        final towerIdKey = _normalizeMatchKey(tower.towerId);
-        final towerLocKey = _normalizeMatchKey(tower.location);
-        final isRelated = _isKeyRelated(towerIdKey, codeKey) ||
-            _isKeyRelated(towerLocKey, codeKey) ||
-            _isKeyRelated(towerIdKey, nameKey) ||
-            _isKeyRelated(towerLocKey, nameKey);
-
-        if (!isRelated) continue;
-        if (towerIdKey.isNotEmpty) relatedTowerKeys.add(towerIdKey);
-        if (towerLocKey.isNotEmpty) relatedTowerKeys.add(towerLocKey);
-      }
-
-      return widget.devices.where((device) {
-        final deviceLocKey = _normalizeMatchKey(device.locationName);
-        for (final key in relatedTowerKeys) {
-          if (_isKeyRelated(deviceLocKey, key)) return true;
+      // 2. Fuzzy match (Two-way contains)
+      if (!isMatch) {
+        // Device name contains Master code/name (e.g. "RTG 01 CCTV" matches "RTG 01")
+        if (mCode.isNotEmpty && mCode.length > 1 && dLoc.contains(mCode)) {
+          isMatch = true;
         }
-        return false;
-      }).toList(growable: false);
-    }
+        if (mName.isNotEmpty && mName.length > 2 && dLoc.contains(mName)) {
+          isMatch = true;
+        }
 
-    // For RTG, RS, CC, etc., match by location name or code
-    final matches = widget.devices.where((device) {
-      final deviceLocKey = _normalizeMatchKey(device.locationName);
-      final typeKey = _normalizeMatchKey(device.type);
-      final deviceYardKey = _normalizeAreaId(device.containerYard);
-      final sameYard = yardKey.isEmpty || deviceYardKey == yardKey;
-
-      // Match by exact location
-      final locationMatch = _isKeyRelated(deviceLocKey, codeKey) ||
-          _isKeyRelated(deviceLocKey, nameKey);
-
-      // Fallback for renamed type/name that still shares numeric identity in same yard.
-      final numericFallback = digitKey.isNotEmpty &&
-          sameYard &&
-          deviceLocKey.contains(digitKey);
-
-      // Also check if device type contains the location type (e.g., CCTV at RTG02)
-      final typeMatch = typeKey.contains(locType) &&
-          (deviceLocKey.contains(codeKey) || codeKey.contains(deviceLocKey));
-
-      return locationMatch || typeMatch || numericFallback;
-    }).toList(growable: false);
-
-    if (kDebugMode && locType == 'RTG') {
-      debugPrint(
-          '[RTG MATCH DEBUG] Found ${matches.length} devices for $nameKey');
-    }
-
-    return matches;
-  }
-
-  // ─── Tower color ─────────────────────────────────────────────
-  Color _resolveTowerColor(List<AddedDevice> devicesHere) {
-    if (devicesHere.isEmpty) return const Color(0xFF78909C);
-    if (devicesHere.every((d) => d.status.toUpperCase() == 'UP')) {
-      return Colors.green;
-    }
-    if (devicesHere.every((d) => d.status.toUpperCase() == 'DOWN')) {
-      return Colors.red;
-    }
-    return Colors.orange;
-  }
-
-  // ─── Badge ───────────────────────────────────────────────────
-  Widget _buildTowerStatusDot(List<AddedDevice> devices,
-      {required bool zoomed}) {
-    // Determine status: red if any device is down, green if all up
-    final hasDownDevice = devices.any((d) => d.status.toUpperCase() != 'UP');
-    final statusColor = hasDownDevice ? Colors.red : Colors.green;
-
-    final dotSize = zoomed ? 14.0 : 10.0;
-
-    return Container(
-      width: dotSize,
-      height: dotSize,
-      decoration: BoxDecoration(
-        color: statusColor,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: zoomed ? 1.2 : 1.0),
-        boxShadow: [
-          BoxShadow(
-            color: statusColor.withValues(alpha: 0.5),
-            blurRadius: zoomed ? 4.0 : 3.0,
-            spreadRadius: 0.5,
-          )
-        ],
-      ),
-    );
-  }
-
-  // ─── Tower marker builder (shared) ───────────────────────────
-  Widget _buildTowerIcon({required double size, Color? fallbackColor}) {
-    const towerAsset = 'assets/images/Tower.png';
-    return Image.asset(
-      towerAsset,
-      width: size,
-      height: size,
-      fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) => Icon(
-        Icons.settings_input_antenna,
-        size: size,
-        color: fallbackColor ?? Colors.white,
-      ),
-    );
-  }
-
-  Widget _buildTowerMarkerWidget({
-    required Tower tower,
-    required List<AddedDevice> devicesHere,
-    required bool zoomed,
-  }) {
-    final color = _resolveTowerColor(devicesHere);
-
-    if (!zoomed) {
-      // ZOOM OUT: Hanya icon tower saja, tidak ada titik status (Dot)
-      if (devicesHere.isEmpty) return const SizedBox.shrink();
-
-      const outerSize = 32.0;
-      const innerIconSize = 25.0;
-      return GestureDetector(
-        onTap: () => _showTowerDetailPopup(tower, devicesHere),
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: Container(
-            width: outerSize,
-            height: outerSize,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.12),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Center(
-              child: _buildTowerIcon(size: innerIconSize, fallbackColor: color.withValues(alpha: 0.8)),
-            ),
-          ),
-        ),
-      );
-    }
-
-    // ZOOMED: Tetap icon bulat (tanpa label sesuai permintaan sebelumnya)
-    const size = 42.0;
-    const padding = 6.0;
-    const iconSize = 18.0;
-
-    return GestureDetector(
-      onTap: () => _showTowerDetailPopup(tower, devicesHere),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [color, color.withValues(alpha: 0.8)],
-            ),
-            border: Border.all(color: Colors.white, width: 2.0),
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.5),
-                blurRadius: 8,
-                spreadRadius: 1,
-              )
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(padding),
-            child: _buildTowerIcon(
-              size: iconSize,
-              fallbackColor: Colors.white,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-  // ─── Fallback tower marker (untuk tower tanpa upstream data) ───
-  Widget _buildFallbackTowerMarkerWidget({
-    required String code,
-    required bool zoomed,
-  }) {
-    const color = Color(0xFF78909C); // Greyscale for fallback
-
-    if (!zoomed) {
-      // OVERVIEW: Fallback Tower Icon with White Background (No status dot)
-      const outerSize = 32.0;
-      const innerIconSize = 25.0;
-      return MouseRegion(
-        cursor: SystemMouseCursors.basic,
-        child: Container(
-          width: outerSize,
-          height: outerSize,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Center(
-            child: _buildTowerIcon(size: innerIconSize, fallbackColor: color),
-          ),
-        ),
-      );
-    }
-
-    // ZOOMED: Icon-style fallback marker, NO label
-    const size = 42.0;
-    const padding = 6.0;
-    const iconSize = 18.0;
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.basic,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              color,
-              const Color(0xFF607D8B).withValues(alpha: 0.85),
-            ],
-          ),
-          border: Border.all(color: Colors.white, width: 2.0),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF607D8B).withValues(alpha: 0.55),
-              blurRadius: 8,
-              spreadRadius: 1,
-            )
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(padding),
-          child: _buildTowerIcon(
-            size: iconSize,
-            fallbackColor: Colors.white,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ─── Overview tower markers ───────────────────────────────────
-  List<Widget> _buildTowerMarkers(double w, double h) {
-    final markers = <Widget>[];
-
-    final filteredTowers = _uniqueTowersForRender().where((t) {
-      if (widget.forcedAreaId == null) return true;
-      return _normalizeAreaId(t.containerYard) == widget.forcedAreaId;
-    });
-
-    for (final tower in filteredTowers) {
-      if (_isHiddenCy3Tower(tower)) continue;
-
-      // Skip tower if it matches with non-TOWER master location (RTG/RS/CC)
-      final anyMaster = _findAnyMasterLocationForTower(tower);
-      if (anyMaster != null) {
-        final masterType =
-            (anyMaster['location_type'] ?? '').toString().toUpperCase();
-        if (masterType != 'TOWER') continue;
+        // OR Master name contains Device name (e.g. "TOWER T5 PARKING" matches "T5")
+        if (!isMatch && dLoc.length > 1) {
+          if (mCode.isNotEmpty && mCode.contains(dLoc)) isMatch = true;
+          if (mName.isNotEmpty && mName.contains(dLoc)) isMatch = true;
+        }
       }
 
-      final pos = _resolveTowerPosition(tower);
-      if (pos == null) continue;
-
-      final areaId = _normalizeAreaId(tower.containerYard);
-      ContainerYardArea area;
-      try {
-        area = areas.firstWhere((a) => a.id == areaId);
-      } catch (_) {
-        continue;
+      if (isMatch) {
+        // If name matches strongly, we allow it if yard matches OR either side is empty
+        if (dYard == mYard || dYard.isEmpty || mYard.isEmpty) return true;
       }
 
-      final devicesHere = _devicesForTower(tower);
-      final x = (area.left + pos['cx']! * area.width) * w;
-      final y = (area.top + pos['cy']! * area.height) * h;
+      return false;
+    }).toList();
 
-      // Zoom-out tower: Asset Icon Outer Container (32px)
-      const markerW = 32.0, markerH = 32.0;
-      final left = (x - markerW / 2).clamp(area.left * w, (area.left + area.width) * w - markerW);
-      final top = (y - markerH / 2).clamp(area.top * h, (area.top + area.height) * h - markerH);
-      final canDrag = widget.isFreeroamEditEnabled;
-
-      markers.add(Positioned(
-        left: left,
-        top: top,
-        width: markerW,
-        height: markerH,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onPanUpdate: canDrag
-              ? (details) {
-                  final current = _dragPreview[tower.towerId] ??
-                      Offset(pos['cx']!, pos['cy']!);
-                  final newCx =
-                      (current.dx + (details.delta.dx / (area.width * w)))
-                          .clamp(0.0, 1.0);
-                  final newCy =
-                      (current.dy + (details.delta.dy / (area.height * h)))
-                          .clamp(0.0, 1.0);
-                  setState(() {
-                    _dragPreview[tower.towerId] = Offset(newCx, newCy);
-                  });
-                }
-              : null,
-          onPanEnd: canDrag
-              ? (_) {
-                  final preview = _dragPreview[tower.towerId];
-                  if (preview != null && widget.onTowerMoved != null) {
-                    widget.onTowerMoved!(tower.towerId, preview.dx, preview.dy);
-                  }
-                }
-              : null,
-          child: MouseRegion(
-            cursor:
-                canDrag ? SystemMouseCursors.move : SystemMouseCursors.click,
-            child: _buildTowerMarkerWidget(
-                tower: tower, devicesHere: devicesHere, zoomed: false),
-          ),
-        ),
-      ));
+    // Deduplicate by IP Address to solve "TIDAK TERDOUBLE"
+    final Map<String, AddedDevice> unique = {};
+    for (final d in filtered) {
+      final ip = d.ipAddress.trim();
+      if (ip.isNotEmpty && ip != '0.0.0.0' && ip != '127.0.0.1') {
+        if (!unique.containsKey(ip) ||
+            d.name.length < unique[ip]!.name.length) {
+          unique[ip] = d;
+        }
+      } else {
+        final nkey = d.name.toUpperCase().trim();
+        if (!unique.containsKey(nkey)) {
+          unique[nkey] = d;
+        }
+      }
     }
-
-    return markers;
+    return unique.values.toList();
   }
 
-  // ─── Zoomed tower markers ─────────────────────────────────────
-  List<Widget> _buildZoomedTowerMarkers(
-      ContainerYardArea area, double w, double h) {
-    final markers = <Widget>[];
+  _ParentPosition? _getParentPosition(
+      String locationName, String containerYard) {
+    if (locationName.trim().isEmpty) return null;
 
-    for (final tower in _uniqueTowersForRender()) {
-      if (_normalizeAreaId(tower.containerYard) != area.id) continue;
-      if (_isHiddenCy3Tower(tower)) continue;
+    final matched = matchMasterLocationOption(
+      _masterOptions,
+      locationName,
+      currentContainerYard: containerYard,
+    );
+    if (matched == null) return null;
 
-      // Skip tower if it matches with non-TOWER master location (RTG/RS/CC)
-      final anyMaster = _findAnyMasterLocationForTower(tower);
-      if (anyMaster != null) {
-        final masterType =
-            (anyMaster['location_type'] ?? '').toString().toUpperCase();
-        if (masterType != 'TOWER') continue;
-      }
+    final targetLabelKey = normalizeLocationMatchKey(matched['label'] ?? '');
 
-      final pos = _resolveTowerPosition(tower);
-      if (pos == null) continue;
-
-      final devicesHere = _devicesForTower(tower);
-      final x = pos['cx']! * w;
-      final y = pos['cy']! * h;
-
-      const markerW = 42.0, markerH = 42.0;
-      final left = (x - 21).clamp(2.0, w - markerW - 2);
-      final top = (y - 21).clamp(2.0, h - markerH - 2);
-      final canDrag = widget.isFreeroamEditEnabled;
-
-      // ═══════════════════════════════════════════════════════════
-      // DRAGGABLE TOWER MARKER - Freeroam Support
-      // ═══════════════════════════════════════════════════════════
-      markers.add(
-        Positioned(
-          left: left,
-          top: top,
-          width: markerW,
-          height: markerH,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onPanUpdate: canDrag
-                ? (details) {
-                    final current = _dragPreview[tower.towerId] ??
-                        Offset(pos['cx']!, pos['cy']!);
-                    final newCx =
-                        (current.dx + (details.delta.dx / w)).clamp(0.0, 1.0);
-                    final newCy =
-                        (current.dy + (details.delta.dy / h)).clamp(0.0, 1.0);
-                    setState(() {
-                      _dragPreview[tower.towerId] = Offset(newCx, newCy);
-                    });
-                  }
-                : null,
-            onPanEnd: canDrag
-                ? (_) {
-                    final preview = _dragPreview[tower.towerId];
-                    if (preview != null && widget.onTowerMoved != null) {
-                      widget.onTowerMoved!(
-                          tower.towerId, preview.dx, preview.dy);
-                    }
-                  }
-                : null,
-            child: MouseRegion(
-              cursor:
-                  canDrag ? SystemMouseCursors.move : SystemMouseCursors.click,
-              child: _buildTowerMarkerWidget(
-                  tower: tower, devicesHere: devicesHere, zoomed: true),
-            ),
-          ),
-        ),
+    for (final locData in widget.masterLocations) {
+      final loc = locData;
+      final mlabel = buildMasterLocationLabel(
+        locationType: loc.locationType,
+        locationCode: loc.locationCode,
+        locationName: loc.locationName,
+        containerYard: loc.containerYard,
       );
+
+      if (normalizeLocationMatchKey(mlabel) == targetLabelKey) {
+        final pos = _resolveMasterPosition(loc);
+        if (pos != null) {
+          return _ParentPosition(
+              cx: pos.dx,
+              cy: pos.dy,
+              area: areas.firstWhere(
+                  (a) => a.id == _normalizeAreaId(loc.containerYard),
+                  orElse: () => areas.first),
+              hasPreview:
+                  _masterDragPreview.containsKey(_masterPreviewKey(loc)),
+              priority: 20);
+        }
+      }
     }
 
-    return markers;
+    final target = normalizeLocationMatchKey(locationName);
+    final targetYard = _normalizeAreaId(containerYard);
+    _ParentPosition? best;
+    for (final tower in widget.towers) {
+      final tid = normalizeLocationMatchKey(tower.towerId);
+      final tloc = normalizeLocationMatchKey(tower.location);
+      final tyard = _normalizeAreaId(tower.containerYard);
+
+      bool matched = (target == tid || target == tloc);
+      if (!matched && targetYard == tyard) {
+        if (tid.isNotEmpty && target.contains(tid)) matched = true;
+      }
+
+      if (matched) {
+        final pos = _resolveTowerPosition(tower);
+        if (pos != null) {
+          final current = _ParentPosition(
+              cx: pos['cx']!,
+              cy: pos['cy']!,
+              area: areas.firstWhere((a) => a.id == tyard,
+                  orElse: () => areas.first),
+              hasPreview: _dragPreview.containsKey(tower.towerId),
+              priority: (targetYard == tyard) ? 15 : 5);
+          if (best == null ||
+              (current.hasPreview && !best.hasPreview) ||
+              current.priority > best.priority) {
+            best = current;
+          }
+        }
+      }
+    }
+
+    if (best == null) {
+      // Final desperate fallback: only match if it's a very clear match
+      for (final loc in widget.masterLocations) {
+        if (_normalizeAreaId(loc.containerYard) != targetYard) continue;
+        final mcode = normalizeLocationMatchKey(loc.locationCode);
+        final mname = normalizeLocationMatchKey(loc.locationName);
+
+        // Use more strict matching: either exact or surrounded by non-alphanumeric
+        bool isMatch = (mcode.isNotEmpty && target == mcode) ||
+            (mname.isNotEmpty && target == mname);
+
+        if (!isMatch && mcode.length > 2) {
+          // If code is long enough (like "RTG01"), check if it's a sub-part but carefully
+          if (target.contains(mcode)) isMatch = true;
+        }
+
+        if (isMatch) {
+          final pos = _resolveMasterPosition(loc);
+          if (pos != null) {
+            return _ParentPosition(
+                cx: pos.dx,
+                cy: pos.dy,
+                area: areas.firstWhere(
+                    (a) => a.id == _normalizeAreaId(loc.containerYard),
+                    orElse: () => areas.first),
+                priority: 1);
+          }
+        }
+      }
+    }
+
+    return best;
   }
 
   List<Widget> _buildMasterLocationMarkers(double w, double h) {
     final markers = <Widget>[];
-    if (widget.masterLocations.isEmpty) return markers;
+    for (final loc in widget.masterLocations) {
+      final pos = _resolveMasterPosition(loc);
+      if (pos == null) continue;
 
-    final filteredLocations = widget.masterLocations.where((loc) {
-      if (widget.forcedAreaId == null) return true;
-      return _normalizeAreaId(loc['container_yard']?.toString() ?? '') ==
-          widget.forcedAreaId;
-    });
+      // Filter by forced area if applicable
+      if (widget.forcedAreaId != null) {
+        if (_normalizeAreaId(loc.containerYard) != widget.forcedAreaId) {
+          continue;
+        }
+      }
 
-    for (final location in filteredLocations) {
-      final locType = (location['location_type'] ?? '').toString().toUpperCase();
-
-      // Tower dilewati karena punya fungsi builder sendiri (_buildTowerMarkers)
-      if (locType == 'TOWER') continue;
-
-      final containerYard = (location['container_yard'] ?? '').toString();
-      final resolved = _resolveMasterPosition(location);
-
-      if (resolved == null) continue;
-
-      // Search area yard untuk kalkulasi posisi
       final area = areas.firstWhere(
-        (a) => a.id == _normalizeAreaId(containerYard),
-        orElse: () => areas.first,
-      );
+          (a) => a.id == _normalizeAreaId(loc.containerYard),
+          orElse: () => areas.first);
 
-      final cx = resolved.dx;
-      final cy = resolved.dy;
+      // Use area-relative positioning to keep them inside the box
+      final baseX = (area.left + pos.dx * area.width) * w;
+      final baseY = (area.top + pos.dy * area.height) * h;
 
-      // Kalkulasi posisi pixel
-      final baseX = (area.left + cx * area.width) * w;
-      final baseY = (area.top + cy * area.height) * h;
-
-      // Ukuran Ikon Master saat Zoom Out (32px)
-      const markerSize = 32.0;
-      final left = (baseX - markerSize / 2).clamp(area.left * w, (area.left + area.width) * w - markerSize);
-      final top = (baseY - markerSize / 2).clamp(area.top * h, (area.top + area.height) * h - markerSize);
-      
-      final key = _masterPreviewKey(location);
-      final canDrag = _isDraggableMasterType(locType) && widget.isFreeroamEditEnabled;
+      final devicesHere = _devicesForMasterLocation(loc);
+      const size = 30.0;
 
       markers.add(Positioned(
-        left: left,
-        top: top,
-        width: markerSize,
-        height: markerSize,
+        left: (baseX - size / 2)
+            .clamp(area.left * w + 4, (area.left + area.width) * w - size - 4),
+        top: (baseY - size / 2)
+            .clamp(area.top * h + 4, (area.top + area.height) * h - size - 4),
         child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onPanUpdate: canDrag
-              ? (details) {
-                  final current = _masterDragPreview[key] ?? Offset(cx, cy);
-                  final newCx = (current.dx + (details.delta.dx / (area.width * w))).clamp(0.0, 1.0);
-                  final newCy = (current.dy + (details.delta.dy / (area.height * h))).clamp(0.0, 1.0);
-                  setState(() {
-                    _masterDragPreview[key] = Offset(newCx, newCy);
-                  });
-                }
-              : null,
-          onPanEnd: canDrag
-              ? (_) {
-                  final preview = _masterDragPreview[key];
-                  if (preview != null && widget.onMasterMoved != null) {
-                    widget.onMasterMoved!(location, preview.dx, preview.dy);
-                  }
-                }
-              : null,
-          onTap: canDrag ? null : () => _showMasterLocationPopup(location),
-          child: MouseRegion(
-            cursor: canDrag ? SystemMouseCursors.move : SystemMouseCursors.click,
-            child: Center(
-              // MENGGUNAKAN VISUAL IKON ASLI (Bukan Dot)
-              child: _buildMasterTypeVisual(locType, size: 28),
-            ),
+          onTap: () => _showMasterLocationPopup(loc),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              _buildMasterTypeVisual(loc.locationType.toUpperCase(),
+                  size: size),
+            ],
           ),
         ),
       ));
     }
+    return markers;
+  }
+
+  List<Widget> _buildAllMarkers(double w, double h) {
+    final markers = <Widget>[];
+    final Map<String, List<AddedDevice>> grouped = {};
+    for (final d in widget.devices) {
+      if (widget.forcedAreaId != null &&
+          _normalizeAreaId(d.containerYard) != widget.forcedAreaId) {
+        continue;
+      }
+      grouped
+          .putIfAbsent(normalizeLocationLabel(d.locationName), () => [])
+          .add(d);
+    }
+
+    grouped.forEach((locName, devs) {
+      final yard = devs.first.containerYard;
+      final parent = _getParentPosition(locName, yard);
+
+      if (parent != null) {
+        final area = parent.area;
+        final rawBaseX = (area.left + parent.cx * area.width) * w;
+        final rawBaseY = (area.top + parent.cy * area.height) * h;
+
+        // Exact same clamping as MasterLocation markers (4px padding + 15px half-size)
+        final baseX = rawBaseX.clamp(
+            area.left * w + 19, (area.left + area.width) * w - 19);
+        final baseY = rawBaseY.clamp(
+            area.top * h + 19, (area.top + area.height) * h - 19);
+
+        for (int i = 0; i < devs.length; i++) {
+          final angle = (2 * pi * i / devs.length) - (pi / 2);
+          const radius = 18.0;
+          final x = baseX + radius * cos(angle);
+          final y = baseY + radius * sin(angle);
+          markers.add(_buildDeviceMarker(devs[i], x, y, w, h, area));
+        }
+      } else {
+        // Render devices without parent
+        for (int i = 0; i < devs.length; i++) {
+          final d = devs[i];
+          final area = _findTargetArea(d);
+          double x, y;
+          if (_isRelativeCoordinate(d.latitude) &&
+              _isRelativeCoordinate(d.longitude)) {
+            x = (area.left + d.longitude * area.width) * w;
+            y = (area.top + d.latitude * area.height) * h;
+          } else {
+            // Ultimate fallback: center of the area box with small spread so they don't perfectly overlap
+            final centerX = (area.left + area.width / 2) * w;
+            final centerY = (area.top + area.height / 2) * h;
+            final angle = (2 * pi * i / devs.length);
+            final radius =
+                5.0 + (i * 2.0).clamp(0.0, 15.0); // Spiraling out slightly
+            x = centerX + radius * cos(angle);
+            y = centerY + radius * sin(angle);
+          }
+          markers.add(_buildDeviceMarker(d, x, y, w, h, area));
+        }
+      }
+    });
 
     return markers;
+  }
+
+  Widget _buildDeviceMarker(AddedDevice d, double x, double y, double w,
+      double h, ContainerYardArea a) {
+    const markerSize = 10.0;
+    final color = d.status.toUpperCase() == 'UP' ? Colors.green : Colors.red;
+
+    return Positioned(
+      left: x.clamp(a.left * w + 5, (a.left + a.width) * w - 5) -
+          (markerSize / 2),
+      top:
+          y.clamp(a.top * h + 5, (a.top + a.height) * h - 5) - (markerSize / 2),
+      child: Container(
+        width: markerSize,
+        height: markerSize,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 1.5),
+          boxShadow: const [
+            BoxShadow(
+                color: Colors.black26, blurRadius: 2, offset: Offset(0, 1))
+          ],
+        ),
+      ),
+    );
   }
 
   List<Widget> _buildZoomedMasterLocationMarkers(
       ContainerYardArea area, double w, double h) {
     final markers = <Widget>[];
-    for (final location in widget.masterLocations) {
-      final containerYard =
-          _normalizeAreaId((location['container_yard'] ?? '').toString());
-      if (containerYard != area.id) continue;
+    for (final loc in widget.masterLocations) {
+      if (_normalizeAreaId(loc.containerYard) != area.id) continue;
+      final pos = _resolveMasterPosition(loc);
+      if (pos == null) continue;
 
-      final locType =
-          (location['location_type'] ?? '').toString().toUpperCase();
-      // Skip TOWER type as they are handled by _buildZoomedTowerMarkers
-      if (locType == 'TOWER') continue;
-
-      final resolved = _resolveMasterPosition(location);
-      if (resolved == null) continue;
-
-      final x = resolved.dx * w;
-      final y = resolved.dy * h;
-      const markerSize = 48.0;
-      final left = (x - markerSize / 2).clamp(2.0, w - markerSize - 2.0);
-      final top = (y - markerSize / 2).clamp(2.0, h - markerSize - 2.0);
-
-      final canDrag =
-          _isDraggableMasterType(locType) && widget.isFreeroamEditEnabled;
-      final key = _masterPreviewKey(location);
+      final ltype = loc.locationType.toUpperCase();
+      final canDrag = (['TOWER', 'RTG', 'RS', 'CC'].contains(ltype)) &&
+          widget.isFreeroamEditEnabled;
+      final key = _masterPreviewKey(loc);
 
       markers.add(Positioned(
-        left: left,
-        top: top,
-        width: markerSize,
-        height: markerSize,
-        child: GestureDetector(
-          onPanUpdate: canDrag
-              ? (details) {
-                  final current = _masterDragPreview[key] ??
-                      Offset(resolved.dx, resolved.dy);
-                  final newCx =
-                      (current.dx + (details.delta.dx / w)).clamp(0.0, 1.0);
-                  final newCy =
-                      (current.dy + (details.delta.dy / h)).clamp(0.0, 1.0);
-                  setState(() {
-                    _masterDragPreview[key] = Offset(newCx, newCy);
-                  });
-                }
-              : null,
-          onPanEnd: canDrag
-              ? (_) {
-                  final preview = _masterDragPreview[key];
-                  if (preview != null && widget.onMasterMoved != null) {
-                    widget.onMasterMoved!(location, preview.dx, preview.dy);
-                  }
-                }
-              : null,
-          onTap: () => _showMasterLocationPopup(location),
-          child: MouseRegion(
-            cursor:
-                canDrag ? SystemMouseCursors.move : SystemMouseCursors.click,
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.18),
-                    blurRadius: 8,
-                    spreadRadius: 1,
-                    offset: const Offset(0, 2),
+        left: 0,
+        top: 0,
+        child: Builder(builder: (context) {
+          final currentPos = _masterDragPreview[key] ?? pos;
+
+          // In zoomed view, currentPos.dx/dy are treated as relative to the BOX (0-1)
+          // Add a small inset (6.0) to prevent the 48px icon from hitting the 3.5px border
+          final leftPos = (currentPos.dx * w - 24).clamp(6.0, w - 54);
+          final topPos = (currentPos.dy * h - 24).clamp(6.0, h - 54);
+
+          return Transform.translate(
+            offset: Offset(leftPos, topPos),
+            child: SizedBox(
+              width: 48,
+              height: 48,
+              child: GestureDetector(
+                onPanUpdate: canDrag
+                    ? (det) {
+                        setState(() {
+                          final newX = (currentPos.dx + det.delta.dx / w)
+                              .clamp(0.0, 1.0);
+                          final newY = (currentPos.dy + det.delta.dy / h)
+                              .clamp(0.0, 1.0);
+                          _masterDragPreview[key] = Offset(newX, newY);
+                        });
+                      }
+                    : null,
+                onPanEnd: canDrag
+                    ? (_) {
+                        if (_masterDragPreview[key] != null) {
+                          // Send relative 0-1 back to the server.
+                          final globalX = area.left +
+                              _masterDragPreview[key]!.dx * area.width;
+                          final globalY = area.top +
+                              _masterDragPreview[key]!.dy * area.height;
+                          final latLng = LayoutMapper.pixelToLatLng(
+                              globalX * LayoutMapper.PNG_WIDTH,
+                              globalY * LayoutMapper.PNG_HEIGHT);
+                          widget.onMasterMoved!(
+                              loc, latLng['lat']!, latLng['lng']!);
+                        }
+                      }
+                    : null,
+                onTap: () => _showMasterLocationPopup(loc),
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      )
+                    ],
                   ),
-                ],
+                  child: _buildMasterTypeVisual(ltype, size: 44),
+                ),
               ),
-              child: _buildMasterTypeVisual(locType, size: 48),
             ),
-          ),
-        ),
+          );
+        }),
       ));
     }
     return markers;
+  }
+
+  List<Widget> _buildZoomedMarkers(
+      List<AddedDevice> devs, ContainerYardArea area, double w, double h) {
+    final markers = <Widget>[];
+    final Map<String, List<AddedDevice>> grouped = {};
+    for (final d in devs) {
+      grouped
+          .putIfAbsent(normalizeLocationLabel(d.locationName), () => [])
+          .add(d);
+    }
+    grouped.forEach((loc, g) {
+      final yard = g.first.containerYard;
+      final parent = _getParentPosition(loc, yard);
+
+      double baseX, baseY;
+      if (parent != null) {
+        final rawX = parent.cx * w;
+        final rawY = parent.cy * h;
+        baseX = (rawX - 24).clamp(6.0, w - 54) + 24;
+        baseY = (rawY - 24).clamp(6.0, h - 54) + 24;
+      } else {
+        // Fallback to center of the specific area box if parent is missing
+        baseX = w * 0.5;
+        baseY = h * 0.5;
+      }
+
+      for (int i = 0; i < g.length; i++) {
+        // Slightly tighter radius but still outside the 48px master icon (radius 24)
+        // Device radius is 14. 24 + 14 = 38 is the absolute minimum.
+        final radius = g.length == 1 ? 22.0 : (g.length > 5 ? 28.0 : 25.0);
+        final angle = (2 * pi * i / g.length) - (pi / 2);
+        final x = (baseX + radius * cos(angle)).clamp(15.0, w - 15.0);
+        final y = (baseY + radius * sin(angle)).clamp(15.0, h - 15.0);
+        markers.add(_buildZoomedDeviceMarker(g[i], x, y, w, h));
+      }
+    });
+    return markers;
+  }
+
+  Widget _buildZoomedDeviceMarker(
+      AddedDevice d, double x, double y, double w, double h) {
+    final color = d.status.toUpperCase() == 'UP' ? Colors.green : Colors.red;
+    return Positioned(
+      left: x - 14,
+      top: y - 14,
+      width: 28,
+      height: 28,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+        ),
+        child: Icon(DeviceIconResolver.iconForType(d.type),
+            size: 15, color: color),
+      ),
+    );
+  }
+
+  ContainerYardArea _findTargetArea(AddedDevice d) {
+    final loc = d.locationName.toLowerCase();
+    if (loc.contains('park')) return areas.firstWhere((a) => a.id == 'PARKING');
+    if (loc.contains('gate')) return areas.firstWhere((a) => a.id == 'GATE');
+    final parent = _getParentPosition(d.locationName, d.containerYard);
+    if (parent != null) return parent.area;
+    final yard = _normalizeAreaId(d.containerYard);
+    return areas.firstWhere((a) => a.id == yard, orElse: () => areas[0]);
   }
 
   Widget _buildMasterTypeVisual(String locType, {double size = 20}) {
@@ -1370,1051 +862,302 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
     final asset = DeviceIconResolver.assetForType(normalizedType);
     final iconColor = DeviceIconResolver.colorForType(locType);
 
-    if (asset != null) {
-      return Container(
-        padding: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: 0.9),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 3,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
-        child: Image.asset(
-          asset,
-          width: size,
-          height: size,
-          fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => Icon(
-            DeviceIconResolver.iconForType(locType),
-            color: iconColor,
-            size: size,
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: 0.9),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 3,
+            offset: Offset(0, 1),
           ),
-        ),
-      );
-    }
-
-    return Icon(
-      DeviceIconResolver.iconForType(locType),
-      color: iconColor,
-      size: size,
+        ],
+      ),
+      child: asset != null
+          ? Image.asset(
+              asset,
+              width: size,
+              height: size,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => Icon(
+                DeviceIconResolver.iconForType(locType),
+                color: iconColor,
+                size: size,
+              ),
+            )
+          : Icon(
+              DeviceIconResolver.iconForType(locType),
+              color: iconColor,
+              size: size,
+            ),
     );
   }
 
-  void _showMasterLocationPopup(
-    Map<String, dynamic> location,
-  ) {
-    final locType = (location['location_type'] ?? '-').toString();
-    final locCode = (location['location_code'] ?? '-').toString();
-    final locName = (location['location_name'] ?? '-').toString();
-    final yard = (location['container_yard'] ?? '-').toString();
-    final markerColor = DeviceIconResolver.colorForType(locType);
+  void _showMasterLocationPopup(MasterLocation location) {
     final devicesHere = _devicesForMasterLocation(location);
     final upCount =
         devicesHere.where((d) => d.status.toUpperCase() == 'UP').length;
-    final downCount = devicesHere.length - upCount;
 
-    final sortedDevices = devicesHere.toList()
-      ..sort((a, b) {
-        final aDown = a.status.toUpperCase() != 'UP';
-        final bDown = b.status.toUpperCase() != 'UP';
-        if (aDown != bDown) return aDown ? -1 : 1;
-        return a.name.toUpperCase().compareTo(b.name.toUpperCase());
-      });
+    final cleanLabel = formatFullStandardLabel(
+      location.locationType,
+      location.locationCode.trim().isNotEmpty
+          ? location.locationCode
+          : location.locationName,
+      location.containerYard,
+    );
 
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      builder: (context) => Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520, maxHeight: 300),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: markerColor,
-                      child: _buildMasterTypeVisual(locType.toUpperCase(),
-                          size: 18),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        '$locType • ${locName.isNotEmpty ? locName : locCode}',
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close, size: 18),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text('Name: $locName', style: const TextStyle(fontSize: 12)),
-                const SizedBox(height: 2),
-                Text('Area: $yard', style: const TextStyle(fontSize: 12)),
-                const SizedBox(height: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'Total Device: ${devicesHere.length} | UP: $upCount | DOWN: $downCount',
-                    style: const TextStyle(
-                        fontSize: 11, fontWeight: FontWeight.w600),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                if (sortedDevices.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      'Belum ada device di master ini',
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.black54,
-                          fontStyle: FontStyle.italic),
-                    ),
-                  )
-                else
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: sortedDevices.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 6),
-                      itemBuilder: (context, index) {
-                        final device = sortedDevices[index];
-                        final devUp = device.status.toUpperCase() == 'UP';
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: devUp
-                                ? Colors.green.shade50
-                                : Colors.red.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                                color: devUp
-                                    ? Colors.green.shade300
-                                    : Colors.red.shade300),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                DeviceIconResolver.iconForType(device.type),
-                                size: 14,
-                                color: devUp ? Colors.green : Colors.red,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  '${device.name} • ${device.type}',
-                                  style: const TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              Text(
-                                device.status.toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: devUp ? Colors.green : Colors.red,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ─── Device markers (Parent-Child Offset System) ─────────────
-  List<Widget> _buildAllMarkers(double w, double h) {
-    final markers = <Widget>[];
-
-    // Group devices by parent location (Tower/Location)
-    final devicesByLocation = <String, List<AddedDevice>>{};
-    final filteredDevices = widget.devices.where((d) {
-      if (widget.forcedAreaId == null) return true;
-      return _normalizeAreaId(d.containerYard) == widget.forcedAreaId;
-    });
-
-    for (final device in filteredDevices) {
-      final locationKey = normalizeLocationLabel(device.locationName);
-      devicesByLocation.putIfAbsent(locationKey, () => []).add(device);
-    }
-
-    if (kDebugMode && devicesByLocation.isNotEmpty) {
-      print('\n═══ Device Grouping ═══');
-      devicesByLocation.forEach((loc, devs) {
-        print('📍 $loc: ${devs.length} device(s)');
-      });
-    }
-
-    // Render each group with circular offset pattern
-    devicesByLocation.forEach((location, devices) {
-      final parentPos = _getParentPosition(location);
-      if (parentPos == null) {
-        // Fallback to area center if parent not found
-        if (kDebugMode) {
-          print('⚠️ Using fallback for: $location (${devices.length} devices)');
-        }
-        for (final device in devices) {
-          final area = _findTargetArea(device);
-          final x = (area.left + area.width * 0.5) * w;
-          final y = (area.top + area.height * 0.5) * h;
-          markers.add(_buildDeviceMarker(device, x, y, w, h, area));
-        }
-        return;
-      }
-
-      final area = parentPos['area'] as ContainerYardArea;
-      final cx = parentPos['cx'] as double;
-      final cy = parentPos['cy'] as double;
-
-      // Base position (parent Tower coordinates)
-      final baseX = (area.left + cx * area.width) * w;
-      final baseY = (area.top + cy * area.height) * h;
-
-      // Offset rows surrounding the type marker (honeycomb centered on parent)
-      final deviceCount = devices.length;
-      final gridSize = deviceCount + 1; // +1 for center (type marker position)
-      final cols = gridSize <= 2 ? gridSize : (sqrt(gridSize.toDouble())).ceil();
-      final rows = (gridSize / cols).ceil();
-      const spacingX = 13.0;
-      const spacingY = 11.0;
-
-      // Generate all offset grid positions centered on parent
-      final positions = <List<double>>[];
-      for (var r = 0; r < rows; r++) {
-        final rowShift = (r % 2 == 1) ? spacingX * 0.5 : 0.0;
-        for (var c = 0; c < cols; c++) {
-          final ox = (c - (cols - 1) / 2) * spacingX + rowShift;
-          final oy = (r - (rows - 1) / 2) * spacingY;
-          positions.add([ox, oy]);
-        }
-      }
-      // Sort by distance from center, remove closest (where type marker sits)
-      positions.sort((a, b) => (a[0] * a[0] + a[1] * a[1]).compareTo(b[0] * b[0] + b[1] * b[1]));
-      if (positions.isNotEmpty) positions.removeAt(0);
-
-      for (var i = 0; i < deviceCount && i < positions.length; i++) {
-        final x = baseX + positions[i][0];
-        final y = baseY + positions[i][1];
-        markers.add(_buildDeviceMarker(devices[i], x, y, w, h, area));
-      }
-    });
-
-    return markers;
-  }
-
- Widget _buildDeviceMarker(AddedDevice device, double x, double y, double w,
-      double h, ContainerYardArea area) {
-    // Ukuran Dot saat Zoom Out
-    const dotSize = 10.0;
-    const half = dotSize / 2;
-    final isUp = device.status.toUpperCase() == 'UP';
-    final statusColor = isUp ? Colors.green : Colors.red;
-
-    // Clamp agar tidak keluar area
-    final clampedX = x.clamp(area.left * w + half, (area.left + area.width) * w - half);
-    final clampedY = y.clamp(area.top * h + half, (area.top + area.height) * h - half);
-
-    return Positioned(
-      left: clampedX - half,
-      top: clampedY - half,
-      child: GestureDetector(
-        onTap: () {
-          _showDeviceDetailPopup(device);
-          widget.onDeviceTap?.call(device);
-        },
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: Container(
-            width: dotSize,
-            height: dotSize,
-            decoration: BoxDecoration(
-              color: statusColor,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 1.5),
-              boxShadow: [
-                BoxShadow(
-                  color: statusColor.withValues(alpha: 0.4),
-                  blurRadius: 3,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Get parent position from tower coordinates
-  Map<String, dynamic>? _getParentPosition(String locationName) {
-    final normalizedLocation = normalizeLocationLabel(locationName);
-    final target = normalizedLocation.toUpperCase();
-    final targetKey = _normalizeMatchKey(normalizedLocation);
-
-    for (final location in widget.masterLocations) {
-      final locCode =
-          (location['location_code'] ?? '').toString().toUpperCase();
-      final locName =
-          (location['location_name'] ?? '').toString().toUpperCase();
-      final locCodeKey = _normalizeMatchKey(locCode);
-      final locNameKey = _normalizeMatchKey(locName);
-      final yard =
-          _normalizeAreaId((location['container_yard'] ?? '').toString());
-      final resolved = _resolveMasterPosition(location);
-
-      if (resolved == null) {
-        continue;
-      }
-
-      final isMatch = target == locName ||
-          target == locCode ||
-          (locCode.isNotEmpty && target.contains(locCode)) ||
-          (locName.isNotEmpty && target.contains(locName)) ||
-          (locCodeKey.isNotEmpty && targetKey.contains(locCodeKey)) ||
-          (locNameKey.isNotEmpty && targetKey.contains(locNameKey));
-
-      if (!isMatch) continue;
-
-      final area = areas.firstWhere(
-        (a) => a.id == yard,
-        orElse: () => areas.first,
-      );
-      return {
-        'cx': resolved.dx,
-        'cy': resolved.dy,
-        'area': area,
-      };
-    }
-
-    // 2. Try to find parent in Towers
-    for (final tower in _uniqueTowersForRender()) {
-      if (_isHiddenCy3Tower(tower)) continue;
-
-      final towerIdMsg = tower.towerId.toUpperCase();
-      final towerLocMsg = tower.location.toUpperCase();
-      final towerIdKey = _normalizeMatchKey(tower.towerId);
-      final towerLocKey = _normalizeMatchKey(tower.location);
-      final yard = _normalizeAreaId(tower.containerYard);
-      final resolved = _resolveTowerPosition(tower);
-
-      if (resolved == null) {
-        continue;
-      }
-
-      final isMatch = target == towerIdMsg ||
-          target == towerLocMsg ||
-          (towerIdMsg.isNotEmpty && target.contains(towerIdMsg)) ||
-          (towerLocMsg.isNotEmpty && target.contains(towerLocMsg)) ||
-          (towerIdKey.isNotEmpty && targetKey.contains(towerIdKey)) ||
-          (towerLocKey.isNotEmpty && targetKey.contains(towerLocKey));
-
-      if (isMatch) {
-        final area = areas.firstWhere(
-          (a) => a.id == yard,
-          orElse: () => areas.first,
-        );
-        return {
-          'cx': resolved['cx']!,
-          'cy': resolved['cy']!,
-          'area': area,
-        };
-      }
-    }
-
-    if (kDebugMode) print('⚠️ Parent NOT found for: $locationName');
-    return null;
-  }
-
-  // Find area by location name
-  ContainerYardArea? _findAreaByLocation(String locationName) {
-    final upper = locationName.toUpperCase();
-    if (upper.contains('CY1')) {
-      return areas.firstWhere((a) => a.id == 'CY1', orElse: () => areas[0]);
-    }
-    if (upper.contains('CY2')) {
-      return areas.firstWhere((a) => a.id == 'CY2', orElse: () => areas[1]);
-    }
-    if (upper.contains('CY3')) {
-      return areas.firstWhere((a) => a.id == 'CY3', orElse: () => areas.first);
-    }
-    if (upper.contains('GATE')) {
-      return areas.firstWhere((a) => a.id == 'GATE', orElse: () => areas.last);
-    }
-    if (upper.contains('PARK')) {
-      return areas.firstWhere((a) => a.id == 'PARKING', orElse: () => areas[2]);
-    }
-    return areas[0];
-  }
-
-  // Get device icon by type
-  IconData _getDeviceIconType(String type) {
-    return DeviceIconResolver.iconForType(type);
-  }
-
-  // ─── Zoomed device markers ────────────────────────────────────
-  List<Widget> _buildZoomedMarkers(
-    List<AddedDevice> devices,
-    ContainerYardArea area,
-    double w,
-    double h,
-  ) {
-    if (kDebugMode) {
-      print('━━━ _buildZoomedMarkers called ━━━');
-      print('Area: ${area.id}, Size: ${w}x$h');
-      print('Total devices passed: ${devices.length}');
-      for (var d in devices) {
-        print('  - ${d.name} (${d.type}) at ${d.locationName}');
-      }
-    }
-
-    if (devices.isEmpty) {
-      if (kDebugMode) print('⚠️ No devices to render in zoom view');
-      return [];
-    }
-
-    final markers = <Widget>[];
-
-    // Group devices by location name
-    final devicesByLocation = <String, List<AddedDevice>>{};
-    for (final device in devices) {
-      final key = normalizeLocationLabel(device.locationName);
-      devicesByLocation.putIfAbsent(key, () => []).add(device);
-    }
-
-    if (kDebugMode) {
-      print('Grouped into ${devicesByLocation.length} locations:');
-      devicesByLocation.forEach((loc, devs) {
-        print('  $loc: ${devs.length} device(s)');
-      });
-    }
-
-    // Render each group
-    devicesByLocation.forEach((locationName, grouped) {
-      final parentPos = _getParentPosition(locationName);
-
-      double baseX, baseY;
-
-      // Case 1: Parent not found → render at center as fallback
-      if (parentPos == null) {
-        if (kDebugMode) {
-          print(
-              '⚠️ Parent NOT found for "$locationName", using center (${grouped.length} devices)');
-        }
-        baseX = w * 0.5;
-        baseY = h * 0.5;
-      } else {
-        // Case 2: Parent found → use parent position
-        final cx = parentPos['cx'] as double;
-        final cy = parentPos['cy'] as double;
-        baseX = cx * w;
-        baseY = cy * h;
-        if (kDebugMode) {
-          print(
-              '✓ Parent found for "$locationName" at ($cx, $cy) → pixel ($baseX, $baseY)');
-        }
-      }
-
-      // Offset rows surrounding the type marker (honeycomb centered on parent)
-      final count = grouped.length;
-      final gridSize = count + 1; // +1 for center (type marker position)
-      final cols = gridSize <= 2 ? gridSize : (sqrt(gridSize.toDouble())).ceil();
-      final rows = (gridSize / cols).ceil();
-      const spacingX = 30.0;
-      const spacingY = 26.0;
-
-      // Generate all offset grid positions centered on parent
-      final positions = <List<double>>[];
-      for (var r = 0; r < rows; r++) {
-        final rowShift = (r % 2 == 1) ? spacingX * 0.5 : 0.0;
-        for (var c = 0; c < cols; c++) {
-          final ox = (c - (cols - 1) / 2) * spacingX + rowShift;
-          final oy = (r - (rows - 1) / 2) * spacingY;
-          positions.add([ox, oy]);
-        }
-      }
-      // Sort by distance from center, remove closest (where type marker sits)
-      positions.sort((a, b) => (a[0] * a[0] + a[1] * a[1]).compareTo(b[0] * b[0] + b[1] * b[1]));
-      if (positions.isNotEmpty) positions.removeAt(0);
-
-      for (var i = 0; i < count && i < positions.length; i++) {
-        final x = baseX + positions[i][0];
-        final y = baseY + positions[i][1];
-        if (kDebugMode) print('  → Rendering ${grouped[i].name} at ($x, $y)');
-        markers.add(_buildZoomedDeviceMarker(grouped[i], x, y, w, h));
-      }
-    });
-
-    if (kDebugMode) {
-      print('✓ Created ${markers.length} device markers for zoom view');
-    }
-    return markers;
-  }
-
-  Widget _buildZoomedDeviceMarker(
-      AddedDevice device, double x, double y, double w, double h) {
-    const markerSize = 28.0;
-    const iconSize = 13.0;
-    const half = markerSize / 2;
-    final isUp = device.status.toUpperCase() == 'UP';
-    final markerColor = isUp ? Colors.green : Colors.red;
-    final clampedX = x.clamp(half, w - half);
-    final clampedY = y.clamp(half + 4, h - (half + 4));
-
-    return Positioned(
-      left: clampedX - half,
-      top: clampedY - half,
-      child: GestureDetector(
-        onTap: () {
-          _showDeviceDetailPopup(device);
-          widget.onDeviceTap?.call(device);
-        },
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // White circular background
-              Container(
-                width: markerSize,
-                height: markerSize,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
-                ),
-              ),
-              // Type Icon
-              Icon(
-                DeviceIconResolver.iconForType(device.type),
-                size: iconSize + 2,
-                color: markerColor,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ─── Normalize area ID ────────────────────────────────────────
-  String _normalizeAreaId(String value) {
-    final c = value.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
-    if (c == 'CY01' ||
-        c == 'CY1' ||
-        c == 'CONTAINERYARD1' ||
-        c == 'CONTAINERYARD01' ||
-        c == 'YARD1') {
-      return 'CY1';
-    }
-    if (c == 'CY02' ||
-        c == 'CY2' ||
-        c == 'CONTAINERYARD2' ||
-        c == 'CONTAINERYARD02' ||
-        c == 'YARD2') {
-      return 'CY2';
-    }
-    if (c == 'CY03' ||
-        c == 'CY3' ||
-        c == 'CONTAINERYARD3' ||
-        c == 'CONTAINERYARD03' ||
-        c == 'YARD3') {
-      return 'CY3';
-    }
-    return c;
-  }
-
-  // ─── Find area for device ─────────────────────────────────────
-  ContainerYardArea _findTargetArea(AddedDevice d) {
-    final loc = d.locationName.toLowerCase();
-    if (loc.contains('park')) return areas.firstWhere((a) => a.id == 'PARKING');
-    if (loc.contains('gate')) return areas.firstWhere((a) => a.id == 'GATE');
-
-    // Prefer parent mapping from master location code/name so area stays correct
-    // even if containerYard from API is stale or inconsistent.
-    final parentPos = _getParentPosition(d.locationName);
-    if (parentPos != null) {
-      final parentArea = parentPos['area'] as ContainerYardArea;
-      return parentArea;
-    }
-
-    final normalizedYard = _normalizeAreaId(d.containerYard);
-    final explicitArea =
-        areas.where((a) => a.id == normalizedYard).toList(growable: false);
-    if (explicitArea.isNotEmpty) {
-      return explicitArea.first;
-    }
-
-    return areas[0];
-  }
-
-  void _showTowerDetailPopup(Tower tower, List<AddedDevice> devicesHere) {
-    final isUp = tower.status.toUpperCase() == 'UP';
-    final statusColor = isUp ? Colors.green : Colors.red;
-    final upCount =
-        devicesHere.where((d) => d.status.toUpperCase() == 'UP').length;
-    final downCount = devicesHere.length - upCount;
-    final sortedDevices = devicesHere.toList()
-      ..sort((a, b) {
-        final aDown = a.status.toUpperCase() != 'UP';
-        final bDown = b.status.toUpperCase() != 'UP';
-        if (aDown != bDown) return aDown ? -1 : 1;
-        return a.name.toUpperCase().compareTo(b.name.toUpperCase());
-      });
-
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520, maxHeight: 300),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: statusColor,
-                      child: _buildTowerIcon(size: 16, fallbackColor: Colors.white),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            tower.towerId,
-                            style: const TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w700),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            _displayTowerLocationLabel(tower),
-                            style: const TextStyle(
-                                fontSize: 11, color: Colors.black54),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 2,
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close, size: 18),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text('Location: ${_displayTowerLocationLabel(tower)}',
-                    style: const TextStyle(fontSize: 12)),
-                const SizedBox(height: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'Total Device: ${devicesHere.length} | UP: $upCount | DOWN: $downCount',
-                    style: const TextStyle(
-                        fontSize: 11, fontWeight: FontWeight.w600),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                if (sortedDevices.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      'Belum ada device di tower ini',
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.black54,
-                          fontStyle: FontStyle.italic),
-                    ),
-                  )
-                else
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: sortedDevices.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 6),
-                      itemBuilder: (context, index) {
-                        final device = sortedDevices[index];
-                        final devUp = device.status.toUpperCase() == 'UP';
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: devUp
-                                ? Colors.green.shade50
-                                : Colors.red.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                                color: devUp
-                                    ? Colors.green.shade300
-                                    : Colors.red.shade300),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                DeviceIconResolver.iconForType(device.type),
-                                size: 14,
-                                color: devUp ? Colors.green : Colors.red,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  '${device.name} • ${device.type}',
-                                  style: const TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              Text(
-                                device.status.toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: devUp ? Colors.green : Colors.red,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showDeviceDetailPopup(AddedDevice device) {
-    final isUp = device.status.toUpperCase() == 'UP';
-    final statusColor = isUp ? Colors.green : Colors.red;
-
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420, maxHeight: 300),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: statusColor,
-                      radius: 20,
-                      child: Icon(
-                        DeviceIconResolver.iconForType(device.type),
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            device.name,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: statusColor,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              device.status.toUpperCase(),
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close, size: 20),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Divider(height: 1),
-                const SizedBox(height: 12),
-                _buildDeviceInfoRow(
-                    Icons.settings_input_component, 'Type', device.type),
-                const SizedBox(height: 8),
-                _buildDeviceInfoRow(
-                    Icons.location_on, 'Location', device.locationName),
-                const SizedBox(height: 8),
-                _buildDeviceInfoRow(
-                    Icons.router, 'IP Address', device.ipAddress),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDeviceInfoRow(IconData icon, String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 16, color: Colors.black54),
-        const SizedBox(width: 8),
-        Text(
-          '$label:',
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Colors.black54,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ─── Debug log ────────────────────────────────────────────────
-  void _debugLogTowerDistribution() {
-    if (!kDebugMode) return;
-    final unique = _uniqueTowersForRender();
-    final cy1 = unique
-        .where((t) => _normalizeAreaId(t.containerYard) == 'CY1')
-        .toList();
-    final cy2 = unique
-        .where((t) => _normalizeAreaId(t.containerYard) == 'CY2')
-        .toList();
-    final cy3 = unique
-        .where((t) => _normalizeAreaId(t.containerYard) == 'CY3')
-        .toList();
-    debugPrint('\n========== TOWER DISTRIBUTION ==========');
-    debugPrint('CY1 (${cy1.length}): ${cy1.map(_extractTowerCode).join(", ")}');
-    debugPrint('CY2 (${cy2.length}): ${cy2.map(_extractTowerCode).join(", ")}');
-    debugPrint('CY3 (${cy3.length}): ${cy3.map(_extractTowerCode).join(", ")}');
-    debugPrint('Total: ${unique.length}');
-    debugPrint('=========================================\n');
-    final missing =
-        unique.where((t) => _resolveTowerPosition(t) == null).toList();
-    if (missing.isNotEmpty) {
-      debugPrint('⚠️ MISSING POSITIONS (${missing.length}):');
-      for (final t in missing) {
-        debugPrint(
-            '  loc="${t.location}" id="${t.towerId}" num=${t.towerNumber} cy="${t.containerYard}"');
-      }
-    }
-  }
-
-  // ─── Tower info popup ─────────────────────────────────────────
-  Widget _buildTowerInfo() {
-    final isUp = _selectedTower!.status.toUpperCase() == 'UP';
-    final statusColor = isUp ? Colors.green : Colors.red;
-
-    return Positioned(
-      bottom: 12,
-      left: 12,
-      right: 12,
-      child: Card(
-        elevation: 6,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        child: Container(
-          constraints: const BoxConstraints(maxHeight: 200),
-          child: SingleChildScrollView(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Dialog(
+            backgroundColor: Colors.white,
+            elevation: 24,
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      CircleAvatar(
-                        backgroundColor: statusColor,
-                        child: _buildTowerIcon(size: 16, fallbackColor: Colors.white),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: DeviceIconResolver.colorForType(
+                                  location.locationType)
+                              .withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: _buildMasterTypeVisual(location.locationType,
+                            size: 28),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 14),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(_selectedTower!.towerId,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 14),
-                                overflow: TextOverflow.ellipsis),
                             Text(
-                                '${_selectedTower!.containerYard} • ${_selectedTower!.location}',
-                                style: const TextStyle(
-                                    fontSize: 11, color: Colors.black54),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 2),
+                              cleanLabel,
+                              style: const TextStyle(
+                                color: Color(0xFF2C3E50),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            Text(
+                              'LOCATION DETAILS',
+                              style: TextStyle(
+                                color: Colors.blueGrey.withValues(alpha: 0.6),
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: statusColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                          border:
-                              Border.all(color: statusColor.withValues(alpha: 0.5)),
-                        ),
-                        child: Text(isUp ? 'UP' : 'DOWN',
-                            style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: statusColor)),
-                      ),
-                      const SizedBox(width: 6),
                       IconButton(
-                        icon: const Icon(Icons.close, size: 18),
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close,
+                            color: Colors.grey, size: 20),
                         padding: EdgeInsets.zero,
-                        constraints:
-                            const BoxConstraints(minWidth: 32, minHeight: 32),
-                        onPressed: () => setState(() => _selectedTower = null),
+                        constraints: const BoxConstraints(),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 16),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 12),
                     decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(8)),
-                    child: Text('Total Device: ${_devicesAtTower.length}',
-                        style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87)),
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'STATUS OVERVIEW',
+                          style: TextStyle(
+                            color: Colors.blueGrey.shade400,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            _buildMiniStatus(upCount, Colors.green),
+                            const SizedBox(width: 8),
+                            _buildMiniStatus(
+                                devicesHere.length - upCount, Colors.red),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 8),
-                  if (_devicesAtTower.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Text('Belum ada device di tower ini',
-                          style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.black54,
-                              fontStyle: FontStyle.italic)),
+                  if (devicesHere.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 30),
+                      child: Text(
+                        'No devices registered at this location',
+                        style: TextStyle(
+                          color: Colors.grey.shade400,
+                          fontSize: 13,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
                     )
                   else
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 100),
-                      child: SingleChildScrollView(
-                        child: Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          children: (_devicesAtTower.toList()
-                                ..sort((a, b) {
-                                  final aDown = a.status.toUpperCase() != 'UP';
-                                  final bDown = b.status.toUpperCase() != 'UP';
-                                  return aDown == bDown ? 0 : (aDown ? -1 : 1);
-                                }))
-                              .map((device) {
-                            final devUp = device.status.toUpperCase() == 'UP';
-                            return Chip(
-                              label: Text(
-                                  '${device.name} • ${device.type} • ${device.status.toUpperCase()}',
-                                  style: const TextStyle(fontSize: 9),
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1),
-                              backgroundColor: devUp
-                                  ? Colors.green.shade100
-                                  : Colors.red.shade100,
-                              side: BorderSide(
-                                  color: devUp ? Colors.green : Colors.red),
-                              avatar: Icon(
-                                DeviceIconResolver.iconForType(device.type),
-                                size: 12,
-                                color: devUp ? Colors.green : Colors.red,
+                    Flexible(
+                      child: Container(
+                        margin: const EdgeInsets.only(top: 8),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade100),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          padding: EdgeInsets.zero,
+                          itemCount: devicesHere.length,
+                          separatorBuilder: (_, __) =>
+                              Divider(height: 1, color: Colors.grey.shade100),
+                          itemBuilder: (context, index) {
+                            final d = devicesHere[index];
+                            final isUp = d.status.toUpperCase() == 'UP';
+                            return ListTile(
+                              dense: true,
+                              visualDensity: VisualDensity.compact,
+                              leading: Icon(
+                                  DeviceIconResolver.iconForType(d.type),
+                                  color: isUp ? Colors.green : Colors.red,
+                                  size: 18),
+                              title: Text(
+                                d.name,
+                                style: const TextStyle(
+                                    fontSize: 13, fontWeight: FontWeight.w800),
                               ),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 0),
+                              subtitle: Text(
+                                  'IP: ${d.ipAddress}\nLocation: ${resolveFullLocationLabel(_masterOptions, d.locationName, currentContainerYard: d.containerYard)}',
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey.shade600)),
+                              trailing: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: (isUp ? Colors.green : Colors.red)
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  d.status.toUpperCase(),
+                                  style: TextStyle(
+                                    color: isUp ? Colors.green : Colors.red,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
                             );
-                          }).toList(),
+                          },
                         ),
                       ),
                     ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 40,
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.grey.shade100,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('CLOSE',
+                          style: TextStyle(
+                              color: Colors.blueGrey,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13)),
+                    ),
+                  ),
                 ],
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMiniStatus(int count, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        children: [
+          Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          const SizedBox(width: 6),
+          Text('$count',
+              style: TextStyle(
+                  color: color, fontWeight: FontWeight.bold, fontSize: 11)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPopupDetailRow(String label, String value, IconData icon,
+      {Color? valueColor}) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 14, color: Colors.blueGrey.shade300),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                    color: Colors.blueGrey.shade300,
+                    fontSize: 8,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5),
+              ),
+              Text(
+                value,
+                style: TextStyle(
+                    color: valueColor ?? const Color(0xFF2C3E50),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

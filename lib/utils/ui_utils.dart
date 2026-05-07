@@ -102,8 +102,8 @@ Future<void> navigateWithLoading(BuildContext context, String routeName) async {
     context: context,
     useRootNavigator: true,
     barrierDismissible: false,
-    builder: (context) => WillPopScope(
-      onWillPop: () async => false,
+    builder: (context) => PopScope(
+      canPop: false,
       child: Center(
         child: Container(
           padding: const EdgeInsets.all(24),
@@ -141,13 +141,15 @@ Future<void> navigateWithLoading(BuildContext context, String routeName) async {
     if (rootNav.canPop()) {
       rootNav.pop();
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Failed Navigation: $routeName'),
-        duration: const Duration(seconds: 2),
-        backgroundColor: Colors.red,
-      ),
-    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed Navigation: $routeName'),
+          duration: const Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
 
@@ -269,3 +271,6 @@ void showFadeAlertDialog({
     },
   );
 }
+
+// Global state for sidebar expansion
+final ValueNotifier<bool> sidebarExpandedNotifier = ValueNotifier<bool>(false);

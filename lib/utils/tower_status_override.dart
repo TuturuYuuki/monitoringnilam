@@ -5,7 +5,11 @@ import 'package:monitoring/models/tower_model.dart';
 // Tidak ada lagi hardcoded tower numbers - semua data langsung dari database
 bool isDownStatus(String status) {
   final normalized = status.toUpperCase();
-  return normalized == 'DOWN' || normalized == 'WARNING';
+  return normalized == 'DOWN' || 
+         normalized == 'WARNING' || 
+         normalized == 'OFFLINE' || 
+         normalized == 'UNREACHABLE' ||
+         normalized == 'CRITICAL';
 }
 
 String _normalizeStatus(String status) {
@@ -19,9 +23,6 @@ String _normalizeStatus(String status) {
   return 'UNKNOWN';
 }
 
-// Samakan status berdasarkan IP server.
-// Jika satu IP DOWN, semua device dengan IP yang sama menjadi DOWN.
-// Jika tidak ada yang DOWN tapi ada yang UP, semua menjadi UP.
 List<Tower> applyForcedTowerStatus(List<Tower> towers) {
   final ipStatus = <String, String>{};
 

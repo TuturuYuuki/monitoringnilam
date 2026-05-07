@@ -30,7 +30,7 @@ class LogoutConfirmPage extends StatelessWidget {
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
-              const Text('Are You Sure To Logout?',
+              const Text('Are you sure to logout?',
                   style: TextStyle(color: Colors.black87)),
               const SizedBox(height: 16),
               Row(

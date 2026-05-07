@@ -4,31 +4,37 @@ class DeviceIconResolver {
   static String normalizeType(String rawType) {
     final value = rawType.trim().toUpperCase();
 
-    if (value == 'ACCESS POINT' || value == 'ACCESS_POINT' || value == 'AP') {
+    if (value == 'ACCESS POINT' || value == 'ACCESS_POINT' || value == 'AP' || value == 'WIFI') {
       return 'ACCESS_POINT';
     }
-    if (value == 'CAMERA' || value == 'CAM' || value == 'CCTV') {
+    if (value == 'CAMERA' || value == 'CAM' || value == 'CCTV' || value == 'VIDEO') {
       return 'CCTV';
     }
-    if (value == 'TOWER') {
+    if (value == 'TOWER' || value == 'POLE') {
       return 'TOWER';
     }
-    if (value == 'MMT') {
+    if (value == 'MMT' || value == 'TABLET' || value == 'MOBILE') {
       return 'MMT';
     }
-    if (value == 'RTG') {
+    if (value == 'NVR' || value == 'VIDEO_RECORDER' || value == 'DVR') {
+      return 'NVR';
+    }
+    if (value == 'SWITCH' || value == 'NETWORK_SWITCH' || value == 'ETHERNET_SWITCH') {
+      return 'SWITCH';
+    }
+    if (value == 'RTG' || value == 'RUBBER TYRED GANTRIES' || value == 'RUBBER TYRED GANTREE') {
       return 'RTG';
     }
-    if (value == 'RS') {
+    if (value == 'RS' || value == 'REACH STACKER' || value == 'REACHSTACKER') {
       return 'RS';
     }
-    if (value == 'CC') {
+    if (value == 'CC' || value == 'CONTAINER CRANE' || value == 'CRANE') {
       return 'CC';
     }
-    if (value == 'GATE') {
+    if (value == 'GATE' || value == 'GATEWAY' || value == 'ENTRY') {
       return 'GATE';
     }
-    if (value == 'PARKING') {
+    if (value == 'PARKING' || value == 'PARKIR') {
       return 'PARKING';
     }
 
@@ -44,7 +50,11 @@ class DeviceIconResolver {
     case 'CCTV':
       return Icons.videocam;        // ← ganti sesuai keinginan
     case 'MMT':
-      return Icons.tablet_mac; // ← sudah kita sepakati tadi
+      return Icons.tablet_android;
+    case 'NVR':
+      return Icons.dns;
+    case 'SWITCH':
+      return Icons.device_hub;
     case 'RTG':
       return Icons.precision_manufacturing;
     case 'RS':
@@ -69,6 +79,10 @@ class DeviceIconResolver {
         return const Color(0xFF00BCD4);
       case 'MMT':
         return const Color(0xFFEF6C00);
+      case 'NVR':
+        return const Color(0xFF7B1FA2);
+      case 'SWITCH':
+        return const Color(0xFF455A64);
       case 'RTG':
         return Colors.orange;
       case 'RS':
@@ -87,8 +101,9 @@ class DeviceIconResolver {
   static String? assetForType(String rawType) {
     switch (normalizeType(rawType)) {
       case 'TOWER':
-      case 'ACCESS_POINT':
         return 'assets/images/Tower.png';
+      case 'ACCESS_POINT':
+        return null; // Force use of Icon (router) to distinguish from fixed Tower infrastructure
       case 'RTG':
         return 'assets/images/RTG.png';
       case 'RS':
@@ -127,6 +142,9 @@ class DeviceIconResolver {
     }
     if (normalized.contains('PARKING')) {
       return iconForType('PARKING');
+    }
+    if (normalized.contains('AP') || normalized.contains('ACCESS POINT') || normalized.contains('ACCESS_POINT')) {
+      return iconForType('ACCESS_POINT');
     }
 
     return Icons.location_on;

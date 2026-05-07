@@ -11,6 +11,8 @@
 /// ============================================================================
 library;
 
+import 'package:flutter/foundation.dart';
+
 class PixelCoordinate {
   final double x;  // pixels from left
   final double y;  // pixels from top
@@ -56,10 +58,10 @@ class LayoutMapper {
   static PixelCoordinate latLngToPixel(double lat, double lng) {
     // Validate input
     if (lat < LAT_MAX || lat > LAT_MIN) {
-      print('⚠️ Latitude $lat is outside bounds ($LAT_MAX to $LAT_MIN)');
+      debugPrint('⚠️ Latitude $lat is outside bounds ($LAT_MAX to $LAT_MIN)');
     }
     if (lng < LNG_MIN || lng > LNG_MAX) {
-      print('⚠️ Longitude $lng is outside bounds ($LNG_MIN to $LNG_MAX)');
+      debugPrint('⚠️ Longitude $lng is outside bounds ($LNG_MIN to $LNG_MAX)');
     }
 
     // Normalize lat/lng to 0-1 range
@@ -150,25 +152,25 @@ class LayoutMapper {
 
   /// Debug: Print layout information
   static void printLayoutInfo() {
-    print('═' * 60);
-    print('🗺️  LAYOUT MAPPER CONFIGURATION');
-    print('═' * 60);
-    print('PNG Dimensions: ${PNG_WIDTH.toInt()} x ${PNG_HEIGHT.toInt()} px');
-    print('');
-    print('Geographic Bounds:');
-    print('  Latitude:  $LAT_MAX (North) to $LAT_MIN (South)');
-    print('  Longitude: $LNG_MIN (West) to $LNG_MAX (East)');
-    print('');
-    print('Pixel Scale:');
-    print('  Pixels per Latitude:  ${pixelsPerLatitude.toStringAsFixed(2)} px/°');
-    print('  Pixels per Longitude: ${pixelsPerLongitude.toStringAsFixed(2)} px/°');
-    print('');
-    print('Center:');
+    debugPrint('═' * 60);
+    debugPrint('🗺️  LAYOUT MAPPER CONFIGURATION');
+    debugPrint('═' * 60);
+    debugPrint('PNG Dimensions: ${PNG_WIDTH.toInt()} x ${PNG_HEIGHT.toInt()} px');
+    debugPrint('');
+    debugPrint('Geographic Bounds:');
+    debugPrint('  Latitude:  $LAT_MAX (North) to $LAT_MIN (South)');
+    debugPrint('  Longitude: $LNG_MIN (West) to $LNG_MAX (East)');
+    debugPrint('');
+    debugPrint('Pixel Scale:');
+    debugPrint('  Pixels per Latitude:  ${pixelsPerLatitude.toStringAsFixed(2)} px/°');
+    debugPrint('  Pixels per Longitude: ${pixelsPerLongitude.toStringAsFixed(2)} px/°');
+    debugPrint('');
+    debugPrint('Center:');
     var center = centerLatLng;
-    print('  Geographic: ${center['lat']!.toStringAsFixed(6)}, ${center['lng']!.toStringAsFixed(6)}');
+    debugPrint('  Geographic: ${center['lat']!.toStringAsFixed(6)}, ${center['lng']!.toStringAsFixed(6)}');
     var centerPixel = LayoutMapper.centerPixel;
-    print('  Pixel: ${centerPixel.x.toInt()}, ${centerPixel.y.toInt()}');
-    print('═' * 60);
+    debugPrint('  Pixel: ${centerPixel.x.toInt()}, ${centerPixel.y.toInt()}');
+    debugPrint('═' * 60);
   }
 
   /// ===== Calibration Tests =====
@@ -179,14 +181,14 @@ class LayoutMapper {
   static bool calibrateWithTestPoints() {
     // TPK Center
     PixelCoordinate centerPixel = latLngToPixel(-7.207277, 112.723613);
-    print('✓ TPK Center -> Pixel: (${centerPixel.x.toInt()}, ${centerPixel.y.toInt()})');
+    debugPrint('✓ TPK Center -> Pixel: (${centerPixel.x.toInt()}, ${centerPixel.y.toInt()})');
 
     // Known towers (should be roughly positioned)
     PixelCoordinate tower1 = latLngToPixel(-7.209459, 112.724717);
-    print('✓ Tower 1 -> Pixel: (${tower1.x.toInt()}, ${tower1.y.toInt()})');
+    debugPrint('✓ Tower 1 -> Pixel: (${tower1.x.toInt()}, ${tower1.y.toInt()})');
 
     PixelCoordinate tower26 = latLngToPixel(-7.207029, 112.722613);
-    print('✓ Tower 26 -> Pixel: (${tower26.x.toInt()}, ${tower26.y.toInt()})');
+    debugPrint('✓ Tower 26 -> Pixel: (${tower26.x.toInt()}, ${tower26.y.toInt()})');
 
     // Check if points are within bounds
     bool allValid = centerPixel.x >= 0 && centerPixel.x <= PNG_WIDTH &&

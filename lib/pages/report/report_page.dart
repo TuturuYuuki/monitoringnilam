@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
@@ -10,17 +9,11 @@ import 'package:monitoring/theme/app_dropdown_style.dart';
 import 'package:monitoring/services/api_service.dart';
 import 'package:monitoring/models/alert_model.dart';
 import 'package:monitoring/models/tower_model.dart';
-import 'package:monitoring/pages/dashboard/dashboard.dart';
-import 'package:monitoring/pages/network/network.dart';
-import 'package:monitoring/pages/cctv/cctv.dart';
-import 'package:monitoring/pages/devices/add_device.dart';
-import 'package:monitoring/pages/alerts/alerts.dart';
-import 'package:monitoring/pages/profile/profile.dart';
-import 'package:monitoring/pages/network/tower_management.dart';
-import 'package:monitoring/pages/mmt/mmt_monitoring.dart';
 import 'package:monitoring/widgets/global_header_bar.dart';
 import 'package:monitoring/widgets/global_sidebar_nav.dart';
 import 'package:monitoring/widgets/global_footer.dart';
+import 'package:monitoring/utils/location_label_utils.dart';
+
 
 class ReportPage extends StatefulWidget {
   const ReportPage({super.key});
@@ -35,6 +28,7 @@ class _ReportPageState extends State<ReportPage> {
   List<Alert> _allReportAlerts = [];
   bool isLoading = false;
   Set<String> _activeDeviceKeys = {};
+  final Map<String, String> _currentDeviceIps = {};
   bool _deviceInventoryLoaded = false;
 
   DateTimeRange _selectedRange = DateTimeRange(
@@ -42,7 +36,7 @@ class _ReportPageState extends State<ReportPage> {
     end: DateTime.now(),
   );
   String _statusFilter = 'ALL';
-  String _selectedDeviceType = 'ALL'; // Filter: ALL, AP, CCTV, MMT
+  String _selectedDeviceType = 'ALL'; // Filter: ALL, AP, CCTV, MMT, NVR, SWITCH
 
   int _currentPage = 1;
   final int _itemsPerPage = 10;
@@ -66,8 +60,9 @@ class _ReportPageState extends State<ReportPage> {
       final results = await resultsFuture;
       final activeDeviceKeys = await activeDeviceKeysFuture;
       final syncedResults = await _syncReportAlertsWithDeviceData(results);
+      final uniqueResults = _dedupeAlertsByDevice(syncedResults);
 
-      final normalized = syncedResults;
+      final normalized = uniqueResults;
 
       setState(() {
         _activeDeviceKeys = activeDeviceKeys;
@@ -78,15 +73,21 @@ class _ReportPageState extends State<ReportPage> {
       });
     } catch (e) {
       print("Fetch Report Error: $e");
-      setState(() => isLoading = false);
+      debugPrint('Fetch Report Error: $e');
     }
   }
+
 
   Future<List<Alert>> _syncReportAlertsWithDeviceData(List<Alert> alerts) async {
     try {
       final towers = await apiService.getAllTowers();
       final cameras = await apiService.getAllCameras();
       final mmts = await apiService.getAllMMTs();
+      final nvrs = await apiService.getAllNVRs();
+      final switches = await apiService.getAllSwitches();
+      // Fetch master location points to resolve full labels (RTG / TOWER formatting)
+      final masterRows = await apiService.getAllMasterLocations();
+      final masterOptions = buildMasterLocationOptions(masterRows);
 
       final Map<String, Tower> towerMap = {};
       for (final tower in towers) {
@@ -104,6 +105,45 @@ class _ReportPageState extends State<ReportPage> {
         for (final mmt in mmts)
           if (mmt.mmtId.trim().isNotEmpty) _deviceKey(mmt.mmtId): mmt
       };
+      final nvrMap = {
+        for (final nvr in nvrs)
+          if (nvr.nvrId.trim().isNotEmpty) _deviceKey(nvr.nvrId): nvr
+      };
+      final switchMap = {
+        for (final sw in switches)
+          if (sw.switchId.trim().isNotEmpty) _deviceKey(sw.switchId): sw
+      };
+
+      // Populate current IP map for dynamic lookup
+      _currentDeviceIps.clear();
+      for (final t in towers) {
+        if (t.towerId.trim().isNotEmpty) {
+          _currentDeviceIps[_buildDeviceKey('AP', t.towerId)] = t.ipAddress;
+        }
+      }
+      for (final c in cameras) {
+        if (c.cameraId.trim().isNotEmpty) {
+          final camType = c.type.toUpperCase().contains('CC') ? 'CC' : 'CCTV';
+          _currentDeviceIps[_buildDeviceKey(camType, c.cameraId)] = c.ipAddress;
+          _currentDeviceIps[_buildDeviceKey('CCTV', c.cameraId)] = c.ipAddress;
+          _currentDeviceIps[_buildDeviceKey('CC', c.cameraId)] = c.ipAddress;
+        }
+      }
+      for (final m in mmts) {
+        if (m.mmtId.trim().isNotEmpty) {
+          _currentDeviceIps[_buildDeviceKey('MMT', m.mmtId)] = m.ipAddress;
+        }
+      }
+      for (final nvr in nvrs) {
+        if (nvr.nvrId.trim().isNotEmpty) {
+          _currentDeviceIps[_buildDeviceKey('NVR', nvr.nvrId)] = nvr.ipAddress;
+        }
+      }
+      for (final sw in switches) {
+        if (sw.switchId.trim().isNotEmpty) {
+          _currentDeviceIps[_buildDeviceKey('SWITCH', sw.switchId)] = sw.ipAddress;
+        }
+      }
 
       return alerts.map((alert) {
         var newLocation = alert.lokasi;
@@ -113,18 +153,28 @@ class _ReportPageState extends State<ReportPage> {
 
         if (towerMap.containsKey(searchName)) {
           final tower = towerMap[searchName]!;
-          newLocation = tower.location;
+          newLocation = resolveFullLocationLabel(masterOptions, tower.location, currentContainerYard: tower.containerYard);
           newDeviceType = 'AP';
           isDeletedDevice = false;
         } else if (cameraMap.containsKey(searchName)) {
           final camera = cameraMap[searchName]!;
-          newLocation = camera.location;
+          newLocation = resolveFullLocationLabel(masterOptions, camera.location, currentContainerYard: camera.containerYard);
           newDeviceType = 'CCTV';
           isDeletedDevice = false;
         } else if (mmtMap.containsKey(searchName)) {
           final mmt = mmtMap[searchName]!;
-          newLocation = mmt.location;
+          newLocation = resolveFullLocationLabel(masterOptions, mmt.location, currentContainerYard: mmt.containerYard);
           newDeviceType = 'MMT';
+          isDeletedDevice = false;
+        } else if (nvrMap.containsKey(searchName)) {
+          final nvr = nvrMap[searchName]!;
+          newLocation = resolveFullLocationLabel(masterOptions, nvr.location, currentContainerYard: nvr.containerYard);
+          newDeviceType = 'NVR';
+          isDeletedDevice = false;
+        } else if (switchMap.containsKey(searchName)) {
+          final sw = switchMap[searchName]!;
+          newLocation = resolveFullLocationLabel(masterOptions, sw.location, currentContainerYard: sw.containerYard);
+          newDeviceType = 'SWITCH';
           isDeletedDevice = false;
         } else {
           isDeletedDevice = true;
@@ -140,6 +190,47 @@ class _ReportPageState extends State<ReportPage> {
       debugPrint('Report alert sync failed: $e');
       return alerts;
     }
+  }
+
+  List<Alert> _dedupeAlertsByDevice(List<Alert> alerts) {
+    final Map<String, Alert> latestByDevice = {};
+
+    for (final alert in alerts) {
+      final deviceKey = _alertDeviceKey(alert);
+      final existing = latestByDevice[deviceKey];
+
+      if (existing == null) {
+        latestByDevice[deviceKey] = alert;
+        continue;
+      }
+
+      final currentTime = DateTime.tryParse(alert.timestamp) ??
+          DateTime.tryParse('${alert.tanggal ?? ''} ${alert.waktu ?? ''}');
+      final existingTime = DateTime.tryParse(existing.timestamp) ??
+          DateTime.tryParse('${existing.tanggal ?? ''} ${existing.waktu ?? ''}');
+
+      final shouldReplace = currentTime == null
+          ? false
+          : (existingTime == null || currentTime.isAfter(existingTime));
+
+      if (shouldReplace) {
+        latestByDevice[deviceKey] = alert;
+      }
+    }
+
+    final deduped = latestByDevice.values.toList();
+    deduped.sort((a, b) {
+      final aTime = DateTime.tryParse(a.timestamp) ??
+          DateTime.tryParse('${a.tanggal ?? ''} ${a.waktu ?? ''}');
+      final bTime = DateTime.tryParse(b.timestamp) ??
+          DateTime.tryParse('${b.tanggal ?? ''} ${b.waktu ?? ''}');
+      if (aTime == null && bTime == null) return 0;
+      if (aTime == null) return 1;
+      if (bTime == null) return -1;
+      return bTime.compareTo(aTime);
+    });
+
+    return deduped;
   }
 
   Future<void> _generateReportPdf() async {
@@ -195,18 +286,6 @@ class _ReportPageState extends State<ReportPage> {
       pw.Widget pageHeader(String sectionTitle, PdfColor titleBg) => pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.center,
             children: [
-              pw.Container(
-                width: double.infinity,
-                padding: const pw.EdgeInsets.symmetric(vertical: 6),
-                child: pw.Text(
-                  'ALERT MONITORING REPORT',
-                  style: pw.TextStyle(
-                    fontSize: 16,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                  textAlign: pw.TextAlign.center,
-                ),
-              ),
               pw.Container(
                 width: double.infinity,
                 padding: const pw.EdgeInsets.symmetric(vertical: 8),
@@ -323,15 +402,29 @@ class _ReportPageState extends State<ReportPage> {
     return '-';
   }
 
+  /// Unified device type normalization — used by both extraction and key building.
+  String _normalizeToDeviceType(String raw) {
+    final t = raw.trim().toUpperCase();
+    if (t.contains('TOWER') || t == 'AP' || t.contains('ACCESS')) return 'AP';
+    if (t.contains('CAM') || t.contains('CCTV')) return 'CCTV';
+    if (t == 'CC' || t.contains(' CC') || RegExp(r'\bCC\d*\b').hasMatch(t)) return 'CC';
+    if (t.contains('MMT')) return 'MMT';
+    if (t.contains('NVR')) return 'NVR';
+    if (t.contains('SWITCH')) return 'SWITCH';
+    return t;
+  }
+
   String _extractDeviceType(Alert alert) {
     if (alert.deviceType != null && alert.deviceType!.isNotEmpty) {
+      final result = _normalizeToDeviceType(alert.deviceType!);
+      if (result != alert.deviceType!.trim().toUpperCase()) return result;
+      // Fallback: check lowercase contains for db values like 'towers', 'cameras'
       final dt = alert.deviceType!.toLowerCase();
-      if (dt.contains('tower') || dt.contains('ap') || dt.contains('access')) {
-        return 'AP';
-      }
+      if (dt.contains('tower') || dt.contains('ap') || dt.contains('access')) return 'AP';
       if (dt.contains('camera') || dt.contains('cctv')) return 'CCTV';
       if (dt.contains('mmt')) return 'MMT';
-      if (dt.contains('cc')) return 'CC';
+      if (dt.contains('nvr')) return 'NVR';
+      if (dt.contains('switch')) return 'SWITCH';
     }
 
     final src = '${alert.title} ${alert.description} ${alert.lokasi ?? ''}'
@@ -339,6 +432,8 @@ class _ReportPageState extends State<ReportPage> {
     if (RegExp(r'\b(AP|TOWER)\b').hasMatch(src)) return 'AP';
     if (RegExp(r'\b(CAM|CCTV)\b').hasMatch(src)) return 'CCTV';
     if (RegExp(r'\bMMT\b').hasMatch(src)) return 'MMT';
+    if (RegExp(r'\bNVR\b').hasMatch(src)) return 'NVR';
+    if (RegExp(r'\bSWITCH\b').hasMatch(src)) return 'SWITCH';
     if (RegExp(r'\bCC\d*\b').hasMatch(src)) return 'CC';
     return 'Other';
   }
@@ -355,10 +450,14 @@ class _ReportPageState extends State<ReportPage> {
       final towersFuture = apiService.getAllTowers();
       final camerasFuture = apiService.getAllCameras();
       final mmtsFuture = apiService.getAllMMTs();
+      final nvrsFuture = apiService.getAllNVRs();
+      final switchesFuture = apiService.getAllSwitches();
 
       final towers = await towersFuture;
       final cameras = await camerasFuture;
       final mmts = await mmtsFuture;
+      final nvrs = await nvrsFuture;
+      final switches = await switchesFuture;
 
       final keys = <String>{};
 
@@ -383,6 +482,18 @@ class _ReportPageState extends State<ReportPage> {
         }
       }
 
+      for (final nvr in nvrs) {
+        if (nvr.nvrId.trim().isNotEmpty) {
+          keys.add(_buildDeviceKey('NVR', nvr.nvrId));
+        }
+      }
+
+      for (final sw in switches) {
+        if (sw.switchId.trim().isNotEmpty) {
+          keys.add(_buildDeviceKey('SWITCH', sw.switchId));
+        }
+      }
+
       return keys;
     } catch (e) {
       debugPrint('Active device inventory load failed: $e');
@@ -390,14 +501,8 @@ class _ReportPageState extends State<ReportPage> {
     }
   }
 
-  String _normalizeDeviceTypeLabel(String raw) {
-    final t = raw.trim().toUpperCase();
-    if (t.contains('TOWER') || t == 'AP' || t.contains('ACCESS')) return 'AP';
-    if (t.contains('CAM') || t.contains('CCTV')) return 'CCTV';
-    if (t == 'CC' || t.contains(' CC')) return 'CC';
-    if (t.contains('MMT')) return 'MMT';
-    return t;
-  }
+  // Unified normalization — delegates to _normalizeToDeviceType
+  String _normalizeDeviceTypeLabel(String raw) => _normalizeToDeviceType(raw);
 
   String _buildDeviceKey(String type, String id) {
     return '${_normalizeDeviceTypeLabel(type)}:${id.trim().toUpperCase()}';
@@ -489,102 +594,6 @@ class _ReportPageState extends State<ReportPage> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    double screenWidth = MediaQuery.of(context).size.width;
-    return Container(
-      width: screenWidth,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      color: const Color(0xFF1976D2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Terminal Nilam - FIXED
-          const Text(
-            'Terminal Nilam',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(width: 30),
-          // Buttons + Profile - SCROLL HORIZONTAL
-          Expanded(
-            child: ScrollConfiguration(
-              behavior:
-                  ScrollConfiguration.of(context).copyWith(scrollbars: false),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildHeaderOpenButton(
-                        'Add New Device', const AddDevicePage()),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton(
-                        'Master Data', const TowerManagementPage()),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('Dashboard', const DashboardPage()),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('Access Point', const NetworkPage()),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('CCTV', const CCTVPage()),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('MMT', const MMTMonitoringPage()),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('Alert', const AlertsPage()),
-                    const SizedBox(width: 12),
-                    _buildHeaderOpenButton('Alert Report', const ReportPage(),
-                        isActive: true),
-                    const SizedBox(width: 12),
-                    _buildHeaderButton(
-                        'Logout', () => showLogoutDialog(context)),
-                    const SizedBox(width: 12),
-                    _buildProfileIcon(),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeaderOpenButton(String text, Widget openPage,
-      {bool isActive = false}) {
-    return buildLiquidGlassButton(
-        text,
-        () => Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (context) => openPage)),
-        isActive: isActive);
-  }
-
-  Widget _buildHeaderButton(String text, VoidCallback onPressed) {
-    return buildLiquidGlassButton(text, onPressed);
-  }
-
-  Widget _buildProfileIcon() {
-    return GestureDetector(
-      onTap: () => Navigator.push(context,
-          MaterialPageRoute(builder: (context) => const ProfilePage())),
-      child: ClipOval(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.22),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-            ),
-            child: const Icon(Icons.person, color: Colors.white, size: 24),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildFilterBar() {
     final isMobile = isMobileScreen(context);
@@ -672,7 +681,6 @@ class _ReportPageState extends State<ReportPage> {
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () {
-                          print("DEBUG: Date range clicked!");
                           _pickDateRange();
                         },
                         child: Container(
@@ -712,7 +720,6 @@ class _ReportPageState extends State<ReportPage> {
                         items: const ['ALL', 'UP', 'DOWN'],
                         backgroundColor: AppDropdownStyle.menuBackground,
                         onChanged: (String? val) {
-                          print("DEBUG: Dropdown changed to $val");
                           if (val != null) {
                             setState(() => _statusFilter = val);
                             _fetchReportData();
@@ -726,10 +733,7 @@ class _ReportPageState extends State<ReportPage> {
                 SizedBox(
                   height: 44,
                   child: ElevatedButton(
-                    onPressed: () {
-                      print("DEBUG: Export PDF clicked!");
-                      _generateReportPdf();
-                    },
+                    onPressed: _generateReportPdf,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red.shade700,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -945,7 +949,7 @@ class _ReportPageState extends State<ReportPage> {
               runSpacing: 12,
               children: [
                 const Text(
-                  'Daftar laporan alert',
+                  'Alert List',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -953,26 +957,37 @@ class _ReportPageState extends State<ReportPage> {
                     letterSpacing: 0.5,
                   ),
                 ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_deviceInventoryLoaded && _activeDeviceKeys.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 10),
-                        child: Text(
-                          'Inventori tidak tersedia',
-                          style: TextStyle(
-                            color: Colors.orange.shade100,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                if (isMobile)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 12),
+                      _buildHeaderFilters(),
+                      const SizedBox(height: 12),
+                      _buildHeaderPagination(totalCount),
+                    ],
+                  )
+                else
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_deviceInventoryLoaded && _activeDeviceKeys.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 10),
+                          child: Text(
+                            'Inventori tidak tersedia',
+                            style: TextStyle(
+                              color: Colors.orange.shade100,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                      ),
-                    _buildHeaderFilters(),
-                    const SizedBox(width: 24),
-                    _buildHeaderPagination(totalCount),
-                  ],
-                ),
+                      _buildHeaderFilters(),
+                      const SizedBox(width: 24),
+                      _buildHeaderPagination(totalCount),
+                    ],
+                  ),
               ],
             ),
           ),
@@ -992,38 +1007,45 @@ class _ReportPageState extends State<ReportPage> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 24, vertical: 14),
                         width: double.infinity,
-                        color: const Color(0xFFC6B430),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xFFC6B430).withValues(alpha: 0.8),
+                              const Color(0xFFC6B430).withValues(alpha: 0.4),
+                            ],
+                          ),
+                        ),
                         child: const Row(
                           children: [
                             Expanded(
                                 flex: 3,
                                 child: _ReportHeaderText('DEVICE',
-                                    color: Colors.black87)),
+                                    color: Colors.white)),
                             Expanded(
                                 flex: 4,
-                                child: _ReportHeaderText('LOKASI',
-                                    color: Colors.black87)),
+                                child: _ReportHeaderText('LOCATION',
+                                    color: Colors.white)),
                             Expanded(
                                 flex: 3,
-                                child: _ReportHeaderText('ALAMAT IP',
-                                    color: Colors.black87)),
+                                child: _ReportHeaderText('IP ADDRESS',
+                                    color: Colors.white)),
                             Expanded(
                                 flex: 2,
                                 child: _ReportHeaderText('STATUS',
-                                    color: Colors.black87)),
+                                    color: Colors.white)),
                             Expanded(
                                 flex: 3,
                                 child: _ReportHeaderText('TIMESTAMP',
-                                    color: Colors.black87)),
+                                    color: Colors.white)),
                             Expanded(
                                 flex: 2,
                                 child: _ReportHeaderText('ACTION',
-                                    color: Colors.black87)),
+                                    color: Colors.white)),
                           ],
                         ),
                       ),
                       ...filteredAlerts
-                          .skip((_currentPage - 1) * _itemsPerPage)
+                      .skip((_currentPage - 1) * _itemsPerPage)
                           .take(_itemsPerPage)
                           .map((a) {
                         final isDown = _isDownAlert(a);
@@ -1036,10 +1058,10 @@ class _ReportPageState extends State<ReportPage> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 20, vertical: 12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF2C3E50).withValues(alpha: 0.9),
+                            color: Colors.white.withValues(alpha: 0.05),
                             border: Border(
                               bottom: BorderSide(
-                                  color: Colors.white.withValues(alpha: 0.1),
+                                  color: Colors.white.withValues(alpha: 0.05),
                                   width: 1),
                             ),
                           ),
@@ -1047,66 +1069,124 @@ class _ReportPageState extends State<ReportPage> {
                             children: [
                               Expanded(
                                 flex: 3,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      _cleanDeviceName(a.title),
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w800,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      right: BorderSide(
+                                        color: Colors.white.withValues(alpha: 0.1),
+                                        width: 0.8,
                                       ),
                                     ),
-                                    if (_isDeletedDevice(a))
-                                      Container(
-                                        margin: const EdgeInsets.only(top: 4),
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.orange.withValues(alpha: 0.2),
-                                          borderRadius:
-                                              BorderRadius.circular(999),
-                                          border: Border.all(
-                                            color:
-                                                Colors.orange.withValues(alpha: 0.75),
-                                            width: 1,
-                                          ),
-                                        ),
-                                        child: const Text(
-                                          'Deleted Device',
-                                          style: TextStyle(
-                                            color: Colors.orangeAccent,
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 10,
-                                          ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        _cleanDeviceName(a.title),
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w800,
                                         ),
                                       ),
-                                  ],
+                                      if (_isDeletedDevice(a))
+                                        Container(
+                                          margin: const EdgeInsets.only(top: 4),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.orange.withValues(alpha: 0.2),
+                                            borderRadius:
+                                                BorderRadius.circular(999),
+                                            border: Border.all(
+                                              color:
+                                                  Colors.orange.withValues(alpha: 0.75),
+                                              width: 1,
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'Deleted Device',
+                                            style: TextStyle(
+                                              color: Colors.orangeAccent,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 10,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
                                 ),
                               ),
                               _buildReportValueCell(
-                                a.lokasi?.isNotEmpty == true ? a.lokasi! : '-',
+                                a.lokasi ?? '-',
                                 flex: 4,
                                 fontWeight: FontWeight.w700,
                                 align: TextAlign.center,
-                                color: Colors.white70,
+                                color: Colors.white.withValues(alpha: 0.9),
+                                hasDivider: true,
                               ),
-                              _buildReportValueCell(
-                                _extractIpFromDescription(a.description),
-                                flex: 3,
-                                color: Colors.white70,
-                              ),
+                              (() {
+                                final originalIp = _extractIpFromDescription(a.description);
+                                final deviceKey = _alertDeviceKey(a);
+                                final currentIp = _currentDeviceIps[deviceKey];
+                                final isDeleted = _isDeletedDevice(a);
+
+                                return Expanded(
+                                  flex: 3,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      border: Border(
+                                        right: BorderSide(
+                                          color: Colors.white.withValues(alpha: 0.1),
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          currentIp ?? originalIp,
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(alpha: 0.7),
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        if (isDeleted && currentIp == null)
+                                          Text(
+                                            'Historical',
+                                            style: TextStyle(
+                                              color: Colors.white.withValues(alpha: 0.3),
+                                              fontSize: 9,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              })(),
                               Expanded(
                                 flex: 2,
-                                child: Center(
-                                  child: Text(
-                                    statusText,
-                                    style: TextStyle(
-                                      color: statusColor,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 13,
-                                      letterSpacing: 0.6,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      right: BorderSide(
+                                        color: Colors.white.withValues(alpha: 0.1),
+                                        width: 0.8,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      statusText,
+                                      style: TextStyle(
+                                        color: statusColor,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 13,
+                                        letterSpacing: 0.6,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1114,7 +1194,8 @@ class _ReportPageState extends State<ReportPage> {
                               _buildReportValueCell(
                                 '${a.tanggal ?? ''} ${a.waktu ?? ''}',
                                 flex: 3,
-                                color: Colors.white54,
+                                color: Colors.white.withValues(alpha: 0.6),
+                                hasDivider: true,
                               ),
                               Expanded(
                                 flex: 2,
@@ -1177,17 +1258,30 @@ class _ReportPageState extends State<ReportPage> {
     FontWeight fontWeight = FontWeight.w600,
     Color color = Colors.black87,
     TextAlign align = TextAlign.center,
+    bool hasDivider = false,
   }) {
     return Expanded(
       flex: flex,
-      child: Text(
-        text,
-        textAlign: align,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: color,
-          fontWeight: fontWeight,
-          fontSize: 13,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            right: hasDivider
+                ? BorderSide(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    width: 0.8,
+                  )
+                : BorderSide.none,
+          ),
+        ),
+        child: Text(
+          text,
+          textAlign: align,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: color,
+            fontWeight: fontWeight,
+            fontSize: 13,
+          ),
         ),
       ),
     );
@@ -1281,7 +1375,7 @@ class _ReportPageState extends State<ReportPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete confirmation'),
-        content: Text('Hapus report log untuk ${alert.title}?'),
+        content: Text('Delete log report for ${alert.title}?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -1309,7 +1403,7 @@ class _ReportPageState extends State<ReportPage> {
   }
 
   Widget _buildHeaderFilters() {
-    final filterOptions = ['Semua', 'AP', 'CCTV', 'MMT', 'CC'];
+    final filterOptions = ['ALL', 'AP', 'CCTV', 'MMT', 'NVR', 'SWITCH'];
     return Wrap(
       spacing: 8,
       runSpacing: 8,

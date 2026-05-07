@@ -1346,9 +1346,6 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
       normalizeLocationMatchKey(name),
     }.where((value) => value.isNotEmpty).toSet();
     final allowLooseMatch = type == 'TOWER';
-    final fallbackDigits = RegExp(r'\d+').firstMatch(code)?.group(0) ??
-        RegExp(r'\d+').firstMatch(name)?.group(0) ??
-        '';
 
     final towers = await _apiService.getAllTowers();
     final mmts = await _apiService.getAllMMTs();
@@ -1365,11 +1362,33 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
         return false;
       }
 
-      if (fallbackCodeKeys.contains(locKey)) {
-        return true;
+      final deviceLocUpper = location.trim().toUpperCase();
+      // Extract code parts from device location by splitting on "-"
+      // Pattern: TYPE-CODE-YARD (e.g., "RTG-RTG1-CY1" or "TOWER-T1-CY1")
+      final deviceParts = deviceLocUpper.split('-').where((p) => p.isNotEmpty).toList();
+      
+      // Strict matching: compare device location components with master location components
+      if (deviceParts.length >= 2) {
+        final deviceType = deviceParts[0].trim();
+        final deviceCode = deviceParts[1].trim();
+        final masterType = type.trim().toUpperCase();
+        final masterCode = code.trim().toUpperCase();
+        
+        if ((masterType == 'RTG' || masterType == 'RS' || masterType == 'CC') && deviceType != masterType) {
+          return false;
+        }
+        if (masterType == 'TOWER' && deviceType != 'TOWER') {
+          return false;
+        }
+        if (masterCode.isNotEmpty && deviceCode != masterCode) {
+          return false;
+        }
+        if (deviceType == masterType && deviceCode == masterCode) {
+          return true;
+        }
       }
 
-      if (fallbackDigits.isNotEmpty && locKey.contains(fallbackDigits)) {
+      if (fallbackCodeKeys.contains(locKey)) {
         return true;
       }
 
@@ -1477,7 +1496,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '${d['name']} (${d['type']})',
+                                    d['name']?.toString() ?? '-',
                                     style: const TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w700),
