@@ -26,6 +26,8 @@ class _AlertsPageState extends State<AlertsPage> {
   DateTime? _lastRefreshTime = DateTime.now();
   String _selectedDeviceType = 'ALL';
   Map<String, String> _currentDeviceIps = {};
+  int _currentPage = 1;
+  static const int _itemsPerPage = 10;
 
   @override
   void initState() {
@@ -46,10 +48,16 @@ class _AlertsPageState extends State<AlertsPage> {
   Future<void> _loadAlerts({bool showLoading = true}) async {
     if (showLoading && mounted) setState(() => _isLoading = true);
     try {
+      final now = DateTime.now();
+      final startOfMonth = DateTime(now.year, now.month, 1);
+      final endOfMonth = DateTime(now.year, now.month + 1, 0); // Last day of current month
+
       final results = await apiService.getAllAlerts(
         source: 'ALL',
         status: 'ALL',
-        limit: 200,
+        limit: 500, // Increased limit
+        start: startOfMonth.toIso8601String().split('T')[0],
+        end: endOfMonth.toIso8601String().split('T')[0],
       );
 
       if (mounted) {
@@ -66,20 +74,8 @@ class _AlertsPageState extends State<AlertsPage> {
         // Sync alerts with current device/master data and remove repeated same-state rows.
         final synced = await _syncAlertsWithDeviceData(loaded);
         final deduped = _dedupeByDeviceState(synced);
-        // Filter: Hanya tampilkan alert dari 30 hari terakhir saja (Visual Clean-up)
-        final now = DateTime.now();
-        final thirtyDaysAgo = now.subtract(const Duration(days: 30));
-        
-        final filteredByDate = deduped.where((alert) {
-          if (alert.tanggal == null || alert.tanggal!.isEmpty) return false;
-          try {
-            final alertDate = DateTime.parse(alert.tanggal!);
-            return alertDate.isAfter(thirtyDaysAgo);
-          } catch (_) {
-            // Jika format gagal diparse (misal bukan YYYY-MM-DD), coba fallback
-            return true; 
-          }
-        }).toList();
+        // No redundant frontend filtering needed as backend already filters by start/end dates.
+        final filteredByDate = deduped; 
 
         setState(() {
           _alerts = filteredByDate;
@@ -102,6 +98,7 @@ class _AlertsPageState extends State<AlertsPage> {
       final mmts = await apiService.getAllMMTs();
       final nvrs = await apiService.getAllNVRs();
       final switches = await apiService.getAllSwitches();
+      final pcs = await apiService.getAllPCs();
       // Fetch master location points to resolve full labels (RTG / TOWER formatting)
       final masterRows = await apiService.getAllMasterLocations();
       final masterOptions = buildMasterLocationOptions(masterRows);
@@ -116,6 +113,7 @@ class _AlertsPageState extends State<AlertsPage> {
       final mmtMap = {for (var m in mmts) _deviceKey(m.mmtId): m};
       final nvrMap = {for (var n in nvrs) _deviceKey(n.nvrId): n};
       final switchMap = {for (var s in switches) _deviceKey(s.switchId): s};
+      final pcMap = {for (var p in pcs) _deviceKey(p.pcId): p};
 
       // Populate current IP mapping
       final Map<String, String> ipMap = {};
@@ -135,6 +133,9 @@ class _AlertsPageState extends State<AlertsPage> {
       }
       for (final s in switches) {
         ipMap[_deviceKey(s.switchId)] = s.ipAddress;
+      }
+      for (final p in pcs) {
+        ipMap[_deviceKey(p.pcId)] = p.ipAddress;
       }
 
       if (mounted) {
@@ -182,6 +183,11 @@ class _AlertsPageState extends State<AlertsPage> {
           final sw = switchMap[searchName]!;
           newLocation = resolveFullLocationLabel(masterOptions, sw.location, currentContainerYard: sw.containerYard);
           newDeviceType = 'SWITCH';
+          isDeletedDevice = false;
+        } else if (pcMap.containsKey(searchName)) {
+          final pc = pcMap[searchName]!;
+          newLocation = resolveFullLocationLabel(masterOptions, pc.location, currentContainerYard: pc.containerYard);
+          newDeviceType = 'PC';
           isDeletedDevice = false;
         } else {
           // Keep alert row visible but mark as deleted device in UI.
@@ -261,6 +267,7 @@ class _AlertsPageState extends State<AlertsPage> {
       if (dt.contains('mmt')) return 'MMT';
       if (dt.contains('nvr')) return 'NVR';
       if (dt.contains('switch')) return 'SWITCH';
+      if (dt.contains('pc') || dt.contains('computer')) return 'PC';
     }
 
     final src = '${alert.title} ${alert.description} ${alert.lokasi ?? ''}'
@@ -270,6 +277,7 @@ class _AlertsPageState extends State<AlertsPage> {
     if (RegExp(r'\bMMT\b').hasMatch(src)) return 'MMT';
     if (RegExp(r'\bNVR\b').hasMatch(src)) return 'NVR';
     if (RegExp(r'\bSWITCH\b').hasMatch(src)) return 'SWITCH';
+    if (RegExp(r'\bPC\b').hasMatch(src)) return 'PC';
     return 'Other';
   }
 
@@ -333,7 +341,7 @@ class _AlertsPageState extends State<AlertsPage> {
   // ==================== FILTER CHIPS ====================
 
   Widget _buildDeviceTypeFilter() {
-    final options = ['ALL', 'AP', 'CCTV', 'MMT', 'NVR', 'SWITCH'];
+    final options = ['ALL', 'AP', 'CCTV', 'MMT', 'NVR', 'SWITCH', 'PC'];
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -416,6 +424,19 @@ class _AlertsPageState extends State<AlertsPage> {
   // ==================== ALERT LIST ====================
 
   Widget _buildAlertList(List<Alert> filtered) {
+    final totalPages = (filtered.length / _itemsPerPage).ceil();
+    if (_currentPage > totalPages && totalPages > 0) {
+      _currentPage = totalPages;
+    }
+    
+    final startIndex = (_currentPage - 1) * _itemsPerPage;
+    final endIndex = (startIndex + _itemsPerPage < filtered.length)
+        ? startIndex + _itemsPerPage
+        : filtered.length;
+    final currentAlerts = filtered.isEmpty
+        ? <Alert>[]
+        : filtered.sublist(startIndex, endIndex);
+
     return liquidGlassCard(
       borderRadius: 22,
       padding: const EdgeInsets.all(20),
@@ -485,15 +506,76 @@ class _AlertsPageState extends State<AlertsPage> {
                 ),
               ),
             )
-          else
+          else ...[
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: filtered.length,
+              itemCount: currentAlerts.length,
               separatorBuilder: (_, __) => const SizedBox(height: 6),
-              itemBuilder: (context, index) => _buildAlertCard(filtered[index]),
+              itemBuilder: (context, index) => _buildAlertCard(currentAlerts[index]),
             ),
+            if (totalPages > 1) ...[
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Page $_currentPage of $totalPages',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      _buildPageButton(
+                        icon: Icons.chevron_left,
+                        onPressed: _currentPage > 1
+                            ? () => setState(() => _currentPage--)
+                            : null,
+                      ),
+                      const SizedBox(width: 12),
+                      _buildPageButton(
+                        icon: Icons.chevron_right,
+                        onPressed: _currentPage < totalPages
+                            ? () => setState(() => _currentPage++)
+                            : null,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildPageButton({required IconData icon, VoidCallback? onPressed}) {
+    final bool isDisabled = onPressed == null;
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: isDisabled 
+            ? Colors.white.withValues(alpha: 0.05) 
+            : const Color(0xFF1976D2).withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isDisabled 
+              ? Colors.white.withValues(alpha: 0.1) 
+              : const Color(0xFF1976D2).withValues(alpha: 0.5),
+          ),
+        ),
+        child: Icon(
+          icon,
+          color: isDisabled ? Colors.white30 : Colors.white,
+          size: 20,
+        ),
       ),
     );
   }

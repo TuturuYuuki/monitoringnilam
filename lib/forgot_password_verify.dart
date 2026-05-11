@@ -77,9 +77,9 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('OTP Expired'),
+        title: const Text('OTP expired'),
         content:
-            const Text('The OTP Code Has Expired. Please Request A New OTP'),
+            const Text('The OTP code has expired. Please request a new OTP'),
         actions: [
           TextButton(
             onPressed: () {
@@ -133,7 +133,7 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
               builder: (context) => AlertDialog(
                 title: const Text('Invalid OTP'),
                 content: Text(
-                    response['message'] ?? 'Invalid OTP. Please Try Again.'),
+                    response['message'] ?? 'Invalid OTP. Please try again.'),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
@@ -191,7 +191,7 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('New OTP Has Been Sent To Your Email'),
+              content: Text('New OTP has been sent to your email'),
               backgroundColor: Colors.green,
             ),
           );
@@ -202,7 +202,7 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
             context: context,
             builder: (context) => AlertDialog(
               title: const Text('Failed'),
-              content: Text(response['message'] ?? 'Failed To Send New OTP'),
+              content: Text(response['message'] ?? 'Failed to send new OTP'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
@@ -362,7 +362,7 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'The OTP Code Has Been Sent To\n$email',
+                            'The OTP code has been sent to\n$email',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: isMobile ? 13 : 15,
@@ -442,9 +442,9 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                             ),
                             validator: (value) {
                               final cleanText = value?.trim() ?? '';
-                              if (cleanText.isEmpty) return 'Please Enter OTP';
+                              if (cleanText.isEmpty) return 'Please enter OTP';
                               if (cleanText.length != 6) {
-                                return 'OTP Must Be Exactly 6 Digits';
+                                return 'OTP must be exactly 6 digits';
                               }
                               return null;
                             },
@@ -489,7 +489,7 @@ class _ForgotPasswordVerifyPageState extends State<ForgotPasswordVerifyPage> {
                                           color: Colors.white),
                                     )
                                   : const Text(
-                                      'Verify OTP Code',
+                                      'Verify OTP code',
                                       style: TextStyle(
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold,

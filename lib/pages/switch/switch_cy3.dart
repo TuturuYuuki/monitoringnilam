@@ -592,10 +592,45 @@ class _SwitchPageCY3State extends State<SwitchPageCY3> {
             padding: const EdgeInsets.symmetric(vertical: 40),
             width: double.infinity,
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [Colors.white.withValues(alpha: 0.16), Colors.white.withValues(alpha: 0.05)]),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withValues(alpha: 0.2),
+                  Colors.white.withValues(alpha: 0.05),
+                ],
+              ),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.2),
+                width: 1.5,
+              ),
             ),
-            child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+            child: const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Loading Switch data...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       );
@@ -610,19 +645,37 @@ class _SwitchPageCY3State extends State<SwitchPageCY3> {
             padding: const EdgeInsets.symmetric(vertical: 60),
             width: double.infinity,
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [Colors.white.withValues(alpha: 0.16), Colors.white.withValues(alpha: 0.05)]),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withValues(alpha: 0.12),
+                  Colors.white.withValues(alpha: 0.02),
+                ],
+              ),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.2),
+                width: 1.5,
+              ),
             ),
-            child: Center(
+            child: const Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.device_hub, size: 40, color: Colors.white54),
-                  const SizedBox(height: 12),
+                  Icon(
+                    Icons.device_hub,
+                    size: 64,
+                    color: Colors.white38,
+                  ),
+                  SizedBox(height: 20),
                   Text(
                     'No Switch data available',
                     style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8), fontSize: 16, fontWeight: FontWeight.bold),
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ],
               ),
@@ -911,7 +964,7 @@ class _SwitchPageCY3State extends State<SwitchPageCY3> {
                   controller: nameController,
                   style: const TextStyle(color: Colors.black87),
                   decoration: const InputDecoration(
-                    labelText: 'Switch ID/Name',
+                    labelText: 'Name',
                     labelStyle: TextStyle(color: Colors.black54),
                     enabledBorder: UnderlineInputBorder(
                         borderSide: BorderSide(color: Colors.black12)),
@@ -922,7 +975,7 @@ class _SwitchPageCY3State extends State<SwitchPageCY3> {
                   controller: ipController,
                   style: const TextStyle(color: Colors.black87),
                   decoration: const InputDecoration(
-                    labelText: 'IP address',
+                    labelText: 'IP Address',
                     labelStyle: TextStyle(color: Colors.black54),
                     enabledBorder: UnderlineInputBorder(
                         borderSide: BorderSide(color: Colors.black12)),

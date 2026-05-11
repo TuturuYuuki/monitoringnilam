@@ -22,6 +22,9 @@ class DeviceIconResolver {
     if (value == 'SWITCH' || value == 'NETWORK_SWITCH' || value == 'ETHERNET_SWITCH') {
       return 'SWITCH';
     }
+    if (value == 'PC' || value == 'COMPUTER' || value == 'SERVER' || value == 'DESKTOP') {
+      return 'PC';
+    }
     if (value == 'RTG' || value == 'RUBBER TYRED GANTRIES' || value == 'RUBBER TYRED GANTREE') {
       return 'RTG';
     }
@@ -55,6 +58,8 @@ class DeviceIconResolver {
       return Icons.dns;
     case 'SWITCH':
       return Icons.device_hub;
+    case 'PC':
+      return Icons.desktop_windows;
     case 'RTG':
       return Icons.precision_manufacturing;
     case 'RS':
@@ -83,6 +88,8 @@ class DeviceIconResolver {
         return const Color(0xFF7B1FA2);
       case 'SWITCH':
         return const Color(0xFF455A64);
+      case 'PC':
+        return const Color(0xFF0D47A1);
       case 'RTG':
         return Colors.orange;
       case 'RS':

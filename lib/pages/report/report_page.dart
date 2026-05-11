@@ -32,14 +32,14 @@ class _ReportPageState extends State<ReportPage> {
   bool _deviceInventoryLoaded = false;
 
   DateTimeRange _selectedRange = DateTimeRange(
-    start: DateTime.now().subtract(const Duration(days: 30)),
+    start: DateTime.now().subtract(const Duration(days: 365)),
     end: DateTime.now(),
   );
   String _statusFilter = 'ALL';
-  String _selectedDeviceType = 'ALL'; // Filter: ALL, AP, CCTV, MMT, NVR, SWITCH
+  String _selectedDeviceType = 'ALL'; // Filter: ALL, AP, CCTV, MMT, NVR, SWITCH, PC
 
   int _currentPage = 1;
-  final int _itemsPerPage = 10;
+  final int _itemsPerPage = 20; // Increased from 10 to show more data at once
 
   @override
   void initState() {
@@ -60,7 +60,8 @@ class _ReportPageState extends State<ReportPage> {
       final results = await resultsFuture;
       final activeDeviceKeys = await activeDeviceKeysFuture;
       final syncedResults = await _syncReportAlertsWithDeviceData(results);
-      final uniqueResults = _dedupeAlertsByDevice(syncedResults);
+      // Removed _dedupeAlertsByDevice to show all 191 alerts as requested by user
+      final uniqueResults = syncedResults; 
 
       final normalized = uniqueResults;
 
@@ -72,8 +73,7 @@ class _ReportPageState extends State<ReportPage> {
         isLoading = false;
       });
     } catch (e) {
-      print("Fetch Report Error: $e");
-      debugPrint('Fetch Report Error: $e');
+      debugPrint("Fetch Report Error: $e");
     }
   }
 
@@ -85,6 +85,7 @@ class _ReportPageState extends State<ReportPage> {
       final mmts = await apiService.getAllMMTs();
       final nvrs = await apiService.getAllNVRs();
       final switches = await apiService.getAllSwitches();
+      final pcs = await apiService.getAllPCs();
       // Fetch master location points to resolve full labels (RTG / TOWER formatting)
       final masterRows = await apiService.getAllMasterLocations();
       final masterOptions = buildMasterLocationOptions(masterRows);
@@ -112,6 +113,10 @@ class _ReportPageState extends State<ReportPage> {
       final switchMap = {
         for (final sw in switches)
           if (sw.switchId.trim().isNotEmpty) _deviceKey(sw.switchId): sw
+      };
+      final pcMap = {
+        for (final pc in pcs)
+          if (pc.pcId.trim().isNotEmpty) _deviceKey(pc.pcId): pc
       };
 
       // Populate current IP map for dynamic lookup
@@ -142,6 +147,11 @@ class _ReportPageState extends State<ReportPage> {
       for (final sw in switches) {
         if (sw.switchId.trim().isNotEmpty) {
           _currentDeviceIps[_buildDeviceKey('SWITCH', sw.switchId)] = sw.ipAddress;
+        }
+      }
+      for (final p in pcs) {
+        if (p.pcId.trim().isNotEmpty) {
+          _currentDeviceIps[_buildDeviceKey('PC', p.pcId)] = p.ipAddress;
         }
       }
 
@@ -176,6 +186,11 @@ class _ReportPageState extends State<ReportPage> {
           newLocation = resolveFullLocationLabel(masterOptions, sw.location, currentContainerYard: sw.containerYard);
           newDeviceType = 'SWITCH';
           isDeletedDevice = false;
+        } else if (pcMap.containsKey(searchName)) {
+          final pc = pcMap[searchName]!;
+          newLocation = resolveFullLocationLabel(masterOptions, pc.location, currentContainerYard: pc.containerYard);
+          newDeviceType = 'PC';
+          isDeletedDevice = false;
         } else {
           isDeletedDevice = true;
         }
@@ -192,46 +207,6 @@ class _ReportPageState extends State<ReportPage> {
     }
   }
 
-  List<Alert> _dedupeAlertsByDevice(List<Alert> alerts) {
-    final Map<String, Alert> latestByDevice = {};
-
-    for (final alert in alerts) {
-      final deviceKey = _alertDeviceKey(alert);
-      final existing = latestByDevice[deviceKey];
-
-      if (existing == null) {
-        latestByDevice[deviceKey] = alert;
-        continue;
-      }
-
-      final currentTime = DateTime.tryParse(alert.timestamp) ??
-          DateTime.tryParse('${alert.tanggal ?? ''} ${alert.waktu ?? ''}');
-      final existingTime = DateTime.tryParse(existing.timestamp) ??
-          DateTime.tryParse('${existing.tanggal ?? ''} ${existing.waktu ?? ''}');
-
-      final shouldReplace = currentTime == null
-          ? false
-          : (existingTime == null || currentTime.isAfter(existingTime));
-
-      if (shouldReplace) {
-        latestByDevice[deviceKey] = alert;
-      }
-    }
-
-    final deduped = latestByDevice.values.toList();
-    deduped.sort((a, b) {
-      final aTime = DateTime.tryParse(a.timestamp) ??
-          DateTime.tryParse('${a.tanggal ?? ''} ${a.waktu ?? ''}');
-      final bTime = DateTime.tryParse(b.timestamp) ??
-          DateTime.tryParse('${b.tanggal ?? ''} ${b.waktu ?? ''}');
-      if (aTime == null && bTime == null) return 0;
-      if (aTime == null) return 1;
-      if (bTime == null) return -1;
-      return bTime.compareTo(aTime);
-    });
-
-    return deduped;
-  }
 
   Future<void> _generateReportPdf() async {
     if (reportAlerts.isEmpty) {
@@ -411,6 +386,7 @@ class _ReportPageState extends State<ReportPage> {
     if (t.contains('MMT')) return 'MMT';
     if (t.contains('NVR')) return 'NVR';
     if (t.contains('SWITCH')) return 'SWITCH';
+    if (t.contains('PC')) return 'PC';
     return t;
   }
 
@@ -425,6 +401,7 @@ class _ReportPageState extends State<ReportPage> {
       if (dt.contains('mmt')) return 'MMT';
       if (dt.contains('nvr')) return 'NVR';
       if (dt.contains('switch')) return 'SWITCH';
+      if (dt.contains('pc') || dt.contains('computer')) return 'PC';
     }
 
     final src = '${alert.title} ${alert.description} ${alert.lokasi ?? ''}'
@@ -434,6 +411,7 @@ class _ReportPageState extends State<ReportPage> {
     if (RegExp(r'\bMMT\b').hasMatch(src)) return 'MMT';
     if (RegExp(r'\bNVR\b').hasMatch(src)) return 'NVR';
     if (RegExp(r'\bSWITCH\b').hasMatch(src)) return 'SWITCH';
+    if (RegExp(r'\bPC\b').hasMatch(src)) return 'PC';
     if (RegExp(r'\bCC\d*\b').hasMatch(src)) return 'CC';
     return 'Other';
   }
@@ -452,12 +430,14 @@ class _ReportPageState extends State<ReportPage> {
       final mmtsFuture = apiService.getAllMMTs();
       final nvrsFuture = apiService.getAllNVRs();
       final switchesFuture = apiService.getAllSwitches();
+      final pcsFuture = apiService.getAllPCs();
 
       final towers = await towersFuture;
       final cameras = await camerasFuture;
       final mmts = await mmtsFuture;
       final nvrs = await nvrsFuture;
       final switches = await switchesFuture;
+      final pcs = await pcsFuture;
 
       final keys = <String>{};
 
@@ -493,6 +473,11 @@ class _ReportPageState extends State<ReportPage> {
           keys.add(_buildDeviceKey('SWITCH', sw.switchId));
         }
       }
+      for (final p in pcs) {
+        if (p.pcId.trim().isNotEmpty) {
+          keys.add(_buildDeviceKey('PC', p.pcId));
+        }
+      }
 
       return keys;
     } catch (e) {
@@ -514,7 +499,7 @@ class _ReportPageState extends State<ReportPage> {
     }
 
     final src = '${alert.title} ${alert.description}';
-    final regex = RegExp(r'\b(?:AP|TOWER|CCTV|CAM|CC|MMT)[-_]?\d+\b',
+    final regex = RegExp(r'\b(?:AP|TOWER|CCTV|CAM|CC|MMT|PC)[-_]?\d+\b',
         caseSensitive: false);
     final match = regex.firstMatch(src);
     if (match != null) {
@@ -1022,7 +1007,7 @@ class _ReportPageState extends State<ReportPage> {
                                 child: _ReportHeaderText('DEVICE',
                                     color: Colors.white)),
                             Expanded(
-                                flex: 4,
+                                flex: 5, // Increased flex for location
                                 child: _ReportHeaderText('LOCATION',
                                     color: Colors.white)),
                             Expanded(
@@ -1034,7 +1019,7 @@ class _ReportPageState extends State<ReportPage> {
                                 child: _ReportHeaderText('STATUS',
                                     color: Colors.white)),
                             Expanded(
-                                flex: 3,
+                                flex: 4, // Increased flex for timestamp
                                 child: _ReportHeaderText('TIMESTAMP',
                                     color: Colors.white)),
                             Expanded(
@@ -1056,7 +1041,7 @@ class _ReportPageState extends State<ReportPage> {
 
                         return Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 12),
+                              horizontal: 20, vertical: 0), // Vertical padding handled by cells
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.05),
                             border: Border(
@@ -1065,9 +1050,11 @@ class _ReportPageState extends State<ReportPage> {
                                   width: 1),
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              Expanded(
+                          child: IntrinsicHeight(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Expanded(
                                 flex: 3,
                                 child: Container(
                                   decoration: BoxDecoration(
@@ -1079,6 +1066,7 @@ class _ReportPageState extends State<ReportPage> {
                                     ),
                                   ),
                                   child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
                                     crossAxisAlignment: CrossAxisAlignment.center,
                                     children: [
                                       Text(
@@ -1119,7 +1107,7 @@ class _ReportPageState extends State<ReportPage> {
                               ),
                               _buildReportValueCell(
                                 a.lokasi ?? '-',
-                                flex: 4,
+                                flex: 5, // Synced with header
                                 fontWeight: FontWeight.w700,
                                 align: TextAlign.center,
                                 color: Colors.white.withValues(alpha: 0.9),
@@ -1144,6 +1132,7 @@ class _ReportPageState extends State<ReportPage> {
                                     ),
                                     child: Column(
                                       mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment: CrossAxisAlignment.center,
                                       children: [
                                         Text(
                                           currentIp ?? originalIp,
@@ -1178,14 +1167,25 @@ class _ReportPageState extends State<ReportPage> {
                                       ),
                                     ),
                                   ),
-                                  child: Center(
-                                    child: Text(
-                                      statusText,
-                                      style: TextStyle(
-                                        color: statusColor,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 13,
-                                        letterSpacing: 0.6,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    child: Center(
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: statusColor.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: statusColor.withValues(alpha: 0.5), width: 1),
+                                        ),
+                                        child: Text(
+                                          statusText,
+                                          style: TextStyle(
+                                            color: statusColor,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 12,
+                                            letterSpacing: 0.6,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -1193,7 +1193,7 @@ class _ReportPageState extends State<ReportPage> {
                               ),
                               _buildReportValueCell(
                                 '${a.tanggal ?? ''} ${a.waktu ?? ''}',
-                                flex: 3,
+                                flex: 4, // Synced with header
                                 color: Colors.white.withValues(alpha: 0.6),
                                 hasDivider: true,
                               ),
@@ -1212,7 +1212,8 @@ class _ReportPageState extends State<ReportPage> {
                                   ),
                                 ),
                               ),
-                            ],
+                                ],
+                            ),
                           ),
                         );
                       }),
@@ -1227,30 +1228,6 @@ class _ReportPageState extends State<ReportPage> {
     );
   }
 
-  Widget _buildReportSummaryChip(String label, int value, Color accent) {
-    final isWhite = accent == Colors.white;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color:
-            isWhite ? Colors.white.withValues(alpha: 0.18) : accent.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: isWhite
-              ? Colors.white.withValues(alpha: 0.45)
-              : accent.withValues(alpha: 0.5),
-        ),
-      ),
-      child: Text(
-        '$label: $value',
-        style: TextStyle(
-          color: isWhite ? Colors.white : accent,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-        ),
-      ),
-    );
-  }
 
   Widget _buildReportValueCell(
     String text, {
@@ -1273,6 +1250,8 @@ class _ReportPageState extends State<ReportPage> {
                 : BorderSide.none,
           ),
         ),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(vertical: 12),
         child: Text(
           text,
           textAlign: align,
@@ -1287,88 +1266,6 @@ class _ReportPageState extends State<ReportPage> {
     );
   }
 
-  Widget _buildReportStatusTable({
-    required String title,
-    required List<Alert> data,
-    required bool isDownTable,
-  }) {
-    final tone = isDownTable ? Colors.red : Colors.green;
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: tone.withValues(alpha: 0.35)),
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: tone.withValues(alpha: 0.08),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(12)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-                Text('${data.length} device',
-                    style: const TextStyle(color: Colors.black54)),
-              ],
-            ),
-          ),
-          if (data.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(20),
-              child: Text('No Data', style: TextStyle(color: Colors.black54)),
-            )
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: data.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final a = data[index];
-                return ListTile(
-                  leading: Icon(
-                    isDownTable ? Icons.cloud_off : Icons.cloud_done,
-                    color: tone,
-                    size: 24,
-                  ),
-                  title: Text(
-                    _cleanDeviceName(a.title),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text('${a.lokasi} | ${a.tanggal} ${a.waktu}'),
-                  trailing: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: tone.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      isDownTable ? 'DOWN' : 'UP',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: tone,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
-    );
-  }
 
   Future<void> _confirmDeleteAlert(Alert alert) async {
     final confirmed = await showDialog<bool>(
@@ -1403,7 +1300,7 @@ class _ReportPageState extends State<ReportPage> {
   }
 
   Widget _buildHeaderFilters() {
-    final filterOptions = ['ALL', 'AP', 'CCTV', 'MMT', 'NVR', 'SWITCH'];
+    final filterOptions = ['ALL', 'AP', 'CCTV', 'MMT', 'NVR', 'SWITCH', 'PC'];
     return Wrap(
       spacing: 8,
       runSpacing: 8,

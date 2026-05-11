@@ -1235,12 +1235,12 @@ class _ParkingCCTVPageState extends State<ParkingCCTVPage> {
             children: [
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(labelText: 'Camera ID/Name'),
+                decoration: const InputDecoration(labelText: 'Name'),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: ipController,
-                decoration: const InputDecoration(labelText: 'IP address'),
+                decoration: const InputDecoration(labelText: 'IP Address'),
               ),
               const SizedBox(height: 12),
                 DropdownButtonFormField<String>(

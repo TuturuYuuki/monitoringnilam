@@ -21,6 +21,10 @@ class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
   final GlobalDiagnosticsController _controller = GlobalDiagnosticsController();
   bool _isRefreshing = false;
   Timer? _autoRefreshTimer;
+  double? _sharedHoverX;
+  
+  // We'll use a ValueNotifier for better performance if needed, but setState on the parent is fine for 4 charts.
+
 
   @override
   void initState() {
@@ -66,6 +70,14 @@ class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
     }
   }
 
+  void _onHoverSync(double? x) {
+    if (_sharedHoverX == x) return;
+    setState(() {
+      _sharedHoverX = x;
+    });
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final isMobile = isMobileScreen(context);
@@ -105,6 +117,17 @@ class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
             ))
         .toList(growable: false);
 
+    final highErrorRows = snapshot.highErrors
+        .map(
+          (item) => _HighErrorRow(
+            node: item.node,
+            interfaceName: item.interfaceName,
+            receiveErrors: item.receiveErrors,
+            receiveDiscards: item.receiveDiscards,
+          ),
+        )
+        .toList(growable: false);
+
     final topCpuBars = snapshot.topCpuSeries.asMap().entries.map((entry) {
       final item = entry.value;
       final color = _monoPalette(entry.key);
@@ -120,16 +143,7 @@ class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
         series,
       );
     }).toList(growable: false);
-    final highErrorRows = snapshot.highErrors
-        .map(
-          (item) => _HighErrorRow(
-            node: item.node,
-            interfaceName: item.interfaceName,
-            receiveErrors: item.receiveErrors,
-            receiveDiscards: item.receiveDiscards,
-          ),
-        )
-        .toList(growable: false);
+
 
     final dataTableButton = FilledButton.icon(
       onPressed: () {
@@ -142,6 +156,7 @@ class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
       icon: const Icon(Icons.table_chart_outlined),
       label: const Text('Data Table'),
     );
+
 
     final refreshButton = FilledButton.icon(
       onPressed: (_controller.isLoading || _isRefreshing)
@@ -268,16 +283,29 @@ class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
                                         '${snapshot.responseTimeMs.toStringAsFixed(2)} ms',
                                     packetLossLabel:
                                         '${snapshot.packetLossPercent.toStringAsFixed(2)} %',
+                                    sharedHoverX: _sharedHoverX,
+                                    onHoverSync: _onHoverSync,
                                   ),
                                   const SizedBox(height: 10),
-                                  _CpuAveragePanel(spots: cpuLoadSpots),
+                                  _CpuAveragePanel(
+                                    spots: cpuLoadSpots,
+                                    sharedHoverX: _sharedHoverX,
+                                    onHoverSync: _onHoverSync,
+                                  ),
                                   const SizedBox(height: 10),
-                                  _TopCpusPanel(bars: topCpuBars),
+                                  _TopCpusPanel(
+                                    bars: topCpuBars,
+                                    sharedHoverX: _sharedHoverX,
+                                    onHoverSync: _onHoverSync,
+                                  ),
                                   const SizedBox(height: 10),
                                   _DiskUsageTrendPanel(
                                     spotsA: diskUsageSpotsA,
                                     spotsB: diskUsageSpotsB,
+                                    sharedHoverX: _sharedHoverX,
+                                    onHoverSync: _onHoverSync,
                                   ),
+
                                 ],
                               ),
                             ),
@@ -315,9 +343,15 @@ class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
                                               '${snapshot.responseTimeMs.toStringAsFixed(2)} ms',
                                           packetLossLabel:
                                               '${snapshot.packetLossPercent.toStringAsFixed(2)} %',
+                                          sharedHoverX: _sharedHoverX,
+                                          onHoverSync: _onHoverSync,
                                         ),
                                         const SizedBox(height: 10),
-                                        _CpuAveragePanel(spots: cpuLoadSpots),
+                                        _CpuAveragePanel(
+                                          spots: cpuLoadSpots,
+                                          sharedHoverX: _sharedHoverX,
+                                          onHoverSync: _onHoverSync,
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -325,12 +359,19 @@ class _GlobalDiagnosticsPageState extends State<GlobalDiagnosticsPage> {
                                   Expanded(
                                     child: Column(
                                       children: [
-                                        _TopCpusPanel(bars: topCpuBars),
+                                        _TopCpusPanel(
+                                          bars: topCpuBars,
+                                          sharedHoverX: _sharedHoverX,
+                                          onHoverSync: _onHoverSync,
+                                        ),
                                         const SizedBox(height: 10),
                                         _DiskUsageTrendPanel(
                                           spotsA: diskUsageSpotsA,
                                           spotsB: diskUsageSpotsB,
+                                          sharedHoverX: _sharedHoverX,
+                                          onHoverSync: _onHoverSync,
                                         ),
+
                                       ],
                                     ),
                                   ),
@@ -460,7 +501,7 @@ double _yAxisInterval(double maxY, {int targetTicks = 4}) {
 
 Widget _axisHintText(String yDescription) {
   return Text(
-    'X: Waktu (24 jam, interval 5 jam)  |  Y: $yDescription',
+    'X: Waktu (24 jam, interval 4 jam)  |  Y: $yDescription',
     style: const TextStyle(
       color: Colors.black87,
       fontSize: 11,
@@ -1128,27 +1169,44 @@ class _DiskRow extends StatelessWidget {
   }
 }
 
-class _LatencyPacketChartPanel extends StatelessWidget {
+class _LatencyPacketChartPanel extends StatefulWidget {
   final List<FlSpot> latencySpots;
   final List<FlSpot> packetLossSpots;
   final String latencyLabel;
   final String packetLossLabel;
+  final double? sharedHoverX;
+  final Function(double?) onHoverSync;
 
   const _LatencyPacketChartPanel({
     required this.latencySpots,
     required this.packetLossSpots,
     required this.latencyLabel,
     required this.packetLossLabel,
+    required this.sharedHoverX,
+    required this.onHoverSync,
   });
 
   @override
+  State<_LatencyPacketChartPanel> createState() => _LatencyPacketChartPanelState();
+}
+
+
+class _LatencyPacketChartPanelState extends State<_LatencyPacketChartPanel> {
+  int? _touchedBarIndex;
+
+  @override
   Widget build(BuildContext context) {
+    final latencySpots = widget.latencySpots;
+    final packetLossSpots = widget.packetLossSpots;
+    final latencyLabel = widget.latencyLabel;
+    final packetLossLabel = widget.packetLossLabel;
+    
     final bounds = _axisBoundsFromSeries([latencySpots, packetLossSpots]);
     final maxY = _maxYFromSeries([latencySpots, packetLossSpots], floor: 30);
     final xInterval = _xAxisInterval(bounds, targetTicks: 4);
     final yInterval = _yAxisInterval(maxY, targetTicks: 4);
     final endTime = DateTime.now();
-    final startTime = endTime.subtract(const Duration(hours: 12));
+    final startTime = endTime.subtract(const Duration(hours: 24));
     final latencyTrend = _seriesTrend(latencySpots);
     final packetLossTrend = _seriesTrend(packetLossSpots);
 
@@ -1180,107 +1238,179 @@ class _LatencyPacketChartPanel extends StatelessWidget {
             const SizedBox(height: 10),
             SizedBox(
               height: _kChartHeight,
-              child: LineChart(
-                LineChartData(
-                  minX: bounds.minX,
-                  maxX: bounds.maxX,
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: latencySpots,
-                      color: const Color(0xFFFF2D95),
-                      barWidth: 2,
-                      dotData: const FlDotData(show: true),
-                      isCurved: false,
-                    ),
-                    LineChartBarData(
-                      spots: packetLossSpots,
-                      color: const Color(0xFF39FF14),
-                      barWidth: 2,
-                      dotData: const FlDotData(show: true),
-                      isCurved: false,
-                    ),
-                  ],
-                  gridData: FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                    getDrawingHorizontalLine: (value) => FlLine(
-                        color: Colors.black.withValues(alpha: 0.12),
-                        strokeWidth: 1),
+              child: Builder(builder: (context) {
+                final bars = [
+                  LineChartBarData(
+                    spots: latencySpots,
+                    color: const Color(0xFFFF2D95),
+                    barWidth: 2,
+                    dotData: const FlDotData(show: true),
+                    isCurved: false,
                   ),
-                  borderData: FlBorderData(
-                    show: true,
-                    border: Border(
-                      bottom: BorderSide(
-                          color: Colors.black.withValues(alpha: 0.18)),
-                      left: BorderSide(
-                          color: Colors.black.withValues(alpha: 0.18)),
-                    ),
+                  LineChartBarData(
+                    spots: packetLossSpots,
+                    color: const Color(0xFF39FF14),
+                    barWidth: 2,
+                    dotData: const FlDotData(show: true),
+                    isCurved: false,
                   ),
-                  titlesData: const FlTitlesData(
-                    topTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  ).copyWith(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 32,
-                        interval: yInterval,
-                        getTitlesWidget: _leftAxisTitleBuilder,
+                ];
+
+                return LineChart(
+                  LineChartData(
+                    minX: bounds.minX,
+                    maxX: bounds.maxX,
+                    lineBarsData: bars,
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      getDrawingHorizontalLine: (value) => FlLine(
+                          color: Colors.black.withValues(alpha: 0.12),
+                          strokeWidth: 1),
+                    ),
+                    borderData: FlBorderData(
+                      show: true,
+                      border: Border(
+                        bottom: BorderSide(
+                            color: Colors.black.withValues(alpha: 0.18)),
+                        left: BorderSide(
+                            color: Colors.black.withValues(alpha: 0.18)),
                       ),
                     ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: xInterval,
-                        reservedSize: 28,
-                        getTitlesWidget: (value, meta) =>
-                            _bottomTimeTitleBuilder(
-                                value, meta, bounds, startTime, endTime),
+                    titlesData: const FlTitlesData(
+                      topTitles:
+                          AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      rightTitles:
+                          AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    ).copyWith(
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 32,
+                          interval: yInterval,
+                          getTitlesWidget: _leftAxisTitleBuilder,
+                        ),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          interval: xInterval,
+                          reservedSize: 28,
+                          getTitlesWidget: (value, meta) =>
+                              _bottomTimeTitleBuilder(
+                                  value, meta, bounds, startTime, endTime),
+                        ),
                       ),
                     ),
-                  ),
-                  minY: 0,
-                  maxY: maxY,
-                  lineTouchData: LineTouchData(
-                    enabled: true,
-                    touchTooltipData: LineTouchTooltipData(
-                      tooltipBgColor: const Color(0xFF1E2D3B).withValues(alpha: 0.9),
-                      tooltipRoundedRadius: 8,
-                      fitInsideHorizontally: true,
-                      fitInsideVertically: true,
-                      getTooltipItems: (touchedSpots) {
-                        return touchedSpots.map((spot) {
-                          final isLatency = spot.barIndex == 0;
-                          final label = isLatency ? 'Latency' : 'Packet Loss';
-                          final unit = isLatency ? 'ms' : '%';
-                          final color = isLatency ? const Color(0xFFFF2D95) : const Color(0xFF39FF14);
-                          
-                          return LineTooltipItem(
-                            '$label\n',
-                            const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 10,
-                            ),
-                            children: [
-                              TextSpan(
-                                text: '${spot.y.toStringAsFixed(2)} $unit',
-                                style: TextStyle(
-                                  color: color,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
+                    minY: 0,
+                    maxY: maxY,
+                    lineTouchData: LineTouchData(
+                      enabled: true,
+                      handleBuiltInTouches: true,
+                      touchCallback: (event, response) {
+                        if (!event.isInterestedForInteractions ||
+                            response == null ||
+                            response.lineBarSpots == null ||
+                            response.lineBarSpots!.isEmpty) {
+                          widget.onHoverSync(null);
+                          setState(() => _touchedBarIndex = null);
+                          return;
+                        }
+                        
+                        final x = response.lineBarSpots!.first.x;
+                        widget.onHoverSync(x);
+                        
+                        setState(() {
+                          _touchedBarIndex =
+                              response.lineBarSpots!.first.barIndex;
+                        });
+                      },
+                      getTouchedSpotIndicator: (barData, spots) {
+                        return spots.map((index) {
+                          final barIndex = bars.indexOf(barData);
+                          final isActiveChart = _touchedBarIndex != null;
+
+                          if (isActiveChart) {
+                            if (barIndex != _touchedBarIndex) return null;
+                            return TouchedSpotIndicatorData(
+                              const FlLine(color: Colors.white, strokeWidth: 2),
+                              FlDotData(
+                                show: true,
+                                getDotPainter: (spot, percent, barData, index) =>
+                                    FlDotCirclePainter(
+                                  radius: 6,
+                                  color: barData.color ?? Colors.white,
+                                  strokeWidth: 2,
+                                  strokeColor: Colors.white,
                                 ),
                               ),
-                            ],
-                          );
-                        }).toList(growable: false);
+                            );
+                          } else {
+                            if (barIndex != 0) return null;
+                            return const TouchedSpotIndicatorData(
+                              FlLine(color: Colors.white, strokeWidth: 2),
+                              FlDotData(show: false),
+                            );
+                          }
+                        }).toList();
                       },
+                      touchTooltipData: LineTouchTooltipData(
+                        tooltipBgColor:
+                            const Color(0xFF1E2D3B).withValues(alpha: 0.95),
+                        tooltipRoundedRadius: 10,
+                        fitInsideHorizontally: true,
+                        fitInsideVertically: true,
+                        getTooltipItems: (touchedSpots) {
+                          return touchedSpots.map((spot) {
+                            if (spot.barIndex != _touchedBarIndex) return null;
+
+                            final isLatency = spot.barIndex == 0;
+                            final label = isLatency ? 'Latency' : 'Packet Loss';
+                            final unit = isLatency ? 'ms' : '%';
+                            final color = isLatency
+                                ? const Color(0xFFFF2D95)
+                                : const Color(0xFF00E5FF);
+
+                            return LineTooltipItem(
+                              '$label: ',
+                              const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: '${spot.y.toStringAsFixed(2)} $unit',
+                                  style: TextStyle(
+                                    color: color,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList();
+                        },
+                      ),
                     ),
+                    showingTooltipIndicators: widget.sharedHoverX != null
+                        ? [
+                            ShowingTooltipIndicators([
+                              LineBarSpot(
+                                bars[_touchedBarIndex ?? 0],
+                                _touchedBarIndex ?? 0,
+                                bars[_touchedBarIndex ?? 0].spots.firstWhere(
+                                      (s) => (s.x - widget.sharedHoverX!).abs() < 0.001,
+                                      orElse: () => bars[_touchedBarIndex ?? 0].spots.first,
+                                    ),
+                              ),
+                            ])
+                          ]
+                        : [],
+                    clipData: const FlClipData.all(),
                   ),
-                  clipData: const FlClipData.all(),
-                ),
-              ),
+                );
+              }),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -1304,18 +1434,33 @@ class _LatencyPacketChartPanel extends StatelessWidget {
   }
 }
 
-class _CpuAveragePanel extends StatelessWidget {
+class _CpuAveragePanel extends StatefulWidget {
   final List<FlSpot> spots;
+  final double? sharedHoverX;
+  final Function(double?) onHoverSync;
 
-  const _CpuAveragePanel({required this.spots});
+  const _CpuAveragePanel({
+    required this.spots,
+    required this.sharedHoverX,
+    required this.onHoverSync,
+  });
+
+  @override
+  State<_CpuAveragePanel> createState() => _CpuAveragePanelState();
+}
+
+
+class _CpuAveragePanelState extends State<_CpuAveragePanel> {
+  int? _touchedBarIndex;
 
   @override
   Widget build(BuildContext context) {
+    final spots = widget.spots;
     final bounds = _axisBoundsFromSeries([spots]);
     final xInterval = _xAxisInterval(bounds, targetTicks: 4);
     const yInterval = 20.0;
     final endTime = DateTime.now();
-    final startTime = endTime.subtract(const Duration(hours: 12));
+    final startTime = endTime.subtract(const Duration(hours: 24));
     final cpuTrend = _seriesTrend(spots);
 
     return _SolarPanel(
@@ -1331,110 +1476,182 @@ class _CpuAveragePanel extends StatelessWidget {
             const SizedBox(height: 10),
             SizedBox(
               height: _kChartHeight,
-              child: LineChart(
-                LineChartData(
-                  minX: bounds.minX,
-                  maxX: bounds.maxX,
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: spots,
-                      color: const Color(0xFFB000FF),
-                      barWidth: 3,
-                      dotData: const FlDotData(show: true),
-                      isCurved: false,
-                      belowBarData: BarAreaData(show: false),
-                    ),
-                  ],
-                  extraLinesData: ExtraLinesData(horizontalLines: [
-                    HorizontalLine(
-                      y: 85,
-                      color: const Color(0xFFFF1744),
-                      strokeWidth: 1,
-                      dashArray: [5, 4],
-                    ),
-                    HorizontalLine(
-                      y: 50,
-                      color: const Color(0xFFFFD400),
-                      strokeWidth: 1,
-                      dashArray: [5, 4],
-                    ),
-                  ]),
-                  gridData: FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                    getDrawingHorizontalLine: (value) => FlLine(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        strokeWidth: 1),
+              child: Builder(builder: (context) {
+                final bars = [
+                  LineChartBarData(
+                    spots: spots,
+                    color: const Color(0xFFB000FF),
+                    barWidth: 3,
+                    dotData: const FlDotData(show: true),
+                    isCurved: false,
+                    belowBarData: BarAreaData(show: false),
                   ),
-                  borderData: FlBorderData(
-                    show: true,
-                    border: Border(
-                      bottom: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.2)),
-                      left: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.2)),
+                ];
+
+                return LineChart(
+                  LineChartData(
+                    minX: bounds.minX,
+                    maxX: bounds.maxX,
+                    lineBarsData: bars,
+                    extraLinesData: ExtraLinesData(horizontalLines: [
+                      HorizontalLine(
+                        y: 85,
+                        color: const Color(0xFFFF1744),
+                        strokeWidth: 1,
+                        dashArray: [5, 4],
+                      ),
+                      HorizontalLine(
+                        y: 50,
+                        color: const Color(0xFFFFD400),
+                        strokeWidth: 1,
+                        dashArray: [5, 4],
+                      ),
+                    ]),
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      getDrawingHorizontalLine: (value) => FlLine(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          strokeWidth: 1),
                     ),
-                  ),
-                  titlesData: const FlTitlesData(
-                    topTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  ).copyWith(
-                    leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 32,
-                        interval: yInterval,
-                        getTitlesWidget: _leftAxisTitleBuilder,
+                    borderData: FlBorderData(
+                      show: true,
+                      border: Border(
+                        bottom: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.2)),
+                        left: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.2)),
                       ),
                     ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: xInterval,
-                        reservedSize: 28,
-                        getTitlesWidget: (value, meta) =>
-                            _bottomTimeTitleBuilder(
-                                value, meta, bounds, startTime, endTime),
+                    titlesData: const FlTitlesData(
+                      topTitles:
+                          AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      rightTitles:
+                          AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    ).copyWith(
+                      leftTitles: const AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 32,
+                          interval: yInterval,
+                          getTitlesWidget: _leftAxisTitleBuilder,
+                        ),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          interval: xInterval,
+                          reservedSize: 28,
+                          getTitlesWidget: (value, meta) =>
+                              _bottomTimeTitleBuilder(
+                                  value, meta, bounds, startTime, endTime),
+                        ),
                       ),
                     ),
-                  ),
-                  minY: 0,
-                  maxY: 100,
-                  lineTouchData: LineTouchData(
-                    enabled: true,
-                    touchTooltipData: LineTouchTooltipData(
-                      tooltipBgColor: const Color(0xFF1E2D3B).withValues(alpha: 0.9),
-                      tooltipRoundedRadius: 8,
-                      fitInsideHorizontally: true,
-                      fitInsideVertically: true,
-                      getTooltipItems: (touchedSpots) {
-                        return touchedSpots.map((spot) {
-                          return LineTooltipItem(
-                            'Avg CPU\n',
-                            const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 10,
-                            ),
-                            children: [
-                              TextSpan(
-                                text: '${spot.y.toStringAsFixed(2)} %',
-                                style: const TextStyle(
-                                  color: Color(0xFFB000FF),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
+                    minY: 0,
+                    maxY: 100,
+                    lineTouchData: LineTouchData(
+                      enabled: true,
+                      handleBuiltInTouches: true,
+                      touchCallback: (event, response) {
+                        if (!event.isInterestedForInteractions ||
+                            response == null ||
+                            response.lineBarSpots == null ||
+                            response.lineBarSpots!.isEmpty) {
+                          widget.onHoverSync(null);
+                          setState(() => _touchedBarIndex = null);
+                          return;
+                        }
+                        
+                        final x = response.lineBarSpots!.first.x;
+                        widget.onHoverSync(x);
+                        
+                        setState(() {
+                          _touchedBarIndex =
+                              response.lineBarSpots!.first.barIndex;
+                        });
+                      },
+                      getTouchedSpotIndicator: (barData, spots) {
+                        return spots.map((index) {
+                          final barIndex = bars.indexOf(barData);
+                          final isActiveChart = _touchedBarIndex != null;
+
+                          if (isActiveChart) {
+                            if (barIndex != _touchedBarIndex) return null;
+                            return TouchedSpotIndicatorData(
+                              const FlLine(color: Colors.white, strokeWidth: 2),
+                              FlDotData(
+                                show: true,
+                                getDotPainter: (spot, percent, barData, index) =>
+                                    FlDotCirclePainter(
+                                  radius: 6,
+                                  color: barData.color ?? Colors.white,
+                                  strokeWidth: 2,
+                                  strokeColor: Colors.white,
                                 ),
                               ),
-                            ],
-                          );
-                        }).toList(growable: false);
+                            );
+                          } else {
+                            if (barIndex != 0) return null;
+                            return const TouchedSpotIndicatorData(
+                              FlLine(color: Colors.white, strokeWidth: 2),
+                              FlDotData(show: false),
+                            );
+                          }
+                        }).toList();
                       },
+                      touchTooltipData: LineTouchTooltipData(
+                        tooltipBgColor:
+                            const Color(0xFF1E2D3B).withValues(alpha: 0.9),
+                        tooltipRoundedRadius: 8,
+                        fitInsideHorizontally: true,
+                        fitInsideVertically: true,
+                        getTooltipItems: (touchedSpots) {
+                          return touchedSpots.map((spot) {
+                            if (spot.barIndex != _touchedBarIndex) return null;
+
+                            return LineTooltipItem(
+                              'Avg CPU: ',
+                              const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: '${spot.y.toStringAsFixed(2)} %',
+                                  style: const TextStyle(
+                                    color: Color(0xFFB000FF),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList(growable: false);
+                        },
+                      ),
                     ),
+                    showingTooltipIndicators: widget.sharedHoverX != null
+                        ? [
+                            ShowingTooltipIndicators([
+                              LineBarSpot(
+                                bars[_touchedBarIndex ?? 0],
+                                _touchedBarIndex ?? 0,
+                                bars[_touchedBarIndex ?? 0].spots.firstWhere(
+                                      (s) => (s.x - widget.sharedHoverX!).abs() < 0.001,
+                                      orElse: () => bars[_touchedBarIndex ?? 0].spots.first,
+                                    ),
+                              ),
+                            ])
+                          ]
+                        : [],
+
+                    clipData: const FlClipData.all(),
+
                   ),
-                  clipData: const FlClipData.all(),
-                ),
-              ),
+                );
+              }),
             ),
           ],
         ),
@@ -1443,21 +1660,35 @@ class _CpuAveragePanel extends StatelessWidget {
   }
 }
 
-class _TopCpusPanel extends StatelessWidget {
+class _TopCpusPanel extends StatefulWidget {
   final List<_CpuBarData> bars;
+  final double? sharedHoverX;
+  final Function(double?) onHoverSync;
 
-  const _TopCpusPanel({required this.bars});
+  const _TopCpusPanel({
+    required this.bars,
+    required this.sharedHoverX,
+    required this.onHoverSync,
+  });
+
+  @override
+  State<_TopCpusPanel> createState() => _TopCpusPanelState();
+}
+
+
+class _TopCpusPanelState extends State<_TopCpusPanel> {
+  int? _touchedBarIndex;
 
   @override
   Widget build(BuildContext context) {
-    final items = bars;
+    final items = widget.bars;
     final bounds = _axisBoundsFromSeries([
       for (final item in items) item.series ?? const <FlSpot>[],
     ]);
     final xInterval = _xAxisInterval(bounds, targetTicks: 4);
     const yInterval = 20.0;
     final endTime = DateTime.now();
-    final startTime = endTime.subtract(const Duration(hours: 12));
+    final startTime = endTime.subtract(const Duration(hours: 24));
 
     return _SolarPanel(
       title: 'Top Devices by CPU Load',
@@ -1529,101 +1760,177 @@ class _TopCpusPanel extends StatelessWidget {
                   const SizedBox(height: 10),
                   SizedBox(
                     height: _kChartHeight,
-                    child: LineChart(
-                      LineChartData(
-                        minX: bounds.minX,
-                        maxX: bounds.maxX,
-                        lineBarsData: [
-                          for (int i = 0; i < items.length; i++)
-                            LineChartBarData(
-                              spots: items[i].series ?? const <FlSpot>[],
-                              color: items[i].color,
-                              barWidth: 2,
-                              isCurved: false,
-                              dotData: const FlDotData(show: true),
-                            ),
-                        ],
-                        minY: 0,
-                        maxY: 100,
-                        gridData: FlGridData(
-                          show: true,
-                          drawVerticalLine: false,
-                          getDrawingHorizontalLine: (value) => const FlLine(
-                            color: Color(0xFFE7ECF1),
-                            strokeWidth: 1,
-                          ),
-                        ),
-                        borderData: FlBorderData(
-                          show: true,
-                          border: const Border(
-                            bottom: BorderSide(color: Color(0xFFD6DEE5)),
-                            left: BorderSide(color: Color(0xFFD6DEE5)),
-                          ),
-                        ),
-                        titlesData: const FlTitlesData(
-                          topTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false)),
-                          rightTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false)),
-                        ).copyWith(
-                          leftTitles: const AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              reservedSize: 32,
-                              interval: yInterval,
-                              getTitlesWidget: _leftAxisTitleBuilder,
+                    child: Builder(builder: (context) {
+                      final bars = items.asMap().entries.map((e) {
+                        final item = e.value;
+                        return LineChartBarData(
+                          spots: item.series ?? const <FlSpot>[],
+                          color: item.color,
+                          barWidth: 2,
+                          isCurved: false,
+                          dotData: const FlDotData(show: true),
+                        );
+                      }).toList();
+
+                      return LineChart(
+                        LineChartData(
+                          minX: bounds.minX,
+                          maxX: bounds.maxX,
+                          lineBarsData: bars,
+                          minY: 0,
+                          maxY: 100,
+                          gridData: FlGridData(
+                            show: true,
+                            drawVerticalLine: false,
+                            getDrawingHorizontalLine: (value) => const FlLine(
+                              color: Color(0xFFE7ECF1),
+                              strokeWidth: 1,
                             ),
                           ),
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              interval: xInterval,
-                              reservedSize: 28,
-                              getTitlesWidget: (value, meta) =>
-                                  _bottomTimeTitleBuilder(
-                                value,
-                                meta,
-                                bounds,
-                                startTime,
-                                endTime,
+                          borderData: FlBorderData(
+                            show: true,
+                            border: const Border(
+                              bottom: BorderSide(color: Color(0xFFD6DEE5)),
+                              left: BorderSide(color: Color(0xFFD6DEE5)),
+                            ),
+                          ),
+                          titlesData: const FlTitlesData(
+                            topTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: false)),
+                            rightTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: false)),
+                          ).copyWith(
+                            leftTitles: const AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize: 32,
+                                interval: yInterval,
+                                getTitlesWidget: _leftAxisTitleBuilder,
+                              ),
+                            ),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: xInterval,
+                                reservedSize: 28,
+                                getTitlesWidget: (value, meta) =>
+                                    _bottomTimeTitleBuilder(
+                                  value,
+                                  meta,
+                                  bounds,
+                                  startTime,
+                                  endTime,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        clipData: const FlClipData.all(),
-                        lineTouchData: LineTouchData(
-                          enabled: true,
-                          touchTooltipData: LineTouchTooltipData(
-                            tooltipBgColor: const Color(0xFF1E2D3B).withValues(alpha: 0.9),
-                            tooltipRoundedRadius: 8,
-                            fitInsideHorizontally: true,
-                            fitInsideVertically: true,
-                            getTooltipItems: (touchedSpots) {
-                              return touchedSpots.map((spot) {
-                                final bar = items[spot.barIndex];
-                                return LineTooltipItem(
-                                  '${bar.name}\n',
-                                  const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 10,
-                                  ),
-                                  children: [
-                                    TextSpan(
-                                      text: '${spot.y.toStringAsFixed(2)} %',
-                                      style: TextStyle(
-                                        color: bar.color,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
+                          clipData: const FlClipData.all(),
+                          lineTouchData: LineTouchData(
+                            enabled: true,
+                            handleBuiltInTouches: true,
+                            touchCallback: (event, response) {
+                              if (!event.isInterestedForInteractions ||
+                                  response == null ||
+                                  response.lineBarSpots == null ||
+                                  response.lineBarSpots!.isEmpty) {
+                                widget.onHoverSync(null);
+                                setState(() => _touchedBarIndex = null);
+                                return;
+                              }
+                              
+                              final x = response.lineBarSpots!.first.x;
+                              widget.onHoverSync(x);
+                              
+                              setState(() {
+                                _touchedBarIndex =
+                                    response.lineBarSpots!.first.barIndex;
+                              });
+                            },
+                            getTouchedSpotIndicator: (barData, spots) {
+                              return spots.map((index) {
+                                final barIndex = bars.indexOf(barData);
+                                final isActiveChart = _touchedBarIndex != null;
+
+                                if (isActiveChart) {
+                                  if (barIndex != _touchedBarIndex) return null;
+                                  return TouchedSpotIndicatorData(
+                                    const FlLine(
+                                        color: Colors.white, strokeWidth: 2),
+                                    FlDotData(
+                                      show: true,
+                                      getDotPainter:
+                                          (spot, percent, barData, index) =>
+                                              FlDotCirclePainter(
+                                        radius: 6,
+                                        color: barData.color ?? Colors.white,
+                                        strokeWidth: 2,
+                                        strokeColor: Colors.white,
                                       ),
                                     ),
-                                  ],
-                                );
-                              }).toList(growable: false);
+                                  );
+                                } else {
+                                  if (barIndex != 0) return null;
+                                  return const TouchedSpotIndicatorData(
+                                    FlLine(color: Colors.white, strokeWidth: 2),
+                                    FlDotData(show: false),
+                                  );
+                                }
+                              }).toList();
                             },
+                            touchTooltipData: LineTouchTooltipData(
+                              tooltipBgColor: const Color(0xFF1E2D3B)
+                                  .withValues(alpha: 0.95),
+                              tooltipRoundedRadius: 10,
+                              fitInsideHorizontally: true,
+                              fitInsideVertically: true,
+                              getTooltipItems: (touchedSpots) {
+                                return touchedSpots.map((spot) {
+                                  if (spot.barIndex != _touchedBarIndex) {
+                                    return null;
+                                  }
+
+                                  final bar = items[spot.barIndex];
+                                  return LineTooltipItem(
+                                    '${bar.name}: ',
+                                    const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    children: [
+                                      TextSpan(
+                                        text: '${spot.y.toStringAsFixed(2)} %',
+                                        style: TextStyle(
+                                          color: bar.color,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                }).toList();
+                              },
+                            ),
                           ),
+                          showingTooltipIndicators: widget.sharedHoverX != null
+                              ? [
+                                  ShowingTooltipIndicators([
+                                    LineBarSpot(
+                                      bars[_touchedBarIndex ?? 0],
+                                      _touchedBarIndex ?? 0,
+                                      bars[_touchedBarIndex ?? 0].spots.firstWhere(
+                                            (s) => (s.x - widget.sharedHoverX!).abs() < 0.001,
+                                            orElse: () => bars[_touchedBarIndex ?? 0].spots.first,
+                                          ),
+                                    ),
+                                  ])
+                                ]
+                              : [],
+
+
                         ),
-                      ),
-                    ),
+                      );
+                    }),
                   ),
                   const SizedBox(height: 12),
                   Wrap(
@@ -1709,18 +2016,35 @@ class _HighErrorRow {
   });
 }
 
-class _HighErrorsPanel extends StatelessWidget {
+class _HighErrorsPanel extends StatefulWidget {
   final List<_HighErrorRow> rows;
 
   const _HighErrorsPanel({required this.rows});
 
   @override
+  State<_HighErrorsPanel> createState() => _HighErrorsPanelState();
+}
+
+class _HighErrorsPanelState extends State<_HighErrorsPanel> {
+  int _currentPage = 0;
+  static const int _rowsPerPage = 5;
+
+  @override
   Widget build(BuildContext context) {
+    final totalPages = (widget.rows.length / _rowsPerPage).ceil();
+    final startIndex = _currentPage * _rowsPerPage;
+    final endIndex = (startIndex + _rowsPerPage < widget.rows.length)
+        ? startIndex + _rowsPerPage
+        : widget.rows.length;
+    final currentRows = widget.rows.isEmpty
+        ? <_HighErrorRow>[]
+        : widget.rows.sublist(startIndex, endIndex);
+
     return _SolarPanel(
       title: 'High Errors & Discards Today',
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: rows.isEmpty
+        child: widget.rows.isEmpty
             ? const Padding(
                 padding: EdgeInsets.symmetric(vertical: 16),
                 child: Text(
@@ -1732,79 +2056,170 @@ class _HighErrorsPanel extends StatelessWidget {
                   ),
                 ),
               )
-            : SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(minWidth: 560),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF9FBFC),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFD8E0E7)),
-                    ),
-                    child: Table(
-                      columnWidths: const {
-                        0: FlexColumnWidth(3),
-                        1: FlexColumnWidth(2),
-                        2: FlexColumnWidth(2),
-                        3: FlexColumnWidth(2),
-                      },
-                      border: const TableBorder.symmetric(
-                        inside: BorderSide(color: Color(0xFFE5EBF0)),
-                      ),
-                      children: [
-                        const TableRow(
-                          decoration: BoxDecoration(color: Color(0xFFEFF4F8)),
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minWidth: 560),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF9FBFC),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFD8E0E7)),
+                        ),
+                        child: Table(
+                          columnWidths: const {
+                            0: FlexColumnWidth(3),
+                            1: FlexColumnWidth(2),
+                            2: FlexColumnWidth(2),
+                            3: FlexColumnWidth(2),
+                          },
+                          border: const TableBorder.symmetric(
+                            inside: BorderSide(color: Color(0xFFE5EBF0)),
+                          ),
                           children: [
-                            _TableHeaderCell(text: 'DEVICE'),
-                            _TableHeaderCell(text: 'CATEGORY'),
-                            _TableHeaderCell(text: 'ERROR COUNT'),
-                            _TableHeaderCell(text: 'WARNING/DISCARD'),
+                            const TableRow(
+                              decoration:
+                                  BoxDecoration(color: Color(0xFFEFF4F8)),
+                              children: [
+                                _TableHeaderCell(text: 'DEVICE'),
+                                _TableHeaderCell(text: 'CATEGORY'),
+                                _TableHeaderCell(text: 'ERROR COUNT'),
+                                _TableHeaderCell(text: 'WARNING'),
+                              ],
+                            ),
+                            for (int i = 0; i < currentRows.length; i++)
+                              TableRow(
+                                decoration: BoxDecoration(
+                                  color: i.isEven
+                                      ? Colors.white
+                                      : const Color(0xFFF7FAFD),
+                                ),
+                                children: [
+                                  _TableValueCell(
+                                      text: currentRows[i].node, isBold: true),
+                                  _TableValueCell(
+                                      text: currentRows[i].interfaceName),
+                                  _TableValueCell(
+                                      text: currentRows[i]
+                                          .receiveErrors
+                                          .toString()),
+                                  _TableValueCell(
+                                    text: currentRows[i]
+                                        .receiveDiscards
+                                        .toString(),
+                                  ),
+                                ],
+                              ),
                           ],
                         ),
-                        for (int i = 0; i < rows.length; i++)
-                          TableRow(
-                            decoration: BoxDecoration(
-                              color: i.isEven
-                                  ? Colors.white
-                                  : const Color(0xFFF7FAFD),
-                            ),
-                            children: [
-                              _TableValueCell(text: rows[i].node, isBold: true),
-                              _TableValueCell(text: rows[i].interfaceName),
-                              _TableValueCell(
-                                  text: rows[i].receiveErrors.toString()),
-                              _TableValueCell(
-                                text: rows[i].receiveDiscards.toString(),
-                              ),
-                            ],
-                          ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                  if (totalPages > 1) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Showing ${startIndex + 1} to $endIndex of ${widget.rows.length}',
+                          style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black54),
+                        ),
+                        Row(
+                          children: [
+                            _PageButton(
+                              icon: Icons.chevron_left,
+                              onPressed: _currentPage > 0
+                                  ? () => setState(() => _currentPage--)
+                                  : null,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${_currentPage + 1} / $totalPages',
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(width: 8),
+                            _PageButton(
+                              icon: Icons.chevron_right,
+                              onPressed: _currentPage < totalPages - 1
+                                  ? () => setState(() => _currentPage++)
+                                  : null,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
               ),
       ),
     );
   }
 }
 
-class _DiskUsageTrendPanel extends StatelessWidget {
+class _PageButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  const _PageButton({required this.icon, this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDisabled = onPressed == null;
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          border: Border.all(
+              color: isDisabled ? Colors.grey.shade300 : Colors.blue.shade200),
+          borderRadius: BorderRadius.circular(4),
+          color: isDisabled ? Colors.grey.shade50 : Colors.blue.shade50,
+        ),
+        child: Icon(icon,
+            size: 18, color: isDisabled ? Colors.grey : Colors.blue.shade700),
+      ),
+    );
+  }
+}
+
+class _DiskUsageTrendPanel extends StatefulWidget {
   final List<FlSpot> spotsA;
   final List<FlSpot> spotsB;
+  final double? sharedHoverX;
+  final Function(double?) onHoverSync;
 
   const _DiskUsageTrendPanel({
     required this.spotsA,
     required this.spotsB,
+    required this.sharedHoverX,
+    required this.onHoverSync,
   });
 
   @override
+  State<_DiskUsageTrendPanel> createState() => _DiskUsageTrendPanelState();
+}
+
+
+class _DiskUsageTrendPanelState extends State<_DiskUsageTrendPanel> {
+  int? _touchedBarIndex;
+
+  @override
   Widget build(BuildContext context) {
+    final spotsA = widget.spotsA;
+    final spotsB = widget.spotsB;
     final bounds = _axisBoundsFromSeries([spotsA, spotsB]);
     final xInterval = _xAxisInterval(bounds, targetTicks: 4);
     const yInterval = 20.0;
     final endTime = DateTime.now();
-    final startTime = endTime.subtract(const Duration(hours: 12));
+    final startTime = endTime.subtract(const Duration(hours: 24));
 
     return _SolarPanel(
       title: 'Resource Usage by Device Type',
@@ -1826,103 +2241,175 @@ class _DiskUsageTrendPanel extends StatelessWidget {
             const SizedBox(height: 10),
             SizedBox(
               height: _kChartHeight,
-              child: LineChart(
-                LineChartData(
-                  minX: bounds.minX,
-                  maxX: bounds.maxX,
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: spotsA,
-                      color: const Color(0xFFFF6A00),
-                      barWidth: 2,
-                      dotData: const FlDotData(show: true),
-                    ),
-                    LineChartBarData(
-                      spots: spotsB,
-                      color: const Color(0xFFAEEA00),
-                      barWidth: 2,
-                      dotData: const FlDotData(show: true),
-                    ),
-                  ],
-                  minY: 0,
-                  maxY: 100,
-                  gridData: FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                    getDrawingHorizontalLine: (value) => FlLine(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        strokeWidth: 1),
+              child: Builder(builder: (context) {
+                final bars = [
+                  LineChartBarData(
+                    spots: spotsA,
+                    color: const Color(0xFFFF6A00),
+                    barWidth: 2,
+                    dotData: const FlDotData(show: true),
                   ),
-                  borderData: FlBorderData(
-                    show: true,
-                    border: Border(
-                      bottom: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.2)),
-                      left: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.2)),
-                    ),
+                  LineChartBarData(
+                    spots: spotsB,
+                    color: const Color(0xFFAEEA00),
+                    barWidth: 2,
+                    dotData: const FlDotData(show: true),
                   ),
-                  titlesData: const FlTitlesData(
-                    topTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  ).copyWith(
-                    leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 32,
-                        interval: yInterval,
-                        getTitlesWidget: _leftAxisTitleBuilder,
+                ];
+
+                return LineChart(
+                  LineChartData(
+                    minX: bounds.minX,
+                    maxX: bounds.maxX,
+                    lineBarsData: bars,
+                    minY: 0,
+                    maxY: 100,
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      getDrawingHorizontalLine: (value) => FlLine(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          strokeWidth: 1),
+                    ),
+                    borderData: FlBorderData(
+                      show: true,
+                      border: Border(
+                        bottom: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.2)),
+                        left: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.2)),
                       ),
                     ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: xInterval,
-                        reservedSize: 28,
-                        getTitlesWidget: (value, meta) =>
-                            _bottomTimeTitleBuilder(
-                                value, meta, bounds, startTime, endTime),
+                    titlesData: const FlTitlesData(
+                      topTitles:
+                          AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      rightTitles:
+                          AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    ).copyWith(
+                      leftTitles: const AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 32,
+                          interval: yInterval,
+                          getTitlesWidget: _leftAxisTitleBuilder,
+                        ),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          interval: xInterval,
+                          reservedSize: 28,
+                          getTitlesWidget: (value, meta) =>
+                              _bottomTimeTitleBuilder(
+                                  value, meta, bounds, startTime, endTime),
+                        ),
                       ),
                     ),
-                  ),
-                  clipData: const FlClipData.all(),
-                  lineTouchData: LineTouchData(
-                    enabled: true,
-                    touchTooltipData: LineTouchTooltipData(
-                      tooltipBgColor: const Color(0xFF1E2D3B).withValues(alpha: 0.9),
-                      tooltipRoundedRadius: 8,
-                      fitInsideHorizontally: true,
-                      fitInsideVertically: true,
-                      getTooltipItems: (touchedSpots) {
-                        return touchedSpots.map((spot) {
-                          final isA = spot.barIndex == 0;
-                          final label = isA ? 'Disk A' : 'Disk B';
-                          final color = isA ? const Color(0xFFFF6A00) : const Color(0xFFAEEA00);
-                          return LineTooltipItem(
-                            '$label\n',
-                            const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 10,
-                            ),
-                            children: [
-                              TextSpan(
-                                text: '${spot.y.toStringAsFixed(2)} %',
-                                style: TextStyle(
-                                  color: color,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
+                    clipData: const FlClipData.all(),
+                    lineTouchData: LineTouchData(
+                      enabled: true,
+                      handleBuiltInTouches: true,
+                      touchCallback: (event, response) {
+                        if (!event.isInterestedForInteractions ||
+                            response == null ||
+                            response.lineBarSpots == null ||
+                            response.lineBarSpots!.isEmpty) {
+                          widget.onHoverSync(null);
+                          setState(() => _touchedBarIndex = null);
+                          return;
+                        }
+                        
+                        final x = response.lineBarSpots!.first.x;
+                        widget.onHoverSync(x);
+                        
+                        setState(() {
+                          _touchedBarIndex =
+                              response.lineBarSpots!.first.barIndex;
+                        });
+                      },
+                      getTouchedSpotIndicator: (barData, spots) {
+                        return spots.map((index) {
+                          final barIndex = bars.indexOf(barData);
+                          final isActiveChart = _touchedBarIndex != null;
+
+                          if (isActiveChart) {
+                            if (barIndex != _touchedBarIndex) return null;
+                            return TouchedSpotIndicatorData(
+                              const FlLine(color: Colors.white, strokeWidth: 2),
+                              FlDotData(
+                                show: true,
+                                getDotPainter: (spot, percent, barData, index) =>
+                                    FlDotCirclePainter(
+                                  radius: 6,
+                                  color: barData.color ?? Colors.white,
+                                  strokeWidth: 2,
+                                  strokeColor: Colors.white,
                                 ),
                               ),
-                            ],
-                          );
-                        }).toList(growable: false);
+                            );
+                          } else {
+                            if (barIndex != 0) return null;
+                            return const TouchedSpotIndicatorData(
+                              FlLine(color: Colors.white, strokeWidth: 2),
+                              FlDotData(show: false),
+                            );
+                          }
+                        }).toList();
                       },
+                      touchTooltipData: LineTouchTooltipData(
+                        tooltipBgColor:
+                            const Color(0xFF1E2D3B).withValues(alpha: 0.9),
+                        tooltipRoundedRadius: 8,
+                        fitInsideHorizontally: true,
+                        fitInsideVertically: true,
+                        getTooltipItems: (touchedSpots) {
+                          return touchedSpots.map((spot) {
+                            if (spot.barIndex != _touchedBarIndex) return null;
+
+                            final label = spot.barIndex == 0 ? 'Disk A' : 'Disk B';
+                            return LineTooltipItem(
+                              '$label: ',
+                              const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: '${spot.y.toStringAsFixed(2)} %',
+                                  style: TextStyle(
+                                    color: spot.barIndex == 0
+                                        ? const Color(0xFFFF6A00)
+                                        : const Color(0xFFAEEA00),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList(growable: false);
+                        },
+                      ),
                     ),
+                    showingTooltipIndicators: widget.sharedHoverX != null
+                        ? [
+                            ShowingTooltipIndicators([
+                              LineBarSpot(
+                                bars[_touchedBarIndex ?? 0],
+                                _touchedBarIndex ?? 0,
+                                bars[_touchedBarIndex ?? 0].spots.firstWhere(
+                                      (s) => (s.x - widget.sharedHoverX!).abs() < 0.001,
+                                      orElse: () => bars[_touchedBarIndex ?? 0].spots.first,
+                                    ),
+                              ),
+                            ])
+                          ]
+                        : [],
+
+
                   ),
-                ),
-              ),
+                );
+              }),
             ),
           ],
         ),

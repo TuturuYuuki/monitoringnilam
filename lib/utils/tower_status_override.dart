@@ -2,9 +2,8 @@ import 'package:monitoring/models/camera_model.dart';
 import 'package:monitoring/models/tower_model.dart';
 
 // Helper untuk cek status DOWN/WARNING
-// Tidak ada lagi hardcoded tower numbers - semua data langsung dari database
 bool isDownStatus(String status) {
-  final normalized = status.toUpperCase();
+  final normalized = status.toUpperCase().trim();
   return normalized == 'DOWN' || 
          normalized == 'WARNING' || 
          normalized == 'OFFLINE' || 
@@ -13,7 +12,7 @@ bool isDownStatus(String status) {
 }
 
 String _normalizeStatus(String status) {
-  final normalized = status.toUpperCase();
+  final normalized = status.toUpperCase().trim();
   if (normalized == 'UP') {
     return 'UP';
   }
@@ -23,37 +22,12 @@ String _normalizeStatus(String status) {
   return 'UNKNOWN';
 }
 
+/// Menghapus logika paksaan status antar IP.
+/// Sekarang setiap tower akan menggunakan statusnya sendiri dari database.
 List<Tower> applyForcedTowerStatus(List<Tower> towers) {
-  final ipStatus = <String, String>{};
-
-  for (final tower in towers) {
-    final ip = tower.ipAddress.trim();
-    if (ip.isEmpty) {
-      continue;
-    }
-
-    final status = _normalizeStatus(tower.status);
-    final current = ipStatus[ip];
-
-    if (current == null) {
-      ipStatus[ip] = status;
-      continue;
-    }
-
-    if (status == 'UP') {
-      ipStatus[ip] = 'UP';
-    } else if (current != 'UP' && status == 'DOWN') {
-      ipStatus[ip] = 'DOWN';
-    }
-  }
-
   return towers.map((tower) {
-    final ip = tower.ipAddress.trim();
-    final forced = ipStatus[ip];
-    if (forced == null || forced == 'UNKNOWN') {
-      return tower;
-    }
-    if (tower.status.toUpperCase() == forced) {
+    final status = _normalizeStatus(tower.status);
+    if (status == 'UNKNOWN' || tower.status.toUpperCase().trim() == status) {
       return tower;
     }
     return Tower(
@@ -62,48 +36,22 @@ List<Tower> applyForcedTowerStatus(List<Tower> towers) {
       towerNumber: tower.towerNumber,
       location: tower.location,
       ipAddress: tower.ipAddress,
-      status: forced,
+      status: status,
       containerYard: tower.containerYard,
       createdAt: tower.createdAt,
       updatedAt: tower.updatedAt,
+      latitude: tower.latitude,
+      longitude: tower.longitude,
     );
   }).toList(growable: false);
 }
 
-// Samakan status camera berdasarkan IP server.
-// Jika satu IP DOWN, semua camera dengan IP yang sama menjadi DOWN.
-// Jika tidak ada yang DOWN tapi ada yang UP, semua menjadi UP.
+/// Menghapus logika paksaan status antar IP.
+/// Sekarang setiap camera akan menggunakan statusnya sendiri dari database.
 List<Camera> applyForcedCameraStatus(List<Camera> cameras) {
-  final ipStatus = <String, String>{};
-
-  for (final camera in cameras) {
-    final ip = camera.ipAddress.trim();
-    if (ip.isEmpty) {
-      continue;
-    }
-
-    final status = _normalizeStatus(camera.status);
-    final current = ipStatus[ip];
-
-    if (current == null) {
-      ipStatus[ip] = status;
-      continue;
-    }
-
-    if (status == 'UP') {
-      ipStatus[ip] = 'UP';
-    } else if (current != 'UP' && status == 'DOWN') {
-      ipStatus[ip] = 'DOWN';
-    }
-  }
-
   return cameras.map((camera) {
-    final ip = camera.ipAddress.trim();
-    final forced = ipStatus[ip];
-    if (forced == null || forced == 'UNKNOWN') {
-      return camera;
-    }
-    if (camera.status.toUpperCase() == forced) {
+    final status = _normalizeStatus(camera.status);
+    if (status == 'UNKNOWN' || camera.status.toUpperCase().trim() == status) {
       return camera;
     }
     return Camera(
@@ -111,12 +59,14 @@ List<Camera> applyForcedCameraStatus(List<Camera> cameras) {
       cameraId: camera.cameraId,
       location: camera.location,
       ipAddress: camera.ipAddress,
-      status: forced,
+      status: status,
       type: camera.type,
       containerYard: camera.containerYard,
       areaType: camera.areaType,
       createdAt: camera.createdAt,
       updatedAt: camera.updatedAt,
+      latitude: camera.latitude,
+      longitude: camera.longitude,
     );
   }).toList(growable: false);
 }

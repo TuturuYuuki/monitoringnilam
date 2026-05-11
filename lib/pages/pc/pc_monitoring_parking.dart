@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:monitoring/models/switch_model.dart';
+import 'package:monitoring/models/pc_model.dart';
 import 'package:monitoring/services/api_service.dart';
 import 'package:monitoring/utils/location_label_utils.dart';
 import 'package:monitoring/theme/app_dropdown_style.dart';
@@ -9,27 +9,22 @@ import 'package:monitoring/main.dart';
 import 'package:monitoring/widgets/global_header_bar.dart';
 import 'package:monitoring/widgets/global_sidebar_nav.dart';
 import 'package:monitoring/widgets/global_footer.dart';
+import 'package:monitoring/utils/device_icon_resolver.dart';
 
-class SwitchPageGATE extends StatefulWidget {
-  const SwitchPageGATE({super.key});
+class PCMonitoringParkingPage extends StatefulWidget {
+  const PCMonitoringParkingPage({super.key});
 
   @override
-  State<SwitchPageGATE> createState() => _SwitchPageGATEState();
+  State<PCMonitoringParkingPage> createState() => _PCMonitoringParkingPageState();
 }
 
-class _SwitchPageGATEState extends State<SwitchPageGATE> {
-  String selectedArea = 'GATE';
-  static const List<String> _areaOptions = [
-    'CY 1',
-    'CY 2',
-    'CY 3',
-    'GATE',
-    'PARKING'
-  ];
+class _PCMonitoringParkingPageState extends State<PCMonitoringParkingPage> {
+  String selectedArea = 'PARKING';
+  static const List<String> _areaOptions = ['CY 1', 'CY 2', 'CY 3', 'GATE', 'PARKING'];
   int currentPage = 0;
   final int itemsPerPage = 5;
   late ApiService apiService;
-  List<SwitchModel> switchList = [];
+  List<PCModel> pcList = [];
   bool isLoading = true;
   Timer? _refreshTimer;
   DateTime? _lastRefreshTime;
@@ -51,7 +46,7 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
 
   void _startAutoRefresh() {
     _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (mounted) {
         _loadMasterLocations();
         _refreshData();
@@ -64,7 +59,7 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
       setState(() => isLoading = true);
     }
     await Future.wait([
-      _loadSwitches(),
+      _loadPCs(),
       _loadGlobalSummary(),
     ]);
     if (initial && mounted) {
@@ -79,28 +74,20 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
   }
 
   String _selectedAreaId() {
-    final normalized = selectedArea.toUpperCase().replaceAll(' ', '');
-    if (normalized == 'GATE') return 'GATE';
-    if (normalized == 'CY2') return 'CY2';
-    if (normalized == 'CY3') return 'CY3';
-    if (normalized == 'GATE') return 'GATE';
-    if (normalized == 'PARKING') return 'PARKING';
-    return 'GATE';
+    return 'PARKING';
   }
 
-  Future<void> _loadSwitches() async {
+  Future<void> _loadPCs() async {
     try {
-      final fetched =
-          await apiService.getValidatedSwitchesByYard(_selectedAreaId());
+      final fetched = await apiService.getPCsByYard(_selectedAreaId());
       if (mounted) {
         setState(() {
-          switchList = fetched;
+          pcList = fetched;
           _lastRefreshTime = DateTime.now();
         });
       }
-      _triggerRealtimePing();
     } catch (e) {
-      // error handling
+      debugPrint('Error loading PCs: $e');
     }
   }
 
@@ -115,26 +102,17 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
     } catch (_) {}
   }
 
-  Future<void> _triggerRealtimePing() async {
-    try {
-      await apiService.triggerRealtimePing();
-    } catch (e) {
-      // ignore
-    }
-  }
-
   Future<void> _handleCheckStatus() async {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-          content: Text('Checking status...'), duration: Duration(seconds: 2)),
+      const SnackBar(content: Text('Checking status...'), duration: Duration(seconds: 2)),
     );
     await apiService.triggerRealtimePing();
     if (mounted) {
-      await _loadSwitches();
-      if (!context.mounted) return;
+      await _loadPCs();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('âœ“ Status successfully updated!'),
+          content: Text('✓ Status successfully updated!'),
           backgroundColor: Colors.green,
           duration: Duration(seconds: 2),
         ),
@@ -149,9 +127,9 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
       if (mounted && initialLoad) {
         setState(() => _isLoadingGlobalSummary = true);
       }
-      final allNVRs = await apiService.getAllSwitches();
-      final upCount = allNVRs.where((n) => n.status == 'UP').length;
-      final total = allNVRs.length;
+      final allPCs = await apiService.getAllPCs();
+      final upCount = allPCs.where((n) => n.status.trim().toUpperCase() == 'UP').length;
+      final total = allPCs.length;
       final downCount = (total - upCount).clamp(0, 999999);
 
       if (mounted) {
@@ -169,19 +147,18 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
     }
   }
 
-  int get totalSwitches => switchList.length;
-  int get onlineSwitches => switchList.where((n) => n.status == 'UP').length;
-  int get downSwitches => switchList.where((n) => n.status == 'DOWN').length;
+  int get totalPCs => pcList.length;
+  int get onlinePCs => pcList.where((n) => n.status.trim().toUpperCase() == 'UP').length;
+  int get downPCs => pcList.where((n) => n.status.trim().toUpperCase() != 'UP').length;
 
-  List<SwitchModel> get paginatedData {
+  List<PCModel> get paginatedData {
     int start = currentPage * itemsPerPage;
-    int end = (start + itemsPerPage > switchList.length)
-        ? switchList.length
-        : start + itemsPerPage;
-    return switchList.sublist(start, end);
+    int end = (start + itemsPerPage > pcList.length) ? pcList.length : start + itemsPerPage;
+    if (start >= pcList.length) return [];
+    return pcList.sublist(start, end);
   }
 
-  int get totalPages => (switchList.length / itemsPerPage).ceil();
+  int get totalPages => (pcList.length / itemsPerPage).ceil();
 
   Widget _buildPagination() {
     final int displayPages = totalPages > 0 ? totalPages : 1;
@@ -233,17 +210,13 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding:
-              EdgeInsets.symmetric(horizontal: isSquare ? 12 : 16, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: isSquare ? 12 : 16, vertical: 8),
           decoration: BoxDecoration(
             color: onTap == null ? color.withValues(alpha: 0.3) : color,
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
               if (onTap != null)
-                BoxShadow(
-                    color: color.withValues(alpha: 0.5),
-                    blurRadius: 8,
-                    spreadRadius: 2),
+                BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 8, spreadRadius: 2),
             ],
           ),
           child: Text(
@@ -265,14 +238,13 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
       backgroundColor: AppDropdownStyle.standardPageBackground,
       body: Column(
         children: [
-          const GlobalHeaderBar(currentRoute: '/switch-monitoring-gate'),
+          const GlobalHeaderBar(currentRoute: '/pc-monitoring-parking'),
           Expanded(
             child: GlobalSidebarNav(
-              currentRoute: '/switch-monitoring-gate',
+              currentRoute: '/pc-monitoring-parking',
               child: SingleChildScrollView(
                 child: LayoutBuilder(
-                  builder: (context, constraints) =>
-                      _buildContent(context, constraints),
+                  builder: (context, constraints) => _buildContent(context, constraints),
                 ),
               ),
             ),
@@ -302,37 +274,23 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                      flex: 1,
-                      child: _buildStatCard(
-                          'Total Switch', '$totalSwitches', Colors.blue)),
+                  Expanded(flex: 1, child: _buildStatCard('Total PC', '$totalPCs', Colors.blue)),
                   const SizedBox(width: 16),
-                  Expanded(
-                      flex: 1,
-                      child: _buildStatCard(
-                          'UP', '$onlineSwitches', Colors.green)),
+                  Expanded(flex: 1, child: _buildStatCard('UP', '$onlinePCs', Colors.green)),
                   const SizedBox(width: 16),
-                  Expanded(
-                      flex: 1,
-                      child:
-                          _buildStatCard('DOWN', '$downSwitches', Colors.red)),
+                  Expanded(flex: 1, child: _buildStatCard('DOWN', '$downPCs', Colors.red)),
                 ],
               )
             else
               Column(
                 children: [
-                  _buildStatCard(
-                      'Total Switch', '$totalSwitches', Colors.blue),
+                  _buildStatCard('Total PC', '$totalPCs', Colors.blue),
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      Expanded(
-                          child: _buildStatCard(
-                              'UP', '$onlineSwitches', Colors.green)),
+                      Expanded(child: _buildStatCard('UP', '$onlinePCs', Colors.green)),
                       const SizedBox(width: 12),
-                      Expanded(
-                          child: _buildStatCard(
-                              'DOWN', '$downSwitches', Colors.red)),
+                      Expanded(child: _buildStatCard('DOWN', '$downPCs', Colors.red)),
                     ],
                   ),
                 ],
@@ -341,7 +299,7 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
             if (!isMobile)
               Row(
                 children: [
-                  Expanded(child: _buildAreaButton(0)),
+                  Expanded(child: _buildAreaButton()),
                   const SizedBox(width: 16),
                   Expanded(
                     child: _buildActionCard(
@@ -359,13 +317,13 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildCheckStatusButton(0)),
+                  Expanded(child: _buildCheckStatusButton()),
                 ],
               )
             else
               Column(
                 children: [
-                  _buildAreaButton(0),
+                  _buildAreaButton(),
                   const SizedBox(height: 12),
                   _buildActionCard(
                     title: 'AREA',
@@ -381,15 +339,127 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  _buildCheckStatusButton(0),
+                  _buildCheckStatusButton(),
                 ],
               ),
             const SizedBox(height: 24),
-            _buildSwitchList(constraints),
+            _buildPCList(constraints),
             _buildPagination(),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildDesktopHeader() {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1976D2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(DeviceIconResolver.iconForType('PC'), size: 32, color: Colors.white),
+        ),
+        const SizedBox(width: 16),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'PC Monitoring',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Text(
+                  'Monitoring View of PC',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                ),
+                if (_lastRefreshTime != null) ...[
+                  const SizedBox(width: 12),
+                  const Text('•', style: TextStyle(color: Colors.greenAccent)),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
+                    style: const TextStyle(
+                      color: Colors.greenAccent,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+        const Spacer(),
+        _buildHeaderOverviewMini(isMobile: false),
+      ],
+    );
+  }
+
+  Widget _buildMobileHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1976D2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(DeviceIconResolver.iconForType('PC'), size: 20, color: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'PC Monitoring',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            const Text(
+              'Monitoring View of PC',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
+              ),
+            ),
+            if (_lastRefreshTime != null) ...[
+              const SizedBox(width: 8),
+              const Text('•', style: TextStyle(color: Colors.greenAccent, fontSize: 10)),
+              const SizedBox(width: 4),
+              Text(
+                'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
+                style: const TextStyle(
+                  color: Colors.greenAccent,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
     );
   }
 
@@ -404,19 +474,15 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
         ),
         child: Text(
           'Loading overview...',
-          style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.2), fontSize: 10),
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.2), fontSize: 10),
         ),
       );
     }
 
     final cards = [
-      _buildGlobalStatCard('ALL', '$globalTotalDevices', Colors.orange,
-          width: isMobile ? null : 86),
-      _buildGlobalStatCard('UP', '$globalUpDevices', Colors.green,
-          width: isMobile ? null : 86),
-      _buildGlobalStatCard('DOWN', '$globalDownDevices', Colors.red,
-          width: isMobile ? null : 86),
+      _buildGlobalStatCard('ALL', '$globalTotalDevices', Colors.orange, width: isMobile ? null : 86),
+      _buildGlobalStatCard('UP', '$globalUpDevices', Colors.green, width: isMobile ? null : 86),
+      _buildGlobalStatCard('DOWN', '$globalDownDevices', Colors.red, width: isMobile ? null : 86),
     ];
 
     return Container(
@@ -439,27 +505,14 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
           ),
           const SizedBox(height: 6),
           isMobile
-              ? Row(children: [
-                  Expanded(child: cards[0]),
-                  const SizedBox(width: 8),
-                  Expanded(child: cards[1]),
-                  const SizedBox(width: 8),
-                  Expanded(child: cards[2])
-                ])
-              : Row(mainAxisSize: MainAxisSize.min, children: [
-                  cards[0],
-                  const SizedBox(width: 8),
-                  cards[1],
-                  const SizedBox(width: 8),
-                  cards[2]
-                ]),
+              ? Row(children: [Expanded(child: cards[0]), const SizedBox(width: 8), Expanded(child: cards[1]), const SizedBox(width: 8), Expanded(child: cards[2])])
+              : Row(mainAxisSize: MainAxisSize.min, children: [cards[0], const SizedBox(width: 8), cards[1], const SizedBox(width: 8), cards[2]]),
         ],
       ),
     );
   }
 
-  Widget _buildGlobalStatCard(String title, String value, Color indicatorColor,
-      {double? width}) {
+  Widget _buildGlobalStatCard(String title, String value, Color indicatorColor, {double? width}) {
     return Container(
       width: width,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -474,24 +527,12 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title,
-                  style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600)),
-              Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                      color: indicatorColor, shape: BoxShape.circle)),
+              Text(title, style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 10, fontWeight: FontWeight.w600)),
+              Container(width: 6, height: 6, decoration: BoxDecoration(color: indicatorColor, shape: BoxShape.circle)),
             ],
           ),
           const SizedBox(height: 4),
-          Text(value,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 18)),
+          Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
         ],
       ),
     );
@@ -505,13 +546,9 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [
-              Colors.white.withValues(alpha: 0.16),
-              Colors.white.withValues(alpha: 0.05)
-            ]),
+            gradient: LinearGradient(colors: [Colors.white.withValues(alpha: 0.16), Colors.white.withValues(alpha: 0.05)]),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-                color: Colors.white.withValues(alpha: 0.18), width: 1.5),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.18), width: 1.5),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -519,45 +556,14 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                      child: Text(title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700))),
-                  Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                          color: indicatorColor,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                                color: indicatorColor.withValues(alpha: 0.45),
-                                blurRadius: 8,
-                                spreadRadius: 1)
-                          ])),
+                  Expanded(child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 14, fontWeight: FontWeight.w700))),
+                  Container(width: 12, height: 12, decoration: BoxDecoration(color: indicatorColor, shape: BoxShape.circle, boxShadow: [BoxShadow(color: indicatorColor.withValues(alpha: 0.45), blurRadius: 8, spreadRadius: 1)])),
                 ],
               ),
               const SizedBox(height: 12),
-              Text(value,
-                  style: const TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      letterSpacing: -0.5)),
+              Text(value, style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5)),
               const SizedBox(height: 6),
-              Container(
-                  height: 2.5,
-                  width: 42,
-                  decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [
-                        indicatorColor,
-                        indicatorColor.withValues(alpha: 0)
-                      ]),
-                      borderRadius: BorderRadius.circular(2))),
+              Container(height: 2.5, width: 42, decoration: BoxDecoration(gradient: LinearGradient(colors: [indicatorColor, indicatorColor.withValues(alpha: 0)]), borderRadius: BorderRadius.circular(2))),
             ],
           ),
         ),
@@ -565,7 +571,7 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
     );
   }
 
-  Widget _buildAreaButton(double width) {
+  Widget _buildAreaButton() {
     return _buildActionCard(
       title: 'AREA',
       icon: Icons.map_rounded,
@@ -577,23 +583,16 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
           isExpanded: true,
           isDense: true,
           dropdownColor: const Color(0xFF1B2631),
-          style: const TextStyle(
-              color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-          items: const [
-            DropdownMenuItem(value: 'CY 1', child: Text('CY 1')),
-            DropdownMenuItem(value: 'CY 2', child: Text('CY 2')),
-            DropdownMenuItem(value: 'CY 3', child: Text('CY 3')),
-            DropdownMenuItem(value: 'GATE', child: Text('GATE')),
-            DropdownMenuItem(value: 'PARKING', child: Text('PARKING')),
-          ],
+          style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+          items: _areaOptions.map((area) => DropdownMenuItem(value: area, child: Text(area))).toList(),
           onChanged: (String? v) {
-            if (v == null) return;
+            if (v == null || v == selectedArea) return;
             final routeMap = {
-              'CY 1': '/switch-monitoring-cy1',
-              'CY 2': '/switch-monitoring-cy2',
-              'CY 3': '/switch-monitoring-cy3',
-              'GATE': '/switch-monitoring-gate',
-              'PARKING': '/switch-monitoring-parking',
+              'CY 1': '/pc-monitoring-cy1',
+              'CY 2': '/pc-monitoring-cy2',
+              'CY 3': '/pc-monitoring-cy3',
+              'GATE': '/pc-monitoring-gate',
+              'PARKING': '/pc-monitoring-parking',
             };
             Navigator.pushReplacementNamed(context, routeMap[v]!);
           },
@@ -602,7 +601,7 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
     );
   }
 
-  Widget _buildCheckStatusButton(double width) {
+  Widget _buildCheckStatusButton() {
     return _buildActionCard(
       title: 'ACTION',
       icon: Icons.refresh_rounded,
@@ -624,8 +623,7 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
     bool showArrow = true,
   }) {
     return MouseRegion(
-      cursor:
-          onTap != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      cursor: onTap != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
       child: GestureDetector(
         onTap: onTap,
         child: ClipRRect(
@@ -635,13 +633,9 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [
-                  Colors.white.withValues(alpha: 0.16),
-                  Colors.white.withValues(alpha: 0.05)
-                ]),
+                gradient: LinearGradient(colors: [Colors.white.withValues(alpha: 0.16), Colors.white.withValues(alpha: 0.05)]),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.18), width: 1.5),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.18), width: 1.5),
               ),
               child: Row(
                 children: [
@@ -681,7 +675,9 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
     );
   }
 
-  Widget _buildSwitchList(BoxConstraints constraints) {
+  Widget _buildPCList(BoxConstraints constraints) {
+    final isMobile = isMobileScreen(context);
+    
     if (isLoading) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(20),
@@ -719,7 +715,7 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
                   ),
                   SizedBox(height: 20),
                   Text(
-                    'Loading Switch data...',
+                    'Loading PC data...',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -735,7 +731,7 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
       );
     }
 
-    if (switchList.isEmpty) {
+    if (pcList.isEmpty) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
@@ -763,13 +759,13 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    Icons.device_hub,
+                    Icons.desktop_windows,
                     size: 64,
                     color: Colors.white38,
                   ),
                   SizedBox(height: 20),
                   Text(
-                    'No Switch data available',
+                    'No PC data available',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -798,7 +794,7 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
             ),
           ),
           child: const Text(
-            'Switch List',
+            'PC List',
             style: TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -829,7 +825,7 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
               ),
               child: Column(
                 children: [
-                  if (!isMobileScreen(context))
+                  if (!isMobile)
                     Container(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: const BoxDecoration(
@@ -839,7 +835,7 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
                       ),
                       child: Row(
                         children: [
-                          _buildHeaderCell('SWITCH ID', flex: 2),
+                          _buildHeaderCell('PC ID', flex: 2),
                           _buildHeaderCell('Location', flex: 3),
                           _buildHeaderCell('IP Address', flex: 2),
                           _buildHeaderCell('Status', flex: 1),
@@ -847,7 +843,7 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
                         ],
                       ),
                     ),
-                  ...paginatedData.map((nvr) => _buildSwitchTableRow(nvr)),
+                  ...paginatedData.map((pc) => _buildPCTableRow(pc)),
                 ],
               ),
             ),
@@ -857,8 +853,7 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
     );
   }
 
-  Widget _buildHeaderCell(String label,
-      {required int flex, bool isLast = false}) {
+  Widget _buildHeaderCell(String label, {required int flex, bool isLast = false}) {
     return Expanded(
       flex: flex,
       child: Container(
@@ -874,30 +869,72 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
     );
   }
 
-  Widget _buildSwitchTableRow(SwitchModel sw) {
-    final bool isDown = sw.status != 'UP';
+  Widget _buildPCTableRow(PCModel pc) {
+    final bool isUp = pc.status.trim().toUpperCase() == 'UP';
+    final isMobile = isMobileScreen(context);
+    
+    if (isMobile) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: Colors.white10, width: 1)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: (isUp ? Colors.green : Colors.red).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.desktop_windows, color: isUp ? Colors.green : Colors.red, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(pc.pcId, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                  Text(pc.location, style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 11)),
+                ],
+              ),
+            ),
+            _buildStatusBadge(isUp),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.edit, color: Colors.blueAccent, size: 18),
+              onPressed: () => _showEditPCForm(pc),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red, size: 18),
+              onPressed: () => _confirmDeletePC(pc),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
-        border: const Border(
-            bottom: BorderSide(color: Colors.white10, width: 1)),
+        border: const Border(bottom: BorderSide(color: Colors.white10, width: 1)),
       ),
       child: Row(
         children: [
-          _buildTableCell(sw.switchId, flex: 2, fontWeight: FontWeight.w800),
+          _buildTableCell(pc.pcId, flex: 2, fontWeight: FontWeight.w800),
           _buildTableCell(
             resolveFullLocationLabel(
               _masterOptions,
-              sw.location,
-              currentContainerYard: sw.containerYard,
+              pc.location,
+              currentContainerYard: pc.containerYard,
             ),
             flex: 3,
           ),
-          _buildTableCell(sw.ipAddress, flex: 2),
-          _buildTableCell(isDown ? 'DOWN' : sw.status,
+          _buildTableCell(pc.ipAddress, flex: 2),
+          _buildTableCell(isUp ? 'UP' : 'DOWN',
               flex: 1,
-              color: isDown ? Colors.redAccent : Colors.greenAccent,
+              color: isUp ? Colors.greenAccent : Colors.redAccent,
               fontWeight: FontWeight.w800),
           Expanded(
             flex: 2,
@@ -905,15 +942,15 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
-                  onPressed: () => _editSwitch(sw),
+                  icon: const Icon(Icons.edit, color: Colors.blueAccent, size: 20),
+                  onPressed: () => _showEditPCForm(pc),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                  onPressed: () => _confirmDeleteSwitch(sw),
+                  onPressed: () => _confirmDeletePC(pc),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
@@ -937,8 +974,7 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
         decoration: BoxDecoration(
             border: isLast
                 ? null
-                : const Border(
-                    right: BorderSide(color: Colors.white10, width: 1))),
+                : const Border(right: BorderSide(color: Colors.white10, width: 1))),
         child: Text(text,
             style: TextStyle(
                 color: color ?? Colors.white.withValues(alpha: 0.9),
@@ -949,128 +985,46 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
     );
   }
 
-  Widget _buildMobileHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                  color: const Color(0xFF1976D2),
-                  borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.settings_ethernet,
-                  size: 32, color: Colors.white),
-            ),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Switch Monitoring',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2)),
-                  Text('Location: GATE',
-                      style: TextStyle(color: Colors.white70, fontSize: 13))
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        const Text('Monitoring View of Switch',
-            style: TextStyle(color: Colors.white70, fontSize: 13)),
-        if (_lastRefreshTime != null)
-          Row(
-            children: [
-              const Text('•', style: TextStyle(color: Colors.greenAccent)),
-              const SizedBox(width: 6),
-              Text(
-                  'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}',
-                  style: const TextStyle(color: Colors.greenAccent, fontSize: 12)),
-            ],
-          ),
-      ],
+  Widget _buildStatusBadge(bool isUp) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: (isUp ? Colors.green : Colors.red).withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: (isUp ? Colors.green : Colors.red).withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        isUp ? 'UP' : 'DOWN',
+        style: TextStyle(color: isUp ? Colors.green : Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
+      ),
     );
   }
 
-  Widget _buildDesktopHeader() {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-              color: const Color(0xFF1976D2),
-              borderRadius: BorderRadius.circular(12)),
-          child: const Icon(Icons.settings_ethernet,
-              size: 32, color: Colors.white),
-        ),
-        const SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Switch Monitoring',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2)),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                const Text('Monitoring View of Switch',
-                    style: TextStyle(color: Colors.white70, fontSize: 16)),
-                const SizedBox(width: 20),
-                if (_lastRefreshTime != null)
-                  Row(
-                    children: [
-                      const Text('•', style: TextStyle(color: Colors.greenAccent)),
-                      const SizedBox(width: 6),
-                      Text(
-                          'Updated: ${_lastRefreshTime!.hour.toString().padLeft(2, '0')}:${_lastRefreshTime!.minute.toString().padLeft(2, '0')}:${_lastRefreshTime!.second.toString().padLeft(2, '0')}',
-                          style: const TextStyle(
-                              color: Colors.greenAccent, fontSize: 12)),
-                    ],
-                  ),
-              ],
-            ),
-          ],
-        ),
-        const Spacer(),
-        _buildHeaderOverviewMini(isMobile: false),
-      ],
-    );
-  }
-
-  Future<void> _editSwitch(SwitchModel sw) async {
-    final ipController = TextEditingController(text: sw.ipAddress);
-    final nameController = TextEditingController(text: sw.switchId);
-    var locationOptions = buildMasterLocationOptions(
-      await apiService.getAllMasterLocations(),
-    );
+  Future<void> _showEditPCForm(PCModel pc) async {
+    final ipController = TextEditingController(text: pc.ipAddress);
+    final nameController = TextEditingController(text: pc.pcId);
+    
+    var locationOptions = buildMasterLocationOptions(_masterOptions);
     if (locationOptions.isEmpty) {
       locationOptions = [
         {
-          'label': normalizeLocationLabel(sw.location),
-          'container_yard': sw.containerYard,
-          'location_type': 'SWITCH',
-          'location_code': sw.switchId,
-          'location_name': sw.location,
+          'label': normalizeLocationLabel(pc.location),
+          'container_yard': pc.containerYard,
+          'location_type': 'PC',
+          'location_code': pc.pcId,
+          'location_name': pc.location,
         }
       ];
     }
+
     final matchedOption = matchMasterLocationOption(
       locationOptions,
-      sw.location,
-      currentContainerYard: sw.containerYard,
+      pc.location,
+      currentContainerYard: pc.containerYard,
     );
-    var selectedLocation =
-        matchedOption?['label'] ?? normalizeLocationLabel(sw.location);
-    var selectedYard = matchedOption?['container_yard'] ?? sw.containerYard;
+    
+    var selectedLocation = matchedOption?['label'] ?? normalizeLocationLabel(pc.location);
+    var selectedArea = matchedOption?['container_yard'] ?? pc.containerYard;
 
     if (!mounted) return;
 
@@ -1078,69 +1032,40 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setLocalState) => AlertDialog(
-          backgroundColor: const Color(0xFFF5F5F7),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('Edit ${sw.switchId}',
-              style: const TextStyle(
-                  color: Colors.black87, fontWeight: FontWeight.bold)),
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('Edit ${pc.pcId}', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 22)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextField(
-                  controller: nameController,
-                  style: const TextStyle(color: Colors.black87),
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    labelStyle: TextStyle(color: Colors.black54),
-                    enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: Colors.black12)),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: ipController,
-                  style: const TextStyle(color: Colors.black87),
-                  decoration: const InputDecoration(
-                    labelText: 'IP Address',
-                    labelStyle: TextStyle(color: Colors.black54),
-                    enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: Colors.black12)),
-                  ),
-                ),
-                const SizedBox(height: 16),
+                _buildEditTextField(nameController, 'Name'),
+                const SizedBox(height: 20),
+                _buildEditTextField(ipController, 'IP Address'),
+                const SizedBox(height: 20),
                 DropdownButtonFormField<String>(
                   initialValue: selectedLocation,
                   isExpanded: true,
                   isDense: true,
                   dropdownColor: Colors.white,
+                  style: const TextStyle(color: Colors.black87, fontSize: 14),
                   decoration: const InputDecoration(
                     labelText: 'Location',
-                    labelStyle: TextStyle(color: Colors.black54),
-                    enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: Colors.black12)),
+                    labelStyle: TextStyle(color: Colors.black54, fontSize: 12),
+                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.black12)),
+                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF1E88E5))),
                   ),
-                  style: const TextStyle(color: Colors.black87, fontSize: 13),
-                  items: locationOptions
-                      .map((option) => DropdownMenuItem<String>(
-                            value: option['label'],
-                            child: Text(
-                              option['label'] ?? '',
-                              style: const TextStyle(
-                                  color: Colors.black87, fontSize: 13),
-                            ),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    if (value == null) return;
-                    final option = locationOptions.firstWhere(
-                      (item) => item['label'] == value,
-                      orElse: () => locationOptions.first,
-                    );
+                  items: locationOptions.map((opt) => DropdownMenuItem(
+                    value: opt['label'],
+                    child: Text(opt['label'] ?? '', overflow: TextOverflow.ellipsis),
+                  )).toList(),
+                  onChanged: (val) {
+                    if (val == null) return;
+                    final opt = locationOptions.firstWhere((i) => i['label'] == val);
                     setLocalState(() {
-                      selectedLocation = value;
-                      selectedYard =
-                          option['container_yard'] ?? sw.containerYard;
+                      selectedLocation = val;
+                      selectedArea = opt['container_yard'] ?? selectedArea;
                     });
                   },
                 ),
@@ -1149,76 +1074,81 @@ class _SwitchPageGATEState extends State<SwitchPageGATE> {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel',
-                    style: TextStyle(color: Colors.black54))),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: Colors.black54)),
+            ),
+            const SizedBox(width: 8),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1976D2)),
-              child: const Text('Save Changes',
-                  style: TextStyle(color: Colors.white)),
+                backgroundColor: const Color(0xFF1E88E5),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                elevation: 0,
+              ),
               onPressed: () async {
-                final response = await apiService.updateSwitch(sw.id, {
-                  'switch_id': nameController.text,
+                final result = await apiService.updatePC(pc.id!, {
+                  'pc_id': nameController.text,
                   'ip_address': ipController.text,
-                  'location': locationOptions.firstWhere((o) => o['label'] == selectedLocation, orElse: () => locationOptions.first)['location_code'] ?? selectedLocation,
-                  'container_yard': selectedYard,
+                  'location': selectedLocation,
+                  'container_yard': selectedArea,
                 });
 
-                if (!context.mounted) return;
-                if (response['success'] == true) {
+                if (result['success'] == true && mounted) {
                   Navigator.pop(context);
-                  _loadSwitches();
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Successfully updated'),
-                      backgroundColor: Colors.green));
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('Failed to update: ${response['message']}'),
-                      backgroundColor: Colors.red));
+                  _refreshData(initial: true);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('PC updated successfully'), backgroundColor: Colors.green),
+                  );
+                } else if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Update failed: ${result['message']}'), backgroundColor: Colors.red),
+                  );
                 }
               },
+              child: const Text('Save Changes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
+            const SizedBox(width: 8),
           ],
         ),
       ),
     );
   }
 
-  void _confirmDeleteSwitch(SwitchModel sw) {
+  Widget _buildEditTextField(TextEditingController controller, String label) {
+    return TextField(
+      controller: controller,
+      style: const TextStyle(color: Colors.black87, fontSize: 14),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
+        enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.black12)),
+        focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF1E88E5))),
+      ),
+    );
+  }
+
+  void _confirmDeletePC(PCModel pc) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFFF5F5F7),
+        backgroundColor: const Color(0xFF1B2631),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete confirmation',
-            style:
-                TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
-        content: Text('Are you sure you want to delete ${sw.switchId}?',
-            style: const TextStyle(color: Colors.black54)),
+        title: const Text('Delete PC', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Text('Are you sure you want to delete PC ${pc.pcId}?', style: TextStyle(color: Colors.white.withValues(alpha: 0.7))),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel',
-                  style: TextStyle(color: Colors.black54))),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('CANCEL', style: TextStyle(color: Colors.white.withValues(alpha: 0.54)))),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
             onPressed: () async {
-              final response = await apiService.deleteSwitch(sw.id);
-              if (!context.mounted) return;
-              if (response['success'] == true) {
+              final result = await apiService.deletePC(pc.id!);
+              if (!mounted) return;
+              if (result['success'] == true) {
                 Navigator.pop(context);
-                _loadSwitches();
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Successfully deleted'),
-                    backgroundColor: Colors.green));
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text('Failed to delete: ${response['message']}'),
-                    backgroundColor: Colors.red));
+                _refreshData(initial: true);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PC deleted successfully'), backgroundColor: Colors.red));
               }
             },
+            child: const Text('DELETE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

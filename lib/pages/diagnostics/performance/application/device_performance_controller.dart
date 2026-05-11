@@ -7,12 +7,13 @@ import 'package:monitoring/models/mmt_model.dart';
 import 'package:monitoring/models/tower_model.dart';
 import 'package:monitoring/models/nvr_model.dart';
 import 'package:monitoring/models/switch_model.dart';
+import 'package:monitoring/models/pc_model.dart';
 import 'package:monitoring/pages/diagnostics/performance/data/device_performance_repository.dart';
 
 class DeviceDescriptor {
   final String id;
   final String name;
-  final String type; // access_point, camera, mmt
+  final String type; // access_point, camera, mmt, pc
   final String infraType; // TOWER, RTG, RS, CC, OTHER
 
   DeviceDescriptor({
@@ -61,7 +62,7 @@ class DevicePerformanceController extends ChangeNotifier {
   String get selectedCategory => _selectedCategory;
   String get selectedRange => _selectedRange;
   
-  static const List<String> categories = ['All Devices', 'Access Point', 'CCTV', 'MMT', 'NVR', 'Switch'];
+  static const List<String> categories = ['All Devices', 'Access Point', 'CCTV', 'MMT', 'NVR', 'Switch', 'PC'];
   
   int get selectedRangeHours {
     switch (_selectedRange) {
@@ -124,16 +125,37 @@ class DevicePerformanceController extends ChangeNotifier {
         return devType == 'mmt' || devType.contains('mmt');
       }
 
+      if (_selectedCategory == 'PC') {
+        return devType == 'pc' || devType.contains('pc') || devType.contains('computer');
+      }
+
       return devType == targetType;
     }).map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
   List<Map<String, dynamic>> _resolvedTelemetryRows() {
-    final rows = _overallData?['telemetry_rows'];
-    if (rows is List && rows.isNotEmpty) {
-      return rows.map((e) => Map<String, dynamic>.from(e)).toList();
+    final Map<String, Map<String, dynamic>> merged = {};
+    
+    // 1. Start with all inventory rows (the full list of devices)
+    for (var row in _inventoryRows) {
+      final id = row['device_id'].toString();
+      merged[id] = Map<String, dynamic>.from(row);
     }
-    return List<Map<String, dynamic>>.from(_inventoryRows);
+    
+    // 2. Overlay with telemetry data from API if available
+    final apiRows = _overallData?['telemetry_rows'];
+    if (apiRows is List) {
+      for (var row in apiRows) {
+        final id = row['device_id'].toString();
+        if (merged.containsKey(id)) {
+          merged[id]!.addAll(Map<String, dynamic>.from(row));
+        } else {
+          merged[id] = Map<String, dynamic>.from(row);
+        }
+      }
+    }
+    
+    return merged.values.toList();
   }
 
   String _mapCategoryToType(String cat) {
@@ -150,6 +172,8 @@ class DevicePerformanceController extends ChangeNotifier {
         return 'nvr';
       case 'Switch':
         return 'switch';
+      case 'PC':
+        return 'pc';
       default:
         return 'all';
     }
@@ -170,8 +194,13 @@ class DevicePerformanceController extends ChangeNotifier {
       }
       if (candidateType == 'camera') {
         _selectedCategory = 'CCTV';
-      } else if (candidateType == 'mmt') _selectedCategory = 'MMT';
-      else if (candidateType == 'access_point') _selectedCategory = 'Access Point';
+      } else if (candidateType == 'mmt') {
+        _selectedCategory = 'MMT';
+      } else if (candidateType == 'access_point') {
+        _selectedCategory = 'Access Point';
+      } else if (candidateType == 'pc') {
+        _selectedCategory = 'PC';
+      }
     }
 
     await refreshData(force: true);
@@ -187,6 +216,7 @@ class DevicePerformanceController extends ChangeNotifier {
     final mmts = await _repository.getAllMMTs();
     final nvrs = await _repository.getAllNVRs();
     final switches = await _repository.getAllSwitches();
+    final pcs = await _repository.getAllPCs();
     _masterLocations = await _repository.getAllMasterLocations();
 
     final List<DeviceDescriptor> all = [];
@@ -244,6 +274,14 @@ class DevicePerformanceController extends ChangeNotifier {
         infraType: resolveInfra(s.location),
       ));
     }
+    for (final p in pcs) {
+      all.add(DeviceDescriptor(
+        id: p.pcId,
+        name: p.pcId,
+        type: 'pc',
+        infraType: resolveInfra(p.location),
+      ));
+    }
 
     _allDevices = all;
     _inventoryRows = [
@@ -252,6 +290,7 @@ class DevicePerformanceController extends ChangeNotifier {
       ...mmts.map((m) => _buildMmtRow(m)),
       ...nvrs.map((n) => _buildNvrRow(n)),
       ...switches.map((s) => _buildSwitchRow(s)),
+      ...pcs.map((p) => _buildPcRow(p)),
     ];
   }
 
@@ -284,42 +323,47 @@ class DevicePerformanceController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1. Fetch Global Diagnostics (which contains telemetry_rows for categories)
-      final response = await _repository.getGlobalDiagnostics(hours: selectedRangeHours);
-      if (response['success'] == true) {
-        _overallData = response['data'];
-      }
+      await _loadAllData();
+      final response = await _repository.getGlobalDiagnostics(
+        hours: selectedRangeHours,
+      );
 
-      // 2. For charts, we use a sample device of this category
-      final targetType = _mapCategoryToType(_selectedCategory);
-      final devices = _selectedCategory == 'All Devices'
-          ? _allDevices
-          : _allDevices.where((d) => d.type.toLowerCase() == targetType).toList();
-      
-      if (devices.isNotEmpty) {
-        final sample = devices.first;
-        final perfResponse = await _repository.getDevicePerformance(
-          deviceType: sample.type,
-          deviceId: sample.id,
-          hours: selectedRangeHours,
-        );
-        if (perfResponse['success'] == true) {
-          _telemetry = perfResponse['data'];
-          _updateChartSpots();
+      if (response['success'] == true) {
+        final payload = response['data'];
+        if (payload is Map<String, dynamic>) {
+          _overallData = _normalizeOverallData(payload);
+        } else {
+          _overallData = null;
         }
       } else {
-        _telemetry = null;
-        _rxSpots.clear();
-        _txSpots.clear();
+        _overallData = null;
+        _error = (response['message'] ?? 'Failed to fetch performance data').toString();
       }
-
+      
       _lastUpdated = DateTime.now();
     } catch (e) {
       _error = e.toString();
+      _overallData = null;
     } finally {
       _isRefreshing = false;
       notifyListeners();
     }
+  }
+
+  Map<String, dynamic> _normalizeOverallData(Map<String, dynamic> data) {
+    final normalized = Map<String, dynamic>.from(data);
+    final rows = normalized['telemetry_rows'];
+    if (rows is List) {
+      normalized['telemetry_rows'] = rows.map((row) {
+        final mapped = Map<String, dynamic>.from(row as Map);
+        if (!mapped.containsKey('response_time_ms') &&
+            mapped.containsKey('latency_ms')) {
+          mapped['response_time_ms'] = mapped['latency_ms'];
+        }
+        return mapped;
+      }).toList();
+    }
+    return normalized;
   }
 
   void _updateChartSpots() {
@@ -408,6 +452,21 @@ class DevicePerformanceController extends ChangeNotifier {
       'cpu_load_percent': 0,
       'ram_usage_percent': 0,
       'response_time_ms': 0,
+      'packet_loss_percent': 0,
+      'traffic_rx_mbps': 0,
+      'traffic_tx_mbps': 0,
+      'uptime_seconds': 0,
+    };
+  }
+
+  Map<String, dynamic> _buildPcRow(PCModel pc) {
+    return {
+      'sampled_at': pc.updatedAt,
+      'device_id': pc.pcId,
+      'device_type': 'pc',
+      'cpu_load_percent': 0,
+      'ram_usage_percent': 0,
+      'response_time_ms': pc.latencyMs.toDouble(),
       'packet_loss_percent': 0,
       'traffic_rx_mbps': 0,
       'traffic_tx_mbps': 0,

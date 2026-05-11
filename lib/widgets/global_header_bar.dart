@@ -2,26 +2,7 @@ import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:monitoring/utils/auth_helper.dart';
 import 'package:monitoring/utils/ui_utils.dart';
-
-class _NavEntry {
-  final IconData icon;
-  final String label;
-  final String route;
-  const _NavEntry(this.icon, this.label, this.route);
-}
-
-const _mobileNavItems = [
-  _NavEntry(Icons.dashboard_outlined, 'Dashboard', '/dashboard'),
-  _NavEntry(Icons.storage_outlined, 'Master Data', '/tower-management'),
-  _NavEntry(Icons.add_circle_outline, 'Add Device', '/add-device'),
-  _NavEntry(Icons.router_outlined, 'Access Point', '/network'),
-  _NavEntry(Icons.videocam_outlined, 'CCTV', '/cctv'),
-  _NavEntry(Icons.monitor_outlined, 'MMT', '/mmt-monitoring'),
-  _NavEntry(Icons.warning_amber_outlined, 'Alerts', '/alerts'),
-  _NavEntry(Icons.assessment_outlined, 'Report', '/report'),
-  _NavEntry(Icons.speed_outlined, 'Performance', '/global-diagnostics'),
-  _NavEntry(Icons.person_outline, 'Profile', '/profile'),
-];
+import 'package:monitoring/services/api_service.dart';
 
 class GlobalHeaderBar extends StatefulWidget {
   final String currentRoute;
@@ -37,11 +18,25 @@ class GlobalHeaderBar extends StatefulWidget {
 
 class _GlobalHeaderBarState extends State<GlobalHeaderBar> {
   String _name = 'User';
+  String? _profilePhoto;
+  late final VoidCallback _userDataListener;
 
   @override
   void initState() {
     super.initState();
+    _userDataListener = () {
+      if (mounted) {
+        _loadUser();
+      }
+    };
+    AuthHelper.userDataVersion.addListener(_userDataListener);
     _loadUser();
+  }
+
+  @override
+  void dispose() {
+    AuthHelper.userDataVersion.removeListener(_userDataListener);
+    super.dispose();
   }
 
   Future<void> _loadUser() async {
@@ -53,6 +48,7 @@ class _GlobalHeaderBarState extends State<GlobalHeaderBar> {
       _name = fullname.isNotEmpty
           ? fullname
           : (username.isNotEmpty ? username : 'User');
+      _profilePhoto = userData['profile_photo'];
     });
   }
 
@@ -90,8 +86,6 @@ class _GlobalHeaderBarState extends State<GlobalHeaderBar> {
       Navigator.pushReplacementNamed(context, '/login');
     }
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -196,11 +190,16 @@ class _GlobalHeaderBarState extends State<GlobalHeaderBar> {
                               CircleAvatar(
                                 radius: isMobile ? 15 : 18,
                                 backgroundColor: Colors.white24,
-                                child: Icon(
-                                  Icons.person,
-                                  color: Colors.white,
-                                  size: isMobile ? 17 : 20,
-                                ),
+                                backgroundImage: _profilePhoto != null && _profilePhoto!.isNotEmpty
+                                    ? NetworkImage(ApiService.getPhotoUrl(_profilePhoto))
+                                    : null,
+                                child: (_profilePhoto == null || _profilePhoto!.isEmpty)
+                                    ? Icon(
+                                        Icons.person,
+                                        color: Colors.white,
+                                        size: isMobile ? 17 : 20,
+                                      )
+                                    : null,
                               ),
                             ],
                           ),

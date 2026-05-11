@@ -22,7 +22,7 @@ class NavigationHelper {
         }
       }
     } catch (e) {
-      debugPrint('❌ Navigation Error: $e');
+      debugPrint('❌ Navigation error: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -50,7 +50,7 @@ class NavigationHelper {
         );
       }
     } catch (e) {
-      debugPrint('❌ Navigation Error: $e');
+      debugPrint('❌ Navigation error: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -70,7 +70,7 @@ class NavigationHelper {
         Navigator.of(context).pop(result);
       }
     } catch (e) {
-      debugPrint('❌ Pop Error: $e');
+      debugPrint('❌ Pop error: $e');
     }
   }
 
@@ -81,7 +81,7 @@ class NavigationHelper {
         Navigator.of(context).pop();
       }
     } catch (e) {
-      debugPrint('❌ Pop Error: $e');
+      debugPrint('❌ Pop error: $e');
     }
   }
 }

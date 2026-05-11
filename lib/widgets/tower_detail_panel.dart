@@ -4,6 +4,7 @@ import 'package:monitoring/models/device_model.dart';
 import 'package:monitoring/models/camera_model.dart';
 import 'package:monitoring/services/ping_service.dart';
 import 'package:monitoring/utils/device_icon_resolver.dart';
+import 'package:monitoring/utils/location_label_utils.dart';
 
 class TowerDetailPanel extends StatefulWidget {
   final Tower tower;
@@ -34,6 +35,10 @@ class _TowerDetailPanelState extends State<TowerDetailPanel> {
   Map<String, bool> _deviceStatus = {};
   bool _isLoading = true;
 
+  String _normalizeYard(String value) {
+    return value.trim().toUpperCase().replaceAll(RegExp(r'\s+'), '');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -43,34 +48,41 @@ class _TowerDetailPanelState extends State<TowerDetailPanel> {
   Future<void> _checkDeviceStatus() async {
     setState(() => _isLoading = true);
 
-    // Get all connected devices (towers, devices, cameras) in same container yard
-    final allIPs = <String>[
-      widget.tower.ipAddress,
-      ...widget.towers.where((d) => d.containerYard == widget.tower.containerYard).map((d) => d.ipAddress),
-      ...widget.devices.where((d) => d.containerYard == widget.tower.containerYard).map((d) => d.ipAddress),
-      ...widget.cameras.where((c) => c.containerYard == widget.tower.containerYard).map((c) => c.ipAddress),
-    ].where((ip) => ip.isNotEmpty).toList();
+    // Instead of pinging from mobile (which fails), we use the current status from the models.
+    final Map<String, bool> results = {};
+    
+    // Check main tower
+    results[widget.tower.ipAddress] = widget.tower.status.trim().toUpperCase() == 'UP';
+    
+    // Check child towers
+    for (var d in widget.towers) {
+      results[d.ipAddress] = d.status.trim().toUpperCase() == 'UP';
+    }
+    
+    // Check child devices
+    for (var d in widget.devices) {
+      results[d.ipAddress] = d.status.trim().toUpperCase() == 'UP';
+    }
+    
+    // Check child cameras
+    for (var c in widget.cameras) {
+      results[c.ipAddress] = c.status.trim().toUpperCase() == 'UP';
+    }
 
-    if (allIPs.isNotEmpty) {
-      final results = await _pingService.pingMultiple(allIPs);
-      if (mounted) {
-        setState(() {
-          _deviceStatus = results;
-          _isLoading = false;
-        });
-      }
-    } else {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+    if (mounted) {
+      setState(() {
+        _deviceStatus = results;
+        _isLoading = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final childTowers = widget.towers.where((d) => d.containerYard == widget.tower.containerYard && d.id != widget.tower.id.toString()).toList();
-    final childDevices = widget.devices.where((d) => d.containerYard == widget.tower.containerYard).toList();
-    final childCameras = widget.cameras.where((c) => c.containerYard == widget.tower.containerYard).toList();
+    final towerYardKey = _normalizeYard(widget.tower.containerYard);
+    final childTowers = widget.towers.where((d) => _normalizeYard(d.containerYard) == towerYardKey && d.id != widget.tower.id.toString()).toList();
+    final childDevices = widget.devices.where((d) => _normalizeYard(d.containerYard) == towerYardKey).toList();
+    final childCameras = widget.cameras.where((c) => _normalizeYard(c.containerYard) == towerYardKey).toList();
 
     final towerStatus = _deviceStatus[widget.tower.ipAddress] ?? false;
     final towerStatusColor = towerStatus ? Colors.green : Colors.red;
@@ -133,7 +145,11 @@ class _TowerDetailPanelState extends State<TowerDetailPanel> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        widget.tower.location,
+                        resolveFullLocationLabel(
+                          const [],
+                          widget.tower.location,
+                          currentContainerYard: widget.tower.containerYard,
+                        ),
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 12,
@@ -280,7 +296,7 @@ class _TowerDetailPanelState extends State<TowerDetailPanel> {
                   children: [
                     const Divider(),
                     const Text(
-                      'Connected Devices',
+                      'Connected device',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -352,7 +368,7 @@ class _TowerDetailPanelState extends State<TowerDetailPanel> {
                         showDialog(
                           context: context,
                           builder: (context) => AlertDialog(
-                            title: const Text('Device Info'),
+                            title: const Text('Device info'),
                             content: const Text('This tower record is not found in the database'),
                             actions: [
                               ElevatedButton(
@@ -389,7 +405,7 @@ class _TowerDetailPanelState extends State<TowerDetailPanel> {
                 child: ElevatedButton.icon(
                   onPressed: _checkDeviceStatus,
                   icon: const Icon(Icons.refresh),
-                  label: const Text('Refresh Status'),
+                  label: const Text('Refresh status'),
                 ),
               ),
             ),

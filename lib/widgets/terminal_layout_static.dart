@@ -173,37 +173,46 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final w = constraints.maxWidth;
-        final h = constraints.maxHeight;
-        final effectiveZoomAreaId = widget.forcedAreaId ??
-            ((widget.isPickMode && widget.pickYardFilter != null)
-                ? widget.pickYardFilter
-                : _zoomedAreaId);
-        final bool showZoomedDetail =
-            effectiveZoomAreaId != null && widget.isZoomed;
+    return ExcludeSemantics(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Prevent rendering if layout sizes are not yet available.
+          // This avoids "Cannot hit test a render box that has never been laid out" error.
+          if (constraints.maxWidth <= 0 || constraints.maxHeight <= 0) {
+            return const SizedBox.shrink();
+          }
 
-        return Stack(
-          children: [
-            Container(
-                decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
-                    borderRadius: BorderRadius.circular(15))),
-            if (!showZoomedDetail) ...[
-              ...areas
-                  .where((a) =>
-                      widget.forcedAreaId == null ||
-                      a.id == widget.forcedAreaId)
-                  .map((area) => _buildAreaBox(area, w, h)),
-              ..._buildMasterLocationMarkers(w, h),
-              ..._buildAllMarkers(w, h),
-            ] else ...[
-              _buildZoomedArea(w, h, effectiveZoomAreaId),
+          final w = constraints.maxWidth;
+          final h = constraints.maxHeight;
+          final effectiveZoomAreaId = widget.forcedAreaId ??
+              ((widget.isPickMode && widget.pickYardFilter != null)
+                  ? widget.pickYardFilter
+                  : _zoomedAreaId);
+          final bool showZoomedDetail =
+              effectiveZoomAreaId != null && widget.isZoomed;
+
+          return Stack(
+            clipBehavior: Clip.hardEdge,
+            children: [
+              Container(
+                  decoration: BoxDecoration(
+                      color: const Color(0xFFF5F5F5),
+                      borderRadius: BorderRadius.circular(15))),
+              if (!showZoomedDetail) ...[
+                ...areas
+                    .where((a) =>
+                        widget.forcedAreaId == null ||
+                        a.id == widget.forcedAreaId)
+                    .map((area) => _buildAreaBox(area, w, h)),
+                ..._buildMasterLocationMarkers(w, h),
+                ..._buildAllMarkers(w, h),
+              ] else ...[
+                _buildZoomedArea(w, h, effectiveZoomAreaId),
+              ],
             ],
-          ],
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
@@ -985,7 +994,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'STATUS OVERVIEW',
+                          'STATUS',
                           style: TextStyle(
                             color: Colors.blueGrey.shade400,
                             fontSize: 10,
@@ -1008,7 +1017,7 @@ class _TerminalLayoutStaticState extends State<TerminalLayoutStatic> {
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 30),
                       child: Text(
-                        'No devices registered at this location',
+                        'No device registered at this location',
                         style: TextStyle(
                           color: Colors.grey.shade400,
                           fontSize: 13,

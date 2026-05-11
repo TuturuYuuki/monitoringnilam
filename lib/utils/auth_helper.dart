@@ -2,6 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthHelper {
+  static final ValueNotifier<int> userDataVersion = ValueNotifier<int>(0);
+
+  static void _notifyUserDataChanged() {
+    userDataVersion.value++;
+  }
+
   // Save user data after login
   static Future<void> saveUserData(Map<String, dynamic> userData) async {
     try {
@@ -12,6 +18,7 @@ class AuthHelper {
       await prefs.setString('email', userData['email']);
       await prefs.setString('fullname', userData['fullname']);
       await prefs.setString('role', userData['role'] ?? '');
+      await prefs.setString('profile_photo', userData['profile_photo'] ?? '');
 
       // Merge optional fields without wiping existing values when missing
       final existingPhone = prefs.getString('phone') ?? '';
@@ -34,9 +41,10 @@ class AuthHelper {
       await prefs.setString('phone', newPhone);
       await prefs.setString('location', newLocation);
       await prefs.setString('division', newDivision);
+      _notifyUserDataChanged();
     } catch (e) {
       // Gracefully handle SharedPreferences errors (e.g., MissingPluginException on Windows)
-      debugPrint('Warning: Could not save user data to preferences: $e');
+      debugPrint('Warning: could not save user data to preferences: $e');
     }
   }
 
@@ -53,6 +61,7 @@ class AuthHelper {
         'phone': prefs.getString('phone') ?? '',
         'location': prefs.getString('location') ?? '',
         'division': prefs.getString('division') ?? '',
+        'profile_photo': prefs.getString('profile_photo') ?? '',
       };
     } catch (e) {
       // Return empty user data if preferences unavailable
@@ -65,6 +74,7 @@ class AuthHelper {
         'phone': '',
         'location': '',
         'division': '',
+        'profile_photo': '',
       };
     }
   }
@@ -74,9 +84,10 @@ class AuthHelper {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
+      _notifyUserDataChanged();
     } catch (e) {
       // Gracefully handle SharedPreferences errors on Windows
-      debugPrint('Warning: Could not clear user data from preferences: $e');
+      debugPrint('Warning: could not clear user data from preferences: $e');
     }
   }
 

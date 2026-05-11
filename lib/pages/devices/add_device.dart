@@ -38,7 +38,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
   String _selectedDeviceType = 'Access Point';
   String _selectedLocation = '';
 
-  final List<String> deviceTypes = ['Access Point', 'CCTV', 'MMT', 'NVR', 'Switch'];
+  final List<String> deviceTypes = ['Access Point', 'CCTV', 'MMT', 'NVR', 'Switch', 'PC'];
 
   @override
   void initState() {
@@ -133,6 +133,8 @@ class _AddDevicePageState extends State<AddDevicePage> {
         return 'NVR 01';
       case 'Switch':
         return 'SW 01';
+      case 'PC':
+        return 'PC 01';
       default:
         return '';
     }
@@ -192,9 +194,30 @@ class _AddDevicePageState extends State<AddDevicePage> {
       } else if (_selectedDeviceType == 'NVR') {
         final nvrs = await apiService.getAllNVRs();
         names.addAll(nvrs.map((n) => n.nvrId));
+        names.addAll(addedDevices
+            .where((d) =>
+                d.type == 'NVR' &&
+                !nvrs.any(
+                    (n) => n.nvrId.toLowerCase() == d.name.toLowerCase()))
+            .map((d) => d.name));
       } else if (_selectedDeviceType == 'Switch') {
         final switches = await apiService.getAllSwitches();
         names.addAll(switches.map((s) => s.switchId));
+        names.addAll(addedDevices
+            .where((d) =>
+                d.type == 'Switch' &&
+                !switches.any(
+                    (s) => s.switchId.toLowerCase() == d.name.toLowerCase()))
+            .map((d) => d.name));
+      } else if (_selectedDeviceType == 'PC') {
+        final pcs = await apiService.getAllPCs();
+        names.addAll(pcs.map((p) => p.pcId));
+        names.addAll(addedDevices
+            .where((d) =>
+                d.type == 'PC' &&
+                !pcs.any(
+                    (p) => p.pcId.toLowerCase() == d.name.toLowerCase()))
+            .map((d) => d.name));
       }
 
       final nameList = names.where((n) => n.trim().isNotEmpty).toList();
@@ -352,6 +375,37 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
+                                  trailing: FutureBuilder<List<AddedDevice>>(
+                                    future: DeviceStorageService.getDevices(),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.hasData) {
+                                        final isLocal = snapshot.data!.any((d) => 
+                                          d.name.toLowerCase() == name.toLowerCase() && 
+                                          d.type == _selectedDeviceType
+                                        );
+                                        if (isLocal) {
+                                          return IconButton(
+                                            icon: const Icon(Icons.delete_sweep_outlined, size: 16, color: Colors.redAccent),
+                                            onPressed: () async {
+                                              final deviceList = snapshot.data!;
+                                              final device = deviceList.firstWhere((d) => 
+                                                d.name.toLowerCase() == name.toLowerCase() && 
+                                                d.type == _selectedDeviceType
+                                              );
+                                              await DeviceStorageService.removeDevice(device.id);
+                                              if (context.mounted) {
+                                                Navigator.of(context).pop();
+                                                _loadUsedNamesForType();
+                                                _checkNameAvailability(_nameController.text);
+                                              }
+                                            },
+                                            tooltip: 'Remove from local storage',
+                                          );
+                                        }
+                                      }
+                                      return const SizedBox.shrink();
+                                    },
+                                  ),
                                 ),
                               );
                             },
@@ -416,6 +470,9 @@ class _AddDevicePageState extends State<AddDevicePage> {
       } else if (_selectedDeviceType == 'Switch') {
         final switches = await apiService.getAllSwitches();
         dbNames.addAll(switches.map((s) => s.switchId.toLowerCase()));
+      } else if (_selectedDeviceType == 'PC') {
+        final pcs = await apiService.getAllPCs();
+        dbNames.addAll(pcs.map((p) => p.pcId.toLowerCase()));
       }
 
       // Only include local storage devices that don't exist in DB
@@ -670,6 +727,17 @@ class _AddDevicePageState extends State<AddDevicePage> {
       } else if (_selectedDeviceType == 'Switch') {
         createFuture = apiService.createSwitch({
           'switch_id': deviceId,
+          'location': savedLocationName,
+          'ip_address': deviceIpAddress,
+          'container_yard': containerYard,
+          'latitude': latitude,
+          'longitude': longitude,
+          'status': status,
+          'type': type,
+        });
+      } else if (_selectedDeviceType == 'PC') {
+        createFuture = apiService.createPC({
+          'pc_id': deviceId,
           'location': savedLocationName,
           'ip_address': deviceIpAddress,
           'container_yard': containerYard,

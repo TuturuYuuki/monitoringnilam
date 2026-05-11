@@ -129,7 +129,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                     const Icon(Icons.check_circle,
                         color: Colors.green, size: 64),
                     const SizedBox(height: 16),
-                    Text(response['message'] ?? 'Password Successfully Changed',
+                    Text(response['message'] ?? 'Password successfully changed',
                         textAlign: TextAlign.center),
                   ],
                 ),
@@ -137,14 +137,14 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                   TextButton(
                     onPressed: () => Navigator.pushNamedAndRemoveUntil(
                         context, '/login', (route) => false),
-                    child: const Text('Login Now'),
+                    child: const Text('Login now'),
                   ),
                 ],
               ),
             );
           }
         } else {
-          _showError(response['message'] ?? 'Failed to Change Password');
+          _showError(response['message'] ?? 'Failed to change password');
         }
       } catch (e) {
         setState(() => _isLoading = false);
@@ -364,13 +364,13 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                       ),
                                       validator: (value) {
                                         if (value == null || value.isEmpty) {
-                                          return 'Please Enter New Password';
+                                          return 'Please enter new password';
                                         }
                                         if (!_hasMinLength ||
                                             !_hasUppercase ||
                                             !_hasLowercase ||
                                             !_hasNumber) {
-                                          return 'Requirements Not Met';
+                                          return 'Requirements not met';
                                         }
                                         return null;
                                       },
@@ -438,7 +438,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                   obscureText: _obscureConfirmPassword,
                                   style: const TextStyle(color: Colors.white),
                                   decoration: InputDecoration(
-                                    hintText: 'Confirm New Password',
+                                    hintText: 'Confirm new password',
                                     hintStyle:
                                         const TextStyle(color: Colors.white60),
                                     prefixIcon: const Icon(
@@ -468,10 +468,10 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                   ),
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
-                                      return 'Confirm Your Password';
+                                      return 'Confirm your password';
                                     }
                                     if (value != _newPasswordController.text) {
-                                      return 'Password Does Not Match';
+                                      return 'Password does not match';
                                     }
                                     return null;
                                   },

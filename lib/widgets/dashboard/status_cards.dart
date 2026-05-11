@@ -138,7 +138,7 @@ class _StatusCardFrame extends StatelessWidget {
             return SizedBox(
               width: constraints.maxWidth,
               height: constraints.maxHeight == double.infinity
-                  ? (compact ? 150 : 170)
+                  ? (compact ? 160 : 185)
                   : constraints.maxHeight,
               child: _DashboardCardShell(
                 padding: padding,
@@ -543,6 +543,214 @@ class SwitchMonitoringCard extends StatelessWidget {
                 spacing: compact ? 6 : 8,
               );
             },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class PCMonitoringCard extends StatelessWidget {
+  final int totalUp;
+  final int totalDown;
+
+  const PCMonitoringCard({
+    super.key,
+    required this.totalUp,
+    required this.totalDown,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _StatusCardFrame(
+      onTap: () => Navigator.pushNamed(context, '/pc-monitoring'),
+      headerIcon: Icons.desktop_windows,
+      title: 'PC Monitoring',
+      padding: const EdgeInsets.all(16),
+      maxTitleLines: 2,
+      tiles: [
+        Builder(
+          builder: (context) => LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 120;
+              return TowerStatusTile(
+                count: totalUp,
+                label: 'UP',
+                color: Colors.green,
+                icon: Icons.desktop_windows,
+                iconBoxSize: compact ? 46 : 52,
+                iconSize: compact ? 22 : 26,
+                countFontSize: compact ? 22 : 26,
+                labelFontSize: compact ? 11 : 12,
+                spacing: compact ? 6 : 8,
+              );
+            },
+          ),
+        ),
+        Builder(
+          builder: (context) => LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 120;
+              return TowerStatusTile(
+                count: totalDown,
+                label: 'DOWN',
+                color: Colors.red,
+                icon: Icons.desktop_windows,
+                iconBoxSize: compact ? 46 : 52,
+                iconSize: compact ? 22 : 26,
+                countFontSize: compact ? 22 : 26,
+                labelFontSize: compact ? 11 : 12,
+                spacing: compact ? 6 : 8,
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class SystemHealthCard extends StatelessWidget {
+  final double uptimePercent;
+  final double avgLatency;
+  final double packetLoss;
+
+  const SystemHealthCard({
+    super.key,
+    required this.uptimePercent,
+    this.avgLatency = 0.0,
+    this.packetLoss = 0.0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final Color healthColor = uptimePercent >= 95 
+        ? Colors.green 
+        : (uptimePercent >= 80 ? Colors.orange : Colors.red);
+
+    return _StatusCardFrame(
+      onTap: () => Navigator.pushNamed(context, '/global-diagnostics'),
+      headerIcon: Icons.health_and_safety,
+      title: 'System Health Status',
+      padding: const EdgeInsets.all(16),
+      maxTitleLines: 2,
+      tiles: [
+        Builder(
+          builder: (context) => LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 140;
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // 1. Latency Circle (Left)
+                  _buildStatusCircle(
+                    value: (1.0 - (avgLatency / 200).clamp(0.0, 1.0)),
+                    displayValue: '${avgLatency.toStringAsFixed(0)}ms',
+                    label: 'Latency',
+                    color: avgLatency < 50 ? Colors.cyanAccent : (avgLatency < 150 ? Colors.orangeAccent : Colors.redAccent),
+                    compact: compact,
+                  ),
+                  
+                  // 2. Main Health Circle (Center - Larger)
+                  _buildStatusCircle(
+                    value: uptimePercent / 100,
+                    displayValue: '${uptimePercent.toStringAsFixed(1)}%',
+                    label: 'Health',
+                    color: healthColor,
+                    compact: compact,
+                    isMain: true,
+                  ),
+
+                  // 3. Stability Circle (Right)
+                  _buildStatusCircle(
+                    value: (1.0 - (packetLoss / 10).clamp(0.0, 1.0)),
+                    displayValue: '${(100 - packetLoss).toStringAsFixed(1)}%',
+                    label: 'Stable',
+                    color: packetLoss < 1 ? Colors.greenAccent : (packetLoss < 5 ? Colors.yellowAccent : Colors.redAccent),
+                    compact: compact,
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusCircle({
+    required double value,
+    required String displayValue,
+    required String label,
+    required Color color,
+    required bool compact,
+    bool isMain = false,
+  }) {
+    final double size = isMain ? (compact ? 48 : 58) : (compact ? 38 : 44);
+    
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            SizedBox(
+              width: size,
+              height: size,
+              child: CircularProgressIndicator(
+                value: value,
+                strokeWidth: isMain ? 4 : 3,
+                backgroundColor: Colors.white.withValues(alpha: 0.05),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+              ),
+            ),
+            Text(
+              displayValue,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: isMain ? (compact ? 9 : 11) : (compact ? 8 : 9),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.5),
+            fontSize: isMain ? (compact ? 9 : 10) : (compact ? 8 : 9),
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMiniMetric(IconData icon, String value, String label, bool compact) {
+    return Column(
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: compact ? 10 : 12, color: Colors.white70),
+            const SizedBox(width: 4),
+            Text(
+              value,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: compact ? 11 : 13,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white54,
+            fontSize: compact ? 8 : 9,
           ),
         ),
       ],

@@ -14,8 +14,8 @@ import 'package:monitoring/models/master_location_model.dart';
 import 'package:monitoring/utils/tower_status_override.dart';
 import 'package:monitoring/utils/location_label_utils.dart';
 import 'package:monitoring/models/nvr_model.dart';
+import 'package:monitoring/models/pc_model.dart';
 import 'package:monitoring/models/switch_model.dart';
-
 import 'package:monitoring/widgets/global_header_bar.dart';
 import 'package:monitoring/widgets/global_sidebar_nav.dart';
 import 'package:monitoring/widgets/global_footer.dart';
@@ -40,7 +40,9 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   List<AddedDevice> addedDevices = [];
   List<Map<String, dynamic>> masterLocations = [];
   Map<String, String> deviceStatuses = {};
-  Map<String, String> _mmtStatusByIp = {};
+  List<PCModel> pcs = [];
+  List<SwitchModel> switches = [];
+
   
   bool _isPickTowerMode = false;
   String? _pickTowerYard;
@@ -50,7 +52,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   bool _isLoadingDashboard = false;
   bool _isPingInProgress = false;
   DateTime? _lastPingCheckAt;
-  static const Duration _pingCheckInterval = Duration(seconds: 30);
+  static const Duration _pingCheckInterval = Duration(seconds: 10);
   bool _isRouteSubscribed = false;
   
   int totalUpCameras = 0;
@@ -58,9 +60,17 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   int totalOnlineTowers = 0;
   int totalTowers = 0;
   int totalWarnings = 0;
+  
+  // Global Diagnostics Data
+  double avgLatency = 0.0;
+  double avgPacketLoss = 0.0;
+  int nodeUp = 0;
+  int nodeTotal = 0;
   int totalDownTowers = 0;
   int totalUpNVR = 0;
   int totalDownNVR = 0;
+  int totalUpPC = 0;
+  int totalDownPC = 0;
   int totalUpSwitch = 0;
   int totalDownSwitch = 0;
 
@@ -156,7 +166,12 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           debugPrint('Error fetching towers: $e');
           return <Tower>[];
         }),
-        apiService.getAllAlerts().catchError((e) {
+        (() {
+          final now = DateTime.now();
+          final start = DateTime(now.year, now.month, 1).toIso8601String().split('T')[0];
+          final end = DateTime(now.year, now.month + 1, 0).toIso8601String().split('T')[0];
+          return apiService.getAllAlerts(start: start, end: end, limit: 1000);
+        })().catchError((e) {
           debugPrint('Error fetching alerts: $e');
           return <String, dynamic>{'alerts': <Alert>[]};
         }),
@@ -164,8 +179,8 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           debugPrint('Error fetching master locations: $e');
           return <Map<String, dynamic>>[];
         }),
-        apiService.getDashboardStats().catchError((e) {
-          debugPrint('Error fetching dashboard stats: $e');
+        apiService.getGlobalDiagnostics().catchError((e) {
+          debugPrint('Error fetching diagnostics stats: $e');
           return <String, dynamic>{};
         }),
         apiService.getAllNVRs().catchError((e) {
@@ -176,6 +191,10 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           debugPrint('Error fetching Switches: $e');
           return <SwitchModel>[];
         }),
+        apiService.getAllPCs().catchError((e) {
+          debugPrint('Error fetching PCs: $e');
+          return <PCModel>[];
+        }),
       ]);
 
       // Move ping check to AFTER data fetch so it doesn't block main requests
@@ -185,6 +204,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       final fetchedTowers = results[1] as List<Tower>;
       final alertsResponse = results[2] as Map<String, dynamic>;
       final fetchedMasterLocations = results[3] as List<Map<String, dynamic>>;
+      final diagResponse = results[4] as Map<String, dynamic>;
 
       final fetchedMmts = await apiService.getAllMMTs().catchError((e) {
         debugPrint('Error fetching MMTs: $e');
@@ -193,14 +213,16 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
 
       final fetchedNvrs = results[5] as List<NVR>;
       final fetchedSwitches = results[6] as List<SwitchModel>;
+      final fetchedPcs = results[7] as List<PCModel>;
 
       await _updateDeviceLocationStatuses();
 
       final updatedTowers = applyForcedTowerStatus(fetchedTowers);
       final updatedCameras = applyForcedCameraStatus(fetchedCameras);
-      final ipStatus = _buildIpStatusMap(updatedTowers, updatedCameras, fetchedNvrs, fetchedSwitches);
-      final effectiveTowers = _applyIpStatusToTowers(updatedTowers, ipStatus);
-      final effectiveCameras = _applyIpStatusToCameras(updatedCameras, ipStatus);
+      
+      // Use the database status directly instead of forcing them to match by IP.
+      final effectiveTowers = updatedTowers;
+      final effectiveCameras = updatedCameras;
       
       final List<Alert> generatedAlerts = [];
 
@@ -269,6 +291,21 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
             timestamp: DateTime.now().toString(),
             route: '/switch-monitoring-${sw.containerYard.toLowerCase().replaceAll(' ', '')}',
             category: 'Switch',
+          ));
+        }
+      }
+
+      for (final pc in fetchedPcs) {
+        if (isDownStatus(pc.status)) {
+          generatedAlerts.add(Alert(
+            id: (int.tryParse(pc.id.toString()) ?? 0) + 4000,
+            alertKey: 'generated:${(pc.id ?? 0) + 4000}:${pc.pcId}:PC_DOWN',
+            title: 'PC DOWN - ${pc.pcId}',
+            description: '${pc.location} PC offline (${pc.pcId})',
+            severity: 'critical',
+            timestamp: DateTime.now().toString(),
+            route: '/pc-monitoring-${pc.containerYard.toLowerCase().replaceAll(' ', '')}',
+            category: 'PC',
           ));
         }
       }
@@ -404,6 +441,21 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
         ));
       }
 
+      for (final PCModel pc in fetchedPcs) {
+        addUniqueDevice(AddedDevice(
+          id: 'pc_${pc.id}',
+          type: 'PC',
+          name: pc.pcId,
+          ipAddress: pc.ipAddress,
+          locationName: pc.location,
+          latitude: pc.latitude,
+          longitude: pc.longitude,
+          containerYard: pc.containerYard,
+          createdAt: pc.updatedAt != null ? (DateTime.tryParse(pc.updatedAt!) ?? DateTime.now()) : DateTime.now(),
+          status: pc.status,
+        ));
+      }
+
       final fetchedAlerts = (alertsResponse['alerts'] as List? ?? [])
           .map((e) => e is Alert ? e : Alert.fromJson(e as Map<String, dynamic>))
           .toList();
@@ -421,24 +473,98 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           towers = effectiveTowers;
           masterLocations = fetchedMasterLocations;
           addedDevices = devices;
+          switches = fetchedSwitches;
+          pcs = fetchedPcs;
 
           // Calculate stats locally from fetched data for consistency
           totalTowers = effectiveTowers.length;
-          totalOnlineTowers = effectiveTowers.where((t) => !isDownStatus(t.status)).length;
+          totalOnlineTowers = effectiveTowers.where((t) => t.status.trim().toUpperCase() == 'UP').length;
           totalDownTowers = (totalTowers - totalOnlineTowers).clamp(0, 999999);
-
-          totalUpCameras = effectiveCameras.where((c) => !isDownStatus(c.status)).length;
+          
+          totalUpCameras = effectiveCameras.where((c) => c.status.trim().toUpperCase() == 'UP').length;
           totalDownCameras = (effectiveCameras.length - totalUpCameras).clamp(0, 999999);
-
-          totalUpMMT = fetchedMmts.where((m) => !isDownStatus(deviceStatuses[m.mmtId] ?? m.status)).length;
+          
+          totalUpMMT = fetchedMmts.where((m) => (deviceStatuses[m.mmtId] ?? m.status).trim().toUpperCase() == 'UP').length;
           totalDownMMT = (fetchedMmts.length - totalUpMMT).clamp(0, 999999);
-
-          totalUpNVR = fetchedNvrs.where((n) => !isDownStatus(n.status)).length;
+          
+          totalUpNVR = fetchedNvrs.where((n) => n.status.trim().toUpperCase() == 'UP').length;
           totalDownNVR = (fetchedNvrs.length - totalUpNVR).clamp(0, 999999);
+          
+          totalUpSwitch = switches.where((s) => s.status.trim().toUpperCase() == 'UP').length;
+          totalDownSwitch = (switches.length - totalUpSwitch).clamp(0, 999999);
 
-          totalUpSwitch = fetchedSwitches.where((s) => !isDownStatus(s.status)).length;
-          totalDownSwitch = (fetchedSwitches.length - totalUpSwitch).clamp(0, 999999);
+          totalUpPC = pcs.where((p) => p.status.trim().toUpperCase() == 'UP').length;
+          totalDownPC = (pcs.length - totalUpPC).clamp(0, 999999);
 
+          // Override with backend breakdown if available for 100% sync
+          if (diagResponse['success'] == true && diagResponse['data'] != null) {
+            final bd = diagResponse['data']['breakdown'];
+            if (bd != null) {
+              if (bd['towers'] != null) {
+                totalTowers = bd['towers']['total'];
+                totalOnlineTowers = bd['towers']['up'];
+                totalDownTowers = bd['towers']['down'];
+              }
+              if (bd['cameras'] != null) {
+                totalUpCameras = bd['cameras']['up'];
+                totalDownCameras = bd['cameras']['down'];
+              }
+              if (bd['mmts'] != null) {
+                totalUpMMT = bd['mmts']['up'];
+                totalDownMMT = bd['mmts']['down'];
+              }
+              if (bd['nvrs'] != null) {
+                totalUpNVR = bd['nvrs']['up'];
+                totalDownNVR = bd['nvrs']['down'];
+              }
+              if (bd['switches'] != null) {
+                totalUpSwitch = bd['switches']['up'];
+                totalDownSwitch = bd['switches']['down'];
+              }
+              if (bd['pcs'] != null) {
+                totalUpPC = bd['pcs']['up'];
+                totalDownPC = bd['pcs']['down'];
+              }
+            }
+          }
+          
+          // Calculate global node counts for uptime percentage
+          nodeUp = totalOnlineTowers + totalUpCameras + totalUpMMT + totalUpNVR + totalUpSwitch + totalUpPC;
+          nodeTotal = totalTowers + effectiveCameras.length + fetchedMmts.length + fetchedNvrs.length + switches.length + pcs.length;
+
+          // Dashboard Alert Card now follows the Alert Page logic: 
+          // 1. Deduplicate by same consecutive state for each device
+          // 2. Count all DOWN events in the deduplicated month list
+          
+          String deviceKey(String raw) => raw.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+          String cleanDeviceName(String rawTitle) {
+            var s = rawTitle.trim();
+            s = s.replaceAll(RegExp(r'\s+is\s+now\s+(up|down)\b', caseSensitive: false), '');
+            s = s.replaceAll(RegExp(r'\s+is\s+(up|down)\b', caseSensitive: false), '');
+            return s.trim();
+          }
+          
+          bool isDownAlert(Alert alert) {
+            final combined = '${alert.title} ${alert.description}'.toLowerCase();
+            return combined.contains(' down') || combined.contains('is down') ||
+                   combined.contains('offline') || combined.contains('unreachable') ||
+                   (alert.severity.toLowerCase() == 'critical' && !combined.contains(' up') && !combined.contains('is up'));
+          }
+
+          final seenStateByDevice = <String, String>{};
+          final dedupedMonthAlerts = <Alert>[];
+          for (final alert in fetchedAlerts) {
+            final dId = deviceKey(alert.deviceId ?? cleanDeviceName(alert.title.split(' is ')[0]));
+            final state = isDownAlert(alert) ? 'DOWN' : 'UP';
+            if (seenStateByDevice[dId] != state) {
+              seenStateByDevice[dId] = state;
+              dedupedMonthAlerts.add(alert);
+            }
+          }
+          
+          totalWarnings = dedupedMonthAlerts.where((a) => isDownAlert(a)).length;
+
+          // For the Alert List on dashboard, we still want unique active ones to keep it useful
           final combined = [...activeAlertsList, ...generatedAlerts];
           final uniqueAlerts = <String, Alert>{};
           for (final a in combined) {
@@ -446,13 +572,12 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
             if (devName.contains(' - ')) {
               devName = devName.split(' - ').last.trim();
             }
-            devName = devName.replaceAll(RegExp(r'(Access\sPoint|CCTV|MMT|NVR|SWITCH)\s+DOWN\s+-\s+', caseSensitive: false), '').trim();
+            devName = devName.replaceAll(RegExp(r'(Access\sPoint|CCTV|MMT|NVR|SWITCH|PC)\s+DOWN\s+-\s+', caseSensitive: false), '').trim();
             if (!uniqueAlerts.containsKey(devName) || a.severity == 'critical') {
               uniqueAlerts[devName] = a;
             }
           }
           alerts = uniqueAlerts.values.toList()..sort((a, b) => b.timestamp.compareTo(a.timestamp));
-          totalWarnings = alerts.length;
         });
       }
     } catch (e) {
@@ -486,7 +611,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
             }
           }
 
-          _mmtStatusByIp = mmtStatusByIp;
+
         }
       }
     } catch (e) {
@@ -516,52 +641,13 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   // ═══════════════════════════════════════════════════════════════
 
   void _mergeIpStatus(Map<String, String> map, String ip, String status) {
-    if (ip.isEmpty) return;
-    final normalized = status.toUpperCase();
-    if (normalized == 'UP' || map[ip] == null) {
-      map[ip] = normalized;
-    }
+    final cleanIp = ip.trim();
+    if (cleanIp.isEmpty) return;
+    
+    // Gunakan status apa adanya dari sumber data terakhir (LIFO)
+    map[cleanIp] = status.trim().toUpperCase();
   }
 
-  Map<String, String> _buildIpStatusMap(List<Tower> towers, List<Camera> cameras, List<NVR> nvrs, List<SwitchModel> switches) {
-    final map = <String, String>{};
-    for (var t in towers) {
-      _mergeIpStatus(map, t.ipAddress.trim(), t.status);
-    }
-    for (var c in cameras) {
-      _mergeIpStatus(map, c.ipAddress.trim(), c.status);
-    }
-    for (var n in nvrs) {
-      _mergeIpStatus(map, n.ipAddress.trim(), n.status);
-    }
-    for (var s in switches) {
-      _mergeIpStatus(map, s.ipAddress.trim(), s.status);
-    }
-    _mmtStatusByIp.forEach((ip, status) => _mergeIpStatus(map, ip, status));
-    return map;
-  }
-
-  List<Tower> _applyIpStatusToTowers(List<Tower> towers, Map<String, String> ipStatus) {
-    return towers.map((t) {
-      final forced = ipStatus[t.ipAddress.trim()];
-      return forced != null && t.status.toUpperCase() != forced ? Tower(
-        id: t.id, towerId: t.towerId, towerNumber: t.towerNumber, location: t.location,
-        ipAddress: t.ipAddress, status: forced, containerYard: t.containerYard,
-        createdAt: t.createdAt, updatedAt: t.updatedAt, latitude: t.latitude, longitude: t.longitude,
-      ) : t;
-    }).toList();
-  }
-
-  List<Camera> _applyIpStatusToCameras(List<Camera> cameras, Map<String, String> ipStatus) {
-    return cameras.map((c) {
-      final forced = ipStatus[c.ipAddress.trim()];
-      return forced != null && c.status.toUpperCase() != forced ? Camera(
-        id: c.id, cameraId: c.cameraId, location: c.location, ipAddress: c.ipAddress,
-        status: forced, type: c.type, containerYard: c.containerYard, areaType: c.areaType,
-        createdAt: c.createdAt, updatedAt: c.updatedAt, latitude: c.latitude, longitude: c.longitude,
-      ) : c;
-    }).toList();
-  }
 
   List<AddedDevice> _buildLayoutDevices() {
     final merged = <AddedDevice>[...addedDevices];
@@ -645,6 +731,9 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
     } else if (device.type == 'Switch' || device.type == 'SWITCH') {
       final yard = device.containerYard.toLowerCase().replaceAll(' ', '');
       route = '/switch-monitoring-$yard';
+    } else if (device.type == 'PC') {
+      final yard = device.containerYard.toLowerCase().replaceAll(' ', '');
+      route = '/pc-monitoring-$yard';
     }
 
     if (route.isNotEmpty) {
@@ -685,18 +774,20 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                 children: [
                   SizedBox(
                     height: mapHeight,
-                    child: LiveTerminalMap(
-                      devices: _buildLayoutDevices(), 
-                      towers: towers, 
-                      masterLocations: masterLocations.map((m) => MasterLocation.fromMap(m)).toList(),
-                      isPickMode: _isPickTowerMode, 
-                      pickYardFilter: _pickTowerYard,
-                      onAreaPicked: _handleAreaPickedForTower, 
-                      onTowerMoved: _handleTowerPositionUpdate,
-                      onMasterMoved: _handleMasterPositionUpdate, 
-                      onTriggerPingCheck: _triggerPingCheck,
-                      onLoadDashboardData: _loadDashboardData,
-                      onDeviceTap: (device) => _navigateAddedDevice(context, device),
+                    child: ExcludeSemantics(
+                      child: LiveTerminalMap(
+                        devices: _buildLayoutDevices(), 
+                        towers: towers, 
+                        masterLocations: masterLocations.map((m) => MasterLocation.fromMap(m)).toList(),
+                        isPickMode: _isPickTowerMode, 
+                        pickYardFilter: _pickTowerYard,
+                        onAreaPicked: _handleAreaPickedForTower, 
+                        onTowerMoved: _handleTowerPositionUpdate,
+                        onMasterMoved: _handleMasterPositionUpdate, 
+                        onTriggerPingCheck: _triggerPingCheck,
+                        onLoadDashboardData: _loadDashboardData,
+                        onDeviceTap: (device) => _navigateAddedDevice(context, device),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -712,7 +803,12 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                     totalDownNVR: totalDownNVR,
                     totalUpSwitch: totalUpSwitch,
                     totalDownSwitch: totalDownSwitch,
+                    totalUpPC: totalUpPC,
+                    totalDownPC: totalDownPC,
                     totalWarnings: totalWarnings,
+                    uptimePercent: nodeTotal == 0 ? 0.0 : (nodeUp / nodeTotal) * 100.0,
+                    avgLatency: avgLatency,
+                    packetLoss: avgPacketLoss,
                   ),
                   const SizedBox(height: 32),
                 ],

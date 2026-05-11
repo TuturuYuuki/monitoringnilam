@@ -1170,6 +1170,27 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
         }
       }
 
+      final nvrs = await _apiService.getAllNVRs();
+      for (final nvr in nvrs) {
+        if (nvr.type.toUpperCase().trim() == type || matchByLocation(nvr.location, nvr.containerYard)) {
+          linkedDevices++;
+        }
+      }
+
+      final switches = await _apiService.getAllSwitches();
+      for (final s in switches) {
+        if (s.type.toUpperCase().trim() == type || matchByLocation(s.location, s.containerYard)) {
+          linkedDevices++;
+        }
+      }
+
+      final pcs = await _apiService.getAllPCs();
+      for (final pc in pcs) {
+        if (pc.type.toUpperCase().trim() == type || matchByLocation(pc.location, pc.containerYard)) {
+          linkedDevices++;
+        }
+      }
+
       if (linkedDevices > 0) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1350,6 +1371,9 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
     final towers = await _apiService.getAllTowers();
     final mmts = await _apiService.getAllMMTs();
     final cameras = await _apiService.getAllCameras();
+    final nvrs = await _apiService.getAllNVRs();
+    final switches = await _apiService.getAllSwitches();
+    final pcs = await _apiService.getAllPCs();
 
     bool matchByLocation(String location, String deviceYard) {
       final locKey = normalizeLocationMatchKey(location);
@@ -1362,10 +1386,19 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
         return false;
       }
 
+      // Check if location contains the code or name as a standalone word/token
+      for (final key in fallbackCodeKeys) {
+        if (key.isEmpty) continue;
+        // If the normalized location key contains the normalized code key, it's likely a match
+        // (e.g. "TOWERT1CY1" contains "T1")
+        if (locKey.contains(key)) {
+          return true;
+        }
+      }
+
       final deviceLocUpper = location.trim().toUpperCase();
-      // Extract code parts from device location by splitting on "-"
-      // Pattern: TYPE-CODE-YARD (e.g., "RTG-RTG1-CY1" or "TOWER-T1-CY1")
-      final deviceParts = deviceLocUpper.split('-').where((p) => p.isNotEmpty).toList();
+      // Split by both hyphen and space
+      final deviceParts = deviceLocUpper.split(RegExp(r'[-\s]')).where((p) => p.isNotEmpty).toList();
       
       // Strict matching: compare device location components with master location components
       if (deviceParts.length >= 2) {
@@ -1388,20 +1421,16 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
         }
       }
 
-      if (fallbackCodeKeys.contains(locKey)) {
-        return true;
-      }
-
       return allowLooseMatch && fallbackCodeKeys.contains(locKey);
     }
 
     final devices = <Map<String, String>>[];
 
     for (final tower in towers) {
-      if ((type == 'TOWER' &&
-              tower.towerId.toUpperCase() == code.toUpperCase()) ||
-          (type != 'TOWER' &&
-              matchByLocation(tower.location, tower.containerYard))) {
+      final isDirectIdMatch = tower.towerId.toUpperCase() == code.toUpperCase();
+      final isLocationMatch = matchByLocation(tower.location, tower.containerYard);
+      
+      if (isDirectIdMatch || isLocationMatch) {
         devices.add({
           'type': 'TOWER',
           'name': tower.towerId,
@@ -1436,6 +1465,42 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
       }
     }
 
+    for (final nvr in nvrs) {
+      if (matchByLocation(nvr.location, nvr.containerYard)) {
+        devices.add({
+          'type': 'NVR',
+          'name': nvr.nvrId,
+          'status': nvr.status,
+          'ip': nvr.ipAddress,
+          'location': nvr.location,
+        });
+      }
+    }
+
+    for (final sw in switches) {
+      if (matchByLocation(sw.location, sw.containerYard)) {
+        devices.add({
+          'type': 'SWITCH',
+          'name': sw.switchId,
+          'status': sw.status,
+          'ip': sw.ipAddress,
+          'location': sw.location,
+        });
+      }
+    }
+
+    for (final pc in pcs) {
+      if (matchByLocation(pc.location, pc.containerYard)) {
+        devices.add({
+          'type': 'PC',
+          'name': pc.pcId,
+          'status': pc.status,
+          'ip': pc.ipAddress,
+          'location': pc.location,
+        });
+      }
+    }
+
     final upCount = devices.where((d) => _isUpStatus(d['status'] ?? '')).length;
     final downCount = devices.length - upCount;
 
@@ -1465,7 +1530,7 @@ class _TowerManagementPageState extends State<TowerManagementPage> {
               ),
               const SizedBox(height: 14),
               if (devices.isEmpty)
-                const Text('No Device Have Been Detected At This Location')
+                const Text('No device have been detected at this location')
               else
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxHeight: 220),

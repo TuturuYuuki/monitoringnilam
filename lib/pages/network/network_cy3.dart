@@ -198,7 +198,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
     final warnings = towers.where((t) => isDownStatus(t.status)).toList();
     showFadeAlertDialog(
       context: context,
-      title: 'Access Point DOWN (${warnings.length})',
+      title: 'Access Point is DOWN (${warnings.length})',
       content: ConstrainedBox(
         constraints: const BoxConstraints(
           maxWidth: 350,
@@ -212,7 +212,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                 const Padding(
                   padding: EdgeInsets.all(12.0),
                   child: Text(
-                    'All tower are in UP condition',
+                    'All Access Point are in UP condition',
                     style: TextStyle(fontSize: 13, color: Colors.black54),
                     textAlign: TextAlign.center,
                   ),
@@ -286,6 +286,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
   
   Future<void> _editTower(Tower tower) async {
     final ipController = TextEditingController(text: tower.ipAddress);
+    final nameController = TextEditingController(text: tower.towerId);
     var locationOptions = buildMasterLocationOptions(
       await apiService.getAllMasterLocations(),
     );
@@ -324,10 +325,20 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
+                  controller: nameController,
+                  style: const TextStyle(color: Colors.black87),
+                  decoration: const InputDecoration(
+                    labelText: 'Name',
+                    labelStyle: TextStyle(color: Colors.black54),
+                    enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.black12)),
+                  )),
+              const SizedBox(height: 12),
+              TextField(
                   controller: ipController,
                   style: const TextStyle(color: Colors.black87),
                   decoration: const InputDecoration(
-                    labelText: 'IP address',
+                    labelText: 'IP Address',
                     labelStyle: TextStyle(color: Colors.black54),
                     enabledBorder: UnderlineInputBorder(
                         borderSide: BorderSide(color: Colors.black12)),
@@ -381,6 +392,7 @@ class _NetworkCY3PageState extends State<NetworkCY3Page> {
                   style: TextStyle(color: Colors.white)),
               onPressed: () async {
                 final response = await apiService.updateTower(tower.id, {
+                  'tower_id': nameController.text,
                   'ip_address': ipController.text,
                   'location': locationOptions.firstWhere(
                           (o) => o['label'] == selectedLocation,

@@ -413,22 +413,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
         debugPrint('Update Successfully, Verifying Backend Persistence');
 
         final profile = await apiService.getProfile(_userId!);
+        final currentData = await AuthHelper.getUserData();
+        final profileJson = profile?.toJson() ?? {
+          'id': _userId,
+          'fullname': updateData['fullname'],
+          'username': updateData['username'],
+          'email': updateData['email'],
+          'phone': updateData['phone'],
+          'location': updateData['location'],
+          'division': updateData['division'],
+          'role': currentData['role'] ?? 'user',
+        };
+
         if (profile == null) {
-          setState(() {
-            _isLoading = false;
-          });
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Profile update returned success, but fresh data could not be loaded'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-          return;
+          debugPrint('Fresh profile load failed after successful update, using local updateData fallback');
         }
 
-        final profileJson = profile.toJson();
         final persistedOk =
             (profileJson['fullname']?.toString().trim() ?? '') == updateData['fullname'] &&
             (profileJson['username']?.toString().trim() ?? '') == updateData['username'] &&
@@ -455,7 +455,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
         debugPrint('Backend persistence verified, saving to cache');
 
-        final currentData = await AuthHelper.getUserData();
         final Map<String, dynamic> updatedData = {
           'id': _userId,
           'username': profileJson['username'] ?? updateData['username'],

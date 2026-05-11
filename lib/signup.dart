@@ -128,12 +128,12 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
                 const SizedBox(height: 16),
                 _buildPasswordRequirement(
-                    'Minimum 8 Characters', _hasMinLength),
+                    'Minimum 8 characters', _hasMinLength),
                 _buildPasswordRequirement(
-                    'Contains Uppercase Letter (A-Z)', _hasUppercase),
+                    'Contains uppercase letter (A-Z)', _hasUppercase),
                 _buildPasswordRequirement(
-                    'Contains Lowercase Letter (a-z)', _hasLowercase),
-                _buildPasswordRequirement('Contains Number (0-9)', _hasNumber),
+                    'Contains lowercase letter (a-z)', _hasLowercase),
+                _buildPasswordRequirement('Contains number (0-9)', _hasNumber),
               ],
             ),
           ),
@@ -181,7 +181,7 @@ class _SignUpPageState extends State<SignUpPage> {
               context: context,
               barrierDismissible: false,
               builder: (context) => AlertDialog(
-                content: const Text('Account Successfully Created'),
+                content: const Text('Account successfully created'),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
                 actions: [
@@ -231,29 +231,29 @@ class _SignUpPageState extends State<SignUpPage> {
     List<String> errorFields = [];
 
     if (_usernameController.text.isEmpty) {
-      errorFields.add('Username Must Be Filled');
+      errorFields.add('Username must be filled');
     }
     if (_nameController.text.isEmpty) {
-      errorFields.add('Full Name Must Be Filled');
+      errorFields.add('Full Name must be filled');
     }
     if (_emailController.text.isEmpty) {
-      errorFields.add('Email Must Be Filled');
+      errorFields.add('Email must be filled');
     } else if (!_emailController.text.endsWith('@gmail.com')) {
-      errorFields.add('Email Must Be In @gmail.com Format');
+      errorFields.add('Email must be in @gmail.com format');
     }
     if (_passwordController.text.isEmpty) {
-      errorFields.add('Password Must Be Filled');
+      errorFields.add('Password must be filled');
     } else if (_passwordController.text.length < 8) {
-      errorFields.add('Password Minimum 8 Characters');
+      errorFields.add('Password minimum 8 characters');
     } else if (!RegExp(r'[A-Z]').hasMatch(_passwordController.text)) {
-      errorFields.add('Password Must Contain Uppercase Letter');
+      errorFields.add('Password must contain uppercase letter');
     } else if (!RegExp(r'[a-z]').hasMatch(_passwordController.text)) {
-      errorFields.add('Password Must Contain Lowercase Letter');
+      errorFields.add('Password must contain lowercase letter');
     } else if (!RegExp(r'[0-9]').hasMatch(_passwordController.text)) {
-      errorFields.add('Password Must Contain Number');
+      errorFields.add('Password must contain number');
     }
     if (_confirmPasswordController.text != _passwordController.text) {
-      errorFields.add('Confirm Password Does Not Match');
+      errorFields.add('Confirm Password does not match');
     }
 
     showDialog(
@@ -286,7 +286,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           Icon(Icons.error_outline,
                               color: Colors.red, size: 24),
                           SizedBox(width: 12),
-                          Text('Data Not Valid',
+                          Text('Data not valid',
                               style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -299,7 +299,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  const Text('Please Correct The Following Fields:',
+                  const Text('Please correct the following fields:',
                       style: TextStyle(fontSize: 13, color: Colors.black54)),
                   const SizedBox(height: 12),
                   ...errorFields.map((error) => Padding(
@@ -331,7 +331,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: const Text('Repair Data',
+                      child: const Text('Repair data',
                           style: TextStyle(
                               fontSize: 14, fontWeight: FontWeight.bold)),
                     ),
@@ -376,7 +376,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           Icon(Icons.error_outline,
                               color: Colors.red, size: 24),
                           SizedBox(width: 12),
-                          Text('Signup Failed',
+                          Text('Signup failed',
                               style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -391,7 +391,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   const SizedBox(height: 12),
                   Text(
                       response['message'] ??
-                          'An Error Occurred While Registering',
+                          'An error occurred while registering',
                       style:
                           const TextStyle(fontSize: 13, color: Colors.black54)),
                   const SizedBox(height: 16),
@@ -558,7 +558,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Enter your details for new account',
+                        'Enter your detail for new account',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: isMobile ? 13 : 14,
@@ -630,7 +630,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       SizedBox(height: isMobile ? 14 : 20),
                       _buildTextField(
                         controller: _confirmPasswordController,
-                        hint: 'Confirm Password',
+                        hint: 'Confirm password',
                         icon: Icons.lock_reset_outlined,
                         obscureText: _obscureConfirmPassword,
                         suffixIcon: IconButton(

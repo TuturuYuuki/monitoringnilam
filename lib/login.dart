@@ -73,7 +73,7 @@ class _LoginPageState extends State<LoginPage> {
             showDialog(
               context: context,
               builder: (context) => AlertDialog(
-                title: const Text('Login Failed'),
+                title: const Text('Login failed'),
                 content: Text(response['message'] ?? 'Login failed'),
                 actions: [
                   TextButton(
@@ -280,7 +280,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Please Enter Your Username';
+                              return 'Please enter your username';
                             }
                             return null;
                           },
@@ -330,10 +330,10 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Please Enter Your Password';
+                              return 'Please enter your password';
                             }
                             if (value.length < 6) {
-                              return 'Password Must Be At Least 6 Characters';
+                              return 'Password must be at least 6 characters';
                             }
                             return null;
                           },

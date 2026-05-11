@@ -144,7 +144,7 @@ Future<void> navigateWithLoading(BuildContext context, String routeName) async {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed Navigation: $routeName'),
+          content: Text('Failed navigation: $routeName'),
           duration: const Duration(seconds: 2),
           backgroundColor: Colors.red,
         ),
@@ -159,7 +159,7 @@ void showLogoutDialog(BuildContext context) {
     context: context,
     builder: (context) => AlertDialog(
       title: const Text('Logout', style: TextStyle(color: Colors.black87)),
-      content: const Text('Are You Sure To Logout?',
+      content: const Text('Are you sure to logout?',
           style: TextStyle(color: Colors.black87)),
       actions: [
         TextButton(

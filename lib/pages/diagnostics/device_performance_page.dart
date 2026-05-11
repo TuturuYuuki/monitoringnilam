@@ -256,6 +256,7 @@ class _DevicePerformancePageState extends State<DevicePerformancePage> {
 
   Widget _buildCategoryStatusTable() {
     final rows = _controller.categoryTelemetry;
+    final isMobile = isMobileScreen(context);
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -280,7 +281,13 @@ class _DevicePerformancePageState extends State<DevicePerformancePage> {
                     ),
                   ),
                 )
-              : _buildCustomCategoryTable(rows),
+              : SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: isMobile ? 600 : 0),
+                    child: _buildCustomCategoryTable(rows),
+                  ),
+                ),
         ),
       ],
     );
@@ -302,7 +309,6 @@ class _DevicePerformancePageState extends State<DevicePerformancePage> {
   }
   Widget _buildCustomCategoryTable(List<Map<String, dynamic>> rows) {
     const headers = ['Device ID', 'CPU %', 'RAM %', 'Resp Time', 'Loss %', 'Uptime'];
-    final isMobile = MediaQuery.of(context).size.width < 900;
     final columnFlex = [1, 1, 1, 1, 1, 1]; 
     
     return Container(
@@ -436,7 +442,9 @@ class _DevicePerformancePageState extends State<DevicePerformancePage> {
       if (metricType == 'cpu' || metricType == 'ram') {
         if (value >= 90) {
           textColor = const Color(0xFFFF5252);
-        } else if (value >= 75) textColor = const Color(0xFFFFAB40);
+        } else if (value >= 75) {
+          textColor = const Color(0xFFFFAB40);
+        }
       } else if (metricType == 'loss' && value > 0) {
         textColor = const Color(0xFFFFAB40);
       }

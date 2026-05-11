@@ -7,6 +7,7 @@ class User {
   final String division;
   final String phone;
   final String location;
+  final String? profilePhoto;
   final String createdAt;
 
   User({
@@ -18,6 +19,7 @@ class User {
     required this.division,
     required this.phone,
     required this.location,
+    this.profilePhoto,
     required this.createdAt,
   });
 
@@ -35,6 +37,7 @@ class User {
           json['telp'] ??
           '',
       location: json['location'] ?? json['lokasi'] ?? json['address'] ?? '',
+      profilePhoto: json['profile_photo'] ?? json['image'],
       createdAt: json['created_at'] ?? '',
     );
   }
@@ -49,6 +52,7 @@ class User {
       'division': division,
       'phone': phone,
       'location': location,
+      'profile_photo': profilePhoto,
       'created_at': createdAt,
     };
   }

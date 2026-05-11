@@ -14,7 +14,7 @@ class GlobalFooter extends StatelessWidget {
       child: Align(
         alignment: isMobile ? Alignment.center : Alignment.centerLeft,
         child: Text(
-          '© 2026 Pelindo Terminal Petikemas Teluk Lamong - TPK Nilam',
+          '© 2026 Pelindo Terminal Petikemas Teluk Lamong - Terminal Petikemas Nilam',
           textAlign: isMobile ? TextAlign.center : TextAlign.left,
           softWrap: true,
           style: TextStyle(

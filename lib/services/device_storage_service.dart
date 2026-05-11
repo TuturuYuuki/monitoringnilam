@@ -20,7 +20,7 @@ class DeviceStorageService {
       devicesList.add(device);
       await _saveDevices(devicesList);
     } catch (e) {
-      debugPrint('Warning: Could not add device to storage: $e');
+      debugPrint('Warning: could not add device to storage: $e');
     }
   }
 
@@ -44,13 +44,13 @@ class DeviceStorageService {
             );
           }
         } catch (e) {
-          debugPrint('Warning: Skipping invalid device record in storage: $e');
+          debugPrint('Warning: skipping invalid device record in storage: $e');
         }
       }
 
       return devices;
     } catch (e) {
-      debugPrint('Warning: Could not retrieve devices from storage: $e');
+      debugPrint('Warning: could not retrieve devices from storage: $e');
       return [];
     }
   }
@@ -63,7 +63,7 @@ class DeviceStorageService {
       devicesList.removeWhere((d) => d.id == deviceId);
       await _saveDevices(devicesList);
     } catch (e) {
-      debugPrint('Warning: Could not remove device from storage: $e');
+      debugPrint('Warning: could not remove device from storage: $e');
     }
   }
 
@@ -71,7 +71,7 @@ class DeviceStorageService {
     try {
       await _saveDevices(devices);
     } catch (e) {
-      debugPrint('Warning: Could not overwrite devices in storage: $e');
+      debugPrint('Warning: could not overwrite devices in storage: $e');
     }
   }
 
@@ -105,7 +105,7 @@ class DeviceStorageService {
 
       return originalLength - devicesList.length;
     } catch (e) {
-      debugPrint('Warning: Could not remove device by type/name/ip: $e');
+      debugPrint('Warning: could not remove device by type/name/ip: $e');
       return 0;
     }
   }

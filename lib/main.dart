@@ -45,11 +45,17 @@ import 'package:monitoring/pages/switch/switch_parking.dart';
 import 'pages/diagnostics/device_diagnostics_page.dart';
 import 'pages/diagnostics/global_diagnostics_page.dart';
 import 'pages/diagnostics/device_performance_page.dart';
+import 'pages/pc/pc_monitoring_cy1.dart';
+import 'pages/pc/pc_monitoring_cy2.dart';
+import 'pages/pc/pc_monitoring_cy3.dart';
+import 'pages/pc/pc_monitoring_gate.dart';
+import 'pages/pc/pc_monitoring_parking.dart';
 export 'utils/ui_utils.dart';
 
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -350,6 +356,12 @@ class MyApp extends StatelessWidget {
         '/device-diagnostics': (context) => const DeviceDiagnosticsPage(),
         '/global-diagnostics': (context) => const GlobalDiagnosticsPage(),
         '/device-performance': (context) => const DevicePerformancePage(),
+        '/pc-monitoring-cy1': (context) => const PCMonitoringCY1Page(),
+        '/pc-monitoring-cy2': (context) => const PCMonitoringCY2Page(),
+        '/pc-monitoring-cy3': (context) => const PCMonitoringCY3Page(),
+        '/pc-monitoring-gate': (context) => const PCMonitoringGatePage(),
+        '/pc-monitoring-parking': (context) => const PCMonitoringParkingPage(),
+        '/pc-monitoring': (context) => const PCMonitoringCY1Page(),
       },
     );
   }
@@ -373,19 +385,30 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<Map<String, dynamic>> _initApp() async {
-    // 1. Initialize API Root from storage
-    await ApiService.ensureInitialized();
-    
-    // 2. Try to connect to backend
-    final result = await ApiService().testConnection();
-    
-    // 3. Check login status
-    final isLoggedIn = await AuthHelper.isLoggedIn();
-    
-    return {
-      'isLoggedIn': isLoggedIn,
-      'connection': result,
-    };
+    try {
+      await ApiService.ensureInitialized();
+
+      // Skip network connection test at startup — doing HTTP calls here on
+      // Android can block the Dart event loop (especially localhost → IPv6)
+      // and trigger an ANR dialog. Each page handles its own connection errors.
+      bool isLoggedIn = false;
+      try {
+        isLoggedIn = await AuthHelper.isLoggedIn()
+            .timeout(const Duration(seconds: 3), onTimeout: () => false);
+      } catch (_) {
+        isLoggedIn = false;
+      }
+
+      return {
+        'isLoggedIn': isLoggedIn,
+        'connection': {'success': true},
+      };
+    } catch (e) {
+      return {
+        'isLoggedIn': false,
+        'connection': {'success': true},
+      };
+    }
   }
 
   @override
@@ -416,9 +439,25 @@ class _AuthWrapperState extends State<AuthWrapper> {
           );
         }
 
+        if (snapshot.hasError) {
+          return Scaffold(
+            backgroundColor: const Color(0xFF0F172A),
+            body: Center(
+              child: Text('Fatal error: ${snapshot.error}', style: const TextStyle(color: Colors.white)),
+            ),
+          );
+        }
+
         final data = snapshot.data;
-        final connection = data?['connection'] as Map<String, dynamic>?;
-        final isLoggedIn = data?['isLoggedIn'] == true;
+        if (data == null) {
+          return const Scaffold(
+            backgroundColor: Color(0xFF0F172A),
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final connection = data['connection'] as Map<String, dynamic>?;
+        final isLoggedIn = data['isLoggedIn'] == true;
 
         // If connection failed and we are not on web (where localhost usually works)
         if (connection?['success'] != true && !kIsWeb) {

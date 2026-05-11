@@ -204,50 +204,55 @@ class _LiveTerminalMapState extends State<LiveTerminalMap> {
                       return baseMap;
                     }
 
-                    return ListView.separated(
-                      itemCount: _mobileAreas.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final areaId = _mobileAreas[index];
-                        // Force focused if in pick mode and matches filter
-                        final isPickTarget = widget.isPickMode && 
-                                            widget.pickYardFilter?.replaceAll(' ', '').toUpperCase() == areaId;
-                        final isFocused = isPickTarget || _mobileFocusedArea == areaId;
+                    return ExcludeSemantics(
+                      child: ListView.separated(
+                        itemCount: _mobileAreas.length,
+                        addAutomaticKeepAlives: false,
+                        addRepaintBoundaries: true,
+                        cacheExtent: 100,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (context, index) {
+                          final areaId = _mobileAreas[index];
+                          // Force focused if in pick mode and matches filter
+                          final isPickTarget = widget.isPickMode && 
+                                              widget.pickYardFilter?.replaceAll(' ', '').toUpperCase() == areaId;
+                          final isFocused = isPickTarget || _mobileFocusedArea == areaId;
 
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _mobileFocusedArea = isFocused ? null : areaId;
-                            });
-                          },
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(14),
-                            child: Container(
-                              height: isFocused ? 450 : 220,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: Colors.white24),
-                                color: Colors.black.withValues(alpha: 0.08),
-                              ),
-                              child: TerminalLayoutStatic(
-                                key: ValueKey('map_${areaId}_$isFocused'),
-                                devices: widget.devices,
-                                towers: widget.towers,
-                                masterLocations: widget.masterLocations,
-                                isPickMode: widget.isPickMode,
-                                pickYardFilter: widget.pickYardFilter,
-                                forcedAreaId: areaId,
-                                isZoomed: isFocused,
-                                onAreaPicked: widget.onAreaPicked,
-                                onDeviceTap: widget.onDeviceTap,
-                                isFreeroamEditEnabled: _isFreeroamEditMode,
-                                onTowerMoved: widget.onTowerMoved,
-                                onMasterMoved: widget.onMasterMoved,
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _mobileFocusedArea = isFocused ? null : areaId;
+                              });
+                            },
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: Container(
+                                height: isFocused ? 450 : 220,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: Colors.white24),
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                ),
+                                child: TerminalLayoutStatic(
+                                  key: ValueKey('map_${areaId}_$isFocused'),
+                                  devices: widget.devices,
+                                  towers: widget.towers,
+                                  masterLocations: widget.masterLocations,
+                                  isPickMode: widget.isPickMode,
+                                  pickYardFilter: widget.pickYardFilter,
+                                  forcedAreaId: areaId,
+                                  isZoomed: isFocused,
+                                  onAreaPicked: widget.onAreaPicked,
+                                  onDeviceTap: widget.onDeviceTap,
+                                  isFreeroamEditEnabled: _isFreeroamEditMode,
+                                  onTowerMoved: widget.onTowerMoved,
+                                  onMasterMoved: widget.onMasterMoved,
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     );
                   },
                 ),
@@ -269,7 +274,7 @@ class _LiveTerminalMapState extends State<LiveTerminalMap> {
         messenger.showSnackBar(
           SnackBar(
             content: Text(
-              _isFreeroamEditMode ? 'Edit Freeroam ON' : 'Edit Freeroam OFF',
+              _isFreeroamEditMode ? 'Edit freeroam ON' : 'Edit freeroam OFF',
             ),
             backgroundColor:
                 _isFreeroamEditMode ? Colors.orange : Colors.blueGrey,

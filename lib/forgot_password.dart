@@ -51,11 +51,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               await showDialog(
                 context: context,
                 builder: (context) => AlertDialog(
-                  title: const Text('OTP Generated'),
+                  title: const Text('OTP generated'),
                   content: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('Development Mode - Your OTP:'),
+                      const Text('Development mode - your OTP:'),
                       const SizedBox(height: 16),
                       Container(
                         padding: const EdgeInsets.all(16),
@@ -106,7 +106,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             showDialog(
               context: context,
               builder: (context) => AlertDialog(
-                title: const Text('Invalid OTP Sending'),
+                title: const Text('Invalid OTP sending'),
                 content: Text(response['message'] ?? 'Failed to send OTP'),
                 actions: [
                   TextButton(
@@ -306,11 +306,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                               validator: (value) {
                                 final email = value?.trim() ?? '';
                                 if (email.isEmpty) {
-                                  return 'Please Enter Your Email';
+                                  return 'Please enter your email';
                                 }
                                 if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
                                     .hasMatch(email)) {
-                                  return 'Enter A Valid Email';
+                                  return 'Enter a valid email';
                                 }
                                 return null;
                               },
@@ -361,7 +361,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                           ),
                                         )
                                       : const Text(
-                                          'Send OTP Code',
+                                          'Send OTP code',
                                           style: TextStyle(
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,

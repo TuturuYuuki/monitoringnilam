@@ -3,6 +3,7 @@ import 'package:monitoring/models/mmt_model.dart';
 import 'package:monitoring/models/tower_model.dart';
 import 'package:monitoring/models/nvr_model.dart';
 import 'package:monitoring/models/switch_model.dart';
+import 'package:monitoring/models/pc_model.dart';
 import 'package:monitoring/services/api_service.dart';
 
 class DevicePerformanceRepository {
@@ -39,4 +40,6 @@ class DevicePerformanceRepository {
   Future<List<NVR>> getAllNVRs() => _apiService.getAllNVRs();
 
   Future<List<SwitchModel>> getAllSwitches() => _apiService.getAllSwitches();
+
+  Future<List<PCModel>> getAllPCs() => _apiService.getAllPCs();
 }

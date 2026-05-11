@@ -1,14 +1,3 @@
-/// ============================================================================
-/// Layout Mapper - Coordinate Conversion System
-/// 
-/// Converts between:
-/// - Geographic coordinates (lat/lng) from database
-/// - Pixel coordinates (x/y) on PNG layout image
-/// 
-/// Usage:
-///   PixelCoordinate pixel = LayoutMapper.latLngToPixel(lat, lng);
-///   // Use pixel.x and pixel.y to position markers on PNG canvas
-/// ============================================================================
 library;
 
 import 'package:flutter/foundation.dart';

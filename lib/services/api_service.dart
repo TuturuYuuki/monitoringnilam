@@ -8,6 +8,7 @@ import 'package:monitoring/models/mmt_model.dart';
 import 'package:monitoring/models/alert_model.dart';
 import 'package:monitoring/models/device_model.dart';
 import 'package:monitoring/models/nvr_model.dart';
+import 'package:monitoring/models/pc_model.dart';
 import 'package:monitoring/models/switch_model.dart';
 import 'package:monitoring/services/device_storage_service.dart';
 import 'package:intl/intl.dart';
@@ -23,20 +24,14 @@ class ApiService {
 
   static Future<void> ensureInitialized() async {
     if (_hasAttemptedLoad) return;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedRoot = prefs.getString('active_api_root');
-      if (savedRoot != null && savedRoot.isNotEmpty) {
-        _activeApiRoot = savedRoot;
-        debugPrint('ApiService restored root from storage => $savedRoot');
-      }
-    } catch (e) {
-      debugPrint('ApiService failed to load root from storage: $e');
-    }
+    // NOTE: We intentionally do NOT restore saved root here so that
+    // testConnection always probes all candidates fresh.
     _hasAttemptedLoad = true;
   }
 
-  static String get _defaultApiRoot => 'http://localhost/monitoring_api';
+  // Default ke host LAN agar cocok untuk WiFi TPKN / Laragon di 192.168.1.101.
+  // localhost tetap tersedia sebagai fallback di kandidat berikutnya.
+  static String get _defaultApiRoot => 'http://192.168.1.101/monitoring_api';
   
   static String _cleanRoot(String root) {
     if (root.isEmpty) return root;
@@ -65,6 +60,52 @@ class ApiService {
   static String get performanceUrl => '$_apiRoot/performance.php';
   static String get performanceUrlFallback => '$_apiRoot/performance.php';
 
+  /// Helper to get the full URL for a profile photo
+  static String getPhotoUrl(String? fileName) {
+    if (fileName == null || fileName.isEmpty) return '';
+    if (fileName.startsWith('http')) return fileName;
+    // Add cache buster to force refresh
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    return '$_apiRoot/get_image.php?file=$fileName&t=$timestamp';
+  }
+
+  Future<Map<String, dynamic>> uploadProfilePhoto(int userId, Uint8List bytes, String fileName) async {
+    try {
+      final url = Uri.parse('$baseUrl?endpoint=auth&action=upload-photo');
+      final request = http.MultipartRequest('POST', url);
+      
+      request.fields['user_id'] = userId.toString();
+      request.files.add(http.MultipartFile.fromBytes(
+        'photo', 
+        bytes,
+        filename: fileName,
+      ));
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        try {
+          final errorData = jsonDecode(response.body);
+          return {
+            'success': false,
+            'message': errorData['message'] ?? 'Upload failed (${response.statusCode})'
+          };
+        } catch (e) {
+          return {
+            'success': false,
+            'message': 'Upload failed with status ${response.statusCode}'
+          };
+        }
+      }
+    } catch (e) {
+      debugPrint('Error in uploadProfilePhoto: $e');
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
   static List<String> get _rootCandidates {
     final values = <String>[];
     void add(String v) {
@@ -73,21 +114,31 @@ class ApiService {
       }
     }
 
-    add(_activeApiRoot ?? '');
     if (_apiRootOverride.isNotEmpty) {
       add(_apiRootOverride);
     }
-    add(_defaultApiRoot);
 
     if (!kIsWeb) {
-      // Keep localhost without port as fallback, but prefer :8080.
-      add('http://localhost/monitoring_api');
-      // Android emulator default host mapping.
-      add('http://10.0.2.2/monitoring_api');
-      add('http://10.0.2.2:8080/monitoring_api');
-      add('http://127.0.0.1/monitoring_api');
+      // ── WiFi / LAN (paling andal, tidak butuh adb reverse) ──
+      add('http://192.168.1.101/monitoring_api');
+      // ── Physical device via `adb reverse tcp:8080 tcp:80` ──
       add('http://127.0.0.1:8080/monitoring_api');
+      add('http://localhost:8080/monitoring_api');
+      // ── Android emulator ──
+      add('http://10.0.2.2:8080/monitoring_api');
+      add('http://10.0.2.2/monitoring_api');
+      // ── Fallback port 80 langsung ──
+      add('http://127.0.0.1/monitoring_api');
+      add('http://localhost/monitoring_api');
+    } else {
+      // Untuk Web di environment ini, utamakan host LAN agar sama dengan Laragon/TPKN.
+      add('http://192.168.1.101/monitoring_api');
+      add('http://localhost/monitoring_api');
+      add('http://127.0.0.1/monitoring_api');
     }
+
+    add(_defaultApiRoot);
+    add(_activeApiRoot ?? '');
 
     return values;
   }
@@ -115,34 +166,29 @@ class ApiService {
   /// Test if Flutter can connect to the backend API
   Future<Map<String, dynamic>> testConnection() async {
     dynamic lastError;
-    final candidates = {
+    final candidates = <dynamic>{
       ..._rootCandidates,
-      'http://127.0.0.1/monitoring_api',
-      'http://localhost/monitoring_api',
-    }.toList();
+    }.toList(); // deduplicate
 
     for (final root in candidates) {
       try {
-        debugPrint('🔍 Testing API Candidate: $root/index.php?endpoint=test');
+        debugPrint('🔍 Testing API candidate: $root/index.php?endpoint=network&action=all');
         final response = await http.get(
-          Uri.parse('$root/index.php?endpoint=test'),
-        ).timeout(const Duration(seconds: 4));
+          Uri.parse('$root/index.php?endpoint=network&action=all'),
+        ).timeout(const Duration(seconds: 2));
 
         debugPrint('📡 Response from $root: ${response.statusCode}');
         
         if (response.statusCode == 200) {
           final decoded = jsonDecode(response.body);
-          // Relaxed check: if it returns 'path' containing 'monitoring_api', it's ours.
-          final isMonitoringApi = (decoded['success'] == true) && 
-              (decoded['message']?.toString().contains('Monitoring') == true || 
-               decoded['path']?.toString().contains('monitoring_api') == true);
+          final isMonitoringApi = decoded is Map && decoded['success'] == true;
 
           if (isMonitoringApi) {
             _setActiveRoot(root);
-            debugPrint('✅ Found Active Monitoring API at: $root');
+            debugPrint('✅ Found active monitoring API at: $root');
             return {
               'success': true,
-              'message': 'Connected to Monitoring API',
+              'message': 'Connected to monitoring API',
               'root': root,
               'path': decoded['path'],
             };
@@ -167,7 +213,7 @@ class ApiService {
     dynamic lastError;
     for (final root in _authRootCandidates) {
       try {
-        debugPrint('Trying Login Root: $root');
+        debugPrint('Trying login root: $root');
         final response = await http.post(
           Uri.parse('$root/index.php?endpoint=auth&action=login'),
           headers: {'Content-Type': 'application/json'},
@@ -193,7 +239,7 @@ class ApiService {
           } catch (e) {
             lastError = 'Status: ${response.statusCode} - $e';
             if (response.statusCode == 401) {
-              return {'success': false, 'message': 'Username atau password salah'};
+              return {'success': false, 'message': 'Username or password false'};
             }
           }
           continue;
@@ -205,7 +251,7 @@ class ApiService {
     return {
       'success': false,
       'message':
-          'Network error: $lastError. For physical Android use adb reverse tcp:8080 tcp:80, or set API_ROOT.'
+          'Network error: $lastError. For physical android use adb reverse tcp:8080 tcp:80, or set API_ROOT.'
     };
   }
 
@@ -254,7 +300,7 @@ class ApiService {
     return {
       'success': false,
       'message':
-          'Network error: $lastError. \n\nTips:\n1. Pastikan XAMPP/Apache (MySQL) sudah Aktif.\n2. Jika HP Fisik, jalankan: adb reverse tcp:80 tcp:80 (atau port 8080).\n3. Terakhir gagal di: $lastError'
+          'Network error: $lastError.\n\Tips:\n1. Make sure XAMPP/Apache (MySQL) is active.\n2. If the phone is physical, run: adb reverse tcp:80 tcp:80 (or port 8080).\n3. Last failed at: $lastError'
     };
   }
 
@@ -337,7 +383,7 @@ class ApiService {
           .timeout(
             const Duration(seconds: 12),
             onTimeout: () => http.Response(
-                '{"success":false,"message":"Request timeout setelah 12 detik"}',
+                '{"success":false,"message":"Request timeout after 12 detik"}',
                 408),
           );
 
@@ -441,7 +487,7 @@ class ApiService {
           debugPrint('❌ TIMEOUT after ${duration.inSeconds} seconds');
           debugPrint('Change password timed out after 12 seconds');
           return http.Response(
-              '{"success":false,"message":"Request timeout setelah 12 detik. Backend mungkin tidak dapat diakses dari Flutter."}',
+              '{"success":false,"message":"Request timeout after 12 second. Backend maybe cannot access from flutter."}',
               408);
         },
       );
@@ -701,7 +747,7 @@ class ApiService {
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        return {'success': false, 'message': 'Gagal verifikasi OTP'};
+        return {'success': false, 'message': 'Failed to verify OTP'};
       }
     } catch (e) {
       return {'success': false, 'message': 'Error: $e'};
@@ -732,9 +778,7 @@ class ApiService {
           )
           .timeout(
             const Duration(seconds: 12),
-            onTimeout: () => http.Response(
-                '{"success":false,"message":"Request timeout setelah 12 detik"}',
-                408),
+            onTimeout: () => http.Response('{"success":false,"message":"Request timeout after 12 second"}', 408),
           );
 
       debugPrint('Response Status: ${response.statusCode}');
@@ -806,7 +850,7 @@ class ApiService {
 
       return result;
     } catch (e) {
-      return {'success': false, 'message': 'Koneksi Gagal: $e'};
+      return {'success': false, 'message': 'Connection failed: $e'};
     }
   }
 
@@ -846,7 +890,7 @@ class ApiService {
 
       return result;
     } catch (e) {
-      return {'success': false, 'message': 'Koneksi Gagal: $e'};
+      return {'success': false, 'message': 'Connection failed: $e'};
     }
   }
 
@@ -973,7 +1017,7 @@ class ApiService {
           .timeout(
             const Duration(seconds: 12),
             onTimeout: () => http.Response(
-                '{"success":false,"message":"Request timeout setelah 12 detik"}',
+                '{"success":false,"message":"Request timeout after 12 second"}',
                 408),
           );
 
@@ -1056,7 +1100,7 @@ class ApiService {
       }
       return [];
     } catch (e) {
-      debugPrint('Error fetching master locations: $e');
+      debugPrint('Error fetching master location: $e');
       return [];
     }
   }
@@ -1453,7 +1497,7 @@ class ApiService {
       }
       return [];
     } catch (e) {
-      debugPrint('Error fetching MMTs: $e');
+      debugPrint('Error fetching MMT: $e');
       return [];
     }
   }
@@ -1476,7 +1520,7 @@ class ApiService {
       }
       return [];
     } catch (e) {
-      debugPrint('Error fetching MMTs by yard: $e');
+      debugPrint('Error fetching MMT by yard: $e');
       return [];
     }
   }
@@ -1558,6 +1602,8 @@ class ApiService {
     int offset = 0,
     String source = 'ALL',
     String status = 'ALL',
+    String? start,
+    String? end,
   }) async {
     try {
       final uri = Uri.parse(
@@ -1565,7 +1611,9 @@ class ApiService {
         '&source=${Uri.encodeQueryComponent(source)}'
         '&status=${Uri.encodeQueryComponent(status)}'
         '&window_days=30&archive_older=1'
-        '&limit=$limit&offset=$offset',
+        '&limit=$limit&offset=$offset'
+        '${start != null ? "&start=$start" : ""}'
+        '${end != null ? "&end=$end" : ""}',
       );
       final response = await http.get(uri);
       if (response.statusCode == 200) {
@@ -1621,10 +1669,10 @@ class ApiService {
     String start = DateFormat('yyyy-MM-dd').format(startDate);
     String end = DateFormat('yyyy-MM-dd').format(endDate);
 
-    // Use source=ALL to get both current devices and historical alerts (not just empty ARCHIVE)
+    // Use endpoint=alert (singular) to match backend routing
     final response = await http.get(
       Uri.parse(
-          '$baseUrl?endpoint=alerts&action=report&source=ALL&start=$start&end=$end&status=$status'),
+          '$baseUrl?endpoint=alert&action=report&start=$start&end=$end&status=$status'),
     );
 
     if (response.statusCode == 200) {
@@ -1655,7 +1703,7 @@ class ApiService {
       }
       return parsedAlerts;
     } else {
-      throw Exception('Failed To Load Report');
+      throw Exception('Failed to load report');
     }
   }
 
@@ -1711,7 +1759,7 @@ class ApiService {
       }
       return false;
     } catch (e) {
-      debugPrint("Gagal hapus alert: $e");
+      debugPrint("Failed to delete alert: $e");
       return false;
     }
   }
@@ -1732,7 +1780,7 @@ class ApiService {
       }
       return false;
     } catch (e) {
-      debugPrint("Gagal dismiss current alert: $e");
+      debugPrint("Failed to dismiss current alert: $e");
       return false;
     }
   }
@@ -1829,8 +1877,8 @@ class ApiService {
         }),
       );
 
-      debugPrint('Create Tower Response Status: ${response.statusCode}');
-      debugPrint('Create Tower Response Body: ${response.body}');
+      debugPrint('Create tower response status: ${response.statusCode}');
+      debugPrint('Create tower response body: ${response.body}');
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -1871,8 +1919,8 @@ class ApiService {
         }),
       );
 
-      debugPrint('Create Camera Response Status: ${response.statusCode}');
-      debugPrint('Create Camera Response Body: ${response.body}');
+      debugPrint('Create camera response status: ${response.statusCode}');
+      debugPrint('Create camera response body: ${response.body}');
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -1909,8 +1957,8 @@ class ApiService {
         }),
       );
 
-      debugPrint('Create MMT Response Status: ${response.statusCode}');
-      debugPrint('Create MMT Response Body: ${response.body}');
+      debugPrint('Create MMT response status: ${response.statusCode}');
+      debugPrint('Create MMT response body: ${response.body}');
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -1970,7 +2018,7 @@ class ApiService {
 
       return result;
     } catch (e) {
-      return {'success': false, 'message': 'Koneksi Gagal: $e'};
+      return {'success': false, 'message': 'Connection Failed: $e'};
     }
   }
 
@@ -2013,18 +2061,18 @@ class ApiService {
   // Trigger realtime ping untuk semua devices
   Future<Map<String, dynamic>> triggerRealtimePing() async {
     try {
-      debugPrint('=== Memulai Realtime Ping (Batas waktu 60 detik) ===');
+      debugPrint('=== Starting Realtime Ping (60 second limit) ===');
 
       final response = await http
           .get(
-        Uri.parse('$baseUrl?endpoint=realtime&action=all'),
+        Uri.parse('$_apiRoot/realtime.php?endpoint=realtime&action=all'),
       )
           .timeout(
         const Duration(
             seconds:
                 60), // Memberikan waktu lebih lama untuk proses ping di server
         onTimeout: () {
-          debugPrint('❌ Realtime ping GAGAL: Server tidak merespon dalam 60 detik');
+          debugPrint('❌ Realtime ping failed: Server timeout');
           // Mengembalikan response buatan agar catch error bisa menangkapnya
           return http.Response(
               '{"success":false,"message":"Server Timeout"}', 408);
@@ -2035,19 +2083,19 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final decodedData = jsonDecode(response.body);
-        debugPrint('✓ Ping Berhasil: ${decodedData['message']}');
+        debugPrint('✓ Successfully to ping: ${decodedData['message']}');
         return decodedData;
       } else {
         return {
           'success': false,
-          'message': 'Server Error: ${response.statusCode}'
+          'message': 'Server error: ${response.statusCode}'
         };
       }
     } catch (e) {
-      debugPrint('❌ Error koneksi/ping: $e');
+      debugPrint('❌ Error connection/ping: $e');
       return {
         'success': false,
-        'message': 'Koneksi terputus atau server offline'
+        'message': 'Connection failed or server is offline'
       };
     }
   }
@@ -2079,8 +2127,9 @@ class ApiService {
 
       return _requestPerformanceWithFallback(
         queryParameters: {
-          'device_type': type,
-          'device_id': id,
+          'scope': 'device',
+          'type': type,
+          'id': id,
           'hours': safeHours.toString(),
         },
         timeoutMessage: 'Performance API timeout',
@@ -2096,7 +2145,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> getGlobalDiagnostics({int? hours}) async {
     try {
-      final safeHours = (hours ?? 12).clamp(1, 720);
+      final safeHours = (hours ?? 24).clamp(1, 720);
       return _requestPerformanceWithFallback(
         queryParameters: {
           'scope': 'global',
@@ -2205,7 +2254,7 @@ class ApiService {
     return {
       'success': false,
       'message': lastMessage ??
-          '$defaultMessage. Periksa koneksi API backend (localhost/adb reverse/API_ROOT).',
+          '$defaultMessage. Please check the API backend connection (localhost/adb reverse/API_ROOT).',
     };
   }
 
@@ -2221,8 +2270,8 @@ class ApiService {
         lowered.contains('clientexception') ||
         lowered.contains('socketexception') ||
         lowered.contains('failed host lookup')) {
-      return '$defaultMessage: tidak bisa terhubung ke API. '
-          'Jika pakai Android device fisik, jalankan adb reverse tcp:8080 tcp:80 atau set API_ROOT.';
+      return '$defaultMessage: cannot connect to API. '
+          'If using physical android device, run adb reverse tcp:8080 tcp:80 or set API_ROOT.';
     }
 
     return '$defaultMessage: $raw';
@@ -2245,8 +2294,8 @@ class ApiService {
         Uri.parse('$baseUrl?endpoint=device-ping&action=test&ip=$targetIp'),
       );
 
-      debugPrint('Device Connectivity Test Response: ${response.statusCode}');
-      debugPrint('Response Body: ${response.body}');
+      debugPrint('Device connectivity test response: ${response.statusCode}');
+      debugPrint('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -2278,8 +2327,8 @@ class ApiService {
         }),
       );
 
-      debugPrint('Report Device Status Response Status: ${response.statusCode}');
-      debugPrint('Report Device Status Response Body: ${response.body}');
+      debugPrint('Report device status response status: ${response.statusCode}');
+      debugPrint('Report device status response body: ${response.body}');
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -2412,7 +2461,7 @@ class ApiService {
       }
       return [];
     } catch (e) {
-      debugPrint('Error fetching all NVRs: $e');
+      debugPrint('Error fetching all NVR: $e');
       return [];
     }
   }
@@ -2430,7 +2479,7 @@ class ApiService {
       }
       return [];
     } catch (e) {
-      debugPrint('Error fetching NVRs: $e');
+      debugPrint('Error fetching NVR: $e');
       return [];
     }
   }
@@ -2482,7 +2531,7 @@ class ApiService {
       }
       return [];
     } catch (e) {
-      debugPrint('Error fetching all Switches: $e');
+      debugPrint('Error fetching all switch: $e');
       return [];
     }
   }
@@ -2500,7 +2549,7 @@ class ApiService {
       }
       return [];
     } catch (e) {
-      debugPrint('Error fetching Switches: $e');
+      debugPrint('Error fetching switch: $e');
       return [];
     }
   }
@@ -2540,7 +2589,77 @@ class ApiService {
     }
   }
 
-  /// Fetches a true global summary of all devices (Towers, Cameras, MMTs, NVRs, Switches)
+  // ==================== PC METHODS ====================
+  Future<List<PCModel>> getAllPCs() async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl?endpoint=pc&action=all'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          return (data['data'] as List).map((i) => PCModel.fromJson(i)).toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error fetching all PC: $e');
+      return [];
+    }
+  }
+
+  Future<List<PCModel>> getPCsByYard(String yard) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl?endpoint=pc&action=by-yard&container_yard=$yard'),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          return (data['data'] as List).map((i) => PCModel.fromJson(i)).toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error fetching PC by yard: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> updatePC(int id, Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl?endpoint=pc&action=update'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'id': id, ...data}),
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> createPC(Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl?endpoint=pc&action=create'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> deletePC(int id) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl?endpoint=pc&action=delete&id=$id'));
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  /// Fetches a true global summary of all devices (Towers, Cameras, MMTs, NVRs, Switches, PCs)
   Future<Map<String, int>> getGlobalDeviceSummary() async {
     try {
       final results = await Future.wait([
@@ -2549,6 +2668,7 @@ class ApiService {
         getAllMMTs(),
         getAllNVRs(),
         getAllSwitches(),
+        getAllPCs(),
       ]);
 
       final towers = results[0] as List<Tower>;
@@ -2556,6 +2676,7 @@ class ApiService {
       final mmts = results[2] as List<MMT>;
       final nvrs = results[3] as List<NVR>;
       final switches = results[4] as List<SwitchModel>;
+      final pcs = results[5] as List<PCModel>;
 
       int up = 0;
       int total = 0;
@@ -2576,6 +2697,9 @@ class ApiService {
 
       total += switches.length;
       up += switches.where((s) => !isDownStatus(s.status)).length;
+
+      total += pcs.length;
+      up += pcs.where((p) => !isDownStatus(p.status)).length;
 
       return {
         'total': total,

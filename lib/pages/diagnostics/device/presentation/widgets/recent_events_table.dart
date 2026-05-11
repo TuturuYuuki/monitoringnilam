@@ -33,7 +33,7 @@ class RecentEventsTable extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Recent Events',
+                'Recent Event',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 16,

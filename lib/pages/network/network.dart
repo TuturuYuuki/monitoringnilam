@@ -201,7 +201,7 @@ class _NetworkPageState extends State<NetworkPage> {
     final warnings = towers.where((t) => isDownStatus(t.status)).toList();
     showFadeAlertDialog(
       context: context,
-      title: 'Access Point DOWN (${warnings.length})',
+      title: 'Access Point is DOWN (${warnings.length})',
       content: ConstrainedBox(
         constraints: const BoxConstraints(
           maxWidth: 350,
@@ -215,7 +215,7 @@ class _NetworkPageState extends State<NetworkPage> {
                 const Padding(
                   padding: EdgeInsets.all(12.0),
                   child: Text(
-                    'All towers are in UP condition',
+                    'All Access Point are in UP condition',
                     style: TextStyle(fontSize: 13, color: Colors.black54),
                     textAlign: TextAlign.center,
                   ),
@@ -335,7 +335,7 @@ class _NetworkPageState extends State<NetworkPage> {
                   controller: nameController,
                   style: const TextStyle(color: Colors.black87),
                   decoration: const InputDecoration(
-                    labelText: 'Access Point Name/ID',
+                    labelText: 'Name',
                     labelStyle: TextStyle(color: Colors.black54),
                     enabledBorder: UnderlineInputBorder(
                         borderSide: BorderSide(color: Colors.black12)),
@@ -345,7 +345,7 @@ class _NetworkPageState extends State<NetworkPage> {
                   controller: ipController,
                   style: const TextStyle(color: Colors.black87),
                   decoration: const InputDecoration(
-                    labelText: 'IP address',
+                    labelText: 'IP Address',
                     labelStyle: TextStyle(color: Colors.black54),
                     enabledBorder: UnderlineInputBorder(
                         borderSide: BorderSide(color: Colors.black12)),
